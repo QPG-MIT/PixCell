@@ -52,24 +52,7 @@ frozen `core-v1` digest.
 The second command independently executes all 738 emitted Python programs and
 checks their runtime geometry and port contracts.
 
-## Expansion boundary
+## Release boundary
 
-`core-v1` never changes. Future generated examples must be published as
-versioned companion configurations and must retain explicit IDs for four
-different concepts:
-
-1. representation grammar;
-2. controlled physical realization;
-3. pose/equivariance transform; and
-4. visual-domain rendering.
-
-This prevents parameter jitter or alternate image renders from being counted
-as new representations. Expansion proposals are admitted only after the user
-reviews the proposed grammar and visual examples; `build_all.py` never expands
-the dataset.
-
-The current approval draft is documented in
-[`expansion/METHOD.md`](expansion/METHOD.md), with a
-[visual method preview](expansion/preview.png). It is a planning artifact only:
-the source capsule and published Parquet still contain exactly the frozen 738
-rows.
+`core-v1` never changes. Any future dataset version must be published
+separately; `build_all.py` reproduces only the frozen 738 rows.
