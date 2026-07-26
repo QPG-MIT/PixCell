@@ -298,5 +298,5 @@ behavior.
 
 The dataset and release tools use the [MIT License](LICENSE). Dependency
 notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and citation
-metadata is provided in [CITATION.cff](CITATION.cff). No DOI or arXiv
-identifier is claimed for this release.
+metadata is provided in [CITATION.cff](CITATION.cff). The citation record will
+be updated with the paper's arXiv identifier when it becomes available.
