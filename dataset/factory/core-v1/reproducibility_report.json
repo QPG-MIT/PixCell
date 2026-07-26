@@ -1,0 +1,37 @@
+{
+  "schema_version": "pixcell-reproducibility-report-v1",
+  "core_name": "core-v1",
+  "tested_on": "2026-07-26",
+  "python_version": "3.13.14",
+  "release_digest_sha256": "e1c509dca337ce485efcb2b35101a052e06b12331b63a2f21a36c93b3682ea89",
+  "source_archive_sha256": "48f6caa39172656a25a4b7b0e9b4cf085912d32e39c58055d9234d138db8ea50",
+  "checks": {
+    "source_archive_double_pack_identical": true,
+    "source_archive_inventory_verified": true,
+    "source_archive_private_path_hits": 0,
+    "clean_checkout_started_without_data_metadata_or_galleries": true,
+    "clean_checkout_used_no_external_source_repository": true,
+    "clean_checkout_rebuilt_rows": 738,
+    "clean_checkout_reference_artifact_match": true,
+    "clean_checkout_reference_artifact_mismatches": [],
+    "static_validation_passed": true,
+    "compiled_programs": 738,
+    "purity_clean_programs": 738,
+    "embedded_images": 1476,
+    "executed_programs": 738,
+    "runtime_geometry_and_port_contracts_passed": 738,
+    "release_unit_tests_passed": 11,
+    "hugging_face_core_v1_rows_loaded": 738,
+    "hugging_face_l4_rows_loaded": 108
+  },
+  "commands": [
+    "python scripts/build_all.py",
+    "python scripts/validate_release.py --execute-programs",
+    "python -m unittest discover -s tests -v"
+  ],
+  "contract": {
+    "portable_requirement": "Ordered rows, schema, all code/image payload hashes, and logical release digest must match.",
+    "reference_platform_requirement": "Pinned Python and dependency environment also reproduces the recorded Parquet, metadata, and gallery bytes.",
+    "future_expansions_mutate_core_v1": false
+  }
+}

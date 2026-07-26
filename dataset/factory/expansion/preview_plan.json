@@ -1,0 +1,50 @@
+{
+  "status": "preview_only",
+  "core_name": "core-v1",
+  "core_release_digest_sha256": "e1c509dca337ce485efcb2b35101a052e06b12331b63a2f21a36c93b3682ea89",
+  "mutates_core": false,
+  "identity_axes": [
+    "representation_id",
+    "realization_id",
+    "pose_id",
+    "render_id"
+  ],
+  "proposal_lanes": {
+    "new_grammars": {
+      "candidate_cap": 250,
+      "counts_as_new_representation": true,
+      "priority_levels": ["L2", "L3", "L4"]
+    },
+    "controlled_realizations": {
+      "candidate_cap": 900,
+      "counts_as_new_representation": false,
+      "maximum_per_selected_grammar": 3
+    },
+    "useful_pose_examples": {
+      "candidate_cap": 200,
+      "counts_as_new_representation": false,
+      "exhaustive_d4_forbidden": true
+    },
+    "render_companions": {
+      "candidate_cap": 1000,
+      "counts_as_new_representation": false,
+      "separate_configuration": true
+    }
+  },
+  "admission_order": [
+    "compile_and_execute",
+    "source_purity",
+    "runtime_ports_and_topology",
+    "structural_witnesses_when_declared",
+    "calibrated_target_and_maximum_visibility_view",
+    "geometry_footprint_and_legibility",
+    "exact_and_d4_duplicate_accounting",
+    "human_visual_approval"
+  ],
+  "publication_configs": [
+    "new-grammars-v1",
+    "controlled-realizations-v1",
+    "render-variants-v1",
+    "repair-trajectories-v1"
+  ]
+}

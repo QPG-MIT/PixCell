@@ -34,6 +34,7 @@ from _shared import (
     scan_text,
     scan_value_strings,
     sha256_bytes,
+    sha256_file,
     verify_checksums,
 )
 from build_release import ROW_COLUMNS, release_digest_record
@@ -373,9 +374,7 @@ def _validate_l3_ports(
                 strict=True,
             )
         ):
-            raise ReleaseError(
-                f"{example_id}: runtime L3 port {name} center drifted"
-            )
+            raise ReleaseError(f"{example_id}: runtime L3 port {name} center drifted")
         width = expected.get("width")
         orientation = expected.get("orientation")
         if not isinstance(width, (int, float)) or not _close(
@@ -430,9 +429,8 @@ def _validate_l4_ports(
     if not isinstance(expected, dict):
         raise ReleaseError(f"{example_id}: L4 topology lacks edge-port contract")
     allowed_sides = {"left", "right", "top", "bottom"}
-    if (
-        any(side not in allowed_sides for side in expected)
-        or any(not isinstance(count, int) or count < 0 for count in expected.values())
+    if any(side not in allowed_sides for side in expected) or any(
+        not isinstance(count, int) or count < 0 for count in expected.values()
     ):
         raise ReleaseError(f"{example_id}: malformed L4 edge-port contract")
     bbox = result.get("bbox_um")
@@ -444,9 +442,9 @@ def _validate_l4_ports(
         raise ReleaseError(f"{example_id}: execution omitted a valid runtime bbox")
     xmin, ymin = (float(value) for value in bbox[0])
     xmax, ymax = (float(value) for value in bbox[1])
-    if any(
-        not math.isfinite(value) for value in (xmin, ymin, xmax, ymax)
-    ) or not (xmin < xmax and ymin < ymax):
+    if any(not math.isfinite(value) for value in (xmin, ymin, xmax, ymax)) or not (
+        xmin < xmax and ymin < ymax
+    ):
         raise ReleaseError(f"{example_id}: execution emitted an invalid runtime bbox")
     side_contract = {
         "left": (0, min, xmin, 1, ymin, ymax, (-1.0, 0.0)),
@@ -502,9 +500,7 @@ def _validate_l4_ports(
         )
         strongest_side_options.append((port["name"], options))
 
-    remaining = {
-        side: int(expected.get(side, 0)) for side in sorted(allowed_sides)
-    }
+    remaining = {side: int(expected.get(side, 0)) for side in sorted(allowed_sides)}
 
     def assign(index: int) -> bool:
         if index == len(strongest_side_options):
@@ -656,7 +652,7 @@ def validate_release(
     if not isinstance(configs, list):
         raise ReleaseError("dataset card has no configurations")
     config_names = [record.get("config_name") for record in configs]
-    if config_names != ["all", *LEVELS]:
+    if config_names != ["all", "core-v1", *LEVELS]:
         raise ReleaseError(f"dataset card configuration drift: {config_names}")
     if configs[0].get("default") is not True:
         raise ReleaseError("dataset card's all configuration is not default")
@@ -667,6 +663,52 @@ def validate_release(
         raise ReleaseError("catalog is not accepted-only")
     if catalog.get("columns") != list(ROW_COLUMNS):
         raise ReleaseError("catalog columns drifted")
+    if catalog.get("configurations") != ["all", "core-v1", *LEVELS]:
+        raise ReleaseError("catalog configuration drift")
+    freeze = read_json(root / "factory" / "core-v1" / "freeze.json")
+    if freeze.get("core_name") != "core-v1":
+        raise ReleaseError("core-v1 freeze name drift")
+    if freeze.get("release_digest_sha256") != catalog.get("release_digest_sha256"):
+        raise ReleaseError("catalog differs from frozen core-v1 digest")
+    if freeze.get("row_count") != catalog.get("total_rows"):
+        raise ReleaseError("catalog differs from frozen core-v1 row count")
+    source_bundle = freeze.get("source_bundle")
+    if not isinstance(source_bundle, dict):
+        raise ReleaseError("core-v1 freeze has no source bundle")
+    source_archive = root / str(source_bundle.get("path", ""))
+    if not source_archive.is_file():
+        raise ReleaseError("core-v1 source archive is missing")
+    if sha256_file(source_archive) != source_bundle.get("sha256"):
+        raise ReleaseError("core-v1 source archive digest drift")
+    grammar = freeze.get("grammar_catalog")
+    if not isinstance(grammar, dict):
+        raise ReleaseError("core-v1 freeze has no grammar catalog")
+    grammar_path = root / str(grammar.get("path", ""))
+    if not grammar_path.is_file():
+        raise ReleaseError("core-v1 grammar catalog is missing")
+    if sha256_file(grammar_path) != grammar.get("sha256"):
+        raise ReleaseError("core-v1 grammar catalog digest drift")
+    grammar_catalog = read_json(grammar_path)
+    if grammar_catalog.get("row_count") != catalog.get(
+        "total_rows"
+    ) or grammar_catalog.get("representation_count") != catalog.get(
+        "total_representation_ids"
+    ):
+        raise ReleaseError("core-v1 grammar catalog count drift")
+    policy = freeze.get("admission_policy")
+    if not isinstance(policy, dict):
+        raise ReleaseError("core-v1 freeze has no admission policy")
+    policy_path = root / str(policy.get("path", ""))
+    if not policy_path.is_file() or sha256_file(policy_path) != policy.get("sha256"):
+        raise ReleaseError("core-v1 admission policy digest drift")
+    reproducibility = freeze.get("reproducibility_report")
+    if not isinstance(reproducibility, dict):
+        raise ReleaseError("core-v1 freeze has no reproducibility report")
+    reproducibility_path = root / str(reproducibility.get("path", ""))
+    if not reproducibility_path.is_file() or sha256_file(
+        reproducibility_path
+    ) != reproducibility.get("sha256"):
+        raise ReleaseError("core-v1 reproducibility report digest drift")
 
     validated: list[dict[str, Any]] = []
     digest_records: list[dict[str, Any]] = []
@@ -755,8 +797,7 @@ def _parser() -> argparse.ArgumentParser:
         "--execute-programs",
         action="store_true",
         help=(
-            "Execute every program and verify emitted GDS and runtime "
-            "port contracts."
+            "Execute every program and verify emitted GDS and runtime port contracts."
         ),
     )
     parser.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 4))

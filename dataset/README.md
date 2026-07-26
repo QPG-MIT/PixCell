@@ -29,6 +29,15 @@ configs:
           - data/l2/train-*.parquet
           - data/l3/train-*.parquet
           - data/l4/train-*.parquet
+  - config_name: core-v1
+    data_files:
+      - split: train
+        path:
+          - data/l0/train-*.parquet
+          - data/l1/train-*.parquet
+          - data/l2/train-*.parquet
+          - data/l3/train-*.parquet
+          - data/l4/train-*.parquet
   - config_name: l0
     data_files:
       - split: train
@@ -110,7 +119,8 @@ replace visual review.
 
 ## Configurations and splits
 
-`all` is the default Hugging Face configuration. The `l0`, `l1`, `l2`, `l3`,
+`all` is the default Hugging Face configuration. `core-v1` is an immutable
+alias for the complete accepted 738-row release. The `l0`, `l1`, `l2`, `l3`,
 and `l4` configurations expose each stage separately without duplicating the
 underlying files.
 
@@ -308,19 +318,34 @@ rasters, footprints, ports, structural witnesses, and source-to-target
 agreement. Those evidence records and their digests are bound into the public
 release; the default loader-only validation does not pretend to recompute them.
 
-Maintainers can rebuild the package from the separately audited source banks:
+The repository includes a compact accepted-source capsule, so a clean checkout
+can rebuild the complete frozen release without `PixCell-running` or another
+source repository:
 
 ```bash
-python scripts/build_release.py \
-  --source <audited-source-root> \
-  --output .
+python scripts/build_all.py
 python scripts/validate_release.py --root .
 python scripts/render_galleries.py --root .
 ```
 
-The published Parquet files and release manifest are canonical. The source
-bank is needed only for a maintainer rebuild, not for loading or validating a
-published checkout.
+`build_all.py` verifies the source capsule, rebuilds all five Parquet shards
+and galleries, and rejects the result unless its logical digest exactly equals
+the immutable `core-v1` digest. The source capsule contains only accepted
+programs, explicit grammar/factor assignments, exact image evidence, and the
+sidecars consumed by admission. Historical proposals, rejected candidates,
+private benchmarks, and RL rollouts are excluded.
+
+The published Parquet files and release manifest remain canonical. Downloaders
+do not need to run the factory to load or validate the dataset. Full factory
+details and the distinction between frozen replay and future expansion are in
+[`factory/README.md`](factory/README.md).
+
+No larger generated expansion is included in `core-v1`. The proposed identity
+model, candidate lanes, admission sequence, and first-wave planning envelope
+are available for review in
+[`factory/expansion/METHOD.md`](factory/expansion/METHOD.md) and the
+[visual approval preview](factory/expansion/preview.png). New rows must use a
+separate versioned configuration and cannot mutate the frozen core.
 
 The Hugging Face dataset-card metadata can also be checked with:
 
