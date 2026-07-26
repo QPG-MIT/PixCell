@@ -74,9 +74,7 @@ pixcell simulate projects/my_device/output/best.gds  # FDTD draft; a human press
 pixcell serve                                      # the 7 MCP servers · `pixcell api` for REST
 ```
 
-## Going deeper
-
-### Structure
+## Structure
 
 ```text
 .
@@ -92,18 +90,6 @@ pixcell serve                                      # the 7 MCP servers · `pixce
 ├── .env.example                  Optional API-key template; the core loop needs none
 ├── LICENSE                       Repository-wide MIT license
 └── README.md                     Project overview, installation, and entry points
-```
-
-### Documentation
-
-- Architecture, the conductor/gate protocol, and the package map: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/agents/`](docs/agents/)
-- The released measurement record (campaigns, benchmark, RL study): [`data/README.md`](data/README.md)
-- Paper source and figure generators: [`paper/`](paper/)
-
-## Tests
-
-```bash
-uv run pytest tests/ -q
 ```
 
 ## License
