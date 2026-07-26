@@ -88,13 +88,7 @@ pixcell serve                                      # the 7 MCP servers · `pixce
 │   │   └── expansion/            Draft method and preview for future releases
 │   ├── galleries/                Visual overview of the full release and each level
 │   ├── metadata/                 Catalog, checksums, audits, and source reports
-│   ├── scripts/                  Deterministic build, validation, render, and export tools
-│   ├── tests/                    Release-integrity tests
-│   ├── README.md                 Dataset card, schema, loading, and limitations
-│   ├── CITATION.cff              Dataset citation metadata
-│   ├── LICENSE                   Dataset-specific license
-│   ├── THIRD_PARTY_NOTICES.md    Third-party notices
-│   └── requirements-lock.txt     Pinned factory dependencies
+│   └── scripts/                  Deterministic build, validation, render, and export tools
 ├── .env.example                  Optional API-key template; the core loop needs none
 ├── LICENSE                       Repository-wide MIT license
 └── README.md                     Project overview, installation, and entry points
