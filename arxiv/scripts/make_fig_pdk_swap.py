@@ -1,7 +1,7 @@
 """Generate the PDK-swap paper figures (fig_spectra, fig_cross_matrix) from the
 committed campaign data in data/agents/pdk_swap/.
 
-Run from repo root: .venv/bin/python paper-tools/make_fig_pdk_swap.py
+Run from repo root: .venv/bin/python arxiv/scripts/make_fig_pdk_swap.py
 (Restored from paper/reports/pdk_swap_proof/paper/make_figures.py after that
 tree was pruned; paths retargeted to the consolidated data layout.)
 """

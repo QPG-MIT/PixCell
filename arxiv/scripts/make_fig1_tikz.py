@@ -12,7 +12,7 @@ Data sources (same as make_figures.py):
 - July agent sweep: data/agents/paper_swap/sweep_results.json
 
 Output: arxiv/figures/fig1_emergence.{tex,pdf}
-Run:    .venv/bin/python paper-tools/make_fig1_tikz.py
+Run:    .venv/bin/python arxiv/scripts/make_fig1_tikz.py
 """
 import json
 import subprocess

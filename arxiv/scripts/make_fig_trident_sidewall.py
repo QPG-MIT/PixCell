@@ -7,7 +7,7 @@ every cell while the unprotected total transmission moves with the fab angle,
 platform-dependently. Single-column, curves-only: two vertically stacked
 panels sharing the angle axis (no field maps).
 
-Run from repo root: .venv/bin/python paper-tools/make_fig_trident_sidewall.py
+Run from repo root: .venv/bin/python arxiv/scripts/make_fig_trident_sidewall.py
 Writes arxiv/figures/fig_trident_sidewall.pdf and arxiv/figures/fig_trident_sidewall.png.
 """
 import json

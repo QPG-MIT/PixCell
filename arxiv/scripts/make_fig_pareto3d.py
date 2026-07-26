@@ -10,7 +10,7 @@ those points carry no time coordinate and stay on the wall.
 June costs are order-of-magnitude estimates: pipeline call count x public
 per-token rates (same values as the committed 2D predecessor).
 
-Run: .venv/bin/python paper-tools/make_fig_pareto3d.py
+Run: .venv/bin/python arxiv/scripts/make_fig_pareto3d.py
 """
 import json
 from math import log10

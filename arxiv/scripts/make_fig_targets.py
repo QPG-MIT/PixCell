@@ -1,7 +1,7 @@
 """fig_targets: the eight-device benchmark target set (FINAL_1-8), one tile per
 device: the calibrated B&W silhouette with its stated footprint.
 
-Run: .venv/bin/python paper-tools/make_fig_targets.py
+Run: .venv/bin/python arxiv/scripts/make_fig_targets.py
 """
 import json
 from pathlib import Path

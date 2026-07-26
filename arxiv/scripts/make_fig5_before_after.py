@@ -11,7 +11,7 @@ FINAL_7's best-effort cell comes from the paper_10 project -- the same device
 image benchmarked under its original paper numbering (device_bw pixel-identical
 to FINAL_7's).
 
-Run: .venv/bin/python paper-tools/make_fig5_before_after.py
+Run: .venv/bin/python arxiv/scripts/make_fig5_before_after.py
 """
 from pathlib import Path
 

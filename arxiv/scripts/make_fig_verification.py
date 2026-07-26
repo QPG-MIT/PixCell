@@ -18,7 +18,7 @@ All images are the stored conductor-gate artifacts; the IoU values are
 re-derivable from them via michaelangelo.core.compare_absolute.compute_metrics
 (this script asserts that they match the stored metrics_iter*.json).
 
-Run: .venv/bin/python paper-tools/make_fig_verification.py
+Run: .venv/bin/python arxiv/scripts/make_fig_verification.py
 """
 import json
 import sys

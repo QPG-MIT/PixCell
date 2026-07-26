@@ -12,7 +12,7 @@ rasterization path that grades it (rl/reports/make_gallery.render_code), so ever
 pixel shown is conductor-gate arithmetic, not a worker-reported image.
 
 Run from the repo root with the repo venv:
-  .venv/bin/python paper-tools/make_fig_rl_gallery.py
+  .venv/bin/python arxiv/scripts/make_fig_rl_gallery.py
 """
 import json
 import os

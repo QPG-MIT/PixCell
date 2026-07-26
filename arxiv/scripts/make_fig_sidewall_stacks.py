@@ -8,7 +8,7 @@ mirror-symmetric splitter control.
 
 Run from repo root::
 
-    .venv/bin/python paper-tools/make_fig_sidewall_stacks.py
+    .venv/bin/python arxiv/scripts/make_fig_sidewall_stacks.py
 
 Writes ``arxiv/figures/fig_sidewall_stacks.pdf`` and ``.png``.
 """

@@ -6,7 +6,7 @@ shallow illustrative relief.  The x-y geometry is never redrawn or rescaled
 transversely.
 
 Run:
-    .venv/bin/python paper-tools/build_fig_vocabulary_wolfram.py
+    .venv/bin/python arxiv/scripts/build_fig_vocabulary_wolfram.py
 """
 
 from __future__ import annotations
