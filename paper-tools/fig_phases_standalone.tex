@@ -1,0 +1,429 @@
+\documentclass[border=4pt]{standalone}
+\usepackage{tikz,adjustbox}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,calc,fit,backgrounds}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% HOMI FIGURE STYLES
+%% Nature/Science tier color palette and typography
+%% Include this file in preamble: \input{claude/figures/style}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% ============================================================================
+%% COLOR PALETTE (Colorblind-safe, publication-quality)
+%% ============================================================================
+
+% Primary colors
+\definecolor{homiBlue}{RGB}{31, 119, 180}       % Primary - trust, technology
+\definecolor{homiOrange}{RGB}{255, 127, 14}     % Secondary - energy, iteration
+\definecolor{homiGreen}{RGB}{44, 160, 44}       % Success - verification passed
+\definecolor{homiRed}{RGB}{214, 39, 40}         % Error/Warning - failures
+\definecolor{homiPurple}{RGB}{148, 103, 189}    % Accent - AI/reasoning
+
+% Neutral tones
+\definecolor{homiGray}{RGB}{127, 127, 127}      % Neutral text
+\definecolor{homiDarkGray}{RGB}{80, 80, 80}     % Dark text
+\definecolor{homiLightGray}{RGB}{200, 200, 200} % Borders
+\definecolor{homiBg}{RGB}{250, 250, 250}        % Background fills
+
+% Phase-specific colors
+\definecolor{phase1Color}{RGB}{66, 133, 244}    % Phase 1 - Ground Truth (Google Blue)
+\definecolor{phase2Color}{RGB}{251, 188, 5}     % Phase 2 - Sampling (Google Yellow)
+\definecolor{phase3Color}{RGB}{52, 168, 83}     % Phase 3 - Refinement (Google Green)
+
+%% ============================================================================
+%% NODE STYLES
+%% ============================================================================
+
+% Process nodes (rectangular, main workflow steps)
+\tikzstyle{process} = [
+    rectangle,
+    rounded corners=4pt,
+    minimum width=2.2cm,
+    minimum height=0.9cm,
+    draw=homiBlue,
+    line width=0.8pt,
+    fill=homiBlue!8,
+    font=\small\sffamily,
+    align=center,
+    text=homiDarkGray
+]
+
+% Phase nodes (larger, for phase headers)
+\tikzstyle{phase} = [
+    rectangle,
+    rounded corners=6pt,
+    minimum width=3.5cm,
+    minimum height=1.2cm,
+    draw=homiOrange,
+    line width=1pt,
+    fill=homiOrange!10,
+    font=\small\sffamily\bfseries,
+    align=center,
+    text=homiDarkGray
+]
+
+% Data/artifact nodes (parallelogram shape)
+\tikzstyle{data} = [
+    trapezium,
+    trapezium left angle=75,
+    trapezium right angle=105,
+    minimum width=1.8cm,
+    minimum height=0.7cm,
+    draw=homiGray,
+    line width=0.6pt,
+    fill=homiBg,
+    font=\small\sffamily,
+    align=center,
+    text=homiDarkGray
+]
+
+% Metric badges (circular)
+\tikzstyle{metric} = [
+    circle,
+    minimum size=0.9cm,
+    draw=homiGreen,
+    line width=0.8pt,
+    fill=homiGreen!15,
+    font=\tiny\sffamily\bfseries,
+    text=homiDarkGray
+]
+
+% Error/failure badges
+\tikzstyle{errormetric} = [
+    circle,
+    minimum size=0.9cm,
+    draw=homiRed,
+    line width=0.8pt,
+    fill=homiRed!15,
+    font=\tiny\sffamily\bfseries,
+    text=homiDarkGray
+]
+
+% Agent/AI nodes (rounded, prominent)
+\tikzstyle{agent} = [
+    rectangle,
+    rounded corners=8pt,
+    minimum width=2.5cm,
+    minimum height=1.1cm,
+    draw=homiPurple,
+    line width=1.2pt,
+    fill=homiPurple!10,
+    font=\small\sffamily\bfseries,
+    align=center,
+    text=homiDarkGray
+]
+
+% Image placeholder nodes
+\tikzstyle{imgnode} = [
+    rectangle,
+    minimum width=1.5cm,
+    minimum height=1.5cm,
+    draw=homiLightGray,
+    line width=0.5pt,
+    fill=white,
+    font=\tiny\sffamily,
+    align=center
+]
+
+% Server/module nodes (for architecture diagram)
+\tikzstyle{server} = [
+    rectangle,
+    rounded corners=3pt,
+    minimum width=1.6cm,
+    minimum height=1.4cm,
+    draw=homiBlue,
+    line width=0.7pt,
+    fill=homiBlue!5,
+    font=\footnotesize\sffamily,
+    align=center,
+    text=homiDarkGray
+]
+
+% Orchestrator node (central, prominent)
+\tikzstyle{orchestrator} = [
+    rectangle,
+    rounded corners=10pt,
+    minimum width=3cm,
+    minimum height=1.3cm,
+    draw=homiPurple,
+    line width=1.5pt,
+    fill=homiPurple!12,
+    font=\normalsize\sffamily\bfseries,
+    align=center,
+    text=homiDarkGray
+]
+
+%% ============================================================================
+%% ARROW STYLES
+%% ============================================================================
+
+% Primary flow arrows
+\tikzstyle{arrow} = [
+    ->,
+    >=Stealth,
+    line width=0.9pt,
+    homiBlue
+]
+
+% Feedback/iteration arrows
+\tikzstyle{feedback} = [
+    ->,
+    >=Stealth,
+    line width=0.9pt,
+    homiOrange,
+    dashed
+]
+
+% Data flow arrows (thinner)
+\tikzstyle{dataflow} = [
+    ->,
+    >=stealth,
+    line width=0.6pt,
+    homiGray
+]
+
+% Bidirectional arrows
+\tikzstyle{biarrow} = [
+    <->,
+    >=Stealth,
+    line width=0.8pt,
+    homiBlue
+]
+
+%% ============================================================================
+%% BACKGROUND STYLES
+%% ============================================================================
+
+% Phase background boxes
+\tikzstyle{phasebox} = [
+    rectangle,
+    rounded corners=8pt,
+    fill=black!3,
+    draw=homiLightGray,
+    line width=0.5pt,
+    inner sep=10pt
+]
+
+% Highlight box
+\tikzstyle{highlight} = [
+    rectangle,
+    rounded corners=4pt,
+    fill=homiOrange!8,
+    draw=homiOrange!50,
+    line width=0.5pt,
+    inner sep=6pt
+]
+
+%% ============================================================================
+%% LABEL STYLES
+%% ============================================================================
+
+\tikzstyle{phaselabel} = [
+    font=\footnotesize\sffamily\bfseries,
+    text=homiDarkGray
+]
+
+\tikzstyle{sublabel} = [
+    font=\tiny\sffamily,
+    text=homiGray
+]
+
+\tikzstyle{annotation} = [
+    font=\scriptsize\sffamily\itshape,
+    text=homiGray
+]
+
+%% ============================================================================
+%% UTILITY COMMANDS
+%% ============================================================================
+
+% Shorthand for common node distances
+\newcommand{\nodedist}{1.8cm}
+\newcommand{\nodedistsmall}{1.2cm}
+\newcommand{\nodedistlarge}{2.5cm}
+
+\newcommand{\sse}{\textsc{sse}}
+\begin{document}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tikzpicture}[
+    node distance=1.4cm,
+    every node/.style={font=\small\sffamily},
+    scale=0.88,
+    transform shape
+]
+
+%% ============================================================================
+%% PHASE 0: REFERENCE PREPARATION
+%% ============================================================================
+
+% Phase 1 background box
+\node[rectangle, rounded corners=10pt,
+      minimum width=4.2cm, minimum height=6.5cm,
+      draw=phase1Color!60, fill=phase1Color!5, line width=1pt] at (0, 0) (p1box) {};
+
+% Phase 0 header
+\node[above=2pt of p1box.north, font=\small\sffamily\bfseries, text=phase1Color] {PHASE 0};
+\node[below=1pt of p1box.north, font=\footnotesize\sffamily, text=homiDarkGray] {Reference Preparation};
+
+% Step 0.1: source-figure input
+\node[data, below=0.8cm of p1box.north] (pdf) {Source\\Figure};
+
+% Step 0.2: mask standardization
+\node[process, below=0.6cm of pdf, minimum width=2.8cm, fill=phase1Color!8, draw=phase1Color] (extract) {Standardize\\Mask};
+
+% Step 0.3: frozen reference mask
+\node[imgnode, below=0.6cm of extract, minimum width=1.3cm, minimum height=1.3cm] (bw) {};
+\fill[homiDarkGray] ([shift={(-0.3, 0.1)}]bw.center) circle (0.18);
+\draw[homiDarkGray, line width=1.5pt] ([shift={(-0.3, -0.15)}]bw.center) -- ([shift={(0.3, -0.15)}]bw.center);
+\node[font=\tiny, text=homiGray, below=1pt of bw] {Frozen Target};
+
+% Step 0.4: footprint extraction
+\node[process, below=0.6cm of bw, minimum width=2.8cm, fill=phase1Color!8, draw=phase1Color] (footprint) {Extract\\Footprint};
+
+% Step 0.5: calibration
+\node[data, below=0.6cm of footprint] (calib) {\texttt{calibration}\\[-2pt]\texttt{.json}};
+
+% Arrows in Phase 1
+\draw[arrow, phase1Color] (pdf) -- (extract);
+\draw[arrow, phase1Color] (extract) -- (bw);
+\draw[arrow, phase1Color] (bw) -- (footprint);
+\draw[arrow, phase1Color] (footprint) -- (calib);
+
+% Key parameter annotation
+\node[font=\tiny\sffamily, text=homiGray, right=0.1cm of footprint.east, align=left] {
+    $40 \times 1.7$ µm
+};
+
+%% ============================================================================
+%% PHASE 1: ROUND OF SAMPLING (RoS)
+%% ============================================================================
+
+% Phase 2 background box
+\node[rectangle, rounded corners=10pt,
+      minimum width=5.5cm, minimum height=6.5cm,
+      draw=phase2Color!60, fill=phase2Color!5, line width=1pt] at (5.5, 0) (p2box) {};
+
+% Phase 2 header
+\node[above=2pt of p2box.north, font=\small\sffamily\bfseries, text=phase2Color] {PHASE 1};
+\node[below=1pt of p2box.north, font=\footnotesize\sffamily, text=homiDarkGray] {Round of Sampling};
+
+% Step 2.1: Seed initialization
+\node[process, below=0.8cm of p2box.north, minimum width=3.5cm, fill=phase2Color!10, draw=phase2Color] (seeds) {Initialize\\$N{=}15$ Seeds};
+
+% Step 2.2: Parallel generation (show branching)
+\node[below=0.6cm of seeds] (gencenter) {};
+
+% Show 3 representative seeds
+\foreach \x/\seed in {-1.2/1327, 0/1333, 1.2/1339} {
+    \node[rectangle, rounded corners=2pt, minimum width=0.8cm, minimum height=0.5cm,
+          draw=phase2Color, fill=white, line width=0.5pt,
+          font=\tiny\ttfamily] at ([xshift=\x cm]gencenter) (s\seed) {s\seed};
+
+    % Small progress indicators (2 turns each)
+    \fill[phase2Color!40] ([shift={(-0.25, -0.15)}]s\seed.south) rectangle ([shift={(-0.1, -0.25)}]s\seed.south);
+    \fill[phase2Color!40] ([shift={(0.1, -0.15)}]s\seed.south) rectangle ([shift={(0.25, -0.25)}]s\seed.south);
+}
+
+\node[font=\tiny, text=homiGray] at ([yshift=-0.35cm]gencenter) {$\times$ 2 turns each};
+
+% Step 2.3: Ranking
+\node[process, below=1.2cm of gencenter, minimum width=3.5cm, fill=phase2Color!10, draw=phase2Color] (rank) {Rank by\\IoU/\sse{}};
+
+% Step 2.4: Top-k selection
+\node[data, below=0.6cm of rank] (topk) {Top-$k$\\Candidates};
+
+\node[font=\tiny, text=homiGray, right=0.1cm of topk.east] {$k{\approx}5$};
+
+% Arrows in Phase 2
+\draw[arrow, phase2Color] (seeds) -- (gencenter);
+\foreach \seed in {1327, 1333, 1339} {
+    \draw[arrow, phase2Color, line width=0.4pt] (seeds.south) -- (s\seed.north);
+}
+\foreach \seed in {1327, 1333, 1339} {
+    \draw[arrow, phase2Color, line width=0.4pt] (s\seed.south) |- (rank.north);
+}
+\draw[arrow, phase2Color] (rank) -- (topk);
+
+%% ============================================================================
+%% PHASE 2: TEST-TIME SCALING (TTS)
+%% ============================================================================
+
+% Phase 3 background box
+\node[rectangle, rounded corners=10pt,
+      minimum width=4.8cm, minimum height=6.5cm,
+      draw=phase3Color!60, fill=phase3Color!5, line width=1pt] at (11, 0) (p3box) {};
+
+% Phase 3 header
+\node[above=2pt of p3box.north, font=\small\sffamily\bfseries, text=phase3Color] {PHASE 2};
+\node[below=1pt of p3box.north, font=\footnotesize\sffamily, text=homiDarkGray] {Test-Time Scaling};
+
+% Step 3.1: Extended iteration
+\node[process, below=0.8cm of p3box.north, minimum width=3.2cm, fill=phase3Color!10, draw=phase3Color] (extend) {Extended\\Iteration};
+
+\node[font=\tiny, text=homiGray, below=1pt of extend] {$\le 3$ more turns};
+
+% Visual feedback loop illustration
+\node[below=0.8cm of extend] (loopanchor) {};
+
+% Target vs Generated comparison
+\node[imgnode, minimum width=1.2cm, minimum height=1.2cm] at ([shift={(-0.8, 0)}]loopanchor) (target3) {};
+\fill[homiDarkGray] ([shift={(-0.25, 0.05)}]target3.center) circle (0.15);
+\draw[homiDarkGray, line width=1.3pt] ([shift={(-0.25, -0.15)}]target3.center) -- ([shift={(0.25, -0.15)}]target3.center);
+\node[font=\tiny, text=homiGray, below=1pt of target3] {Target};
+
+\node[imgnode, minimum width=1.2cm, minimum height=1.2cm] at ([shift={(0.8, 0)}]loopanchor) (gen3) {};
+\fill[homiDarkGray!60] ([shift={(-0.2, 0.08)}]gen3.center) circle (0.12);
+\draw[homiDarkGray!60, line width=1.3pt] ([shift={(-0.2, -0.12)}]gen3.center) -- ([shift={(0.25, -0.12)}]gen3.center);
+\node[font=\tiny, text=homiGray, below=1pt of gen3] {Generated};
+
+% Diff arrow
+\draw[feedback, line width=0.7pt] (target3.east) -- (gen3.west) node[midway, above, font=\tiny] {$\Delta$};
+
+% Convergence detection
+\node[process, below=1.1cm of loopanchor, minimum width=3.2cm, fill=phase3Color!10, draw=phase3Color] (converge) {Convergence\\Detection};
+
+% Final output
+\node[data, below=0.6cm of converge] (bestgds) {\texttt{best.gds}};
+
+% Metric badge
+\node[metric, right=0.2cm of bestgds, fill=phase3Color!20, draw=phase3Color] (finaliou) {\scriptsize 0.62};
+
+% Arrows in Phase 3
+\draw[arrow, phase3Color] (extend) -- (loopanchor);
+\draw[arrow, phase3Color] (loopanchor) -- (converge);
+\draw[arrow, phase3Color] (converge) -- (bestgds);
+
+% Feedback loop arrow
+\draw[feedback, phase3Color] (converge.west) -- ++(-0.5, 0) |- (extend.west);
+
+%% ============================================================================
+%% INTER-PHASE CONNECTIONS
+%% ============================================================================
+
+% Phase 1 -> Phase 2
+\draw[arrow, homiBlue, line width=1pt] (calib.east) -- ++(0.5, 0) |- (seeds.west);
+
+% Phase 2 -> Phase 3
+\draw[arrow, homiBlue, line width=1pt] (topk.east) -- ++(0.5, 0) |- (extend.west);
+
+%% ============================================================================
+%% TIMELINE BAR (Bottom)
+%% ============================================================================
+
+\draw[homiDarkGray, line width=1.5pt] (-2, -3.8) -- (13, -3.8);
+
+% Phase markers on timeline
+\fill[phase1Color] (-2, -3.8) circle (3pt);
+\node[below=2pt, font=\tiny\sffamily, text=phase1Color] at (-2, -3.8) {Start};
+
+\fill[phase2Color] (5.5, -3.8) circle (3pt);
+\node[below=2pt, font=\tiny\sffamily, text=phase2Color] at (5.5, -3.8) {RoS};
+
+\fill[phase3Color] (11, -3.8) circle (3pt);
+\node[below=2pt, font=\tiny\sffamily, text=phase3Color] at (11, -3.8) {TTS};
+
+\fill[homiDarkGray] (13, -3.8) circle (3pt);
+\node[below=2pt, font=\tiny\sffamily, text=homiDarkGray] at (13, -3.8) {Done};
+
+\end{tikzpicture}
+\end{adjustbox}
+\end{document}
