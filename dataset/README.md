@@ -60,149 +60,59 @@ configs:
         path: data/l4/train-*.parquet
 ---
 
-# PixCell Representation-First Image-to-Code Curriculum
+# PixCell
 
-PixCell is an accepted-only, synthetic image-to-code curriculum for teaching
-multimodal models to reconstruct photonic geometry as parametric Python
-programs. Each row pairs the exact high-visibility black-and-white image used
-as the model input with a primitive-only GDSFactory program that recreates it.
+PixCell is an accepted-only, synthetic curriculum for teaching multimodal
+models to reconstruct photonic geometry as parametric Python. A model receives
+a high-visibility component image plus physical footprint and display-scale
+context, then produces a complete program using the permitted PixCell
+primitive catalog and GDSFactory.
 
-The dataset is designed around a simple premise: useful volume comes from
-different **representations**, not from thousands of small parameter changes
-to the same shape. Discrete construction grammars are enumerated first.
-Controlled realizations, calibration examples, and safe pose examples are
-included only when they teach something explicit and are identified by their
-`variation_role`.
+The frozen `core-v1` release prioritizes distinct construction
+representations over large collections of near-identical parameter changes.
 
-## Curriculum
-
-The five levels form one cumulative learning catalog:
-
-| Level | What it teaches |
+| Release fact | Value |
 |---|---|
-| **L0 — primitives** | The complete permitted component and path vocabulary, including primitive constructor modes, a bounded set of useful orientations, and physical-scale calibration cases. |
-| **L1 — operations** | One operation or spatial relation at a time: translation, rotation, reflection, alignment, gaps, tangency, overlap, connection, path construction, Boolean operations, repetition, arrays, and routing. |
-| **L2 — compositions** | Small representation graphs made from several already-legible primitives and L1 operations: relational assemblies, connected chains, local branches, repeated carriers, arrays, and graded or radial banks. |
-| **L3 — hierarchical structures** | Coherent multi-zone systems with multiple bodies, routes, branches, defects, repeated media, and radial or cyclic organization. Each row is an independently authored semantic scene. |
-| **L4 — photonic components** | Capstone component representations: couplers, MMIs and splitters, interferometers, resonators, crossings, gratings and repeated media, cavities, mode/edge converters, and free-propagation or fan structures. |
+| Examples | 738 image-program pairs |
+| Representations | 547 |
+| Curriculum | L0–L4 |
+| Split | `train` only |
+| Format | Parquet with embedded PNG images |
+| Reference environment | Python 3.13.14, GDSFactory 9.20.7 |
+| License | MIT |
 
-This ordering is pedagogical, not a statement that real photonic design always
-proceeds linearly. Users may train on one level, accumulate levels, or filter
-the complete `all` configuration by role or representation family.
+[View the complete gallery](galleries/all.png), or browse
+[L0](galleries/l0.png), [L1](galleries/l1.png),
+[L2](galleries/l2.png), [L3](galleries/l3.png), and
+[L4](galleries/l4.png) separately. Every gallery shows the exact `image`
+field presented to a model.
 
-## Accepted-only release
+## Quick start
 
-The public Parquet files contain only admitted examples. Rejected proposals,
-quarantine candidates, failed intermediate builds, private benchmark figures,
-and RL rollouts are not dataset rows.
-
-Before admission, every example is subjected to deterministic checks
-appropriate to its level:
-
-1. the program parses, compiles, and executes in an isolated process;
-2. source analysis enforces the public primitive catalog and rejects raw
-   polygon dumps, prebuilt device stencils, target-image reads, and dynamic
-   component lookup;
-3. declared ports and broad connectivity are checked;
-4. structural counts, repeated elements, and objective topology witnesses are
-   checked where declared;
-5. the generated GDS is rendered at calibrated absolute scale and compared
-   with the target;
-6. the exact model view, footprint, source, and evidence are hash-bound;
-7. exact and rotation/reflection-equivalent duplicates are audited within and
-   across curriculum levels under the declared alias policy.
-
-Some semantic descriptions, such as the intended interpretation of a visual
-hierarchy, are deliberately descriptive rather than brittle automated reward
-terms. The machine gates measure executable facts; they do not pretend to
-replace visual review.
-
-## Configurations and splits
-
-`all` is the default Hugging Face configuration. `core-v1` is an immutable
-alias for the complete accepted 738-row release. The `l0`, `l1`, `l2`, `l3`,
-and `l4` configurations expose each stage separately without duplicating the
-underlying files.
-
-All released rows belong to a `train` split. PixCell does not relabel
-curriculum stages as train/test partitions, and this release does not include
-the paper's private evaluation figures. When constructing a downstream
-validation set, group by `leakage_group_id` or `grammar_id` before splitting;
-do not randomly separate pose or realization siblings.
-
-The release manifest generated alongside the Parquet files is the
-authoritative source for exact row counts, role counts, source-bank digests,
-and the complete release digest.
-
-## Row schema
-
-The Parquet schema is flat and loader-free. Irregular nested source metadata is
-stored as canonical JSON text so the schema remains stable across levels.
-
-| Column | Type | Meaning |
-|---|---|---|
-| `schema_version` | string | Public row-schema version. |
-| `id` | string | Globally unique example identifier. |
-| `level` | string | One of `L0` through `L4`. |
-| `curriculum_order` | integer | Stable order within the complete curriculum. |
-| `image` | Image | Exact high-visibility image supplied to the model. |
-| `target_image` | Image | Canonical high-resolution black-and-white target raster. |
-| `code` | string | Complete ground-truth Python program. |
-| `code_language` | string | `python`. |
-| `instruction` | string | Image-to-code instruction paired with the example. |
-| `label` | string | Reader-facing example label. |
-| `family` | string | Representation or component family. |
-| `concept_id` | string | Curriculum concept or component identity. |
-| `representation_id` | string | Representation-level identity. |
-| `grammar_id` | string | Program/visual grammar identity. |
-| `leakage_group_id` | string | Group that must stay together in downstream splits. |
-| `variation_role` | string | Semantic, realization, equivariance, or calibration role. |
-| `primitive_calls` | list[string] | Primitive/API vocabulary observed in the program. |
-| `prerequisite_ids` | list[string] | Earlier curriculum concepts used by the row when explicitly declared or mechanically derivable. |
-| `port_signature_json` | string | Canonical JSON description of the port contract. |
-| `footprint_um` | list[float] | Physical footprint in micrometres. |
-| `parameters_json` | string | Canonical JSON of named top-level parameters. |
-| `topology_json` | string | Canonical JSON of topology/structure metadata. |
-| `metadata_json` | string | Canonical JSON retaining additional source metadata. |
-| `image_sha256` | string | Integrity digest for the model image. |
-| `target_image_sha256` | string | Integrity digest for the target raster. |
-| `code_sha256` | string | Integrity digest for the program. |
-| `normalized_d4_sha256` | string | Rotation/reflection-normalized silhouette digest. |
-| `view_policy` | string | Deterministic policy used to select the model view. |
-| `source_dataset_digest_sha256` | string | Digest of the audited source level. |
-| `source_generator_version` | string | Version of the source generator. |
-
-`image` is the supervision view, optimized so thin gaps, rails, teeth, bends,
-and defects remain visible. It is not a replacement for physical dimensions.
-Use `target_image`, `footprint_um`, and the JSON metadata when exact raster or
-physical-scale information matters.
-
-The canonical `instruction` is deliberately class-blind: it does not reveal
-the row's `label`, `family`, or representation name. Those fields remain
-available as metadata for analysis or an explicitly label-conditioned
-training variant, while the default image-to-code task requires the model to
-infer the construction from the geometry itself. The instruction does include
-the physical footprint and the per-axis relative display magnification. This
-is necessary task context: maximum-visibility views deliberately make thin
-gaps and rails legible and therefore are not guaranteed to preserve physical
-aspect ratio or absolute pixel scale.
-
-## Loading with Hugging Face Datasets
-
-After publication, load the complete curriculum or one level using the normal
-Datasets API; no custom loading code or `trust_remote_code` is required:
+No custom loader or `trust_remote_code` is required:
 
 ```python
 from datasets import load_dataset
 
-catalog = load_dataset("<namespace>/<dataset-repository>", "all")
-l4 = load_dataset("<namespace>/<dataset-repository>", "l4", split="train")
+core = load_dataset(
+    "qpaig-mit/pixcell",
+    "core-v1",
+    revision="core-v1",
+    split="train",
+)
+l4 = load_dataset(
+    "qpaig-mit/pixcell",
+    "l4",
+    revision="core-v1",
+    split="train",
+)
 
 row = l4[0]
-row["image"]          # PIL.Image.Image: the model input
-row["target_image"]   # PIL.Image.Image: the canonical target
-row["instruction"]    # user instruction
-row["code"]           # supervised assistant answer
+row["image"]          # PIL.Image.Image: model input
+row["instruction"]    # class-blind reconstruction prompt
+row["code"]           # complete supervised answer
+row["target_image"]   # canonical physical-aspect target raster
+row["footprint_um"]   # physical width and height
 ```
 
 From a local checkout of this directory:
@@ -217,20 +127,99 @@ l2 = load_dataset(
 )
 ```
 
-Rows can be filtered without losing their grouping metadata:
+## Curriculum
 
-```python
-semantic = catalog["train"].filter(
-    lambda row: row["variation_role"] == "semantic"
-)
-```
+The stages are cumulative: primitives, operations, compositions, hierarchical
+systems, then complete photonic components.
 
-## VLM and TRL adapter
+| Level | Rows | Representations | Focus |
+|---|---:|---:|---|
+| **L0 — primitives** | 177 | 93 | The complete 22-item PixCell primitive vocabulary, useful constructor modes, orientations, and scale calibration. |
+| **L1 — operations** | 215 | 127 | Translation, rotation, reflection, alignment, spacing, tangency, overlap, connection, path construction, Boolean operations, repetition, arrays, and routing. |
+| **L2 — compositions** | 118 | 99 | Small relational assemblies, connected chains, branches, repeated carriers, arrays, and radial banks. |
+| **L3 — hierarchical structures** | 120 | 120 | Independently authored multi-zone systems with routes, branches, defects, repeated media, and cyclic organization. |
+| **L4 — photonic components** | 108 | 108 | Couplers, MMIs, splitters, interferometers, resonators, crossings, gratings, cavities, converters, and free-propagation structures. |
+| **Total** | **738** | **547** | |
 
-The canonical Parquet remains flat so it is broadly usable. The included
-adapter converts rows into OpenAI-style multimodal `messages`: a user message
-with `[image_url, text]` content followed by an assistant message containing
-the ground-truth program.
+`all` is the default configuration. It and `core-v1` currently contain the
+same 738 rows. Use the `core-v1` configuration together with
+`revision="core-v1"` to pin the immutable Hub snapshot. The `l0` through `l4`
+configurations expose individual stages without duplicating files.
+
+All configurations have a `train` split. Curriculum levels are not disguised
+train/test partitions, and the paper's private evaluation figures are not
+included. PixCell is therefore not a ready-made held-out benchmark.
+
+## Task and rendering contract
+
+The canonical `instruction` is class-blind: it does not reveal the component
+label, family, or representation name. Those fields remain available as
+metadata for analysis or explicitly label-conditioned training.
+
+`image` is the maximum-visibility supervision view. Thin gaps, rails, teeth,
+bends, and defects are enlarged when necessary so their shapes remain
+legible. It may not preserve physical aspect ratio. The instruction records
+the physical footprint and per-axis display magnification so the model is not
+asked to infer hidden scale from pixels.
+
+Use:
+
+- `image` for the visual model input;
+- `instruction` for footprint and display-scale context;
+- `target_image` for the canonical physical-aspect raster; and
+- `footprint_um` and the JSON metadata for exact physical information.
+
+## Admission and grouping
+
+Only admitted examples appear in the public Parquet. Rejected proposals,
+quarantined candidates, failed builds, private benchmarks, and RL rollouts are
+excluded.
+
+Admission verifies that each program:
+
+1. compiles, executes, and emits nonempty geometry;
+2. passes the primitive-only source-purity gate;
+3. matches declared port and broad connectivity contracts;
+4. satisfies declared structural and repeated-element witnesses;
+5. agrees with calibrated geometry and footprint evidence; and
+6. is hash-bound to its source, images, and admission record.
+
+The complete policy is in
+[`factory/admission_policy.json`](factory/admission_policy.json). Runtime
+validation uses a fresh temporary working directory; it is an integrity check,
+not a security sandbox for untrusted code.
+
+The release reports five exact duplicate groups and 41
+rotation/reflection-equivalent silhouette groups. These are retained only for
+declared API aliases, pose examples, or calibration roles. When making a
+downstream validation split, group on `leakage_group_id` (or, more
+conservatively, `grammar_id`) so related rows never cross the split boundary.
+
+`variation_role` distinguishes representation-changing semantic examples from
+controlled realization, equivariance, and calibration examples.
+
+## Row schema
+
+The schema is flat and loader-free. Irregular metadata is stored as canonical
+JSON text for stability across levels.
+
+| Field group | Columns |
+|---|---|
+| Supervision | `image`, `target_image`, `instruction`, `code`, `code_language` |
+| Ordering and labels | `id`, `level`, `curriculum_order`, `label`, `family` |
+| Representation identity | `concept_id`, `representation_id`, `grammar_id`, `leakage_group_id`, `variation_role` |
+| Construction context | `primitive_calls`, `prerequisite_ids`, `port_signature_json`, `footprint_um`, `parameters_json`, `topology_json`, `metadata_json` |
+| Integrity | `image_sha256`, `target_image_sha256`, `code_sha256`, `normalized_d4_sha256` |
+| Provenance | `schema_version`, `view_policy`, `source_dataset_digest_sha256`, `source_generator_version` |
+
+The authoritative schema, counts, role totals, and duplicate report are in
+[`metadata/catalog.json`](metadata/catalog.json).
+
+## VLM message adapter
+
+The included adapter converts flat rows into OpenAI-style multimodal
+`messages`: a user message containing the image and instruction, followed by
+an assistant message containing the ground-truth program.
 
 From this directory:
 
@@ -238,157 +227,76 @@ From this directory:
 python scripts/to_vlm_messages.py \
   --root . \
   --level l4 \
-  --output /tmp/l4_messages.jsonl \
+  --output /tmp/pixcell-l4.jsonl \
   --image-mode data-uri
 ```
 
-Use `--image-mode relative-path` when the trainer can resolve local image
-paths. The resulting JSONL can be loaded directly:
+Use `--image-mode relative-path` when the training stack can resolve local
+images. Processor, chat-template, and multimodal-collator setup remains
+model-specific.
 
-```python
-from datasets import load_dataset
+## Reproduce and validate
 
-messages = load_dataset(
-    "json",
-    data_files="/tmp/l4_messages.jsonl",
-    split="train",
-)
-```
-
-For TRL, supply this `messages` dataset to the VLM's chat template, processor,
-and multimodal data collator:
-
-```python
-from trl import SFTConfig, SFTTrainer
-
-trainer = SFTTrainer(
-    model=model,
-    args=SFTConfig(output_dir="pixcell-sft"),
-    train_dataset=messages,
-    processing_class=processor,
-    data_collator=multimodal_data_collator,
-)
-```
-
-`model`, `processor`, and `multimodal_data_collator` are intentionally
-model-specific. Confirm that the selected TRL/model integration preserves the
-image content instead of flattening the conversation to text. TRL is not
-needed to consume or validate the dataset and is therefore not included in
-the release lock.
-
-## Validation and galleries
-
-Install the pinned reference environment:
+The dataset directory is self-contained. Its accepted-source capsule can
+rebuild the five Parquet shards, metadata, and galleries without access to the
+historical development or RL repository.
 
 ```bash
-python -m venv .venv
+python3.13 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-lock.txt
-```
 
-Run the complete packaged-data validation from this directory:
-
-```bash
-python scripts/validate_release.py --root .
-```
-
-Regenerate the reader-facing L0–L4 galleries:
-
-```bash
-python scripts/render_galleries.py --root .
-```
-
-The validator checks the release inventory and checksums, Parquet schemas and
-row counts, embedded-image and code hashes, code compilation, source purity,
-identifiers and relative paths, the recorded cross-level collision report, and
-the absence of private paths or obvious credentials.
-
-To additionally execute every program in an isolated temporary directory and
-require a nonempty GDS result, finite positive runtime ports, exact declared
-port counts, full declared L3 port geometry, and the declared L4 boundary-side
-port histogram with outward-facing orientations, use the pinned GDSFactory
-stack and run:
-
-```bash
-python scripts/validate_release.py --root . --execute-programs
-```
-
-The exhaustive source-bank admission process also recomputes calibrated target
-rasters, footprints, ports, structural witnesses, and source-to-target
-agreement. Those evidence records and their digests are bound into the public
-release; the default loader-only validation does not pretend to recompute them.
-
-The repository includes a compact accepted-source capsule, so a clean checkout
-can rebuild the complete frozen release without `PixCell-running` or another
-source repository:
-
-```bash
 python scripts/build_all.py
-python scripts/validate_release.py --root .
-python scripts/render_galleries.py --root .
+python scripts/validate_release.py --root . --execute-programs
+python -m unittest discover -s tests -v
 ```
 
-`build_all.py` verifies the source capsule, rebuilds all five Parquet shards
-and galleries, and rejects the result unless its logical digest exactly equals
-the immutable `core-v1` digest. The source capsule contains only accepted
-programs, explicit grammar/factor assignments, exact image evidence, and the
-sidecars consumed by admission. Historical proposals, rejected candidates,
-private benchmarks, and RL rollouts are excluded.
+`build_all.py` verifies the source capsule and refuses to succeed unless the
+logical release digest is exactly:
 
-The published Parquet files and release manifest remain canonical. Downloaders
-do not need to run the factory to load or validate the dataset. Full factory
-details and the distinction between frozen replay and future expansion are in
-[`factory/README.md`](factory/README.md).
+```text
+e1c509dca337ce485efcb2b35101a052e06b12331b63a2f21a36c93b3682ea89
+```
 
-No larger generated expansion is included in `core-v1`. The proposed identity
-model, candidate lanes, admission sequence, and first-wave planning envelope
-are available for review in
-[`factory/expansion/METHOD.md`](factory/expansion/METHOD.md) and the
-[visual approval preview](factory/expansion/preview.png). New rows must use a
-separate versioned configuration and cannot mutate the frozen core.
+The executable source capsule contains accepted programs, explicit
+grammar/factor assignments, exact image evidence, and admission sidecars. It
+does not contain historical candidate banks, rejected proposals, or the
+original proposal-generation orchestration, and it is not a general-purpose
+expansion engine. See [`factory/README.md`](factory/README.md) for the precise
+replay contract.
 
-The Hugging Face dataset-card metadata can also be checked with:
+For a faster package-integrity check that does not execute all 738 programs:
 
 ```bash
-python - <<'PY'
-from huggingface_hub import DatasetCard
-
-DatasetCard.load("README.md").validate(repo_type="dataset")
-print("dataset card is valid")
-PY
+python scripts/validate_release.py --root .
 ```
 
-Card validation calls the Hugging Face validation service and therefore
-requires network access.
+## Intended use and limitations
 
-## Limitations and intended use
+PixCell is suitable for:
 
-- PixCell teaches visual representation and parametric construction. It is not
-  a substitute for electromagnetic simulation, compact-model extraction,
-  foundry design-rule checking, or fabrication sign-off.
-- The images are idealized, single-layer black-and-white renders. Real
-  micrographs, noisy screenshots, multilayer masks, and arbitrary paper styles
-  are outside this release.
-- The view policy prioritizes maximal visual legibility. Physical dimensions
-  must be read from `footprint_um` and associated metadata rather than inferred
-  from display pixels alone.
-- A passing geometry gate establishes faithful construction under the declared
-  raster and footprint; it does not establish optical performance.
-- The catalog is intentionally curated. It covers many useful visual grammars
-  but is not an exhaustive taxonomy of photonic devices.
-- The programs target the pinned GDSFactory API. Later dependency versions may
-  change geometry, port behavior, or rendered pixels.
-- The examples are synthetic and accepted-only, so they should not be used to
-  estimate performance on uncurated real-world figures without a separate
-  evaluation set.
+- curriculum SFT and image-to-code representation learning;
+- task sampling for on-policy RL paired with an external deterministic
+  evaluator;
+- controlled studies by level, family, grammar, or variation role; and
+- evaluation of primitive-only parametric reconstruction on separately
+  constructed held-out tasks.
 
-Appropriate uses include curriculum SFT, on-policy RL task sampling,
-image-to-code representation learning, controlled ablations by curriculum
-level, and evaluation of primitive-only parametric reconstruction.
+It is a compact, high-density curriculum—not a pretraining-scale corpus, an
+RL reward environment, or a standalone benchmark. It also does not replace
+electromagnetic simulation, compact-model extraction, foundry design-rule
+checking, or fabrication sign-off.
+
+Images are idealized single-layer black-and-white renders. Real micrographs,
+noisy paper figures, multilayer masks, and arbitrary visual styles are outside
+`core-v1`. Geometry admission establishes faithful construction under the
+declared raster and footprint, not optical performance. Programs target the
+pinned GDSFactory API; later dependency versions may change geometry or port
+behavior.
 
 ## License and citation
 
-The dataset and release tools are available under the [MIT License](LICENSE).
-Dependency notices are listed in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Citation metadata is provided
-in [CITATION.cff](CITATION.cff); no DOI or arXiv identifier is claimed here.
+The dataset and release tools use the [MIT License](LICENSE). Dependency
+notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and citation
+metadata is provided in [CITATION.cff](CITATION.cff). No DOI or arXiv
+identifier is claimed for this release.
