@@ -33,7 +33,7 @@ all run locally. `GEMINI_API_KEY` is used only to standardize an extracted
 paper figure; drawn devices do not need it. `TIDY3D_API_KEY` is used only for
 cloud FDTD. See [`.env.example`](.env.example).
 
-## Use
+## How to use
 
 ### Hosted Studio
 
