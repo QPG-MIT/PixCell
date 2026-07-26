@@ -62,15 +62,11 @@ configs:
 
 # PixCell Dataset
 
-This is the public training curriculum released with
-[PixCell](https://github.com/QPG-MIT/PixCell), the agent and verification
-system described in the repository README. It is the dataset, not the PixCell
-runtime, paper benchmark, or RL environment.
-
-Each row pairs the exact image shown to a model with a class-blind
-reconstruction instruction and a complete, primitive-only Python program that
-recreates the geometry in GDSFactory. The frozen `core-v1` release contains
-738 accepted examples spanning 547 representation grammars.
+`core-v1` is a 738-row image-to-code training dataset for photonic component
+reconstruction. It pairs exact high-visibility model inputs with physical
+footprint and display-scale context, plus verified primitive-only GDSFactory
+programs. The examples cover 547 representation grammars across five
+curriculum levels, from primitives (L0) to complete components (L4).
 
 | Release | Rows | Representations | Split | License |
 |---|---:|---:|---|---|
@@ -80,7 +76,11 @@ recreates the geometry in GDSFactory. The frozen `core-v1` release contains
 [L1](galleries/l1.png) · [L2](galleries/l2.png) ·
 [L3](galleries/l3.png) · [L4](galleries/l4.png)
 
-## Load
+## Load from Hugging Face
+
+```bash
+pip install datasets
+```
 
 ```python
 from datasets import load_dataset
@@ -219,4 +219,5 @@ sign-off.
 The dataset and release tools use the [MIT License](LICENSE). Dependency
 notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and citation
 metadata is in [CITATION.cff](CITATION.cff). The citation record will be
-updated with the paper's arXiv identifier when available.
+updated with the paper's arXiv identifier when available. Project source:
+[QPG-MIT/PixCell](https://github.com/QPG-MIT/PixCell).
