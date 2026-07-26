@@ -1,0 +1,54 @@
+{
+  "policy_version": "pixcell-admission-v1",
+  "purpose": "Admission policy for the frozen core and future representation-first expansions.",
+  "core_principle": "The agent or authored program constructs geometry; deterministic code only measures and admits it.",
+  "hard_gates": [
+    {
+      "id": "compile_and_execute",
+      "levels": ["L0", "L1", "L2", "L3", "L4"],
+      "rule": "The complete Python program must compile, execute in isolation, and emit a non-empty GDS."
+    },
+    {
+      "id": "source_purity",
+      "levels": ["L0", "L1", "L2", "L3", "L4"],
+      "rule": "Only the public primitive catalog is permitted; raw polygon dumps, device stencils, raster reads, dynamic component lookup, and private-package imports are rejected."
+    },
+    {
+      "id": "image_and_footprint_binding",
+      "levels": ["L0", "L1", "L2", "L3", "L4"],
+      "rule": "The model view, canonical target image, physical footprint, source program, and source evidence are hash-bound and non-blank."
+    },
+    {
+      "id": "duplicate_accounting",
+      "levels": ["L0", "L1", "L2", "L3", "L4"],
+      "rule": "Exact and D4-equivalent silhouettes are reported; exact aliases share one leakage group, and undeclared duplicates are rejected."
+    },
+    {
+      "id": "runtime_ports",
+      "levels": ["L3", "L4"],
+      "rule": "Declared optical ports must have finite centers, positive widths, valid orientations, and the expected side histogram; L4 evidence must come from runtime inspection."
+    },
+    {
+      "id": "frozen_release_digest",
+      "levels": ["L0", "L1", "L2", "L3", "L4"],
+      "rule": "A core-v1 rebuild is accepted only when its logical digest exactly equals the immutable release digest."
+    }
+  ],
+  "conditional_gates": [
+    {
+      "id": "structural_witnesses",
+      "rule": "Repeated-element counts, branch degree, defects, and topology witnesses are required only when the grammar declares them."
+    },
+    {
+      "id": "geometry_similarity",
+      "rule": "Calibrated geometry and raster agreement are evidence and training signals; thresholds must be level-aware and may not erase intentional representation differences."
+    }
+  ],
+  "anti_signal_rules": [
+    "Admission gates are not automatically copied into an RL reward with equal weights.",
+    "Program compilation and source purity are hard constraints, not graded aesthetic rewards.",
+    "Tiny parameter jitter is never counted as a new representation grammar.",
+    "Maximum-visibility views remain the primary supervision view; physical dimensions come from the footprint and metadata.",
+    "Rejected proposals and model repair trajectories remain outside the accepted-only core."
+  ]
+}

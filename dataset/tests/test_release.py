@@ -18,6 +18,8 @@ from _shared import (  # noqa: E402
     SCHEMA_VERSION,
     canonical_sha256,
     iter_release_files,
+    read_json,
+    sha256_file,
 )
 from build_release import (  # noqa: E402
     ROW_COLUMNS,
@@ -28,6 +30,7 @@ from validate_release import (  # noqa: E402
     _validate_runtime_port_contract,
     validate_release,
 )
+from pack_core_v1_source import write_deterministic_archive  # noqa: E402
 
 
 class ReleaseTests(unittest.TestCase):
@@ -65,6 +68,42 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(report["compiled_programs"], report["total_rows"])
         self.assertEqual(report["purity_clean_programs"], report["total_rows"])
         self.assertEqual(report["embedded_images"], 2 * report["total_rows"])
+
+    def test_core_v1_freeze_matches_catalog(self) -> None:
+        freeze = read_json(ROOT / "factory" / "core-v1" / "freeze.json")
+        catalog = read_json(ROOT / "metadata" / "catalog.json")
+        self.assertEqual(freeze["core_name"], "core-v1")
+        self.assertEqual(
+            freeze["release_digest_sha256"],
+            catalog["release_digest_sha256"],
+        )
+        self.assertEqual(freeze["row_count"], catalog["total_rows"])
+        self.assertEqual(
+            freeze["representation_count"],
+            catalog["total_representation_ids"],
+        )
+
+    def test_source_archive_writer_is_deterministic(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = root / "payload.txt"
+            source.write_text("deterministic payload\n", encoding="utf-8")
+            payload = {"rl/tasks/example/payload.txt": source}
+            manifest = {
+                "schema_version": "test",
+                "files": [
+                    {
+                        "path": "rl/tasks/example/payload.txt",
+                        "bytes": source.stat().st_size,
+                        "sha256": sha256_file(source),
+                    }
+                ],
+            }
+            first = root / "first.tar.gz"
+            second = root / "second.tar.gz"
+            write_deterministic_archive(first, payload, manifest)
+            write_deterministic_archive(second, payload, manifest)
+            self.assertEqual(sha256_file(first), sha256_file(second))
 
     def test_l4_runtime_ports_must_match_declared_boundary_histogram(self) -> None:
         row = {

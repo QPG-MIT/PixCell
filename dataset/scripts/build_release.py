@@ -855,6 +855,8 @@ def build_release(
     output_root: Path,
     *,
     bank_names: dict[str, str] | None = None,
+    expected_release_digest: str | None = None,
+    expected_row_count: int | None = None,
 ) -> dict[str, Any]:
     source_root = source_root.expanduser().resolve()
     output_root = _safe_generated_root(output_root)
@@ -912,7 +914,7 @@ def build_release(
             "accepted_only": True,
             "canonical_format": "Parquet with embedded PNG bytes",
             "columns": list(ROW_COLUMNS),
-            "configurations": ["all", *LEVELS],
+            "configurations": ["all", "core-v1", *LEVELS],
             "levels": level_summaries,
             "total_rows": len(all_rows),
             "total_representation_ids": len(
@@ -948,6 +950,19 @@ def build_release(
             },
         }
         write_json(stage_root / "metadata" / "audit_report.json", audit)
+        if (
+            expected_release_digest is not None
+            and release_digest != expected_release_digest
+        ):
+            raise ReleaseError(
+                "staged release digest differs from the required freeze: "
+                f"{release_digest} != {expected_release_digest}"
+            )
+        if expected_row_count is not None and len(all_rows) != expected_row_count:
+            raise ReleaseError(
+                "staged release row count differs from the required freeze: "
+                f"{len(all_rows)} != {expected_row_count}"
+            )
         _promote_generated_release(stage_root, output_root)
         return catalog
     finally:
