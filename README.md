@@ -97,8 +97,7 @@ commands.
 ├── dataset/                      Accepted-only L0-L4 image-to-code curriculum
 │   ├── data/{l0,...,l4}/         One Parquet training shard per curriculum level
 │   ├── factory/
-│   │   ├── core-v1/              Frozen 738-row source capsule and rebuild manifests
-│   │   └── expansion/            Draft method and preview for future releases
+│   │   └── core-v1/              Frozen 738-row source capsule and rebuild manifests
 │   ├── galleries/                Visual overview of the full release and each level
 │   ├── metadata/                 Catalog, checksums, audits, and source reports
 │   └── scripts/                  Deterministic build, validation, render, and export tools
