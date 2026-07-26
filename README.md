@@ -3,8 +3,7 @@
 **From any visual input - a drawing, a canvas sketch, a paper figure - create
 a parametric GDS you can simulate and map to the PDK stack of your choice.**
 
-📄 *From Pixels to PCells: A Neurosymbolic Approach to Photonic Component Creation* ([arXiv:XXXX.XXXXX](https://arxiv.org/abs/XXXX.XXXXX)) · 
-cite via [`CITATION.cff`](CITATION.cff)
+📄 *From Pixels to PCells: A Neurosymbolic Approach to Photonic Component Creation* ([arXiv:XXXX.XXXXX](https://arxiv.org/abs/XXXX.XXXXX))
 
 ## Install
 
