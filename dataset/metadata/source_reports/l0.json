@@ -1,0 +1,103 @@
+{
+  "audit": {
+    "accepted_only": true,
+    "candidate_count": 177,
+    "compiled": 177,
+    "conductor_reexecuted": 177,
+    "dataset_digest_sha256": "495b2c8f4864199213a888a5f8323db08525c76213552f919e901e386784ea76",
+    "declared_program_target_count": 177,
+    "distinct_exact_model_image_count": 172,
+    "duplicate_telemetry": {
+      "d4_equivalent_group_count": 25,
+      "distinct_d4_silhouettes": 135,
+      "distinct_exact_model_views": 172,
+      "exact_duplicate_group_count": 5,
+      "exact_duplicate_groups": [
+        [
+          "l0_01_rectangle__semantic__square",
+          "l0_07_regular_polygon__semantic__sides_4"
+        ],
+        [
+          "l0_09_straight__semantic__constant_width",
+          "l0_17_path_straight__semantic__constant_width"
+        ],
+        [
+          "l0_09_straight__equivariance__constant_width_rot90",
+          "l0_17_path_straight__equivariance__constant_width_rot90"
+        ],
+        [
+          "l0_09_straight__equivariance__constant_width_rot45",
+          "l0_17_path_straight__equivariance__constant_width_rot45"
+        ],
+        [
+          "l0_09_straight__calibration__long_thin",
+          "l0_17_path_straight__calibration__long_thin"
+        ]
+      ],
+      "policy": "same-grammar calibration/pose duplicates and explicitly tagged cross-API aliases are retained; all other exact duplicates fail"
+    },
+    "exact_views_verified": 177,
+    "model_image_count": 177,
+    "primitive_count": 22,
+    "purity_clean": 177,
+    "representation_orbit_count": 135,
+    "role_counts": {
+      "calibration": 10,
+      "equivariance": 74,
+      "semantic": 93
+    },
+    "schema_version": "pixcell-l0-bank-audit-1",
+    "semantic_grammar_count": 93,
+    "semantic_representation_orbit_count": 91,
+    "visual_target_count": 173
+  },
+  "exported_row_count": 177,
+  "level": "L0",
+  "manifest": {
+    "candidate_count": 177,
+    "dataset_digest_sha256": "495b2c8f4864199213a888a5f8323db08525c76213552f919e901e386784ea76",
+    "duplicate_telemetry": {
+      "d4_equivalent_group_count": 25,
+      "distinct_d4_silhouettes": 135,
+      "distinct_exact_model_views": 172,
+      "exact_duplicate_group_count": 5,
+      "exact_duplicate_groups": [
+        [
+          "l0_01_rectangle__semantic__square",
+          "l0_07_regular_polygon__semantic__sides_4"
+        ],
+        [
+          "l0_09_straight__semantic__constant_width",
+          "l0_17_path_straight__semantic__constant_width"
+        ],
+        [
+          "l0_09_straight__equivariance__constant_width_rot90",
+          "l0_17_path_straight__equivariance__constant_width_rot90"
+        ],
+        [
+          "l0_09_straight__equivariance__constant_width_rot45",
+          "l0_17_path_straight__equivariance__constant_width_rot45"
+        ],
+        [
+          "l0_09_straight__calibration__long_thin",
+          "l0_17_path_straight__calibration__long_thin"
+        ]
+      ],
+      "policy": "same-grammar calibration/pose duplicates and explicitly tagged cross-API aliases are retained; all other exact duplicates fail"
+    },
+    "generator_source_sha256": "dd48a6525ceb72ea880bf5f1e519b2c96c0ff434b295d6100b50fa7270d73a34",
+    "generator_version": "pixcell-l0-factor-bank-builder-2-dd48a6525ceb72ea",
+    "level": "L0",
+    "primitive_count": 22,
+    "role_counts": {
+      "calibration": 10,
+      "equivariance": 74,
+      "semantic": 93
+    },
+    "schema_version": "pixcell-l0-factor-bank-1",
+    "selection_policy": "all approved L0 semantic grammars, capped pose siblings, and physical-scale calibration pairs; no parameter-jitter volume",
+    "semantic_grammar_count": 93,
+    "status": "accepted_only",
+    "view_policy": "max_visible_v1"
+  }
+}
