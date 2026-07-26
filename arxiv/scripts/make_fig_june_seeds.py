@@ -7,7 +7,7 @@ five propose->verify->diff turns, IoU 0.72 -> 0.63 -> 0.57 -> 0.80 -> 0.975.
 Data: data/chatbots/figure_panels/panels/ (overlays + summary.json files,
 frozen from the June 21 2026 benchmark).
 
-Run: .venv/bin/python paper-tools/make_fig_june_seeds.py
+Run: .venv/bin/python arxiv/scripts/make_fig_june_seeds.py
 """
 import json
 from pathlib import Path

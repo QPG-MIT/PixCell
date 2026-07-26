@@ -10,7 +10,7 @@ cap) over faint individual-cell traces.
 Output: PDF -> arxiv/figures/fig_progression.pdf
         PNG -> arxiv/figures/fig_progression.png
 
-Run: .venv/bin/python paper-tools/make_fig_progression.py
+Run: .venv/bin/python arxiv/scripts/make_fig_progression.py
 """
 import json
 from pathlib import Path

@@ -10,7 +10,7 @@
 Data: rl/runs/*/metrics.jsonl and rl/reports/benchmark_eval_bridge2.json
       (artifacts, not narrative documents).
 
-Run: .venv/bin/python paper-tools/make_fig_rl_training.py
+Run: .venv/bin/python arxiv/scripts/make_fig_rl_training.py
 """
 import json
 from pathlib import Path

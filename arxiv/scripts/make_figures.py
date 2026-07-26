@@ -9,7 +9,7 @@ Data sources:
 Output: PDFs -> arxiv/figures/ (what the paper
 includes); PNG previews -> arxiv/figures/.
 
-Run: .venv/bin/python paper-tools/make_figures.py
+Run: .venv/bin/python arxiv/scripts/make_figures.py
 """
 import json
 from pathlib import Path

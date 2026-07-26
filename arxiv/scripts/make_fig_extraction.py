@@ -4,7 +4,7 @@ the system produces from it (right). Row 1 is benchmark device F5 (its silhouett
 is byte-identical to the benchmark file); row 2 is the TFLN directional coupler
 (a color panel).
 
-Run: .venv/bin/python paper-tools/make_fig_extraction.py
+Run: .venv/bin/python arxiv/scripts/make_fig_extraction.py
 """
 from pathlib import Path
 

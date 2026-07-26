@@ -10,7 +10,7 @@ evaluated in-training every ten steps.
 Data: rl/reports/runs_ledger/<run>/metrics.jsonl (tracked; the same series the
 W&B dashboards showed live).
 
-Run: .venv/bin/python paper-tools/make_fig_training_telemetry.py
+Run: .venv/bin/python arxiv/scripts/make_fig_training_telemetry.py
 Writes arxiv/figures/ and website/static/images/paper/.
 """
 import json

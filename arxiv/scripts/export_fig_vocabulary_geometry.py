@@ -4,7 +4,7 @@ The JSON contains only measured geometry and metadata.  Mathematica controls
 layout and annotation, but never redraws or approximates the device bodies.
 
 Run:
-    .venv/bin/python paper-tools/export_fig_vocabulary_geometry.py OUTPUT.json
+    .venv/bin/python arxiv/scripts/export_fig_vocabulary_geometry.py OUTPUT.json
 """
 
 from __future__ import annotations
