@@ -35,35 +35,43 @@ cloud FDTD. See [`.env.example`](.env.example).
 
 ## How to use
 
-### Hosted Studio
+Use the entry point that matches the installation above: the plugin inside a
+coding agent, Studio for interactive work, or the CLI from a clone for scripts
+and individual stages. Start with a paper figure, drawing, or existing device
+and state the component, target PDK or layer stack, and any geometric or
+optical constraints. Successful recreations return a gate-verified GDS, its
+parametric source, and a fidelity score.
 
-[Try PixCell in your browser](https://pixcell.qpaig.com/new) with no local
-installation. The hosted Studio is currently a trusted beta.
+### Coding agent
 
-### Agent
-
-Ask for a device and its constraints directly:
+Open Claude Code, Codex, or Cursor in the project where you want the output.
+PixCell appears as a `homi` full-pipeline skill plus stage-specific skills.
+Ask directly and let the agent choose, or invoke a skill for explicit control:
 
 > *"Here's a paper. Recreate the ring resonator in figure 3."*
 > *"Hit an 8 nm FSR on 400 nm nitride."*
 > *"Show me the device. I want to play with the knobs."*
 
-PixCell dispatches the workers and applies the deterministic gate. Successful
-runs return the GDS, its parametric source, and the fidelity score.
+### Studio
 
-### Local Studio
+[Try the hosted Studio](https://pixcell.qpaig.com/new) with no installation
+(trusted beta), or launch it locally with the `uvx` command in
+[Install](#install). From a clone:
 
 ```bash
-pixcell studio
+uv run pixcell studio
 ```
 
-The included [`projects/example_mmi_splitter/`](projects/example_mmi_splitter/)
-example opens by default: a drawn 1×4 MMI recreated blind and gate-verified at
-IoU 0.995.
+Drop in a paper or sketch and describe the result you want. The local Studio
+opens [`projects/example_mmi_splitter/`](projects/example_mmi_splitter/) by
+default—a drawn 1×4 MMI gate-verified at IoU 0.995—so its geometry, parameters,
+and live fidelity are visible before starting your own device.
 
 ### CLI
 
-Each stage is available directly. `homi` and `pixcell` are aliases:
+From a clone, use the CLI for scripts or stage-level control. `homi` and
+`pixcell` are aliases; prefix commands with `uv run` unless the environment is
+active:
 
 ```bash
 pixcell extract paper.pdf -o projects/my_device    # figure → silhouette + footprint
