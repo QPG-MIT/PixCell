@@ -82,6 +82,13 @@ pixcell simulate projects/my_device/output/best.gds  # FDTD draft; a human press
 pixcell serve                                      # the 7 MCP servers · `pixcell api` for REST
 ```
 
+## Dataset
+
+The released L0–L4 image-to-code curriculum is available as
+[`qpaig-mit/pixcell`](https://huggingface.co/datasets/qpaig-mit/pixcell).
+Its dataset card includes loading examples, the schema, and reproducibility
+commands.
+
 ## Structure
 
 ```text

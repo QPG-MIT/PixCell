@@ -72,21 +72,34 @@ views. These are separate render configurations, never new representations.
 | L3 | New coherent multi-zone topology: bodies, routes, branches, repeated media, defects, radial/cyclic hierarchy. |
 | L4 | New component mechanisms and under-covered visual grammars, balanced by family rather than name count. |
 
-## Proposed first wave
+## Audit-driven first wave
 
-This is a planning envelope, not an admission target:
+The first wave contains exactly 100 proposed representation grammars and no
+realization, pose, render, or repair descendants:
 
-| Lane | Proposed candidates | Why |
+| Level | Proposed grammars | Evidence-backed purpose |
 |---|---:|---|
-| New grammars | 250 | Increase L2–L4 structural breadth. |
-| Controlled realizations | 900 | Give selected grammars 1–3 causal regimes. |
-| Useful pose examples | 200 | Exercise orientation-sensitive construction without exhaustive duplication. |
-| **Geometry/code proposals** | **1,350** | Approximately 2,088 total rows before admission failures. |
-| Optional render companions | up to 1,000 | Separate domain-robustness configuration; does not increase representation count. |
+| L1 | 12 | Close four missing L0→L1 primitive bridges and make terminal/port operations explicit. |
+| L2 | 24 | Add port-aware split/rejoin, coupling, loop, crossing, body-terminal, and repeated-media motifs. |
+| L3 | 32 | Build explicit photonic mechanism bridges rather than more generic hierarchy. |
+| L4 | 32 | Add mux/demux, cascaded-filter, multiport repeated-media, interferometric, mode-mux, and interface mechanisms. |
 
-The generator may propose this many candidates, but only independently admitted
-rows are published. Family and grammar sampling remains balanced regardless of
-how many realization or render descendants a grammar has.
+The allocation comes from
+[`core-v1-coverage.md`](core-v1-coverage.md). Crossings, plain 2×2 directional
+couplers, single-ring variants, and parameter-only tooth changes are
+deprioritized because `core-v1` already covers those forms or because they
+belong in the realization lane.
+
+Every proposed L4 grammar names an L3 prerequisite and a visible mechanism
+bridge. The proposal compiler renders primitive-built silhouettes, checks exact
+and D4 aliases against the 547 semantic core anchors, and records both an
+author-declared semantic neighbor and computed visual neighbors. These are
+review aids; none of the 100 proposals is a dataset row until separately
+approved and admitted.
+
+Controlled realizations, useful poses, render companions, and failure-derived
+repair trajectories remain later, separate configurations. Their size will be
+chosen only after the grammar wave is reviewed.
 
 ## Admission pipeline
 
