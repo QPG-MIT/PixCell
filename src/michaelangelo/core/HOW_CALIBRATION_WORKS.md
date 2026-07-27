@@ -102,8 +102,8 @@ Calibration happens the same way in both generation modes. The **default**
 is the agent recreation loop (`homi generate`): a dispatched coding agent
 writes a primitives-only parametric script and iterates against
 `compare_absolute`, with the conductor gate re-verifying every claim. The
-diagram below shows the `--baseline` mode — the June-era multi-seed
-pipeline, kept as the paper's measured baseline. Calibration is generated
+diagram below shows the `--baseline` mode — the multi-seed
+pipeline kept as the paper's measured chatbot-style baseline. Calibration is generated
 at the same point in either mode.
 
 ```

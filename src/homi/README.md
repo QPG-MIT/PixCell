@@ -49,8 +49,8 @@ homi/
 │
 ├── gds_generation.py      The --baseline multi-seed driver (the paper's
 ├── exploration_tree.py      measured chatbot-era comparison, kept reproducible)
-├── benchmark/             June statistics library — recomputes the paper's
-│                          June numbers from the raw record
+├── benchmark/             Chatbot-benchmark statistics library — recomputes
+│                          the paper's baseline numbers from the raw record
 ├── model_client/          Unified "provider/model" VLM client, lazy backends
 │
 ├── paths.py               Portable root/state resolution (checkout, install, env)

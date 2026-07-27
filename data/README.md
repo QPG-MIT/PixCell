@@ -1,23 +1,23 @@
 # The PixCell dataset — evidence for every reported result
 
 This tree is the released record behind *From Pixels to PCells* (`arxiv/main.tex`).
-It is organized by the paper's two measurement eras plus the retargeting campaigns, and it
+It is organized by the paper's two measurement modes plus the retargeting campaigns, and it
 follows one rule inherited from the system itself: **no worker-reported number enters the
 record** — every score here was recomputed by the deterministic conductor gate from the
 stored artifacts, and you can recompute any of them yourself (below).
 
 ## Layout
 
-| Path | Era / campaign | What it holds |
+| Path | Mode / campaign | What it holds |
 |---|---|---|
-| `chatbots/` | June 2026, models as API chatbots | benchmark aggregates (`analysis/`, `aggregates/`), the frozen Sec III.A statistics + figure panels (`figure_panels/`), curated reference runs (`june_finals/`), raw trajectories (`trajectories/`), the paper-10 figure run (`paper_10/`), manifests, result decks |
-| `agents/paper_swap/` | July 2026, models as blind coding agents | the 104-cell matrix (8 devices × 13 configs), briefs, access audit, per-cell records |
-| `agents/catalog_swap/` | July 2026 | the primitives-vs-stencil ladder: 16 recreation cells + the 20-cell two-arm Phase-B game |
-| `agents/pdk_swap/` | July 2026 | the MZI one-drawing→three-fabs proof + MMI craft transfer + tier-2 validation |
+| `chatbots/` | models as API chatbots | benchmark aggregates (`analysis/`, `aggregates/`), the frozen Sec III.A statistics + figure panels (`figure_panels/`), curated reference runs (`june_finals/`), raw trajectories (`trajectories/`), the paper-10 figure run (`paper_10/`), manifests, result decks |
+| `agents/paper_swap/` | models as blind coding agents | the 104-cell matrix (8 devices × 13 configs), briefs, access audit, per-cell records |
+| `agents/catalog_swap/` | models as blind coding agents | the primitives-vs-stencil ladder: 16 recreation cells + the 20-cell two-arm Phase-B game |
+| `agents/pdk_swap/` | models as blind coding agents | the MZI one-drawing→three-fabs proof + MMI craft transfer + tier-2 validation |
 | `benchmark/` | — | the 8 device input fixtures (silhouette + footprint + calibration + meta), each `meta.json` naming its source panel in `benchmark/source_panels/` |
 | `BINARY_MANIFEST.json` | — | sha256/size manifest for binary evidence kept out of git (raw FDTD hdf5, render PNGs) — the external artifact bundle |
 
-Raw June trajectories live in `chatbots/trajectories/FINAL_1..8/`. The RL training
+The raw chatbot-benchmark trajectories live in `chatbots/trajectories/FINAL_1..8/`. The RL training
 study's data lives in `rl/` (see `rl/README.md` and `rl/LINEAGE.md`; not yet in this
 tree). The benchmark input fixtures (silhouette + footprint per device) are
 `benchmark/`.
@@ -65,7 +65,7 @@ per-cell record.
 
 Every number in the paper's Results, mapped to its backing file.
 
-### Sec III.A — the chatbot era (June)
+### Sec III.A — models as API chatbots
 
 | Claim | Artifact |
 |---|---|
@@ -75,9 +75,9 @@ Every number in the paper's Results, mapped to its backing file.
 | 65.9% peaked after turn 1; best-of-2/3/5 gains +10/+16/+18.3%; paired t = 10.86; extended refinement 73% / +22.3% | same file → `turn_improvement` |
 | primitive-usage / emergence statistics | `chatbots/analysis/data/primitive_analysis.csv`, `statistical_results.json` |
 | raw scored trajectories (all 8 devices, per seed × turn: metrics, telemetry, generated program; failed attempts may lack individual files) | `chatbots/trajectories/FINAL_1..8/benchmark_*/{phase1,phase2,multiturn_seeds}/run_*/turn*/` |
-| June per-device cost $0.03–$6 | order-of-magnitude estimate computed in `arxiv/scripts/make_fig_pareto3d.py` (no measured June cost ledger exists) |
+| chatbot-benchmark per-device cost $0.03–$6 | order-of-magnitude estimate computed in `arxiv/scripts/make_fig_pareto3d.py` (no measured cost ledger exists for those runs) |
 
-### Sec III.B–E — the agent matrix (July)
+### Sec III.B–E — the agent matrix
 
 | Claim | Artifact |
 |---|---|
@@ -165,7 +165,7 @@ Table `tab:rl`: 0.254 / 0.466; the first draw `benchmark_eval_bridge2.json`, 0.2
 ## The external bundle
 
 Binary evidence too heavy for the repo — raw FDTD `*.hdf5` (~480 MB, enumerated
-per-file with sizes and sha256), campaign render PNGs and June trajectory rasters
+per-file with sizes and sha256), campaign render PNGs and chatbot-benchmark trajectory rasters
 (enumerated by class with file counts and byte totals) — is indexed in
 `BINARY_MANIFEST.json` and will ship as a hosted artifact bundle at release.
 The manifest is frozen as generated in the lab: its `png_classes` roots record
