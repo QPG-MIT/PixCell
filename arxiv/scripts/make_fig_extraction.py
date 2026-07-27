@@ -1,11 +1,17 @@
-"""fig_extraction: input standardization, before/after. Two devices: the source
-figure panel as published (left) and the standardized device-only B&W silhouette
-the system produces from it (right). Row 1 is benchmark device F5 (its silhouette
-is byte-identical to the benchmark file); row 2 is the TFLN directional coupler
-(a color panel).
+"""Render Figure 4: source-panel standardization into frozen benchmark inputs.
 
-Run: .venv/bin/python arxiv/scripts/make_fig_extraction.py
+The publication source crops and their hashes live in
+``fig_extraction_assets/manifest.json``. Frozen output masks are reused from
+Figure 3's audited target assets so the two figures cannot silently drift.
+
+Run from the repository root:
+    python arxiv/scripts/make_fig_extraction.py
 """
+
+from __future__ import annotations
+
+import hashlib
+import json
 from pathlib import Path
 
 import matplotlib
@@ -13,67 +19,232 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.patches import FancyArrowPatch, Rectangle
 from PIL import Image
 
+
 REPO = Path(__file__).resolve().parents[2]
-ARXIV = REPO / "arxiv/figures"
-FIGD = REPO / "arxiv/figures"
+ASSET_DIR = Path(__file__).with_name("fig_extraction_assets")
+SOURCE_MANIFEST = ASSET_DIR / "manifest.json"
+TARGET_DIR = Path(__file__).with_name("fig_target_assets")
+TARGET_MANIFEST = TARGET_DIR / "manifest.json"
+FIGURE_DIR = REPO / "arxiv" / "figures"
 
-plt.rcParams.update({
-    "font.family": "serif", "font.serif": ["STIXGeneral", "Times New Roman",
-                                          "DejaVu Serif"],
-    "mathtext.fontset": "stix", "pdf.fonttype": 42, "savefig.bbox": "tight",
-})
+INK = "#1b1b1b"
+RULE = "#242424"
 
-ROWS = [
-    (REPO / "projects/paper_5/extracted_figure.png",
-     REPO / "projects/paper_5/device_bw.png",
-     "F5"),
-    (REPO / "projects/paper_2/extracted_images/page2_img2.png",
-     REPO / "database/bw/benchmark/final_2/device_bw.png",
-     "F2"),
-]
-
-
-ASPECT = 0.78
+plt.rcParams.update(
+    {
+        "font.family": "serif",
+        "font.serif": ["STIXGeneral", "Times New Roman", "DejaVu Serif"],
+        "mathtext.fontset": "stix",
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+        "savefig.facecolor": "white",
+        "savefig.bbox": None,
+    }
+)
 
 
-def pad(a, aspect=ASPECT):
-    h, w = a.shape[:2]
-    if h / w < aspect:
-        H, W = int(round(w * aspect)), w
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _center_foreground(image: np.ndarray, bbox: list[int]) -> np.ndarray:
+    """Match Figure 3's presentation-only foreground centering."""
+
+    h, w = image.shape
+    x0, y0, x1, y1 = bbox
+    shift_x = round(w / 2 - (x0 + x1) / 2)
+    shift_y = round(h / 2 - (y0 + y1) / 2)
+    centered = np.full_like(image, 255)
+
+    source_x0 = max(0, -shift_x)
+    source_x1 = min(w, w - shift_x)
+    source_y0 = max(0, -shift_y)
+    source_y1 = min(h, h - shift_y)
+    target_x0 = source_x0 + shift_x
+    target_x1 = source_x1 + shift_x
+    target_y0 = source_y0 + shift_y
+    target_y1 = source_y1 + shift_y
+    centered[target_y0:target_y1, target_x0:target_x1] = image[
+        source_y0:source_y1, source_x0:source_x1
+    ]
+    return centered
+
+
+def _load_examples() -> list[dict]:
+    source_specification = json.loads(SOURCE_MANIFEST.read_text())
+    target_specification = json.loads(TARGET_MANIFEST.read_text())
+    targets = {
+        target["id"]: target for target in target_specification["targets"]
+    }
+
+    examples = []
+    for example in source_specification["examples"]:
+        source_path = ASSET_DIR / example["source_asset"]
+        if _sha256(source_path) != example["asset_sha256"]:
+            raise ValueError(f"Hash mismatch for {source_path}.")
+
+        target = targets[example["id"]]
+        target_path = TARGET_DIR / target["asset"]
+        if _sha256(target_path) != target["asset_sha256"]:
+            raise ValueError(f"Hash mismatch for {target_path}.")
+
+        examples.append(
+            {
+                **example,
+                "source_image": np.asarray(Image.open(source_path).convert("RGB")),
+                "target_image": _center_foreground(
+                    np.asarray(Image.open(target_path).convert("L")),
+                    target["calibration_bbox_px"],
+                ),
+                "footprint_um": target["footprint_um"],
+            }
+        )
+    return examples
+
+
+def _format_extent(value: float) -> str:
+    if value == int(value):
+        return f"{int(value)}"
+    return f"{value:g}"
+
+
+def _add_card(
+    fig: plt.Figure,
+    rect: tuple[float, float, float, float],
+    image: np.ndarray,
+    left_label: str,
+    right_label: str,
+    *,
+    binary: bool = False,
+) -> None:
+    card = fig.add_axes(rect)
+    card.set_xlim(0, 1)
+    card.set_ylim(0, 1)
+    card.axis("off")
+    card.add_patch(
+        Rectangle(
+            (0.006, 0.008),
+            0.988,
+            0.984,
+            facecolor="white",
+            edgecolor=RULE,
+            linewidth=0.78,
+        )
+    )
+
+    header_y = 0.82
+    card.plot(
+        [0.006, 0.994],
+        [header_y, header_y],
+        color=RULE,
+        linewidth=0.68,
+        solid_capstyle="butt",
+    )
+    card.text(
+        0.04,
+        0.91,
+        left_label,
+        ha="left",
+        va="center",
+        fontsize=13.0,
+        fontweight="bold",
+        color=INK,
+    )
+    card.text(
+        0.96,
+        0.91,
+        right_label,
+        ha="right",
+        va="center",
+        fontsize=11.5,
+        color=INK,
+    )
+
+    image_ax = card.inset_axes([0.035, 0.045, 0.93, 0.735])
+    if binary:
+        image_ax.imshow(
+            image,
+            cmap="gray",
+            vmin=0,
+            vmax=255,
+            interpolation="antialiased",
+            aspect="equal",
+        )
     else:
-        H, W = h, int(round(h / aspect))
-    if a.ndim == 3:
-        out = np.full((H, W, 3), 255, dtype=np.uint8)
-    else:
-        out = np.full((H, W), 255, dtype=np.uint8)
-    y0, x0 = (H - h) // 2, (W - w) // 2
-    out[y0:y0 + h, x0:x0 + w] = a
-    return out
+        image_ax.imshow(image, interpolation="antialiased", aspect="equal")
+    image_ax.set_xticks([])
+    image_ax.set_yticks([])
+    for spine in image_ax.spines.values():
+        spine.set_visible(False)
 
 
-def main():
-    fig, axes = plt.subplots(2, 2, figsize=(6.4, 4.6))
-    for i, (src, out, label) in enumerate(ROWS):
-        a_src = pad(np.array(Image.open(src).convert("RGB")))
-        a_out = pad(np.array(Image.open(out).convert("L")))
-        axes[i][0].imshow(a_src)
-        axes[i][1].imshow(a_out, cmap="gray", vmin=0, vmax=255)
-        axes[i][0].set_ylabel(label, fontsize=9)
-        for ax in axes[i]:
-            ax.set_xticks([])
-            ax.set_yticks([])
-            for s in ax.spines.values():
-                s.set_visible(False)
-        axes[i][0].yaxis.set_visible(True)
-        axes[i][0].set_yticks([])
-    axes[0][0].set_title("source figure panel", fontsize=9, pad=4)
-    axes[0][1].set_title("standardized input", fontsize=9, pad=4)
-    fig.tight_layout(h_pad=0.6, w_pad=0.6)
-    for outp in (ARXIV / "fig_extraction.pdf", FIGD / "fig_extraction.png"):
-        fig.savefig(outp)
-        print("wrote", outp)
+def _add_process_arrow(
+    fig: plt.Figure,
+    *,
+    y: float,
+) -> None:
+    overlay = fig.add_axes([0, 0, 1, 1])
+    overlay.set_xlim(0, 1)
+    overlay.set_ylim(0, 1)
+    overlay.axis("off")
+    overlay.add_patch(
+        FancyArrowPatch(
+            (0.455, y),
+            (0.545, y),
+            arrowstyle="-|>",
+            mutation_scale=14,
+            linewidth=1.15,
+            color=INK,
+            shrinkA=0,
+            shrinkB=0,
+        )
+    )
+
+
+def main() -> None:
+    examples = {example["id"]: example for example in _load_examples()}
+    fig = plt.figure(figsize=(6.45, 4.5), facecolor="white")
+
+    rows = {
+        "F5": (0.57, 0.40),
+        "F2": (0.035, 0.49),
+    }
+    for target_id in ("F5", "F2"):
+        example = examples[target_id]
+        y, height = rows[target_id]
+        width, target_height = example["footprint_um"]
+        footprint = (
+            rf"${_format_extent(width)}\times{_format_extent(target_height)}"
+            r"\,\mathrm{\mu m}$"
+        )
+        _add_card(
+            fig,
+            (0.015, y, 0.425, height),
+            example["source_image"],
+            target_id,
+            example["source_label"],
+        )
+        _add_process_arrow(
+            fig,
+            y=y + height / 2,
+        )
+        _add_card(
+            fig,
+            (0.56, y, 0.425, height),
+            example["target_image"],
+            "frozen input",
+            footprint,
+            binary=True,
+        )
+
+    FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    output = FIGURE_DIR / "fig_extraction.pdf"
+    fig.savefig(output, dpi=600, facecolor="white")
+    print(f"wrote {output}")
+    plt.close(fig)
 
 
 if __name__ == "__main__":

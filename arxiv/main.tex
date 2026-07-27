@@ -336,20 +336,21 @@ authoring rather than classification or device-level retrieval.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.9\linewidth]{fig_targets.pdf}
+\includegraphics[width=\linewidth]{fig_targets.pdf}
 \caption{\textbf{Benchmark targets.} Each of the eight devices, F1--F8,
 is presented to the model as a device-only binary silhouette and a physical
-footprint. Archived source attributions are: F1, 3-dB adiabatic
+footprint. The varied set spans smooth, multiport, compact, resonant, and
+fine-feature geometry; panels are not shown at a common physical scale.
+Archived source attributions are: F1, 3-dB adiabatic
 splitter~\cite{splitter2020}; F2, $1\times4$ MMI
 splitter~\cite{malka2016}; F3, adiabatic $2\times2$
 coupler~\cite{mao2019}; F4, thin-film lithium niobate directional
 coupler~\cite{huang2023}; F5, standing-wave nanobeam resonator
 pair~\cite{nanobeam}; F6, ultra-compact waveguide
 crossing~\cite{crossing2020}; F7, ring-based WDM filter
-section~\cite{wdmfilter}; F8's bibliographic source could not be
-recovered from the campaign archive, and it is included as a
-provenance-incomplete target (its extraction record, like the other
-seven, is listed in the release's per-device provenance files).}
+section~\cite{wdmfilter}; F8 is retained as a provenance-incomplete target
+because its bibliographic source could not be recovered; its extraction
+record is included in the release metadata.}
 \label{fig:targets}
 \end{figure*}
 
@@ -367,12 +368,12 @@ captions are withheld.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\linewidth]{fig_extraction.pdf}
+\includegraphics[width=\linewidth]{fig_extraction.pdf}
 \caption{\textbf{Preparation of frozen benchmark inputs.} Source figure
-panels (left) are converted once into device-only binary masks (right) by a
-model-assisted standardization procedure. The resulting masks and physical
-footprints are frozen before evaluation and reused across all model
-configurations.}
+panels (left) are standardized once into frozen masks and physical footprints
+(right). F5 tests isolating panel (c) from a compound figure; F2 tests
+removing schematic annotations while preserving topology. Inputs are reused
+across model configurations.}
 \label{fig:extraction}
 \end{figure}
 
