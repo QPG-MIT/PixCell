@@ -1,11 +1,8 @@
-"""Render Figure 9: two contextual evaluation records.
+"""Render Figure 9: two evaluation records on one shared axis.
 
-The panels share a 0--1 compliance-weighted IoU axis but deliberately remain
-separate: the iterative API record uses a legacy source audit and uneven
-target coverage, whereas the coding-agent record uses the current gate and
-one retained run on each of eight targets.  Accent styling identifies only
-model-version names present in both records; it does not encode a controlled
-or causal comparison.
+The upper cluster contains the current multimodal-agent record and the lower
+cluster contains the iterative API record. Restrained color and marker shape
+distinguish the records without implying a controlled or causal comparison.
 
 Run from the repository root:
     python arxiv/scripts/make_fig_emergence.py
@@ -22,7 +19,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 import numpy as np
 
 
@@ -34,8 +30,9 @@ FIGURE_DIR = REPO / "arxiv" / "figures"
 INK = "#17191c"
 SOFT_INK = "#555a60"
 RULE = "#17191c"
-TRACK = "#c9ccd0"
-MATCHED = "#800000"
+GRID = "#e2e4e6"
+MULTIMODAL_BLUE = "#2f5f9e"
+ITERATIVE_GREEN = "#267a5a"
 
 plt.rcParams.update(
     {
@@ -79,9 +76,6 @@ CODING_AGENT_CONFIGS = [
     ("Sonnet 4.5", "sonnet45m"),
     ("Haiku 4.5", "haiku45m"),
 ]
-
-MATCHED_NAMES = {"Opus 4.5", "Sonnet 4.5"}
-
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -152,102 +146,102 @@ def _load_records() -> tuple[list[tuple[str, float]], list[tuple[str, float]]]:
     return legacy, coding_agent
 
 
-def _panel_heading(
-    figure: plt.Figure,
+def _draw_group_heading(
+    axes: plt.Axes,
     *,
-    x: float,
-    letter: str,
+    y: float,
     title: str,
-    subtitle: str,
+    marker: str,
+    filled: bool,
+    color: str,
 ) -> None:
-    figure.text(
-        x,
-        0.960,
-        letter,
-        ha="left",
-        va="center",
-        fontsize=10.5,
-        fontweight="normal",
-        color=INK,
+    axes.scatter(
+        [0],
+        [y],
+        s=31,
+        marker=marker,
+        facecolor=color if filled else "white",
+        edgecolor=color,
+        linewidth=1.05,
+        zorder=3,
+        clip_on=False,
     )
-    figure.text(
-        x + 0.036,
-        0.960,
+    axes.text(
+        0.035,
+        y,
         title,
         ha="left",
         va="center",
-        fontsize=10.5,
+        fontsize=9.2,
         fontweight="normal",
         color=INK,
     )
-    figure.text(
-        x + 0.036,
-        0.905,
-        subtitle,
-        ha="left",
-        va="center",
-        fontsize=6.7,
-        color=SOFT_INK,
-    )
-    figure.add_artist(
-        Line2D(
-            [x, x + 0.460],
-            [0.870, 0.870],
-            transform=figure.transFigure,
-            color=RULE,
-            linewidth=0.72,
-        )
+    axes.hlines(
+        y + 0.68,
+        0,
+        1.065,
+        color=RULE,
+        linewidth=0.68,
+        zorder=2,
     )
 
 
 def _draw_record(
     axes: plt.Axes,
     rows: list[tuple[str, float]],
-) -> None:
-    y = np.arange(len(rows))
+    *,
+    y: np.ndarray,
+    marker: str,
+    filled: bool,
+    color: str,
+) -> tuple[list[str], np.ndarray]:
     labels = [name for name, _ in rows]
     values = np.asarray([value for _, value in rows])
-    colors = [MATCHED if name in MATCHED_NAMES else INK for name in labels]
 
-    for index, (name, value, color) in enumerate(zip(labels, values, colors)):
-        axes.hlines(
-            index,
-            0,
-            value,
-            color=MATCHED if name in MATCHED_NAMES else TRACK,
-            linewidth=1.25,
-            zorder=1,
-        )
-        axes.scatter(
-            [value],
-            [index],
-            s=27,
-            facecolor=color,
-            edgecolor="white",
-            linewidth=0.45,
-            zorder=3,
-        )
+    axes.scatter(
+        values,
+        y,
+        s=29,
+        marker=marker,
+        facecolor=color if filled else "white",
+        edgecolor=color,
+        linewidth=1.05,
+        zorder=3,
+    )
+    for row_y, value in zip(y, values):
         axes.text(
-            min(value + 0.025, 1.025),
-            index,
+            min(value + 0.018, 1.025),
+            row_y,
             f"{value:.3f}",
             ha="left",
             va="center",
-            fontsize=7.7,
-            fontweight="bold" if name in MATCHED_NAMES else "normal",
-            color=color,
+            fontsize=7.5,
+            fontweight="normal",
+            color=INK,
         )
 
-    axes.set_xlim(0, 1.08)
-    axes.set_ylim(len(rows) - 0.45, -0.55)
-    axes.set_yticks(y)
-    axes.set_yticklabels(labels, fontsize=8.2, color=INK)
-    for tick, name in zip(axes.get_yticklabels(), labels):
-        tick.set_fontweight("bold" if name in MATCHED_NAMES else "normal")
-        tick.set_color(MATCHED if name in MATCHED_NAMES else INK)
+    return labels, values
 
+
+def _style_axes(
+    axes: plt.Axes,
+    *,
+    positions: np.ndarray,
+    labels: list[str],
+) -> None:
+    axes.set_xlim(0, 1.08)
+    axes.set_ylim(21.55, -0.75)
+    axes.set_yticks(positions)
+    axes.set_yticklabels(labels, fontsize=7.9, color=INK)
     axes.set_xticks([0, 0.25, 0.50, 0.75, 1.00])
     axes.set_xticklabels(["0", "0.25", "0.50", "0.75", "1.00"], fontsize=7.4)
+    axes.grid(
+        axis="x",
+        color=GRID,
+        linewidth=0.55,
+        linestyle="-",
+        zorder=0,
+    )
     axes.tick_params(
         axis="x",
         length=3.4,
@@ -256,47 +250,68 @@ def _draw_record(
         labelcolor=SOFT_INK,
         pad=3,
     )
-    axes.tick_params(axis="y", length=0, pad=6)
+    axes.tick_params(axis="y", length=0, pad=7)
 
     for side in ("top", "right", "left"):
         axes.spines[side].set_visible(False)
     axes.spines["bottom"].set_color(SOFT_INK)
     axes.spines["bottom"].set_linewidth(0.65)
+    axes.set_xlabel(
+        r"Compliance-weighted IoU $U$",
+        fontsize=8.1,
+        color=INK,
+        labelpad=5,
+    )
     axes.set_facecolor("white")
 
 
 def main() -> None:
     legacy, coding_agent = _load_records()
 
-    figure = plt.figure(figsize=(7.40, 2.72), facecolor="white")
-    _panel_heading(
-        figure,
-        x=0.020,
-        letter="A",
+    figure = plt.figure(figsize=(7.40, 3.55), facecolor="white")
+    axes = figure.add_axes((0.215, 0.115, 0.755, 0.845))
+
+    multimodal_y = np.arange(1.45, 10.45)
+    iterative_y = np.arange(12.75, 21.75)
+    multimodal_labels, _ = _draw_record(
+        axes,
+        coding_agent,
+        y=multimodal_y,
+        marker="o",
+        filled=True,
+        color=MULTIMODAL_BLUE,
+    )
+    iterative_labels, _ = _draw_record(
+        axes,
+        legacy,
+        y=iterative_y,
+        marker="D",
+        filled=False,
+        color=ITERATIVE_GREEN,
+    )
+
+    _draw_group_heading(
+        axes,
+        y=0,
+        title="Multimodal agents",
+        marker="o",
+        filled=True,
+        color=MULTIMODAL_BLUE,
+    )
+    _draw_group_heading(
+        axes,
+        y=11.25,
         title="Iterative API record",
-        subtitle="Legacy audit · pooled turns · uneven target coverage",
+        marker="D",
+        filled=False,
+        color=ITERATIVE_GREEN,
     )
-    _panel_heading(
-        figure,
-        x=0.520,
-        letter="B",
-        title="Coding-agent record",
-        subtitle="Current gate · default/medium effort · one run × 8 targets",
-    )
-
-    legacy_axes = figure.add_axes((0.155, 0.145, 0.330, 0.680))
-    coding_axes = figure.add_axes((0.655, 0.145, 0.330, 0.680))
-    _draw_record(legacy_axes, legacy)
-    _draw_record(coding_axes, coding_agent)
-
-    figure.text(
-        0.570,
-        0.035,
-        r"Compliance-weighted IoU $U$",
-        ha="center",
-        va="center",
-        fontsize=8.1,
-        color=INK,
+    positions = np.concatenate([multimodal_y, iterative_y])
+    labels = multimodal_labels + iterative_labels
+    _style_axes(
+        axes,
+        positions=positions,
+        labels=labels,
     )
 
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
