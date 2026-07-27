@@ -212,7 +212,7 @@ def _section_title(
         ha="left",
         va="center",
         fontsize=10.5,
-        fontweight="bold",
+        fontweight="normal",
         color=INK,
     )
     fig.text(
@@ -222,7 +222,7 @@ def _section_title(
         ha="left",
         va="center",
         fontsize=10.5,
-        fontweight="semibold",
+        fontweight="normal",
         color=INK,
     )
 
@@ -531,11 +531,11 @@ def main() -> None:
     fig = plt.figure(figsize=(7.40, 2.75), facecolor="white")
 
     _section_title(fig, "A", "Fixed-calibration rendering", y=0.965)
-    _target_card(fig, (0.020, 0.575, 0.310, 0.345), target, calibration)
-    _calibration_operator(fig, (0.350, 0.585, 0.300, 0.310), calibration)
+    _target_card(fig, (0.020, 0.605, 0.310, 0.315), target, calibration)
+    _calibration_operator(fig, (0.350, 0.610, 0.300, 0.285), calibration)
     _candidate_card(
         fig,
-        (0.670, 0.575, 0.310, 0.345),
+        (0.670, 0.605, 0.310, 0.315),
         candidate_first,
         metrics_first,
     )
@@ -553,28 +553,28 @@ def main() -> None:
         fig,
         "B",
         "Deterministic comparison and feedback",
-        y=0.495,
+        y=0.470,
     )
 
     _diagnostic_card(
         fig,
-        (0.020, 0.080, 0.270, 0.355),
+        (0.020, 0.080, 0.270, 0.325),
         "Pixelwise overlay",
         _comparison_image(target, candidate_first),
         "Iteration 1",
     )
     _diagnostic_card(
         fig,
-        (0.310, 0.080, 0.270, 0.355),
+        (0.310, 0.080, 0.270, 0.325),
         "Signed difference",
         _difference_image(target, candidate_first),
         rf"$\mathrm{{IoU}}={metrics_first['IoU']:.3f}$",
     )
     delta_iou = metrics_second["IoU"] - metrics_first["IoU"]
-    _feedback_operator(fig, (0.595, 0.115, 0.120, 0.270), delta_iou)
+    _feedback_operator(fig, (0.595, 0.105, 0.120, 0.250), delta_iou)
     _diagnostic_card(
         fig,
-        (0.730, 0.080, 0.250, 0.355),
+        (0.730, 0.080, 0.250, 0.325),
         "Residual difference",
         _difference_image(target, candidate_second),
         rf"$\mathrm{{IoU}}={metrics_second['IoU']:.3f}$",

@@ -29,14 +29,19 @@ ASSET_DIR = Path(__file__).with_name("fig_target_assets")
 MANIFEST = ASSET_DIR / "manifest.json"
 FIGURE_DIR = REPO / "arxiv" / "figures"
 
-INK = "#1b1b1b"
-RULE = "#242424"
+INK = "#17191c"
+RULE = "#17191c"
 DISPLAY_ASPECT = 0.53  # height / width of the common image-space viewport
 
 plt.rcParams.update(
     {
         "font.family": "serif",
-        "font.serif": ["STIXGeneral", "Times New Roman", "DejaVu Serif"],
+        "font.serif": [
+            "Iowan Old Style",
+            "STIX Two Text",
+            "STIXGeneral",
+            "Times New Roman",
+        ],
         "mathtext.fontset": "stix",
         "axes.unicode_minus": False,
         "pdf.fonttype": 42,
@@ -156,8 +161,8 @@ def _draw_card(ax: plt.Axes, target: dict, image: np.ndarray) -> None:
         target["id"],
         ha="left",
         va="center",
-        fontsize=10.2,
-        fontweight="bold",
+        fontsize=11.8,
+        fontweight="normal",
         color=INK,
     )
     width, height = target["footprint_um"]
@@ -171,7 +176,7 @@ def _draw_card(ax: plt.Axes, target: dict, image: np.ndarray) -> None:
         extent,
         ha="right",
         va="center",
-        fontsize=9.0,
+        fontsize=10.7,
         color=INK,
     )
 

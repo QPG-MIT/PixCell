@@ -20,7 +20,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 TOOLS = Path(__file__).resolve().parent
 GEOMETRY_JSON = REPO / "tmp" / "pdfs" / "fig-vocabulary-geometry.json"
-OUTPUT_DIRECTORY = REPO / "paper" / "figures"
+OUTPUT_DIRECTORY = REPO / "arxiv" / "figures"
 
 
 def main() -> None:
