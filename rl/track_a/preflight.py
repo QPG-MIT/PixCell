@@ -35,6 +35,12 @@ from rl.track_a.prompt import (
     prompt_asset_hashes,
 )
 from rl.track_a.reward import reward_for
+from rl.track_a.recipe import (
+    canonical_config_path,
+    canonical_dataset_root,
+    canonical_json_sha256,
+    validate_resolved_binding,
+)
 
 
 def _dataset_allowed_components(dataset_root: Path) -> frozenset[str]:
@@ -136,12 +142,19 @@ def _runtime_stack(repo_root: Path) -> dict:
     }
 
 
-def _token_audit(tasks, max_length: int) -> dict:
+def _token_audit(
+    tasks,
+    *,
+    model_name: str,
+    renderer_name: str,
+    max_length: int,
+    max_image: int,
+) -> dict:
     from tinker_cookbook.renderers import Message, TextPart, TrainOnWhat
 
     from rl.track_a.tinker_data import _message, _renderer
 
-    renderer = _renderer("Qwen/Qwen3.6-35B-A3B", "qwen3_5_disable_thinking")
+    renderer = _renderer(model_name, renderer_name)
     lengths: list[int] = []
     assistant_tokens: list[int] = []
     for task in tasks:
@@ -150,7 +163,7 @@ def _token_audit(tasks, max_length: int) -> dict:
             content=[TextPart(type="text", text=task.label)],
         )
         model_input, weights = renderer.build_supervised_example(
-            [_message(task, max_image=1440), assistant],
+            [_message(task, max_image=max_image), assistant],
             train_on_what=TrainOnWhat.LAST_ASSISTANT_MESSAGE,
         )
         length = int(model_input.length)
@@ -190,7 +203,38 @@ def _token_audit(tasks, max_length: int) -> dict:
 def run(args: argparse.Namespace) -> dict:
     dataset_root = args.dataset_root.resolve()
     repo_root = dataset_root.parent
-    config = json.loads(args.config.read_text(encoding="utf-8"))
+    config_path = args.config.resolve()
+    if dataset_root != canonical_dataset_root(repo_root):
+        raise RuntimeError("preflight dataset_root is not repo_root/dataset")
+    if config_path != canonical_config_path(repo_root):
+        raise RuntimeError("preflight config is not the committed Track A config")
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    if args.audit_only:
+        if args.resolved_launch_json is not None:
+            raise RuntimeError("audit-only preflight does not accept a launch binding")
+        resolved_launch = {
+            "kind": "audit-only",
+            "dataset_root": str(dataset_root),
+            "config_path": str(config_path),
+            "model_name": config["model"]["name"],
+            "renderer_name": config["model"]["renderer"],
+            "lora_rank": config["model"]["lora_rank"],
+        }
+    else:
+        if args.resolved_launch_json is None:
+            raise RuntimeError(
+                "paid-launch preflight requires the exact resolved launch binding"
+            )
+        try:
+            resolved_launch = json.loads(args.resolved_launch_json)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("resolved launch binding is not valid JSON") from exc
+        if not isinstance(resolved_launch, dict):
+            raise RuntimeError("resolved launch binding must be a JSON object")
+        try:
+            validate_resolved_binding(repo_root, resolved_launch)
+        except ValueError as exc:
+            raise RuntimeError(f"resolved launch binding failed: {exc}") from exc
     if config["contract_version"] != CONTRACT_VERSION:
         raise RuntimeError("config and prompt contract versions differ")
     if config["launch"]["paid_launch_enabled"] is not False:
@@ -263,6 +307,37 @@ def run(args: argparse.Namespace) -> dict:
     if leaked:
         raise RuntimeError(f"policy prompt leaked hidden row state: {leaked}")
 
+    sandbox: dict | None = None
+    if resolved_launch["kind"] in {"rl", "evaluation"}:
+        with PixCellEvaluator(
+            max_workers=1,
+            evaluator_retries=0,
+            require_isolation=True,
+        ) as sandbox_evaluator:
+            row = train[0]
+            result = sandbox_evaluator.evaluate(
+                reference_from_row(row),
+                str(row["code"]),
+            )
+            if result.status is not EvaluationStatus.OK or result.iou is None:
+                raise RuntimeError(
+                    "candidate sandbox self-test failed: "
+                    f"{result.status.value}: {result.error}"
+                )
+            if result.iou < args.minimum_self_iou:
+                raise RuntimeError(
+                    "candidate sandbox changed ground-truth geometry: "
+                    f"{result.iou:.6f} < {args.minimum_self_iou}"
+                )
+            boundary = sandbox_evaluator.execution_boundary
+            assert boundary is not None
+            sandbox = {
+                "runtime": str(boundary.runtime_path),
+                "image_ref": boundary.image_ref,
+                "image_id": boundary.image_id,
+                "self_iou": result.iou,
+            }
+
     executed: list[dict] = []
     for row in _selected_ground_truth(train, args.execute_ground_truth):
         result = evaluator.evaluate(
@@ -291,6 +366,8 @@ def run(args: argparse.Namespace) -> dict:
         "spend": False,
         "contract_version": CONTRACT_VERSION,
         "prompt_assets": prompt_asset_hashes(),
+        "resolved_launch_sha256": canonical_json_sha256(resolved_launch),
+        "resolved_launch": resolved_launch,
         "release": release,
         "git": git,
         "dataset": {
@@ -303,6 +380,7 @@ def run(args: argparse.Namespace) -> dict:
         "reference_rows_validated": len(train) + len(validation),
         "source_rows_validated": len(train) + len(validation),
         "ground_truth_execution": executed,
+        "candidate_sandbox": sandbox,
         "sft_schedule": {
             "rows_visited_once": len(physical_pass),
             "mean_loss_multiplier": (
@@ -314,7 +392,10 @@ def run(args: argparse.Namespace) -> dict:
         "token_audit": (
             _token_audit(
                 train_tasks,
-                int(config["sft"]["max_sequence_tokens"]),
+                model_name=str(resolved_launch["model_name"]),
+                renderer_name=str(resolved_launch["renderer_name"]),
+                max_length=int(config["sft"]["max_sequence_tokens"]),
+                max_image=int(config["model"]["max_image_long_edge"]),
             )
             if args.tokenize_sft
             else None
@@ -337,6 +418,12 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--workers", type=int, default=8)
     result.add_argument("--tokenize-sft", action="store_true")
     result.add_argument("--require-clean", action="store_true")
+    result.add_argument(
+        "--audit-only",
+        action="store_true",
+        help="run the zero-spend repository audit without authorizing a launch",
+    )
+    result.add_argument("--resolved-launch-json")
     return result
 
 

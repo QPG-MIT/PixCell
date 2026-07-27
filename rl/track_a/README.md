@@ -48,7 +48,8 @@ Only after a completion exists, the evaluator receives the private
 `target_image` and `footprint_um`. It:
 
 1. compiles and applies the canonical AST source policy before execution;
-2. executes the original complete program in a fresh, resource-limited child;
+2. executes the original complete program in a fresh, networkless,
+   resource-limited container;
 3. requires a non-empty `device.gds`;
 4. renders layer `(1,0)` with Michaelangelo's absolute-scale, left-aligned and
    vertically centered mapping;
@@ -56,8 +57,9 @@ Only after a completion exists, the evaluator receives the private
 
 Syntax, purity, runtime, missing-GDS, and invalid-GDS outcomes are model
 failures. Broken references and evaluator faults are separate typed outcomes.
-Evaluator faults are retried once and then drop the rollout group; they are
-never silently converted into zero-quality programs.
+Evaluator faults are retried once and then abort the paid stage. Broken
+references abort immediately. Neither can be converted into zero-quality
+programs or silently dropped from a group.
 
 The initial reward is intentionally small:
 
@@ -101,7 +103,7 @@ Use the Python 3.13 environment from the dataset release and expose both source
 roots:
 
 ```bash
-PYTHONPATH=src:. python -m rl.track_a.preflight
+PYTHONPATH=src:. python -m rl.track_a.preflight --audit-only
 PYTHONPATH=src:. pytest -q rl/common/tests rl/track_a/tests
 ```
 
@@ -120,15 +122,24 @@ PYTHONPATH=src:. python -m rl.track_a.train_rl
 
 They exit before creating a client unless the matching explicit
 `confirm_spend` value is supplied. RL additionally requires the selected SFT
-checkpoint path.
+weights checkpoint and its full executable mastery report. RL and checkpoint
+evaluation also require the immutable local candidate image:
+
+```bash
+python rl/common/sandbox/build.py
+export PIXCELL_EVALUATOR_IMAGE=sha256:<printed-image-id>
+```
 
 At SFT steps 14, 28, and the final step 55, export the corresponding sampler
 checkpoint and run two distinct measurements:
 
 1. Run `evaluate_checkpoint.py` at `k=1` over all of
-   `depth/validation`. This is the checkpoint quality report.
+   `depth/validation`. Geometry reports reject `--rows` and `--levels`; this is
+   always the complete 1,092-task, 546-representation checkpoint quality
+   report.
 2. Run the same command with `--behavioral-probe --k 4 --rows 40` and
-   `--levels` set to the first curriculum level not yet mastered. The
+   exactly one `--levels` value set to the first curriculum level not yet
+   mastered. The
    deterministic balanced sampler spreads this small probe across
    representations in that level.
 
@@ -169,8 +180,22 @@ After vetoing explicit sampling collapse, selection uses only the full `k=1`
 representation-macro raw IoU, with pure-executable rate as a tie-breaker.
 Validation NLL is logged but does not choose the checkpoint. The selected
 checkpoint's **weights** path is then passed to `train_rl.py`; its sampler path
-is only for evaluation.
+is only for evaluation. The guarded RL launch requires those paths to be the
+`weights` and `sampler_weights` variants of the same Tinker checkpoint, binds
+the weights path and the mastery-report SHA-256 into preflight, and revalidates
+the report before creating a paid client. Evaluation similarly binds the exact
+sampler path and a new JSON output below `rl/track_a/runs/`; it will not
+overwrite an existing report.
 
-The child process boundary is resource isolation, not a general security
-sandbox. Run model-authored programs inside the deployment's normal container
-or VM boundary.
+Every executable report carries the frozen depth release digest, source Git
+commit, model, renderer, split, exact level and task-set digest, task and
+attempt counts, and sampling parameters. Selection recomputes that contract
+from the current committed repository and rejects partial reports, stale or
+mismatched report pairs, non-finite or out-of-range metrics, and behavioral
+probes other than the exact 40-prompt G4 contract.
+
+Track A refuses RL or checkpoint evaluation unless its per-candidate Docker
+boundary is active. The launcher retains Tinker network access; each sampled
+program receives no network, credentials, host filesystem, or mutable root
+filesystem. The boundary is defense in depth around the canonical source
+policy, not a claim that arbitrary Docker-hostile code is universally safe.

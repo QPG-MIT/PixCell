@@ -27,8 +27,10 @@ PYTHONPATH=. python -m release.huggingface.validate_release \
   --release-root release/huggingface/generated
 ```
 
-Build into an empty directory. A second build must match the first
-byte-for-byte.
+Build into the approved empty output directory shown above. The builder rejects
+the dataset root and every path below it, and records the source repository
+commit in `manifest.json`. A second build from the same commit must match the
+first byte-for-byte.
 
 ## Publish
 
@@ -46,5 +48,8 @@ Adding `--apply` creates or verifies the pre-v2 safety tag, submits the complete
 replacement as one Hub pull-request commit, validates the pull-request bytes,
 merges it, validates `main`, and then creates `v2.0.0`. The immutable
 `core-v1` and `depth-v1` tags are checked before and after publication.
+Publication also requires `dataset/` and `release/huggingface/generated/` to
+belong to the inspected repository, and requires the package manifest's source
+commit to equal that repository's clean `HEAD`.
 
 No command in this directory launches model training.

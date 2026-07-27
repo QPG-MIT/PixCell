@@ -21,7 +21,9 @@ import hashlib
 import io
 import json
 import math
+import re
 import shutil
+import subprocess
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -39,15 +41,12 @@ MODEL_SCHEMA_VERSION = "pixcell-model-row-v2"
 REFERENCE_SCHEMA_VERSION = "pixcell-reference-row-v2"
 MANIFEST_SCHEMA_VERSION = "pixcell-hf-release-manifest-v2"
 
-SOURCE_CORE_DIGEST = (
-    "e1c509dca337ce485efcb2b35101a052e06b12331b63a2f21a36c93b3682ea89"
-)
-SOURCE_DEPTH_DIGEST = (
-    "676c49134d4d044c7d84426cf8eeecf09302e74ca4aa548956f14b7631a4d80b"
-)
+SOURCE_CORE_DIGEST = "e1c509dca337ce485efcb2b35101a052e06b12331b63a2f21a36c93b3682ea89"
+SOURCE_DEPTH_DIGEST = "676c49134d4d044c7d84426cf8eeecf09302e74ca4aa548956f14b7631a4d80b"
 CORE_ROW_COUNT = 738
 EXPECTED_SPLIT_ROWS = {"train": 3468, "validation": 1092}
 MAX_ROWS_PER_SHARD = 512
+SHA40 = re.compile(r"^[0-9a-f]{40}$")
 
 CORE_SOURCE_COLUMNS = (
     "schema_version",
@@ -476,9 +475,7 @@ def assert_core_ordered_subset(
     if len(core_ids) != len(set(core_ids)):
         raise ReleaseBuildError("core source contains duplicate IDs")
     core_id_set = set(core_ids)
-    selected = [
-        row for row in depth_train_rows if str(row["id"]) in core_id_set
-    ]
+    selected = [row for row in depth_train_rows if str(row["id"]) in core_id_set]
     if [str(row["id"]) for row in selected] != core_ids:
         raise ReleaseBuildError("core is not an order-preserving depth/train subset")
     for core, depth in zip(core_rows, selected, strict=True):
@@ -515,9 +512,7 @@ def _write_shards(
     for index, (start, stop) in enumerate(plan):
         filename = f"{split}-{index:05d}-of-{total:05d}.parquet"
         path = data_root / filename
-        Dataset.from_list(list(rows[start:stop]), features=features).to_parquet(
-            str(path)
-        )
+        Dataset.from_list(list(rows[start:stop]), features=features).to_parquet(str(path))
         records.append(
             {
                 "configuration": configuration,
@@ -536,12 +531,7 @@ def _logical_digest(
     payload_columns: frozenset[str],
 ) -> str:
     logical = [
-        {
-            key: value
-            for key, value in row.items()
-            if key not in payload_columns
-        }
-        for row in rows
+        {key: value for key, value in row.items() if key not in payload_columns} for row in rows
     ]
     return hashlib.sha256(canonical_json(logical).encode("utf-8")).hexdigest()
 
@@ -554,6 +544,40 @@ def _prepare_output(output: Path) -> None:
     if output.exists() and any(output.iterdir()):
         raise FileExistsError(f"output directory is not empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
+
+
+def _assert_output_outside_dataset(dataset_root: Path, output: Path) -> None:
+    if output == dataset_root or output.is_relative_to(dataset_root):
+        raise ReleaseBuildError(f"release output must be outside the frozen dataset root: {output}")
+
+
+def _source_git_sha(dataset_root: Path) -> str:
+    """Return the repository commit containing the canonical dataset tree."""
+
+    def git_output(*args: str) -> str:
+        try:
+            result = subprocess.run(
+                ["git", *args],
+                cwd=dataset_root,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as exc:
+            raise ReleaseBuildError(f"cannot inspect dataset Git provenance: {exc}") from exc
+        return result.stdout.strip()
+
+    repo_root = Path(git_output("rev-parse", "--show-toplevel")).resolve()
+    expected_dataset_root = (repo_root / "dataset").resolve()
+    if dataset_root != expected_dataset_root:
+        raise ReleaseBuildError(
+            "dataset root must be the canonical repository dataset directory: "
+            f"expected {expected_dataset_root}, got {dataset_root}"
+        )
+    source_git_sha = git_output("rev-parse", "HEAD")
+    if not SHA40.fullmatch(source_git_sha):
+        raise ReleaseBuildError(f"Git HEAD is not a full commit SHA: {source_git_sha!r}")
+    return source_git_sha
 
 
 def _write_release_assets(dataset_root: Path, output: Path) -> None:
@@ -588,6 +612,8 @@ def _write_release_assets(dataset_root: Path, output: Path) -> None:
 def build_release(*, dataset_root: Path, output: Path) -> dict[str, Any]:
     dataset_root = dataset_root.expanduser().resolve()
     output = output.expanduser().resolve()
+    _assert_output_outside_dataset(dataset_root, output)
+    source_git_sha = _source_git_sha(dataset_root)
     assert_frozen_sources(dataset_root)
     _prepare_output(output)
     _write_release_assets(dataset_root, output)
@@ -595,17 +621,13 @@ def build_release(*, dataset_root: Path, output: Path) -> dict[str, Any]:
 
     core_source_rows = _load_rows(core_source_paths(dataset_root))
     depth_train_source = _load_rows(depth_source_paths(dataset_root, "train"))
-    depth_validation_source = _load_rows(
-        depth_source_paths(dataset_root, "validation")
-    )
+    depth_validation_source = _load_rows(depth_source_paths(dataset_root, "validation"))
     observed_split_rows = {
         "train": len(depth_train_source),
         "validation": len(depth_validation_source),
     }
     if observed_split_rows != EXPECTED_SPLIT_ROWS:
-        raise ReleaseBuildError(
-            f"depth split rows differ: {observed_split_rows}"
-        )
+        raise ReleaseBuildError(f"depth split rows differ: {observed_split_rows}")
     core_depth_rows = assert_core_ordered_subset(
         core_source_rows,
         depth_train_source,
@@ -621,16 +643,12 @@ def build_release(*, dataset_root: Path, output: Path) -> dict[str, Any]:
 
     depth = {
         "train": [project_model_row(row) for row in depth_train_source],
-        "validation": [
-            project_model_row(row) for row in depth_validation_source
-        ],
+        "validation": [project_model_row(row) for row in depth_validation_source],
     }
     core = {"train": [project_model_row(row) for row in core_depth_rows]}
     references = {
         "train": [project_reference_row(row) for row in depth_train_source],
-        "validation": [
-            project_reference_row(row) for row in depth_validation_source
-        ],
+        "validation": [project_reference_row(row) for row in depth_validation_source],
     }
 
     for split in EXPECTED_SPLIT_ROWS:
@@ -640,9 +658,7 @@ def build_release(*, dataset_root: Path, output: Path) -> dict[str, Any]:
             raise ReleaseBuildError(f"{split}: depth/reference join order differs")
     core_opaque_ids = {item["opaque_id"] for item in core["train"]}
     if [row["opaque_id"] for row in core["train"]] != [
-        row["opaque_id"]
-        for row in depth["train"]
-        if row["opaque_id"] in core_opaque_ids
+        row["opaque_id"] for row in depth["train"] if row["opaque_id"] in core_opaque_ids
     ]:
         raise ReleaseBuildError("projected core order differs from depth/train")
 
@@ -693,6 +709,7 @@ def build_release(*, dataset_root: Path, output: Path) -> dict[str, Any]:
     manifest = {
         "schema_version": MANIFEST_SCHEMA_VERSION,
         "release_schema_version": RELEASE_SCHEMA_VERSION,
+        "source_git_sha": source_git_sha,
         "source": {
             "core_logical_sha256": SOURCE_CORE_DIGEST,
             "depth_logical_sha256": SOURCE_DEPTH_DIGEST,
@@ -741,10 +758,7 @@ def build_release(*, dataset_root: Path, output: Path) -> dict[str, Any]:
         },
         "max_rows_per_shard": MAX_ROWS_PER_SHARD,
         "shards": shard_records,
-        "support_files": {
-            relative: sha256_file(output / relative)
-            for relative in support_files
-        },
+        "support_files": {relative: sha256_file(output / relative) for relative in support_files},
     }
     (output / "manifest.json").write_text(
         json.dumps(
@@ -779,10 +793,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     print(
         json.dumps(
-            {
-                name: value["split_rows"]
-                for name, value in manifest["configurations"].items()
-            },
+            {name: value["split_rows"] for name, value in manifest["configurations"].items()},
             indent=2,
             sort_keys=True,
         )

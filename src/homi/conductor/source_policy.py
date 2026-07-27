@@ -42,13 +42,51 @@ IMAGE_IMPORT_PREFIXES = (
     "matplotlib.image",
 )
 FORBIDDEN_DYNAMIC_CALLS = frozenset({"compile", "eval", "exec", "__import__"})
+FORBIDDEN_IMPORT_ROOTS = frozenset(
+    {
+        # Process, dynamic-code, and native-library escape hatches.
+        "builtins",
+        "ctypes",
+        "importlib",
+        "multiprocessing",
+        "os",
+        "posix",
+        "pty",
+        "runpy",
+        "signal",
+        "socket",
+        "subprocess",
+        "sys",
+        # Alternate geometry backends bypass the PixCell primitive catalog.
+        "gdspy",
+        "gdstk",
+        "kfactory",
+        "klayout",
+        "phidl",
+        "shapely",
+    }
+)
+FORBIDDEN_INTROSPECTION_CALLS = frozenset(
+    {"delattr", "getattr", "globals", "locals", "setattr", "vars"}
+)
+FORBIDDEN_INTROSPECTION_ATTRS = frozenset(
+    {
+        "__builtins__",
+        "__code__",
+        "__dict__",
+        "__getattribute__",
+        "__globals__",
+        "__mro__",
+        "__subclasses__",
+    }
+)
+COORDINATE_TUPLE_LIMIT = 256
+NUMERIC_LITERAL_LIMIT = 1024
 
 
 def _is_image_module(name: str) -> bool:
     """Segment-aware prefix match: ``PIL.Image`` yes, ``PILLOW`` no."""
     return any(name == p or name.startswith(p + ".") for p in IMAGE_IMPORT_PREFIXES)
-COORDINATE_TUPLE_LIMIT = 256
-NUMERIC_LITERAL_LIMIT = 1024
 
 
 def _dotted_name(node: ast.AST) -> str | None:
@@ -64,6 +102,18 @@ def _is_number(node: ast.expr) -> bool:
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
         node = node.operand
     return isinstance(node, ast.Constant) and isinstance(node.value, (int, float))
+
+
+def _matches_module(name: str, prefixes: tuple[str, ...]) -> bool:
+    return any(name == prefix or name.startswith(f"{prefix}.") for prefix in prefixes)
+
+
+def _forbidden_import(name: str) -> bool:
+    root = name.split(".", 1)[0]
+    return root in FORBIDDEN_IMPORT_ROOTS or _matches_module(
+        name,
+        ("gdsfactory.kdb", "gdsfactory.kcl"),
+    )
 
 
 def purity_violations(source: str) -> list[str]:
@@ -95,14 +145,22 @@ def purity_violations(source: str) -> list[str]:
                     component_aliases.add(alias.asname or "components")
                 if _is_image_module(alias.name):
                     hits.append(f"image-read import: {alias.name}")
+                if _forbidden_import(alias.name):
+                    hits.append(f"forbidden import: {alias.name}")
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
             if _is_image_module(module):
                 hits.append(f"image-read import: {module}")
+            if _forbidden_import(module):
+                hits.append(f"forbidden import: {module}")
             if module == "gdsfactory":
                 for alias in node.names:
                     if alias.name in {"components", "c"}:
                         component_aliases.add(alias.asname or alias.name)
+                    if alias.name in {"kdb", "kcl"}:
+                        hits.append(
+                            f"alternate geometry backend: gdsfactory.{alias.name}"
+                        )
             elif module == "gdsfactory.components":
                 for alias in node.names:
                     if alias.name == "*":
@@ -161,6 +219,11 @@ def purity_violations(source: str) -> list[str]:
     tuple_count = 0
     numeric_count = 0
     for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            if node.id in FORBIDDEN_DYNAMIC_CALLS:
+                hits.append(f"dynamic execution: {node.id}")
+            if node.id in FORBIDDEN_INTROSPECTION_CALLS:
+                hits.append(f"forbidden introspection call: {node.id}")
         if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
             numeric_count += 1
         if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
@@ -174,6 +237,17 @@ def purity_violations(source: str) -> list[str]:
         if isinstance(node, ast.Attribute):
             if node.attr in RAW_POLYGON_CALLS:
                 hits.append(node.attr)
+            if node.attr in FORBIDDEN_INTROSPECTION_ATTRS:
+                hits.append(f"forbidden introspection: {node.attr}")
+            dotted = _dotted_name(node)
+            if dotted and any(
+                dotted == f"{alias}.kdb"
+                or dotted.startswith(f"{alias}.kdb.")
+                or dotted == f"{alias}.kcl"
+                or dotted.startswith(f"{alias}.kcl.")
+                for alias in gf_aliases
+            ):
+                hits.append(f"alternate geometry backend: {dotted}")
             if (
                 is_component_namespace(node.value)
                 and node.attr not in ALLOWED_COMPONENTS
@@ -185,8 +259,6 @@ def purity_violations(source: str) -> list[str]:
         leaf = name.rsplit(".", 1)[-1] if name else None
         if leaf in RAW_POLYGON_CALLS:
             hits.append(str(leaf))
-        if isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_DYNAMIC_CALLS:
-            hits.append(f"dynamic execution: {node.func.id}")
         if leaf in {"open", "imread"} and (
             leaf == "imread" or (name and name.endswith("Image.open"))
         ):
@@ -195,26 +267,6 @@ def purity_violations(source: str) -> list[str]:
             component = component_callables.get(node.func.id)
             if component and component not in ALLOWED_COMPONENTS:
                 hits.append(f"non-catalog component: {component}")
-        if (
-            isinstance(node.func, ast.Name)
-            and node.func.id == "getattr"
-            and node.args
-            and (
-                is_component_namespace(node.args[0])
-                or (
-                    isinstance(node.args[0], ast.Name)
-                    and node.args[0].id in gf_aliases
-                )
-            )
-        ):
-            hits.append("dynamic component resolution")
-        if (
-            isinstance(node.func, ast.Name)
-            and node.func.id == "vars"
-            and node.args
-            and is_component_namespace(node.args[0])
-        ):
-            hits.append("dynamic component mapping access")
         if name and any(name == f"{alias}.get_component" for alias in gf_aliases):
             hits.append("dynamic component resolver: get_component")
 

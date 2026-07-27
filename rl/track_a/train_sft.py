@@ -12,6 +12,7 @@ from tinker_cookbook import cli_utils
 from tinker_cookbook.supervised.train import Config, main
 
 from rl.track_a.launch import run_launch_preflight
+from rl.track_a.recipe import validate_sft_cli
 from rl.track_a.tinker_data import (
     DEFAULT_MODEL,
     DEFAULT_RENDERER,
@@ -44,13 +45,13 @@ class CLIConfig:
 
 
 async def cli_main(cfg: CLIConfig) -> None:
-    if cfg.confirm_spend != "TRACK_A_SFT":
-        raise SystemExit(
-            "paid launch blocked: pass confirm_spend=TRACK_A_SFT after local preflight"
-        )
+    try:
+        resolved_launch = validate_sft_cli(_REPO_ROOT, cfg)
+    except ValueError as exc:
+        raise SystemExit(f"paid launch blocked: {exc}") from exc
     if not os.environ.get("TINKER_API_KEY"):
         raise SystemExit("TINKER_API_KEY is not present")
-    run_launch_preflight(_REPO_ROOT)
+    run_launch_preflight(_REPO_ROOT, resolved_launch=resolved_launch)
     config = Config(
         log_path=cfg.log_path,
         model_name=cfg.model_name,

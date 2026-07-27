@@ -27,6 +27,7 @@
     "max_sequence_tokens": 6144,
     "learning_rate": 5e-05,
     "learning_rate_schedule": "linear_decay",
+    "tinker_lr_schedule": "linear",
     "optimizer": {
       "name": "adam",
       "beta1": 0.9,
@@ -36,8 +37,12 @@
     "checkpoint_fractions": [
       0.25,
       0.5,
+      0.75,
       1.0
-    ]
+    ],
+    "save_every_steps": 14,
+    "evaluate_every_steps": 14,
+    "max_steps": 55
   },
   "rl": {
     "algorithm": "group-relative-policy-optimization",
@@ -48,20 +53,50 @@
     "top_p": 1.0,
     "max_output_tokens": 4096,
     "kl_coefficient": 0.0,
+    "loss_fn": "importance_sampling",
     "initial_level": "select_first_unmastered_after_sft_executable_eval",
     "earlier_level_replay_fraction": 0.2,
+    "curriculum": {
+      "levels": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4"
+      ],
+      "minimum_iou": 0.8,
+      "minimum_pure_executable_rate": 0.95,
+      "replay_policy": "all_earlier_levels_in_order"
+    },
     "stage_max_steps": 30,
     "save_every_steps": 5,
     "evaluate_every_steps": 5,
     "reward": {
       "policy_failure": 0.0,
       "valid_program": "0.05 + 0.95 * raw_absolute_scale_iou",
-      "evaluator_failure": "retry_once_then_drop_group",
+      "evaluator_failure": "retry_once_then_abort_stage",
       "ports_counts_structure": "diagnostics_only"
     }
   },
+  "checkpoint_evaluation": {
+    "configuration": "depth",
+    "split": "validation",
+    "full_rows": 1092,
+    "full_representations": 546,
+    "geometry_k": 1,
+    "behavioral_rows": 40,
+    "behavioral_k": 4,
+    "task_selection_seed": 7,
+    "sampling_concurrency": 16,
+    "evaluator_workers": 8,
+    "include_records": false
+  },
   "launch": {
     "paid_launch_enabled": false,
-    "required_confirmation": "TRACK_A_SFT or TRACK_A_RL"
+    "confirmation_tokens": {
+      "sft": "TRACK_A_SFT",
+      "rl": "TRACK_A_RL",
+      "evaluation": "TRACK_A_EVAL"
+    }
   }
 }

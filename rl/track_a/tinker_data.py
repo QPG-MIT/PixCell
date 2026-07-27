@@ -49,6 +49,11 @@ from rl.track_a.curriculum import (
 from rl.track_a.preprocess import model_image
 from rl.track_a.prompt import build_prompt_text
 from rl.track_a.reward import reward_for
+from rl.track_a.recipe import (
+    expected_replay_levels,
+    normalize_level,
+    normalize_replay_levels,
+)
 
 
 DEFAULT_MODEL = "Qwen/Qwen3.6-35B-A3B"
@@ -62,7 +67,7 @@ class BrokenReferenceError(RuntimeError):
 
 
 class EvaluationInfrastructureError(RuntimeError):
-    """Retry-exhausted evaluator fault; cookbook drops the affected group."""
+    """Retry-exhausted evaluator fault; the paid stage must abort."""
 
 
 def _message(task: TaskRecord, *, max_image: int) -> Message:
@@ -92,7 +97,11 @@ def _renderer(model_name: str, renderer_name: str):
 def _batcher() -> AsyncEvaluationBatcher:
     global _EVALUATION_BATCHER
     if _EVALUATION_BATCHER is None:
-        evaluator = PixCellEvaluator(max_workers=8, evaluator_retries=1)
+        evaluator = PixCellEvaluator(
+            max_workers=8,
+            evaluator_retries=1,
+            require_isolation=True,
+        )
         _EVALUATION_BATCHER = AsyncEvaluationBatcher(
             evaluator,
             max_batch_size=32,
@@ -354,23 +363,27 @@ class TrackARLDatasetBuilder(RLDatasetBuilder):
         root = Path(self.dataset_root)
         if not self.current_level.strip():
             raise ValueError("current_level must be selected by the pre-RL executable gate")
+        current = normalize_level(self.current_level)
+        replay_levels = normalize_replay_levels(self.replay_levels)
+        expected_replay = expected_replay_levels(current)
+        if replay_levels != expected_replay:
+            raise ValueError(
+                "replay_levels must be the complete ordered prefix before "
+                f"{current}: {','.join(expected_replay)}"
+            )
         all_train = load_tasks(root, configuration="depth", split="train")
         all_validation = load_tasks(
             root,
             configuration="depth",
             split="validation",
         )
-        train = _level_filter(all_train, self.current_level)
+        train = _level_filter(all_train, current)
         replay = (
-            _level_filter(all_train, self.replay_levels)
-            if self.replay_levels.strip()
+            _level_filter(all_train, ",".join(replay_levels))
+            if replay_levels
             else []
         )
-        validation_levels = ",".join(
-            item
-            for item in (self.current_level, self.replay_levels)
-            if item.strip()
-        )
+        validation_levels = ",".join((*replay_levels, current))
         validation = _level_filter(all_validation, validation_levels)
         validation = balanced_effective_pass(
             validation,

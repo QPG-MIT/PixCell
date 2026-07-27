@@ -16,7 +16,7 @@ from rl.common.evaluator import (
 def evaluator():
     instance = PixCellEvaluator(
         max_workers=4,
-        execution_timeout_seconds=5.0,
+        execution_timeout_seconds=15.0,
         evaluator_retries=1,
     )
     yield instance
@@ -79,7 +79,9 @@ def test_runtime_timeout_does_not_poison_next_evaluation(core_row):
     ) as evaluator:
         timed_out = evaluator.evaluate(reference, "while True:\n    pass")
         assert timed_out.status is EvaluationStatus.RUNTIME_TIMEOUT
-        evaluator.execution_timeout_seconds = 3.0
+        # Cold GDSFactory import takes about ten seconds on the supported
+        # macOS development stack. This remains below the production bound.
+        evaluator.execution_timeout_seconds = 15.0
         good = evaluator.evaluate(reference, core_row["code"])
         assert good.status is EvaluationStatus.OK
 

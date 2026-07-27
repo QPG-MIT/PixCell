@@ -8,6 +8,12 @@ import json
 from pathlib import Path
 
 from rl.track_a.checkpoint_selection import select_sft_checkpoint
+from rl.track_a.evaluation_contract import (
+    build_checkpoint_selection_contract,
+)
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def main() -> None:
@@ -36,8 +42,16 @@ def main() -> None:
         for path in args.behavioral_reports
     ]
     try:
-        result = select_sft_checkpoint(geometry, behavior)
-    except (KeyError, TypeError, ValueError) as exc:
+        contract = build_checkpoint_selection_contract(
+            REPO_ROOT,
+            REPO_ROOT / "dataset",
+        )
+        result = select_sft_checkpoint(
+            geometry,
+            behavior,
+            contract=contract,
+        )
+    except (KeyError, OSError, RuntimeError, TypeError, ValueError) as exc:
         parser.error(str(exc))
     print(json.dumps(result, indent=2))
 

@@ -15,44 +15,18 @@ def balanced_effective_pass(
     seed: int,
     draws: int | None = None,
 ) -> list[TaskRecord]:
-    """Level-then-representation balanced deterministic task schedule."""
+    """Return a balanced deterministic subset without replacement."""
 
     if not tasks:
         return []
     target = draws if draws is not None else len(tasks)
     if target < 1:
         raise ValueError("draws must be positive")
-
-    by_level: dict[str, dict[str, list[TaskRecord]]] = defaultdict(
-        lambda: defaultdict(list)
-    )
-    for task in tasks:
-        by_level[task.sampler.level][task.sampler.representation_id].append(task)
-
-    rng = random.Random(seed)
-    level_names = sorted(by_level)
-    representation_orders: dict[str, deque[str]] = {}
-    row_orders: dict[tuple[str, str], deque[TaskRecord]] = {}
-    for level in level_names:
-        representations = sorted(by_level[level])
-        rng.shuffle(representations)
-        representation_orders[level] = deque(representations)
-        for representation in representations:
-            values = list(by_level[level][representation])
-            rng.shuffle(values)
-            row_orders[(level, representation)] = deque(values)
-
-    scheduled: list[TaskRecord] = []
-    for index in range(target):
-        level = level_names[index % len(level_names)]
-        representations = representation_orders[level]
-        representation = representations[0]
-        representations.rotate(-1)
-        rows = row_orders[(level, representation)]
-        task = rows[0]
-        rows.rotate(-1)
-        scheduled.append(task)
-    return scheduled
+    if target > len(tasks):
+        raise ValueError(
+            f"draws={target} exceeds the {len(tasks)} unique available tasks"
+        )
+    return stratified_physical_pass(tasks, seed=seed)[:target]
 
 
 def stratified_physical_pass(

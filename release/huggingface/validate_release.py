@@ -58,6 +58,7 @@ EXPECTED_CONFIG_PATHS = {
 }
 MODEL_CONFIGS = ("depth", "core")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+SHA40 = re.compile(r"^[0-9a-f]{40}$")
 EXPECTED_SUPPORT_FILES = frozenset(
     {
         ".gitattributes",
@@ -96,8 +97,7 @@ def _logical_digest(
     payload_columns: frozenset[str],
 ) -> str:
     logical = [
-        {key: value for key, value in row.items() if key not in payload_columns}
-        for row in rows
+        {key: value for key, value in row.items() if key not in payload_columns} for row in rows
     ]
     return hashlib.sha256(_canonical_json(logical).encode("utf-8")).hexdigest()
 
@@ -123,13 +123,8 @@ def _footprint(value: Any) -> list[float]:
     if not isinstance(value, (list, tuple)) or len(value) != 2:
         raise ReleaseValidationError("source footprint_um must have two values")
     footprint = [float(item) for item in value]
-    if any(
-        not math.isfinite(item) or item <= 0
-        for item in footprint
-    ):
-        raise ReleaseValidationError(
-            "source footprint_um values must be finite and positive"
-        )
+    if any(not math.isfinite(item) or item <= 0 for item in footprint):
+        raise ReleaseValidationError("source footprint_um values must be finite and positive")
     return footprint
 
 
@@ -266,15 +261,9 @@ def _core_ordered_subset(
     if len(core_ids) != len(set(core_ids)):
         raise ReleaseValidationError("source core IDs are not unique")
     core_id_set = set(core_ids)
-    selected = [
-        row
-        for row in depth_train_rows
-        if str(row["id"]) in core_id_set
-    ]
+    selected = [row for row in depth_train_rows if str(row["id"]) in core_id_set]
     if [str(row["id"]) for row in selected] != core_ids:
-        raise ReleaseValidationError(
-            "source core is not an ordered depth/train subset"
-        )
+        raise ReleaseValidationError("source core is not an ordered depth/train subset")
     for core, depth in zip(core_rows, selected, strict=True):
         for field in CORE_SOURCE_COLUMNS:
             if core[field] != depth[field]:
@@ -289,9 +278,7 @@ def _assert_payload_hash(payload: bytes, expected: str, *, label: str) -> None:
         raise ReleaseValidationError(f"{label} has an invalid SHA-256 field")
     observed = hashlib.sha256(payload).hexdigest()
     if observed != expected:
-        raise ReleaseValidationError(
-            f"{label} payload SHA-256 is {observed}, expected {expected}"
-        )
+        raise ReleaseValidationError(f"{label} payload SHA-256 is {observed}, expected {expected}")
 
 
 def _load_rows(paths: Sequence[Path]) -> tuple[list[dict[str, Any]], tuple[str, ...]]:
@@ -320,9 +307,7 @@ def _projection_paths(
 ) -> list[Path]:
     paths = sorted((release_root / configuration / "data").glob(f"{split}-*.parquet"))
     if not paths:
-        raise ReleaseValidationError(
-            f"no {configuration}/{split} Parquet shards in {release_root}"
-        )
+        raise ReleaseValidationError(f"no {configuration}/{split} Parquet shards in {release_root}")
     return paths
 
 
@@ -402,16 +387,11 @@ def _validate_card(card_path: Path) -> None:
         by_name[name] = config
     if set(by_name) != set(EXPECTED_CONFIG_SPLITS):
         raise ReleaseValidationError(
-            f"README.md configs are {sorted(by_name)}, expected "
-            f"{sorted(EXPECTED_CONFIG_SPLITS)}"
+            f"README.md configs are {sorted(by_name)}, expected {sorted(EXPECTED_CONFIG_SPLITS)}"
         )
-    defaults = [
-        name for name, config in by_name.items() if config.get("default") is True
-    ]
+    defaults = [name for name, config in by_name.items() if config.get("default") is True]
     if defaults != ["depth"]:
-        raise ReleaseValidationError(
-            f"README.md defaults are {defaults}, expected ['depth']"
-        )
+        raise ReleaseValidationError(f"README.md defaults are {defaults}, expected ['depth']")
     for name, expected in EXPECTED_CONFIG_PATHS.items():
         observed = _card_data_files(by_name[name])
         if observed != expected:
@@ -433,14 +413,11 @@ def _validate_card(card_path: Path) -> None:
         observed_splits[name] = {
             str(record["name"]): int(record["num_examples"])
             for record in records
-            if isinstance(record, Mapping)
-            and "name" in record
-            and "num_examples" in record
+            if isinstance(record, Mapping) and "name" in record and "num_examples" in record
         }
     if observed_splits != EXPECTED_CONFIG_SPLITS:
         raise ReleaseValidationError(
-            f"README.md split metadata is {observed_splits}, expected "
-            f"{EXPECTED_CONFIG_SPLITS}"
+            f"README.md split metadata is {observed_splits}, expected {EXPECTED_CONFIG_SPLITS}"
         )
 
     lowered = card_path.read_text(encoding="utf-8").lower()
@@ -458,19 +435,11 @@ def _assert_rows_equal(
     label: str,
 ) -> None:
     if len(observed) != len(expected):
-        raise ReleaseValidationError(
-            f"{label} has {len(observed)} rows, expected {len(expected)}"
-        )
+        raise ReleaseValidationError(f"{label} has {len(observed)} rows, expected {len(expected)}")
     for index, (actual, wanted) in enumerate(zip(observed, expected, strict=True)):
         if actual != wanted:
-            differing = [
-                key
-                for key in wanted
-                if key not in actual or actual[key] != wanted[key]
-            ]
-            raise ReleaseValidationError(
-                f"{label} row {index} differs in fields {differing[:8]}"
-            )
+            differing = [key for key in wanted if key not in actual or actual[key] != wanted[key]]
+            raise ReleaseValidationError(f"{label} row {index} differs in fields {differing[:8]}")
 
 
 def _validate_model_payloads(
@@ -496,8 +465,7 @@ def _validate_model_payloads(
             violations = purity_violations(code)
             if violations:
                 raise ReleaseValidationError(
-                    f"{label}[{index}] {key} violates {policy_name} "
-                    f"source policy: {violations[0]}"
+                    f"{label}[{index}] {key} violates {policy_name} source policy: {violations[0]}"
                 )
 
 
@@ -521,17 +489,11 @@ def _validate_reference_payloads(
                 f"{label}[{index}] {key} has invalid calibration JSON"
             ) from exc
         if not isinstance(calibration, Mapping):
-            raise ReleaseValidationError(
-                f"{label}[{index}] {key} calibration is not an object"
-            )
+            raise ReleaseValidationError(f"{label}[{index}] {key} calibration is not an object")
         if set(calibration) != set(CALIBRATION_COLUMNS):
-            raise ReleaseValidationError(
-                f"{label}[{index}] {key} calibration fields differ"
-            )
+            raise ReleaseValidationError(f"{label}[{index}] {key} calibration fields differ")
         if calibration["footprint_um"] != row["footprint_um"]:
-            raise ReleaseValidationError(
-                f"{label}[{index}] {key} calibration footprint differs"
-            )
+            raise ReleaseValidationError(f"{label}[{index}] {key} calibration footprint differs")
         bbox = calibration["bbox"]
         bbox_size = calibration["bbox_size_px"]
         image_size = calibration["image_size_px"]
@@ -550,26 +512,18 @@ def _validate_reference_payloads(
                 f"{label}[{index}] {key} calibration dimensions are invalid"
             )
         if bbox_size != [bbox[2] - bbox[0], bbox[3] - bbox[1]]:
-            raise ReleaseValidationError(
-                f"{label}[{index}] {key} calibration bbox size differs"
-            )
+            raise ReleaseValidationError(f"{label}[{index}] {key} calibration bbox size differs")
         if offset != bbox[:2]:
-            raise ReleaseValidationError(
-                f"{label}[{index}] {key} calibration offset differs"
-            )
+            raise ReleaseValidationError(f"{label}[{index}] {key} calibration offset differs")
         if calibration["white_threshold"] != 245:
-            raise ReleaseValidationError(
-                f"{label}[{index}] {key} calibration threshold differs"
-            )
+            raise ReleaseValidationError(f"{label}[{index}] {key} calibration threshold differs")
         scale = calibration["scale_px_per_um"]
         if (
             not isinstance(scale, list)
             or len(scale) != 2
             or any(not math.isfinite(float(value)) or float(value) <= 0 for value in scale)
         ):
-            raise ReleaseValidationError(
-                f"{label}[{index}] {key} calibration scale is invalid"
-            )
+            raise ReleaseValidationError(f"{label}[{index}] {key} calibration scale is invalid")
         expected_scale = [
             bbox_size[0] / float(row["footprint_um"][0]),
             bbox_size[1] / float(row["footprint_um"][1]),
@@ -583,17 +537,13 @@ def _validate_reference_payloads(
             )
             for actual, expected in zip(scale, expected_scale, strict=True)
         ):
-            raise ReleaseValidationError(
-                f"{label}[{index}] {key} calibration scale differs"
-            )
+            raise ReleaseValidationError(f"{label}[{index}] {key} calibration scale differs")
         derived = _calibration_from_target(
             row["target_image"],
             row["footprint_um"],
         )
         if image_size != derived["image_size_px"]:
-            raise ReleaseValidationError(
-                f"{label}[{index}] {key} calibration image size differs"
-            )
+            raise ReleaseValidationError(f"{label}[{index}] {key} calibration image size differs")
         boundary_delta = [
             abs(int(actual) - int(inferred))
             for actual, inferred in zip(
@@ -615,9 +565,7 @@ def _validate_reference_payloads(
             try:
                 json.loads(str(row[field]))
             except json.JSONDecodeError as exc:
-                raise ReleaseValidationError(
-                    f"{label}[{index}] {key} has invalid {field}"
-                ) from exc
+                raise ReleaseValidationError(f"{label}[{index}] {key} has invalid {field}") from exc
 
 
 def _validate_manifest_files(
@@ -631,10 +579,7 @@ def _validate_manifest_files(
             for index in range(shard_count):
                 start = index * MAX_ROWS_PER_SHARD
                 rows = min(MAX_ROWS_PER_SHARD, row_count - start)
-                path = (
-                    f"{configuration}/data/{split}-{index:05d}-of-"
-                    f"{shard_count:05d}.parquet"
-                )
+                path = f"{configuration}/data/{split}-{index:05d}-of-{shard_count:05d}.parquet"
                 expected_shards[path] = (configuration, split, rows)
 
     shards = manifest.get("shards")
@@ -651,37 +596,23 @@ def _validate_manifest_files(
             "rows",
             "sha256",
         }:
-            raise ReleaseValidationError(
-                "manifest shard record fields differ from the contract"
-            )
+            raise ReleaseValidationError("manifest shard record fields differ from the contract")
         relative = str(record.get("path", ""))
         if not relative or relative in shard_paths:
             raise ReleaseValidationError("manifest has missing or duplicate shard paths")
         shard_paths.add(relative)
         if relative not in expected_shards:
-            raise ReleaseValidationError(
-                f"manifest has an unexpected shard path: {relative}"
-            )
-        expected_configuration, expected_split, expected_rows = expected_shards[
-            relative
-        ]
+            raise ReleaseValidationError(f"manifest has an unexpected shard path: {relative}")
+        expected_configuration, expected_split, expected_rows = expected_shards[relative]
         if record.get("configuration") != expected_configuration:
-            raise ReleaseValidationError(
-                f"manifest shard configuration differs: {relative}"
-            )
+            raise ReleaseValidationError(f"manifest shard configuration differs: {relative}")
         if record.get("split") != expected_split:
-            raise ReleaseValidationError(
-                f"manifest shard split differs: {relative}"
-            )
+            raise ReleaseValidationError(f"manifest shard split differs: {relative}")
         if int(record.get("rows", -1)) != expected_rows:
-            raise ReleaseValidationError(
-                f"manifest shard plan row count differs: {relative}"
-            )
+            raise ReleaseValidationError(f"manifest shard plan row count differs: {relative}")
         declared_sha = str(record.get("sha256", ""))
         if not SHA256.fullmatch(declared_sha):
-            raise ReleaseValidationError(
-                f"manifest shard SHA-256 is invalid: {relative}"
-            )
+            raise ReleaseValidationError(f"manifest shard SHA-256 is invalid: {relative}")
         path = release_root / relative
         if not path.is_file():
             raise ReleaseValidationError(f"manifest shard is missing: {relative}")
@@ -710,14 +641,10 @@ def _validate_manifest_files(
         )
     for relative, expected in support.items():
         if not isinstance(expected, str) or not SHA256.fullmatch(expected):
-            raise ReleaseValidationError(
-                f"manifest support-file SHA-256 is invalid: {relative}"
-            )
+            raise ReleaseValidationError(f"manifest support-file SHA-256 is invalid: {relative}")
         path = release_root / str(relative)
         if not path.is_file() or sha256_file(path) != expected:
-            raise ReleaseValidationError(
-                f"manifest support-file hash differs: {relative}"
-            )
+            raise ReleaseValidationError(f"manifest support-file hash differs: {relative}")
 
     expected_files = shard_paths | EXPECTED_SUPPORT_FILES | {"manifest.json"}
     observed_files = {
@@ -750,6 +677,8 @@ def validate_release(*, release_root: Path, dataset_root: Path) -> dict[str, Any
         raise ReleaseValidationError("manifest schema version differs")
     if manifest.get("release_schema_version") != RELEASE_SCHEMA_VERSION:
         raise ReleaseValidationError("release schema version differs")
+    if not SHA40.fullmatch(str(manifest.get("source_git_sha", ""))):
+        raise ReleaseValidationError("manifest source Git SHA is invalid")
     if manifest.get("source") != {
         "core_logical_sha256": SOURCE_CORE_DIGEST,
         "depth_logical_sha256": SOURCE_DEPTH_DIGEST,
@@ -818,9 +747,7 @@ def validate_release(*, release_root: Path, dataset_root: Path) -> dict[str, Any
         if set(depth_columns).intersection(FORBIDDEN_MODEL_COLUMNS):
             raise ReleaseValidationError(f"depth/{split} has verifier-only columns")
         if reference_columns != REFERENCE_COLUMNS:
-            raise ReleaseValidationError(
-                f"references/{split} columns differ from the schema"
-            )
+            raise ReleaseValidationError(f"references/{split} columns differ from the schema")
         if len(depth_rows) != expected_rows or len(reference_rows) != expected_rows:
             raise ReleaseValidationError(f"{split} projected row counts differ")
         _assert_rows_equal(
@@ -833,9 +760,7 @@ def validate_release(*, release_root: Path, dataset_root: Path) -> dict[str, Any
             expected_references[split],
             label=f"references/{split}",
         )
-        if [row["opaque_id"] for row in depth_rows] != [
-            row["opaque_id"] for row in reference_rows
-        ]:
+        if [row["opaque_id"] for row in depth_rows] != [row["opaque_id"] for row in reference_rows]:
             raise ReleaseValidationError(f"{split} depth/reference join order differs")
         observed_depth[split] = depth_rows
         observed_references[split] = reference_rows
@@ -858,23 +783,17 @@ def validate_release(*, release_root: Path, dataset_root: Path) -> dict[str, Any
         raise ReleaseValidationError("depth/validation contains core rows")
     core_ids = {str(row["opaque_id"]) for row in core_rows}
     if [row["opaque_id"] for row in core_rows] != [
-        row["opaque_id"]
-        for row in observed_depth["train"]
-        if row["opaque_id"] in core_ids
+        row["opaque_id"] for row in observed_depth["train"] if row["opaque_id"] in core_ids
     ]:
         raise ReleaseValidationError("core is not an ordered depth/train subset")
 
     all_ids = [
-        str(row["opaque_id"])
-        for split in ("train", "validation")
-        for row in observed_depth[split]
+        str(row["opaque_id"]) for split in ("train", "validation") for row in observed_depth[split]
     ]
     if len(all_ids) != len(set(all_ids)):
         raise ReleaseValidationError("opaque IDs are not unique")
     source_ids = [
-        str(row["id"])
-        for split in ("train", "validation")
-        for row in depth_source[split]
+        str(row["id"]) for split in ("train", "validation") for row in depth_source[split]
     ]
     if all_ids != [_opaque_id(source_id) for source_id in source_ids]:
         raise ReleaseValidationError("opaque IDs do not match their source rows")

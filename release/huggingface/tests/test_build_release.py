@@ -16,6 +16,7 @@ from release.huggingface.build_release import (
     ReleaseBuildError,
     assert_core_ordered_subset,
     assert_frozen_sources,
+    build_release,
     depth_source_paths,
     opaque_id,
     project_model_row,
@@ -90,7 +91,9 @@ def test_shard_plan_is_bounded_and_complete():
 
 
 def test_core_ordered_subset_rejects_reordering():
-    core = [{"id": f"row-{index}", **{field: None for field in ()}} for index in range(CORE_ROW_COUNT)]
+    core = [
+        {"id": f"row-{index}", **{field: None for field in ()}} for index in range(CORE_ROW_COUNT)
+    ]
     # The order check happens before the complete frozen-field comparison.
     depth = list(reversed(core))
     with pytest.raises(ReleaseBuildError, match="order-preserving"):
@@ -99,3 +102,23 @@ def test_core_ordered_subset_rejects_reordering():
 
 def test_frozen_source_artifacts_are_bound():
     assert_frozen_sources(DATASET_ROOT)
+
+
+@pytest.mark.parametrize(
+    "relative_output",
+    (
+        Path("."),
+        Path("depth-v1/data/adversarial-release-output"),
+    ),
+)
+def test_release_output_cannot_modify_frozen_dataset(
+    relative_output: Path,
+) -> None:
+    output = (DATASET_ROOT / relative_output).resolve()
+    with pytest.raises(
+        ReleaseBuildError,
+        match="outside the frozen dataset root",
+    ):
+        build_release(dataset_root=DATASET_ROOT, output=output)
+    if output != DATASET_ROOT:
+        assert not output.exists()

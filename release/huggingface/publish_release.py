@@ -51,9 +51,8 @@ EXPECTED_CONFIG_SPLITS = {
 EXPECTED_DEFAULT_CONFIG = "depth"
 EXPECTED_MANIFEST_SCHEMA = "pixcell-hf-release-manifest-v2"
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
-FORBIDDEN_PACKAGE_PARTS = frozenset(
-    {".git", ".cache", ".pytest_cache", "__pycache__"}
-)
+FORBIDDEN_PACKAGE_PARTS = frozenset({".git", ".cache", ".pytest_cache", "__pycache__"})
+APPROVED_PACKAGE_RELATIVE = Path("release/huggingface/generated")
 
 
 class PublicationError(RuntimeError):
@@ -116,14 +115,11 @@ def inspect_git_source(repo_root: Path) -> str:
 
     observed_root = Path(output("rev-parse", "--show-toplevel")).resolve()
     if observed_root != repo_root:
-        raise PublicationError(
-            f"publisher repo root is {repo_root}, Git reports {observed_root}"
-        )
+        raise PublicationError(f"publisher repo root is {repo_root}, Git reports {observed_root}")
     status = output("status", "--porcelain=v1", "--untracked-files=all")
     if status:
         raise PublicationError(
-            "publication requires a clean worktree with every release source "
-            "file committed"
+            "publication requires a clean worktree with every release source file committed"
         )
     head = output("rev-parse", "HEAD")
     if not SHA40.fullmatch(head):
@@ -154,15 +150,12 @@ def package_inventory(package_root: Path) -> tuple[PackageFile, ...]:
             raise PublicationError(f"package is missing {required}")
 
     try:
-        manifest = json.loads(
-            (package_root / "manifest.json").read_text(encoding="utf-8")
-        )
+        manifest = json.loads((package_root / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise PublicationError(f"cannot read package manifest: {exc}") from exc
     if manifest.get("schema_version") != EXPECTED_MANIFEST_SCHEMA:
         raise PublicationError(
-            "unexpected package manifest schema: "
-            f"{manifest.get('schema_version')!r}"
+            f"unexpected package manifest schema: {manifest.get('schema_version')!r}"
         )
 
     records: list[PackageFile] = []
@@ -187,6 +180,19 @@ def package_inventory(package_root: Path) -> tuple[PackageFile, ...]:
     return tuple(records)
 
 
+def package_source_git_sha(package_root: Path) -> str:
+    """Read and validate the source commit bound into a built package."""
+
+    try:
+        manifest = json.loads((package_root / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PublicationError(f"cannot read package manifest: {exc}") from exc
+    source_git_sha = str(manifest.get("source_git_sha", ""))
+    if not SHA40.fullmatch(source_git_sha):
+        raise PublicationError(f"package manifest has invalid source Git SHA {source_git_sha!r}")
+    return source_git_sha
+
+
 def _revision_sha(api: Any, repo_id: str, revision: str) -> str:
     info = api.repo_info(
         repo_id=repo_id,
@@ -195,9 +201,7 @@ def _revision_sha(api: Any, repo_id: str, revision: str) -> str:
     )
     sha = str(getattr(info, "sha", ""))
     if not SHA40.fullmatch(sha):
-        raise PublicationError(
-            f"Hub revision {revision!r} returned invalid SHA {sha!r}"
-        )
+        raise PublicationError(f"Hub revision {revision!r} returned invalid SHA {sha!r}")
     return sha
 
 
@@ -208,10 +212,7 @@ def _tag_names(api: Any, repo_id: str) -> set[str]:
 
 def assert_legacy_tags(api: Any, repo_id: str) -> None:
     refs = api.list_repo_refs(repo_id=repo_id, repo_type=REPO_TYPE)
-    tag_objects = {
-        str(ref.name): str(ref.target_commit)
-        for ref in refs.tags
-    }
+    tag_objects = {str(ref.name): str(ref.target_commit) for ref in refs.tags}
     for tag, expected_commit in LEGACY_TAG_COMMITS.items():
         if tag not in tag_objects:
             raise PublicationError(f"required legacy tag is missing: {tag}")
@@ -219,14 +220,12 @@ def assert_legacy_tags(api: Any, repo_id: str) -> None:
         observed_object = tag_objects[tag]
         if observed_object != expected_object:
             raise PublicationError(
-                f"legacy tag object {tag} is {observed_object}, expected "
-                f"{expected_object}"
+                f"legacy tag object {tag} is {observed_object}, expected {expected_object}"
             )
         observed_commit = _revision_sha(api, repo_id, tag)
         if observed_commit != expected_commit:
             raise PublicationError(
-                f"legacy tag {tag} resolves to {observed_commit}, expected "
-                f"{expected_commit}"
+                f"legacy tag {tag} resolves to {observed_commit}, expected {expected_commit}"
             )
 
 
@@ -244,14 +243,10 @@ def assert_authenticated_org(
         )
     identity = api.whoami()
     organizations = {
-        str(org.get("name"))
-        for org in identity.get("orgs", [])
-        if isinstance(org, Mapping)
+        str(org.get("name")) for org in identity.get("orgs", []) if isinstance(org, Mapping)
     }
     if expected_org not in organizations:
-        raise PublicationError(
-            f"authenticated identity is not a member of {expected_org!r}"
-        )
+        raise PublicationError(f"authenticated identity is not a member of {expected_org!r}")
 
 
 def assert_default_configs(info: Any) -> None:
@@ -276,16 +271,12 @@ def assert_default_configs(info: Any) -> None:
         by_name[name] = config
     if set(by_name) != set(EXPECTED_CONFIG_SPLITS):
         raise PublicationError(
-            f"Hub configs are {sorted(by_name)}, expected "
-            f"{sorted(EXPECTED_CONFIG_SPLITS)}"
+            f"Hub configs are {sorted(by_name)}, expected {sorted(EXPECTED_CONFIG_SPLITS)}"
         )
-    defaults = [
-        name for name, config in by_name.items() if config.get("default") is True
-    ]
+    defaults = [name for name, config in by_name.items() if config.get("default") is True]
     if defaults != [EXPECTED_DEFAULT_CONFIG]:
         raise PublicationError(
-            f"Hub default configs are {defaults}, expected "
-            f"[{EXPECTED_DEFAULT_CONFIG!r}]"
+            f"Hub default configs are {defaults}, expected [{EXPECTED_DEFAULT_CONFIG!r}]"
         )
 
     dataset_info = card_data.get("dataset_info")
@@ -302,14 +293,11 @@ def assert_default_configs(info: Any) -> None:
         observed_splits[name] = {
             str(split["name"]): int(split["num_examples"])
             for split in splits
-            if isinstance(split, Mapping)
-            and "name" in split
-            and "num_examples" in split
+            if isinstance(split, Mapping) and "name" in split and "num_examples" in split
         }
     if observed_splits != EXPECTED_CONFIG_SPLITS:
         raise PublicationError(
-            f"Hub split metadata is {observed_splits}, expected "
-            f"{EXPECTED_CONFIG_SPLITS}"
+            f"Hub split metadata is {observed_splits}, expected {EXPECTED_CONFIG_SPLITS}"
         )
 
 
@@ -332,9 +320,7 @@ def _ensure_tag(
         )
     observed = _revision_sha(api, repo_id, tag)
     if observed != expected_sha:
-        raise PublicationError(
-            f"tag {tag} resolves to {observed}, expected {expected_sha}"
-        )
+        raise PublicationError(f"tag {tag} resolves to {observed}, expected {expected_sha}")
 
 
 def _download_and_validate_revision(
@@ -430,7 +416,25 @@ def publish_release(
     package_root = package_root.resolve()
     dataset_root = dataset_root.resolve()
     repo_root = repo_root.resolve()
+    expected_dataset_root = (repo_root / "dataset").resolve()
+    if dataset_root != expected_dataset_root:
+        raise PublicationError(
+            "dataset root must be bound to the publication repository: "
+            f"expected {expected_dataset_root}, got {dataset_root}"
+        )
+    expected_package_root = (repo_root / APPROVED_PACKAGE_RELATIVE).resolve()
+    if package_root != expected_package_root:
+        raise PublicationError(
+            "package root must be the approved repository release output: "
+            f"expected {expected_package_root}, got {package_root}"
+        )
     source_git_sha = git_inspector(repo_root)
+    package_git_sha = package_source_git_sha(package_root)
+    if package_git_sha != source_git_sha:
+        raise PublicationError(
+            "package source Git SHA differs from the clean publication "
+            f"repository: package={package_git_sha}, repository={source_git_sha}"
+        )
     validator(package_root, dataset_root)
     inventory = package_inventory(package_root)
 
@@ -438,9 +442,7 @@ def publish_release(
     assert_authenticated_org(api, repo_id=repo_id, expected_org=expected_org)
     observed_main = _revision_sha(api, repo_id, "main")
     if observed_main != expected_main_sha:
-        raise PublicationError(
-            f"Hub main moved to {observed_main}; expected {expected_main_sha}"
-        )
+        raise PublicationError(f"Hub main moved to {observed_main}; expected {expected_main_sha}")
     assert_legacy_tags(api, repo_id)
 
     tag_names = _tag_names(api, repo_id)
@@ -448,13 +450,10 @@ def publish_release(
         safety_sha = _revision_sha(api, repo_id, SAFETY_TAG)
         if safety_sha != expected_main_sha:
             raise PublicationError(
-                f"{SAFETY_TAG} resolves to {safety_sha}, expected "
-                f"{expected_main_sha}"
+                f"{SAFETY_TAG} resolves to {safety_sha}, expected {expected_main_sha}"
             )
     if RELEASE_TAG in tag_names:
-        raise PublicationError(
-            f"{RELEASE_TAG} already exists; release tags are never moved"
-        )
+        raise PublicationError(f"{RELEASE_TAG} already exists; release tags are never moved")
 
     remote_files = set(
         api.list_repo_files(
@@ -499,9 +498,7 @@ def publish_release(
         )
         for record in inventory
     ]
-    operations.extend(
-        CommitOperationDelete(path_in_repo=path) for path in deletions
-    )
+    operations.extend(CommitOperationDelete(path_in_repo=path) for path in deletions)
     commit = api.create_commit(
         repo_id=repo_id,
         repo_type=REPO_TYPE,
@@ -511,8 +508,7 @@ def publish_release(
         operations=operations,
         commit_message="Publish PixCell dataset v2",
         commit_description=(
-            "Publish generic core, depth, and references configurations; "
-            "make depth the default."
+            "Publish generic core, depth, and references configurations; make depth the default."
         ),
     )
     pr_revision = getattr(commit, "pr_revision", None)

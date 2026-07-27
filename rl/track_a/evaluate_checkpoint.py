@@ -14,12 +14,23 @@ import tinker
 
 from rl.common.dataset_io import load_tasks
 from rl.common.evaluator import Attribution, EvaluationStatus, PixCellEvaluator
+from rl.common.isolation import IsolationError
 from rl.track_a.checkpoint_metrics import (
     behavioral_probe_summary,
     program_sha256,
 )
 from rl.track_a.curriculum import balanced_effective_pass
-from rl.track_a.launch import run_launch_preflight
+from rl.track_a.evaluation_contract import (
+    BEHAVIORAL_PROBE_TASKS,
+    FULL_GEOMETRY_REPRESENTATIONS,
+    FULL_GEOMETRY_TASKS,
+    REPORT_SCHEMA_VERSION,
+    build_checkpoint_selection_contract,
+    report_provenance,
+    validate_evaluation_report,
+)
+from rl.track_a.launch import bind_execution_boundary, run_launch_preflight
+from rl.track_a.recipe import validate_evaluation_cli
 from rl.track_a.reward import reward_for
 from rl.track_a.tinker_data import DEFAULT_MODEL, DEFAULT_RENDERER, _message, _renderer
 
@@ -35,64 +46,105 @@ def _filter_levels(tasks, levels: str):
 
 
 async def run(args: argparse.Namespace) -> dict:
-    if args.behavioral_probe:
-        if args.k != 4:
-            raise SystemExit("--behavioral-probe requires --k 4")
-        if args.rows < 1:
-            raise SystemExit("--behavioral-probe requires a bounded --rows value")
-        if not args.levels.strip():
-            raise SystemExit(
-                "--behavioral-probe requires explicit --levels for the "
-                "first unmastered curriculum level(s)"
-            )
-    elif args.k != 1:
-        raise SystemExit(
-            "checkpoint geometry evaluation is fixed at k=1; use "
-            "--behavioral-probe --k 4 for the separate collapse diagnostic"
-        )
-    if args.confirm_spend != "TRACK_A_EVAL":
-        raise SystemExit("paid evaluation blocked: pass --confirm-spend TRACK_A_EVAL")
+    try:
+        resolved_launch = validate_evaluation_cli(REPO_ROOT, args)
+        resolved_launch = bind_execution_boundary(resolved_launch)
+    except (ValueError, IsolationError) as exc:
+        raise SystemExit(f"paid evaluation blocked: {exc}") from exc
     if not os.environ.get("TINKER_API_KEY"):
         raise SystemExit("TINKER_API_KEY is not present")
-    if not args.sampler_path:
-        raise SystemExit("--sampler-path is required")
-    run_launch_preflight(REPO_ROOT)
+    run_launch_preflight(REPO_ROOT, resolved_launch=resolved_launch)
+    dataset_root = Path(str(resolved_launch["dataset_root"]))
+    sampler_path = str(resolved_launch["sampler_path"])
+    output_path = Path(str(resolved_launch["output"]))
+    levels = str(resolved_launch["levels"])
+    rows = int(resolved_launch["rows"])
+    k = int(resolved_launch["k"])
+    temperature = float(resolved_launch["temperature"])
+    max_tokens = int(resolved_launch["max_tokens"])
+    max_image = int(resolved_launch["max_image"])
+    top_p = float(resolved_launch["top_p"])
+    seed = int(resolved_launch["seed"])
+    concurrency = int(resolved_launch["concurrency"])
+    evaluator_workers = int(resolved_launch["evaluator_workers"])
+    include_records = bool(resolved_launch["include_records"])
+    behavioral_probe = (
+        resolved_launch["role"] == "behavioral-collapse-probe"
+    )
+    contract = build_checkpoint_selection_contract(
+        REPO_ROOT,
+        dataset_root,
+    )
 
     tasks = _filter_levels(
         load_tasks(
-            args.dataset_root,
+            dataset_root,
             configuration="depth",
             split="validation",
         ),
-        args.levels,
+        levels,
     )
     if not tasks:
         raise SystemExit("no validation tasks matched --levels")
-    if args.rows:
+    if rows:
         tasks = balanced_effective_pass(
             tasks,
-            seed=args.seed,
-            draws=min(args.rows, len(tasks)),
+            seed=seed,
+            draws=rows,
         )
-    renderer = _renderer(args.model_name, args.renderer_name)
+    task_ids = [task.sampler.opaque_id for task in tasks]
+    if len(set(task_ids)) != len(task_ids):
+        raise RuntimeError("checkpoint evaluation selected duplicate tasks")
+    expected_tasks = (
+        BEHAVIORAL_PROBE_TASKS
+        if behavioral_probe
+        else FULL_GEOMETRY_TASKS
+    )
+    if len(tasks) != expected_tasks:
+        raise RuntimeError(
+            f"checkpoint evaluation selected {len(tasks)} tasks; "
+            f"expected {expected_tasks}"
+        )
+    representation_count = len(
+        {task.sampler.representation_id for task in tasks}
+    )
+    if (
+        not behavioral_probe
+        and representation_count != FULL_GEOMETRY_REPRESENTATIONS
+    ):
+        raise RuntimeError(
+            "checkpoint geometry evaluation selected "
+            f"{representation_count} representations; expected "
+            f"{FULL_GEOMETRY_REPRESENTATIONS}"
+        )
+    evaluator = PixCellEvaluator(
+        max_workers=evaluator_workers,
+        require_isolation=True,
+    )
+    renderer = _renderer(
+        str(resolved_launch["model_name"]),
+        str(resolved_launch["renderer_name"]),
+    )
     decode = getattr(renderer, "decode_action_text", None) or renderer.tokenizer.decode
     sampling = tinker.ServiceClient().create_sampling_client(
-        model_path=args.sampler_path
+        model_path=sampler_path
     )
-    semaphore = asyncio.Semaphore(args.concurrency)
+    semaphore = asyncio.Semaphore(concurrency)
 
     async def sample(task):
-        prompt = renderer.build_generation_prompt([_message(task, max_image=1440)])
+        prompt = renderer.build_generation_prompt(
+            [_message(task, max_image=max_image)]
+        )
         stop = renderer.get_stop_sequences()
         async with semaphore:
             result = await sampling.sample_async(
                 prompt=prompt,
-                num_samples=args.k,
+                num_samples=k,
                 sampling_params=tinker.SamplingParams(
                     stop=stop,
-                    max_tokens=args.max_tokens,
-                    temperature=args.temperature,
-                    top_p=1.0,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
                 ),
             )
         return [
@@ -115,7 +167,7 @@ async def run(args: argparse.Namespace) -> dict:
             token_counts.append(completion["completion_tokens"])
             program_hashes.append(program_sha256(completion["completion"]))
 
-    with PixCellEvaluator(max_workers=args.evaluator_workers) as evaluator:
+    with evaluator:
         results = evaluator.evaluate_batch(requests)
     masked = [
         result for result in results if result.attribution is not Attribution.MODEL
@@ -181,21 +233,26 @@ async def run(args: argparse.Namespace) -> dict:
         sum(record["iou"] for record in values) / len(values)
         for values in by_representation.values()
     ]
+    role = (
+        "behavioral-collapse-probe"
+        if behavioral_probe
+        else "checkpoint-geometry"
+    )
+    actual_levels = sorted(
+        {task.sampler.level.upper() for task in tasks}
+    )
     report = {
-        "schema_version": "pixcell-track-a-executable-eval-v1",
-        "evaluation_role": (
-            "behavioral-collapse-probe"
-            if args.behavioral_probe
-            else "checkpoint-geometry"
-        ),
-        "sampler_path": args.sampler_path,
-        "model": args.model_name,
-        "renderer": args.renderer_name,
+        "schema_version": REPORT_SCHEMA_VERSION,
+        "evaluation_role": role,
+        "sampler_path": sampler_path,
+        "model": resolved_launch["model_name"],
+        "renderer": resolved_launch["renderer_name"],
         "split": "depth/validation",
-        "levels": args.levels or "all",
-        "k": args.k,
-        "temperature": args.temperature,
-        "max_tokens": args.max_tokens,
+        "levels": actual_levels[0] if behavioral_probe else "all",
+        "k": k,
+        "temperature": temperature,
+        "top_p": top_p,
+        "max_tokens": max_tokens,
         "summary": aggregate(records),
         "representation_macro_mean_iou": (
             sum(representation_means) / len(representation_means)
@@ -207,13 +264,34 @@ async def run(args: argparse.Namespace) -> dict:
         "mean_completion_tokens": sum(token_counts) / len(token_counts),
         "behavioral_probe": (
             behavioral_probe_summary(records, expected_group_size=4)
-            if args.behavioral_probe
+            if behavioral_probe
             else None
         ),
-        "records": records if args.include_records else None,
+        "records": records if include_records else None,
     }
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    boundary = evaluator.execution_boundary
+    assert boundary is not None
+    report["provenance"] = report_provenance(
+        contract=contract,
+        sampler_path=sampler_path,
+        role=role,
+        levels=actual_levels,
+        task_ids=task_ids,
+        representation_count=representation_count,
+        requested_rows=rows if behavioral_probe else None,
+        k=k,
+        attempt_count=len(records),
+        sandbox_image_ref=boundary.image_ref,
+        sandbox_image_id=boundary.image_id,
+    )
+    validate_evaluation_report(
+        report,
+        contract=contract,
+        expected_role=role,
+    )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("x", encoding="utf-8") as handle:
+        handle.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
     return report
 
 

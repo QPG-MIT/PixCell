@@ -5,22 +5,29 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from rl.track_a.evaluation_contract import (
+    CheckpointSelectionContract,
+    validate_evaluation_report,
+)
+
 
 def _index_by_sampler(
     reports: Sequence[tuple[str, Mapping[str, Any]]],
     *,
     expected_role: str,
+    contract: CheckpointSelectionContract,
 ) -> dict[str, tuple[str, Mapping[str, Any]]]:
     indexed: dict[str, tuple[str, Mapping[str, Any]]] = {}
     for path, report in reports:
-        role = report.get("evaluation_role")
-        if role != expected_role:
-            raise ValueError(
-                f"{path} has evaluation_role={role!r}; expected {expected_role!r}"
+        try:
+            validate_evaluation_report(
+                report,
+                contract=contract,
+                expected_role=expected_role,
             )
+        except ValueError as exc:
+            raise ValueError(f"{path}: {exc}") from exc
         sampler_path = str(report.get("sampler_path", ""))
-        if not sampler_path:
-            raise ValueError(f"{path} does not declare sampler_path")
         if sampler_path in indexed:
             raise ValueError(
                 f"duplicate {expected_role} report for sampler {sampler_path!r}"
@@ -32,16 +39,20 @@ def _index_by_sampler(
 def select_sft_checkpoint(
     geometry_reports: Sequence[tuple[str, Mapping[str, Any]]],
     behavioral_reports: Sequence[tuple[str, Mapping[str, Any]]],
+    *,
+    contract: CheckpointSelectionContract,
 ) -> dict[str, Any]:
     """Select by full k=1 geometry after applying a paired G4 collapse veto."""
 
     geometry = _index_by_sampler(
         geometry_reports,
         expected_role="checkpoint-geometry",
+        contract=contract,
     )
     behavior = _index_by_sampler(
         behavioral_reports,
         expected_role="behavioral-collapse-probe",
+        contract=contract,
     )
     missing = sorted(set(geometry) - set(behavior))
     extra = sorted(set(behavior) - set(geometry))
@@ -51,21 +62,25 @@ def select_sft_checkpoint(
             f"missing_behavior={missing}, extra_behavior={extra}"
         )
 
+    sandbox_identities = {
+        (
+            str(report["provenance"]["candidate_sandbox"]["image_ref"]),
+            str(report["provenance"]["candidate_sandbox"]["image_id"]),
+        )
+        for _path, report in [*geometry.values(), *behavior.values()]
+    }
+    if len(sandbox_identities) != 1:
+        raise ValueError(
+            "checkpoint reports were measured with different candidate "
+            "sandbox images"
+        )
+    sandbox_image_ref, sandbox_image_id = next(iter(sandbox_identities))
+
     candidates: list[dict[str, Any]] = []
     for sampler_path, (geometry_path, geometry_report) in geometry.items():
         behavior_path, behavior_report = behavior[sampler_path]
-        if int(geometry_report.get("k", 0)) != 1:
-            raise ValueError(f"{geometry_path} is not a k=1 geometry report")
-        if int(behavior_report.get("k", 0)) != 4:
-            raise ValueError(f"{behavior_path} is not a k=4 behavioral report")
         probe = behavior_report.get("behavioral_probe")
-        if not isinstance(probe, Mapping):
-            raise ValueError(f"{behavior_path} has no behavioral_probe")
         collapsed_value = probe.get("collapse_detected")
-        if not isinstance(collapsed_value, bool):
-            raise ValueError(
-                f"{behavior_path} has no boolean collapse_detected verdict"
-            )
         collapsed = collapsed_value
         candidates.append(
             {
@@ -122,6 +137,18 @@ def select_sft_checkpoint(
             "pure-executable rate breaks ties"
         ),
         "behavioral_metrics_are_ranking_features": False,
+        "selection_provenance": {
+            "source_git_sha": contract.source_git_sha,
+            "depth_logical_release_sha256": (
+                contract.depth_logical_release_sha256
+            ),
+            "model": contract.model,
+            "renderer": contract.renderer,
+            "candidate_sandbox": {
+                "image_ref": sandbox_image_ref,
+                "image_id": sandbox_image_id,
+            },
+        },
         "selected": eligible[0],
         "ranking": candidates,
     }

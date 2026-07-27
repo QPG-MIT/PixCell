@@ -10,19 +10,49 @@ import traceback
 from pathlib import Path
 
 
+def _set_limit(
+    kind: int,
+    requested: tuple[int, int],
+    *,
+    required: bool,
+) -> None:
+    try:
+        current_soft, current_hard = resource.getrlimit(kind)
+        requested_soft, requested_hard = requested
+        hard = (
+            requested_hard
+            if current_hard == resource.RLIM_INFINITY
+            else min(requested_hard, current_hard)
+        )
+        soft = min(requested_soft, hard)
+        resource.setrlimit(kind, (soft, hard))
+    except (OSError, ValueError) as exc:
+        if required:
+            raise RuntimeError(f"failed to install required rlimit {kind}") from exc
+
+
 def _apply_limits() -> None:
     cpu_seconds = int(os.environ.get("PIXCELL_EVAL_CPU_SECONDS", "18"))
     file_bytes = int(os.environ.get("PIXCELL_EVAL_FILE_BYTES", str(16 * 1024 * 1024)))
     open_files = int(os.environ.get("PIXCELL_EVAL_OPEN_FILES", "128"))
-    for kind, limits in (
+    address_bytes = int(
+        os.environ.get("PIXCELL_EVAL_ADDRESS_BYTES", str(4 * 1024 * 1024 * 1024))
+    )
+    process_count = int(os.environ.get("PIXCELL_EVAL_PROCESS_COUNT", "32"))
+    required = os.environ.get("PIXCELL_EVAL_REQUIRE_LIMITS") == "1"
+    limits_to_apply = [
         (resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds + 1)),
         (resource.RLIMIT_FSIZE, (file_bytes, file_bytes)),
         (resource.RLIMIT_NOFILE, (open_files, open_files)),
-    ):
-        try:
-            resource.setrlimit(kind, limits)
-        except (OSError, ValueError):
-            pass
+        (resource.RLIMIT_AS, (address_bytes, address_bytes)),
+        (resource.RLIMIT_CORE, (0, 0)),
+    ]
+    if required:
+        limits_to_apply.append(
+            (resource.RLIMIT_NPROC, (process_count, process_count))
+        )
+    for kind, limits in limits_to_apply:
+        _set_limit(kind, limits, required=required)
 
 
 def main() -> int:

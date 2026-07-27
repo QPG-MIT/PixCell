@@ -10,14 +10,18 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import math
 import os
+import re
+import shutil
 import signal
 import subprocess
 import sys
 import tempfile
 import threading
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
@@ -35,6 +39,11 @@ from michaelangelo.core.compare_absolute import (
 )
 
 from .contracts import VerifierReference
+from .isolation import (
+    ExecutionBoundary,
+    candidate_identity,
+    require_execution_boundary,
+)
 from .output import extract_code
 
 
@@ -156,12 +165,20 @@ class PixCellEvaluator:
         max_workers: int = 8,
         execution_timeout_seconds: float = 20.0,
         evaluator_retries: int = 1,
+        require_isolation: bool = False,
     ) -> None:
         if max_workers < 1:
             raise ValueError("max_workers must be positive")
+        if execution_timeout_seconds <= 0:
+            raise ValueError("execution_timeout_seconds must be positive")
+        if evaluator_retries < 0:
+            raise ValueError("evaluator_retries must be non-negative")
         self.max_workers = max_workers
         self.execution_timeout_seconds = execution_timeout_seconds
         self.evaluator_retries = evaluator_retries
+        self.execution_boundary: ExecutionBoundary | None = (
+            require_execution_boundary() if require_isolation else None
+        )
         self._reference_cache: dict[str, _PreparedReference] = {}
         self._reference_lock = threading.Lock()
         self._closed = False
@@ -199,34 +216,61 @@ class PixCellEvaluator:
         with self._reference_lock:
             return self._reference_cache.setdefault(prepared.cache_key, prepared)
 
-    @staticmethod
-    def _child_environment() -> dict[str, str]:
-        environment = dict(os.environ)
-        for key in tuple(environment):
-            upper = key.upper()
-            if any(
-                token in upper
-                for token in (
-                    "_API_KEY",
-                    "_TOKEN",
-                    "_SECRET",
-                    "PASSWORD",
-                    "CREDENTIAL",
-                )
-            ):
-                environment.pop(key, None)
+    def _child_environment(self, workdir: Path) -> dict[str, str]:
+        environment = {
+            key: os.environ[key]
+            for key in ("PATH", "LANG", "LC_ALL", "LC_CTYPE", "TZ")
+            if key in os.environ
+        }
+        memory_limit = (
+            self.execution_boundary.memory_limit_bytes
+            if self.execution_boundary is not None
+            else 4 * 1024 * 1024 * 1024
+        )
+        process_limit = (
+            self.execution_boundary.pids_limit
+            if self.execution_boundary is not None
+            else 32
+        )
         environment.update(
             {
+                "HOME": str(workdir),
                 "MPLBACKEND": "Agg",
+                "MKL_NUM_THREADS": "1",
+                "NUMEXPR_NUM_THREADS": "1",
+                "OMP_NUM_THREADS": "1",
+                "OPENBLAS_NUM_THREADS": "1",
                 "PYTHONHASHSEED": "0",
+                "VECLIB_MAXIMUM_THREADS": "1",
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONNOUSERSITE": "1",
+                "TMPDIR": str(workdir),
+                "XDG_CACHE_HOME": str(workdir / ".cache"),
+                "XDG_CONFIG_HOME": str(workdir / ".config"),
                 "PIXCELL_EVAL_CPU_SECONDS": "18",
                 "PIXCELL_EVAL_FILE_BYTES": str(16 * 1024 * 1024),
                 "PIXCELL_EVAL_OPEN_FILES": "128",
+                "PIXCELL_EVAL_ADDRESS_BYTES": str(memory_limit),
+                "PIXCELL_EVAL_PROCESS_COUNT": str(process_limit),
+                "PIXCELL_EVAL_REQUIRE_LIMITS": (
+                    "1" if self.execution_boundary is not None else "0"
+                ),
             }
         )
         return environment
 
-    def _run_candidate(self, source: str, workdir: Path) -> tuple[EvaluationStatus, str | None]:
+    @staticmethod
+    def _kill_process_group(process: subprocess.Popen[bytes]) -> None:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+    def _run_local_candidate(
+        self,
+        source: str,
+        workdir: Path,
+    ) -> tuple[EvaluationStatus, str | None]:
         script = workdir / "device.py"
         script.write_text(source, encoding="utf-8")
         log_path = workdir / "execution.log"
@@ -243,18 +287,21 @@ class PixCellEvaluator:
                     stdin=subprocess.DEVNULL,
                     stdout=log,
                     stderr=log,
-                    env=self._child_environment(),
+                    env=self._child_environment(workdir),
                     start_new_session=True,
                 )
                 try:
                     return_code = process.wait(timeout=self.execution_timeout_seconds)
                 except subprocess.TimeoutExpired:
-                    try:
-                        os.killpg(process.pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
+                    self._kill_process_group(process)
                     process.wait()
                     return EvaluationStatus.RUNTIME_TIMEOUT, "candidate execution timed out"
+                finally:
+                    # A candidate may leave background descendants after its
+                    # main process exits successfully. Always reap its process
+                    # group; the external container's init handles anything
+                    # that deliberately created a new session.
+                    self._kill_process_group(process)
         except OSError as exc:
             return EvaluationStatus.WORKER_ERROR, _error_text(exc)
 
@@ -272,6 +319,351 @@ class PixCellEvaluator:
         if not gds.is_file() or gds.stat().st_size == 0:
             return EvaluationStatus.NO_GDS, "program did not write a non-empty device.gds"
         return EvaluationStatus.OK, None
+
+    def _container_control(
+        self,
+        arguments: list[str],
+        *,
+        timeout: float = 30.0,
+    ) -> subprocess.CompletedProcess[bytes]:
+        assert self.execution_boundary is not None
+        return subprocess.run(
+            [
+                str(self.execution_boundary.runtime_path),
+                "--host",
+                self.execution_boundary.daemon_endpoint,
+                *arguments,
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=timeout,
+            check=False,
+        )
+
+    def _cleanup_candidate_containers(
+        self,
+        *,
+        candidate_id: str,
+        known_id: str | None,
+    ) -> bool:
+        identifiers: set[str] = set()
+        if known_id is not None:
+            identifiers.add(known_id)
+        cleanup_ok = True
+        try:
+            listed = self._container_control(
+                [
+                    "ps",
+                    "--all",
+                    "--quiet",
+                    "--filter",
+                    f"label=org.qpg-mit.pixcell.candidate={candidate_id}",
+                ],
+                timeout=10.0,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            cleanup_ok = False
+        else:
+            if listed.returncode != 0:
+                cleanup_ok = False
+            else:
+                identifiers.update(
+                    value
+                    for value in listed.stdout.decode(
+                        "ascii", errors="ignore"
+                    ).splitlines()
+                    if re.fullmatch(r"[0-9a-f]{12,64}", value)
+                )
+        for identifier in identifiers:
+            try:
+                removed = self._container_control(
+                    ["rm", "--force", identifier],
+                    timeout=15.0,
+                )
+            except (OSError, subprocess.TimeoutExpired):
+                cleanup_ok = False
+            else:
+                cleanup_ok = cleanup_ok and removed.returncode == 0
+        return cleanup_ok
+
+    def _container_state(self, container_id: str) -> dict[str, Any] | None:
+        try:
+            inspected = self._container_control(
+                ["inspect", container_id],
+                timeout=10.0,
+            )
+            document = json.loads(inspected.stdout)
+            state = document[0]["State"]
+        except (
+            OSError,
+            subprocess.TimeoutExpired,
+            json.JSONDecodeError,
+            IndexError,
+            KeyError,
+            TypeError,
+        ):
+            return None
+        return state if inspected.returncode == 0 and isinstance(state, dict) else None
+
+    def _run_isolated_candidate(
+        self,
+        source: str,
+        workdir: Path,
+    ) -> tuple[EvaluationStatus, str | None]:
+        assert self.execution_boundary is not None
+        script = workdir / "device.py"
+        script.write_text(source, encoding="utf-8")
+        shutil.copyfile(Path(__file__).with_name("execute.py"), workdir / "execute.py")
+        candidate_id = uuid.uuid4().hex
+        candidate_uid, candidate_gid = candidate_identity(candidate_id)
+        # The parent workspace is private (0700). The bind root itself only
+        # contains this candidate's admitted source and trusted runner, so it
+        # may be traversable by the unique container UID.
+        script.chmod(0o444)
+        (workdir / "execute.py").chmod(0o444)
+        workdir.chmod(0o755)
+        cid_path = workdir / ".container-id"
+        container_id: str | None = None
+        try:
+            created = subprocess.run(
+                self.execution_boundary.create_command(
+                    workdir,
+                    candidate_id=candidate_id,
+                ),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=30.0,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            create_error = _error_text(exc)
+            created = None
+        else:
+            create_error = None
+        candidate_ids = []
+        if created is not None:
+            candidate_ids.append(
+                created.stdout.decode("ascii", errors="ignore").strip()
+            )
+        try:
+            candidate_ids.append(cid_path.read_text(encoding="ascii").strip())
+        except OSError:
+            pass
+        container_id = next(
+            (
+                value
+                for value in candidate_ids
+                if re.fullmatch(r"[0-9a-f]{12,64}", value)
+            ),
+            None,
+        )
+        if created is None or created.returncode != 0 or container_id is None:
+            cleanup_ok = self._cleanup_candidate_containers(
+                candidate_id=candidate_id,
+                known_id=container_id,
+            )
+            detail = create_error
+            if created is not None and created.returncode != 0:
+                detail = _error_text(
+                    created.stderr.decode("utf-8", errors="replace")
+                    or "candidate container creation failed"
+                )
+            if container_id is None and detail is None:
+                detail = "container runtime returned an invalid ID"
+            if not cleanup_ok:
+                detail = f"{detail}; candidate container cleanup failed"
+            return EvaluationStatus.WORKER_ERROR, detail
+
+        status = EvaluationStatus.WORKER_ERROR
+        error: str | None = "candidate container did not run"
+        cleanup_ok = False
+        try:
+            try:
+                started = self._container_control(
+                    ["start", container_id],
+                    timeout=10.0,
+                )
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                status = EvaluationStatus.WORKER_ERROR
+                error = _error_text(exc)
+            else:
+                if started.returncode != 0:
+                    status = EvaluationStatus.WORKER_ERROR
+                    error = "candidate container failed to start"
+                else:
+                    # Only this trusted reader runs as container root: the
+                    # supervisor's real wait status is deliberately stored in
+                    # a root-only tmpfs that candidate code cannot forge.
+                    marker_command = [
+                        "exec",
+                        "--user",
+                        "0:0",
+                        container_id,
+                        "/usr/local/bin/python",
+                        "-c",
+                        (
+                            "import pathlib,time\n"
+                            "p=pathlib.Path('/status/exit-code')\n"
+                            "while not p.is_file(): time.sleep(0.05)\n"
+                            "print(p.read_text(encoding='ascii'),end='')\n"
+                        ),
+                    ]
+                    try:
+                        marker = self._container_control(
+                            marker_command,
+                            timeout=self.execution_timeout_seconds,
+                        )
+                    except subprocess.TimeoutExpired:
+                        state = self._container_state(container_id)
+                        if state is not None and state.get("OOMKilled"):
+                            status = EvaluationStatus.RUNTIME_ERROR
+                            error = "candidate exceeded the memory limit"
+                        elif state is not None and state.get("Running"):
+                            status = EvaluationStatus.RUNTIME_TIMEOUT
+                            error = "candidate execution timed out"
+                        else:
+                            status = EvaluationStatus.WORKER_ERROR
+                            error = (
+                                "candidate sandbox stopped before reporting "
+                                "an exit status"
+                            )
+                    except OSError as exc:
+                        status = EvaluationStatus.WORKER_ERROR
+                        error = _error_text(exc)
+                    else:
+                        state = self._container_state(container_id)
+                        marker_text = marker.stdout.decode(
+                            "ascii", errors="ignore"
+                        ).strip()
+                        if state is not None and state.get("OOMKilled"):
+                            status = EvaluationStatus.RUNTIME_ERROR
+                            error = "candidate exceeded the memory limit"
+                        elif state is None:
+                            status = EvaluationStatus.WORKER_ERROR
+                            error = "candidate sandbox state is unavailable"
+                        elif not state.get("Running"):
+                            exit_code = state.get("ExitCode")
+                            if isinstance(exit_code, int) and exit_code != 0:
+                                status = EvaluationStatus.RUNTIME_ERROR
+                                error = (
+                                    "candidate sandbox exited with status "
+                                    f"{exit_code}"
+                                )
+                            else:
+                                status = EvaluationStatus.WORKER_ERROR
+                                error = (
+                                    "candidate sandbox stopped before reporting "
+                                    "an exit status"
+                                )
+                        elif marker.returncode != 0:
+                            status = EvaluationStatus.WORKER_ERROR
+                            error = "candidate status collection failed"
+                        elif marker_text != "0":
+                            if re.fullmatch(r"[1-9][0-9]*", marker_text):
+                                status = EvaluationStatus.RUNTIME_ERROR
+                                error = (
+                                    "candidate exited with status "
+                                    f"{marker_text}"
+                                )
+                            else:
+                                status = EvaluationStatus.WORKER_ERROR
+                                error = "candidate returned an invalid exit status"
+                        else:
+                            # Docker's archive copy path does not expose
+                            # tmpfs-backed files consistently. Read the one
+                            # admitted artifact through a fixed trusted
+                            # interpreter while the candidate process is held
+                            # asleep and the container is still alive.
+                            output_reader = (
+                                "import os,stat,sys\n"
+                                "p='/work/device.gds'\n"
+                                "try:\n"
+                                " s=os.lstat(p)\n"
+                                "except FileNotFoundError:\n"
+                                " raise SystemExit(66)\n"
+                                "if not stat.S_ISREG(s.st_mode) or "
+                                "not 0 < s.st_size <= 16777216:\n"
+                                " raise SystemExit(65)\n"
+                                "with open(p,'rb',buffering=0) as f:\n"
+                                " sys.stdout.buffer.write(f.read())\n"
+                            )
+                            try:
+                                copied = self._container_control(
+                                    [
+                                        "exec",
+                                        "--user",
+                                        f"{candidate_uid}:{candidate_gid}",
+                                        container_id,
+                                        "/usr/local/bin/python",
+                                        "-c",
+                                        output_reader,
+                                    ],
+                                    timeout=15.0,
+                                )
+                            except (OSError, subprocess.TimeoutExpired) as exc:
+                                status = EvaluationStatus.WORKER_ERROR
+                                error = _error_text(exc)
+                            else:
+                                if copied.returncode == 66:
+                                    status = EvaluationStatus.NO_GDS
+                                    error = "program did not write device.gds"
+                                elif copied.returncode == 65:
+                                    status = EvaluationStatus.NO_GDS
+                                    error = (
+                                        "program did not write a non-empty "
+                                        "regular device.gds"
+                                    )
+                                elif copied.returncode in {1, 65, 66}:
+                                    status = EvaluationStatus.NO_GDS
+                                    error = (
+                                        "program did not leave a readable "
+                                        "regular device.gds"
+                                    )
+                                elif copied.returncode != 0:
+                                    status = EvaluationStatus.WORKER_ERROR
+                                    error = "candidate output collection failed"
+                                elif not copied.stdout:
+                                    status = EvaluationStatus.NO_GDS
+                                    error = "program wrote an empty device.gds"
+                                elif len(copied.stdout) > 16 * 1024 * 1024:
+                                    status = EvaluationStatus.WORKER_ERROR
+                                    error = "candidate output exceeded the collection bound"
+                                else:
+                                    try:
+                                        (workdir / "device.gds").write_bytes(
+                                            copied.stdout
+                                        )
+                                    except OSError as exc:
+                                        status = EvaluationStatus.WORKER_ERROR
+                                        error = _error_text(exc)
+                                    else:
+                                        status = EvaluationStatus.OK
+                                        error = None
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            status = EvaluationStatus.WORKER_ERROR
+            error = _error_text(exc)
+        finally:
+            cleanup_ok = self._cleanup_candidate_containers(
+                candidate_id=candidate_id,
+                known_id=container_id,
+            )
+        if not cleanup_ok:
+            return (
+                EvaluationStatus.WORKER_ERROR,
+                "candidate container cleanup failed",
+            )
+        return status, error
+
+    def _run_candidate(
+        self,
+        source: str,
+        workdir: Path,
+    ) -> tuple[EvaluationStatus, str | None]:
+        if self.execution_boundary is not None:
+            return self._run_isolated_candidate(source, workdir)
+        return self._run_local_candidate(source, workdir)
 
     def evaluate(
         self,
@@ -328,7 +720,15 @@ class PixCellEvaluator:
                 retryable=True,
             )
 
-        with tempfile.TemporaryDirectory(prefix="pixcell-eval-") as temporary:
+        temporary_root = (
+            self.execution_boundary.workspace_root
+            if self.execution_boundary is not None
+            else None
+        )
+        with tempfile.TemporaryDirectory(
+            prefix="pixcell-eval-",
+            dir=temporary_root,
+        ) as temporary:
             workdir = Path(temporary)
             execution_status, execution_error = self._run_candidate(source, workdir)
             if execution_status is not EvaluationStatus.OK:

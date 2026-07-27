@@ -9,6 +9,7 @@ import pytest
 from huggingface_hub import CommitOperationAdd, CommitOperationDelete
 
 from release.huggingface.publish_release import (
+    APPROVED_PACKAGE_RELATIVE,
     LEGACY_TAG_COMMITS,
     LEGACY_TAG_OBJECTS,
     RELEASE_TAG,
@@ -22,6 +23,7 @@ from release.huggingface.publish_release import (
 OLD_MAIN = "a" * 40
 MERGED_MAIN = "b" * 40
 PR_SHA = "c" * 40
+SOURCE_GIT_SHA = "d" * 40
 
 
 def card_data() -> dict[str, Any]:
@@ -55,19 +57,23 @@ def card_data() -> dict[str, Any]:
 
 
 def make_package(root: Path) -> Path:
-    package = root / "package"
+    (root / "dataset").mkdir(parents=True, exist_ok=True)
+    package = root / APPROVED_PACKAGE_RELATIVE
     (package / "depth" / "data").mkdir(parents=True)
     (package / "references" / "data").mkdir(parents=True)
     (package / "core" / "data").mkdir(parents=True)
     (package / "README.md").write_text("---\n---\n# PixCell\n", encoding="utf-8")
     (package / "manifest.json").write_text(
-        json.dumps({"schema_version": "pixcell-hf-release-manifest-v2"}),
+        json.dumps(
+            {
+                "schema_version": "pixcell-hf-release-manifest-v2",
+                "source_git_sha": SOURCE_GIT_SHA,
+            }
+        ),
         encoding="utf-8",
     )
     (package / "depth" / "data" / "train.parquet").write_bytes(b"depth")
-    (package / "references" / "data" / "train.parquet").write_bytes(
-        b"references"
-    )
+    (package / "references" / "data" / "train.parquet").write_bytes(b"references")
     (package / "core" / "data" / "train.parquet").write_bytes(b"core")
     return package
 
@@ -81,9 +87,7 @@ class FakeApi:
         self.tag_objects = dict(LEGACY_TAG_OBJECTS)
         self.remote_files = {"README.md", "obsolete.txt"}
         self.pr_files = {
-            path.relative_to(package).as_posix()
-            for path in package.rglob("*")
-            if path.is_file()
+            path.relative_to(package).as_posix() for path in package.rglob("*") if path.is_file()
         }
         self.create_commit_calls: list[dict[str, Any]] = []
         self.create_tag_calls: list[dict[str, Any]] = []
@@ -166,12 +170,12 @@ def test_dry_run_is_default_and_never_mutates(tmp_path: Path) -> None:
 
     report = publish_release(
         package_root=package,
-        dataset_root=tmp_path,
+        dataset_root=tmp_path / "dataset",
         repo_root=tmp_path,
         expected_main_sha=OLD_MAIN,
         api=api,
         validator=lambda release, _: validations.append(release),
-        git_inspector=lambda _: "d" * 40,
+        git_inspector=lambda _: SOURCE_GIT_SHA,
     )
 
     assert report.mode == "dry-run"
@@ -194,14 +198,14 @@ def test_apply_uses_one_atomic_pr_and_tags_only_after_validation(
 
     report = publish_release(
         package_root=package,
-        dataset_root=tmp_path,
+        dataset_root=tmp_path / "dataset",
         repo_root=tmp_path,
         expected_main_sha=OLD_MAIN,
         apply=True,
         api=api,
         downloader=downloader_for(api, tmp_path),
         validator=lambda release, _: validations.append(release),
-        git_inspector=lambda _: "d" * 40,
+        git_inspector=lambda _: SOURCE_GIT_SHA,
         sleep=lambda _: None,
     )
 
@@ -226,9 +230,7 @@ def test_apply_uses_one_atomic_pr_and_tags_only_after_validation(
     ]
     assert api.tags[SAFETY_TAG] == OLD_MAIN
     assert api.tags[RELEASE_TAG] == MERGED_MAIN
-    assert {
-        tag: api.tags[tag] for tag in LEGACY_TAG_COMMITS
-    } == LEGACY_TAG_COMMITS
+    assert {tag: api.tags[tag] for tag in LEGACY_TAG_COMMITS} == LEGACY_TAG_COMMITS
     assert len(validations) == 3
     assert report.pull_request is not None
     assert report.merged_main_sha == MERGED_MAIN
@@ -242,14 +244,14 @@ def test_pr_byte_mismatch_blocks_merge_and_v2_tag(tmp_path: Path) -> None:
     with pytest.raises(PublicationError, match="has SHA-256"):
         publish_release(
             package_root=package,
-            dataset_root=tmp_path,
+            dataset_root=tmp_path / "dataset",
             repo_root=tmp_path,
             expected_main_sha=OLD_MAIN,
             apply=True,
             api=api,
             downloader=downloader_for(api, tmp_path),
             validator=lambda *_: None,
-            git_inspector=lambda _: "d" * 40,
+            git_inspector=lambda _: SOURCE_GIT_SHA,
             sleep=lambda _: None,
         )
 
@@ -267,13 +269,13 @@ def test_legacy_tag_drift_fails_before_mutation(tmp_path: Path) -> None:
     with pytest.raises(PublicationError, match="legacy tag core-v1"):
         publish_release(
             package_root=package,
-            dataset_root=tmp_path,
+            dataset_root=tmp_path / "dataset",
             repo_root=tmp_path,
             expected_main_sha=OLD_MAIN,
             apply=True,
             api=api,
             validator=lambda *_: None,
-            git_inspector=lambda _: "d" * 40,
+            git_inspector=lambda _: SOURCE_GIT_SHA,
         )
 
     assert api.create_tag_calls == []
@@ -291,18 +293,103 @@ def test_legacy_annotated_tag_object_drift_fails_before_mutation(
     with pytest.raises(PublicationError, match="legacy tag object depth-v1"):
         publish_release(
             package_root=package,
-            dataset_root=tmp_path,
+            dataset_root=tmp_path / "dataset",
             repo_root=tmp_path,
             expected_main_sha=OLD_MAIN,
             apply=True,
             api=api,
             validator=lambda *_: None,
-            git_inspector=lambda _: "d" * 40,
+            git_inspector=lambda _: SOURCE_GIT_SHA,
         )
 
     assert api.create_tag_calls == []
     assert api.create_commit_calls == []
     assert api.merge_calls == []
+
+
+def test_dataset_root_is_bound_to_publication_repository(
+    tmp_path: Path,
+) -> None:
+    package = make_package(tmp_path)
+    external_dataset = tmp_path / "external-dataset"
+    external_dataset.mkdir()
+    api = FakeApi(package)
+
+    with pytest.raises(
+        PublicationError,
+        match="dataset root must be bound",
+    ):
+        publish_release(
+            package_root=package,
+            dataset_root=external_dataset,
+            repo_root=tmp_path,
+            expected_main_sha=OLD_MAIN,
+            api=api,
+            validator=lambda *_: None,
+            git_inspector=lambda _: SOURCE_GIT_SHA,
+        )
+
+    assert api.create_commit_calls == []
+    assert api.create_tag_calls == []
+
+
+def test_package_root_is_bound_to_approved_repository_output(
+    tmp_path: Path,
+) -> None:
+    valid_package = make_package(tmp_path)
+    external_package = tmp_path / "external-package"
+    external_package.mkdir()
+    for source in valid_package.rglob("*"):
+        if source.is_file():
+            destination = external_package / source.relative_to(valid_package)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(source.read_bytes())
+    api = FakeApi(external_package)
+
+    with pytest.raises(
+        PublicationError,
+        match="package root must be the approved",
+    ):
+        publish_release(
+            package_root=external_package,
+            dataset_root=tmp_path / "dataset",
+            repo_root=tmp_path,
+            expected_main_sha=OLD_MAIN,
+            api=api,
+            validator=lambda *_: None,
+            git_inspector=lambda _: SOURCE_GIT_SHA,
+        )
+
+    assert api.create_commit_calls == []
+    assert api.create_tag_calls == []
+
+
+def test_package_source_commit_must_match_clean_repository(
+    tmp_path: Path,
+) -> None:
+    package = make_package(tmp_path)
+    manifest_path = package / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["source_git_sha"] = "e" * 40
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    api = FakeApi(package)
+
+    with pytest.raises(
+        PublicationError,
+        match="package source Git SHA differs",
+    ):
+        publish_release(
+            package_root=package,
+            dataset_root=tmp_path / "dataset",
+            repo_root=tmp_path,
+            expected_main_sha=OLD_MAIN,
+            api=api,
+            validator=lambda *_: None,
+            git_inspector=lambda _: SOURCE_GIT_SHA,
+        )
+
+    assert api.create_commit_calls == []
+    assert api.create_tag_calls == []
 
 
 def test_cli_requires_expected_main_and_defaults_to_dry_run() -> None:

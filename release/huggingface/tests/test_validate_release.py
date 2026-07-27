@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -38,6 +40,15 @@ def test_complete_release_validates_against_frozen_sources(
     }
     assert report["core_rows"] == 738
     assert report["opaque_ids"] == 4560
+    manifest = json.loads((built_release / "manifest.json").read_text(encoding="utf-8"))
+    expected_source_sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert manifest["source_git_sha"] == expected_source_sha
 
 
 def test_support_file_drift_is_rejected(

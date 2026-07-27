@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from pathlib import Path
 
@@ -12,7 +13,13 @@ from tinker.types import LossFnType
 from tinker_cookbook import cli_utils
 from tinker_cookbook.rl.train import Config, main
 
-from rl.track_a.launch import run_launch_preflight
+from rl.common.isolation import IsolationError
+from rl.track_a.evaluation_contract import (
+    build_checkpoint_selection_contract,
+    validate_evaluation_report,
+)
+from rl.track_a.launch import bind_execution_boundary, run_launch_preflight
+from rl.track_a.recipe import validate_rl_cli
 from rl.track_a.tinker_data import (
     DEFAULT_MODEL,
     DEFAULT_RENDERER,
@@ -32,6 +39,7 @@ class CLIConfig:
     model_name: str = DEFAULT_MODEL
     renderer_name: str = DEFAULT_RENDERER
     load_checkpoint_path: str = ""
+    mastery_report: str = ""
     current_level: str = ""
     replay_levels: str = ""
     lora_rank: int = 32
@@ -48,19 +56,39 @@ class CLIConfig:
 
 
 async def cli_main(cfg: CLIConfig) -> None:
-    if cfg.confirm_spend != "TRACK_A_RL":
-        raise SystemExit(
-            "paid launch blocked: pass confirm_spend=TRACK_A_RL after local preflight"
+    if not cfg.mastery_report.strip():
+        raise SystemExit("paid launch blocked: mastery_report is required")
+    try:
+        mastery_path = Path(cfg.mastery_report).expanduser().resolve(strict=True)
+        mastery_report = json.loads(mastery_path.read_text(encoding="utf-8"))
+        if not isinstance(mastery_report, dict):
+            raise ValueError("mastery report must be a JSON object")
+        report_contract = build_checkpoint_selection_contract(
+            _REPO_ROOT,
+            Path(cfg.dataset_root),
         )
+        validate_evaluation_report(
+            mastery_report,
+            contract=report_contract,
+            expected_role="checkpoint-geometry",
+        )
+        resolved_launch = validate_rl_cli(
+            _REPO_ROOT,
+            cfg,
+            mastery_report=mastery_report,
+        )
+        resolved_launch = bind_execution_boundary(resolved_launch)
+    except (
+        OSError,
+        json.JSONDecodeError,
+        RuntimeError,
+        ValueError,
+        IsolationError,
+    ) as exc:
+        raise SystemExit(f"paid launch blocked: {exc}") from exc
     if not os.environ.get("TINKER_API_KEY"):
         raise SystemExit("TINKER_API_KEY is not present")
-    if not cfg.load_checkpoint_path:
-        raise SystemExit("load_checkpoint_path must name the selected SFT checkpoint")
-    if not cfg.current_level:
-        raise SystemExit(
-            "current_level must be the first level not mastered by the selected SFT checkpoint"
-        )
-    run_launch_preflight(_REPO_ROOT)
+    run_launch_preflight(_REPO_ROOT, resolved_launch=resolved_launch)
     config = Config(
         learning_rate=cfg.learning_rate,
         dataset_builder=TrackARLDatasetBuilder(
@@ -70,14 +98,14 @@ async def cli_main(cfg: CLIConfig) -> None:
             model_name=cfg.model_name,
             renderer_name=cfg.renderer_name,
             max_image=1440,
-            current_level=cfg.current_level,
-            replay_levels=cfg.replay_levels,
+            current_level=str(resolved_launch["current_level"]),
+            replay_levels=",".join(resolved_launch["replay_levels"]),
         ),
         model_name=cfg.model_name,
         recipe_name="pixcell_track_a_rl",
         renderer_name=cfg.renderer_name,
         lora_rank=cfg.lora_rank,
-        load_checkpoint_path=cfg.load_checkpoint_path,
+        load_checkpoint_path=str(resolved_launch["load_checkpoint_path"]),
         max_tokens=cfg.max_tokens,
         temperature=cfg.temperature,
         log_path=cfg.log_path,
@@ -86,7 +114,10 @@ async def cli_main(cfg: CLIConfig) -> None:
         loss_fn=cfg.loss_fn,
         max_steps=cfg.max_steps,
         remove_constant_reward_groups=True,
-        rollout_error_tolerance=True,
+        # Candidate mistakes return typed zero rewards. Reference or
+        # evaluator faults have already exhausted the evaluator's one retry
+        # and must abort rather than silently dropping a biased group.
+        rollout_error_tolerance=False,
         kl_penalty_coef=0.0,
         num_groups_to_log=0,
     )
