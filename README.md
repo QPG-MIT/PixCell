@@ -108,6 +108,9 @@ commands.
 │   ├── galleries/                Visual overview of the full release and each level
 │   ├── metadata/                 Catalog, checksums, audits, and source reports
 │   └── scripts/                  Deterministic build, validation, render, and export tools
+├── docs/                         Deep documentation: the campaign protocol and the system architecture
+│   ├── agent_integration.md      How the Phase-A/B campaigns ran, and where every number lives
+│   └── HOMI_SYSTEM_DIAGRAM.md    The full architecture: pipeline, engines, 7 servers × 65 tools
 ├── projects/                     The tool's workspace (ships with the worked example)
 ├── release/
 │   └── huggingface/              Build, validate, and safely publish core/depth/references
