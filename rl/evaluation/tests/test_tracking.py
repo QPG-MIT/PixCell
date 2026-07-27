@@ -181,6 +181,7 @@ def test_metrics_only_mirror_uses_resumable_id_and_disables_source_upload(
     assert fake.finished == 1
     call = fake.init_calls[0]
     assert call["id"] == result.wandb_run_id
+    assert call["reinit"] == "create_new"
     assert call["resume"] == "allow"
     assert call["group"] == "phase1-zero-shot"
     assert call["dir"] == str(store.external_root / ".wandb")
