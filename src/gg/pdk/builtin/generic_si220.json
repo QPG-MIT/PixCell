@@ -1,0 +1,140 @@
+{
+  "name": "Generic Si 220nm",
+  "version": "1.0",
+  "foundry": "Generic",
+  "description": "Generic silicon photonics platform with 220nm SOI. Compatible with most foundries (AIM, AMF, IMEC, etc.).",
+
+  "layers": {
+    "WGCORE": {
+      "name": "WGCORE",
+      "gds_number": 1,
+      "datatype": 0,
+      "purpose": "core",
+      "description": "Full etch silicon waveguide core layer (220nm).",
+      "thickness_nm": 220,
+      "etch_depth_nm": 220,
+      "sidewall_angle_deg": 85,
+      "material_name": "Si",
+      "min_width_nm": 400,
+      "min_spacing_nm": 150,
+      "color": "#2E86AB"
+    },
+    "SLAB": {
+      "name": "SLAB",
+      "gds_number": 2,
+      "datatype": 0,
+      "purpose": "slab",
+      "description": "Partial etch slab region (~90nm etch, 130nm slab remaining).",
+      "thickness_nm": 220,
+      "etch_depth_nm": 90,
+      "sidewall_angle_deg": 85,
+      "material_name": "Si",
+      "min_width_nm": 400,
+      "min_spacing_nm": 150,
+      "color": "#A23B72"
+    },
+    "HEATER": {
+      "name": "HEATER",
+      "gds_number": 10,
+      "datatype": 0,
+      "purpose": "heater",
+      "description": "Heater layer for thermo-optic phase shifters (typically TiN).",
+      "material_name": "TiN",
+      "color": "#E63946"
+    },
+    "METAL": {
+      "name": "METAL",
+      "gds_number": 40,
+      "datatype": 0,
+      "purpose": "metal",
+      "description": "Metal routing layer (typically Al or Cu).",
+      "material_name": "Al",
+      "color": "#F18F01"
+    }
+  },
+
+  "materials": {
+    "Si": {
+      "name": "Si",
+      "n_ordinary": 3.47,
+      "n_extraordinary": null,
+      "is_anisotropic": false,
+      "wavelength_nm": 1550,
+      "clad_n": 1.44,
+      "description": "Crystalline silicon at 1550nm."
+    },
+    "SiO2": {
+      "name": "SiO2",
+      "n_ordinary": 1.44,
+      "n_extraordinary": null,
+      "is_anisotropic": false,
+      "wavelength_nm": 1550,
+      "description": "Silicon dioxide cladding and BOX."
+    },
+    "TiN": {
+      "name": "TiN",
+      "n_ordinary": 2.0,
+      "n_extraordinary": null,
+      "is_anisotropic": false,
+      "wavelength_nm": 1550,
+      "description": "Titanium nitride for heaters."
+    },
+    "Al": {
+      "name": "Al",
+      "n_ordinary": 1.44,
+      "n_extraordinary": null,
+      "is_anisotropic": false,
+      "wavelength_nm": 1550,
+      "description": "Aluminum for metal routing."
+    }
+  },
+
+  "cross_sections": {
+    "strip_220": {
+      "name": "strip_220",
+      "film_thickness_nm": 220,
+      "etch_depth_nm": 220,
+      "slab_thickness_nm": 0,
+      "sidewall_angle_deg": 85,
+      "material_name": "Si",
+      "cladding_material": "SiO2",
+      "description": "Standard strip waveguide: fully etched 220nm Si."
+    },
+    "rib_90": {
+      "name": "rib_90",
+      "film_thickness_nm": 220,
+      "etch_depth_nm": 90,
+      "slab_thickness_nm": 130,
+      "sidewall_angle_deg": 85,
+      "material_name": "Si",
+      "cladding_material": "SiO2",
+      "description": "Rib waveguide: 90nm etch, 130nm slab."
+    }
+  },
+
+  "design_rules": [
+    {
+      "rule_name": "min_waveguide_width",
+      "layer_name": "WGCORE",
+      "min_value_um": 0.4,
+      "description": "Minimum waveguide width"
+    },
+    {
+      "rule_name": "min_gap",
+      "layer_name": "WGCORE",
+      "min_value_um": 0.15,
+      "description": "Minimum gap between waveguides"
+    },
+    {
+      "rule_name": "min_bend_radius",
+      "layer_name": "WGCORE",
+      "min_value_um": 5.0,
+      "description": "Minimum bend radius for low loss"
+    }
+  ],
+
+  "substrate_material": "Si",
+  "box_thickness_um": 2.0,
+  "source_pdf": null,
+  "parsing_confidence": 1.0
+}
