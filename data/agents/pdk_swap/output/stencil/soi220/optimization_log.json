@@ -1,0 +1,27 @@
+[
+  {
+    "iter": 1,
+    "params_changed": {"delta_length": 74.017, "length_y": 2.0, "length_x": 0.1, "bend_radius": 10.0, "waveguide_width": 0.5},
+    "delta_length_um": 74.017,
+    "fsr_nm": 7.9998,
+    "rel_error": 0.00003,
+    "bbox_um": [91.1, 82.76],
+    "footprint_ok": false,
+    "reasoning": "FSR = lambda^2/(n_g*dL). With n_g=4.0574 (local mode solve, 500 nm SOI strip), dL = 1.55^2/(n_g*8.0)*1000 = 74.017 um hits FSR=8.0 nm exactly. Start at the stock strip defaults (radius 10, length_y 2) to establish the baseline footprint the FSR-required dL forces.",
+    "prediction": "FSR=8.00 nm (rel_error ~0). The stock mzi realizes delta_length as a vertical straight on the long arm, so ysize = 50.75 + (dL-10)*0.5 = 82.75 um. That already blows the 50.75 um Y budget (X stays 91.1 = the budget). Predict footprint_ok=false."
+  },
+  {
+    "iter": 2,
+    "params_changed": {"length_y": 0.0, "bend_radius": 5.0},
+    "delta_length_um": 74.017,
+    "fsr_nm": 7.9998,
+    "rel_error": 0.00003,
+    "bbox_um": [71.1, 58.76],
+    "footprint_ok": false,
+    "reasoning": "Push the footprint as hard as the stencil interface allows without touching the FSR. Y is set by base(radius,length_y) + delta term. Collapse length_y 2->0 and drop the bend radius to 5.0 um, the fabricable floor (strip radius_min=5.0; a local sweep confirmed radius=3 raises ValueError). length_x held at 0.1 because 0.0 paradoxically grows X. This is the most compact config the exposed knobs can reach. nbends does NOT help: 2/4/6 give identical ysize (it never folds the delay).",
+    "prediction": "FSR unchanged at 8.00 nm (dL fixed). Minimum Y = base(r=5,ly=0)=~26.76 + delta term (dL-10)*0.5=32.0 = 58.76 um, still > 50.75. Predict footprint EXCEEDS by ~8 um even at the stencil floor -> footprint_ok=false."
+  },
+  {
+    "verdict": "FSR-ok/footprint-EXCEEDS-58.8um. FSR=8.00 nm is trivially reachable (delta_length is a clean, verified knob). The footprint constraint is UNREACHABLE within the stencil interface. Missing geometric DOF: gf.components.mzi realizes delta_length ONLY as a vertical straight extension of the long arm (ysize grows ~0.5 um per um of dL; nbends does not fold it). The 74.0 um imbalance the 8 nm FSR requires therefore adds 32 um of pure vertical extent. Even collapsed to the stencil floor (radius=5 um fab min, length_y=0), Y=58.8 um > 50.75 um budget (overflow ~8 um). The stencil exposes no parameter to route the delay as a horizontal serpentine/folded delay line — the exact degree of freedom a raw-primitives arm uses to stay in the floorplan. soi220 is the CLOSEST of the three because its high n_g (4.06) needs the smallest dL (74 um)."
+  }
+]

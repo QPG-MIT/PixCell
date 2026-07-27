@@ -1,0 +1,66 @@
+{
+  "phase": "A",
+  "workdir": "experiments/paper_swap/final3/output/recreation_codexspark",
+  "input": {
+    "component_png": "experiments/paper_swap/final3/output/recreation_codexspark/component.png",
+    "footprint_json": "experiments/paper_swap/final3/footprint.json",
+    "calibration_json_out": "experiments/paper_swap/final3/output/recreation_codexspark/calibration.json"
+  },
+  "topology_reasoning": "The target mask appears to contain two long, independently routed waveguides over a 120 um × 4 um footprint. The traces start separated near top/bottom edges, move toward each other over the first ~30 um, run nearly parallel through a central exchange/coupling window, then diverge back to opposite edges by the output end. This is modeled as a two-arm crossover/adiabatic exchange motif with polyline centerline control points and a fixed guide width.",
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.3243457525175048,
+      "dice": 0.48982035378743394,
+      "sse": 444844.0,
+      "change_made": "Initial parametric model with two straight/bent centerline arms, simple 3-segment transition profile; width 0.95 um and broad control parameters."
+    },
+    {
+      "iter": 2,
+      "iou": 0.5671479642753376,
+      "dice": 0.7237963194338086,
+      "sse": 137060.0,
+      "change_made": "Reduced guide width to 0.34 um, tightened transition lengths to match footprint and swapped to near-exchange control profile."
+    },
+    {
+      "iter": 3,
+      "iou": 0.721588077222015,
+      "dice": 0.8382819174565641,
+      "sse": 79880.0,
+      "change_made": "Replaced topology with skeleton-derived control-point polyline points extracted from source image centerlines."
+    },
+    {
+      "iter": 4,
+      "iou": 0.7283687272548958,
+      "dice": 0.8428395119272227,
+      "sse": 77551.0,
+      "change_made": "Translated y by -0.13 um and x by +0.25 um to align global offsets while keeping path profile."
+    },
+    {
+      "iter": 5,
+      "iou": 0.7211017566445886,
+      "dice": 0.8379536583013293,
+      "sse": 82321.0,
+      "change_made": "Width sweep up (0.36 um) to reduce missing material in center; regressed."
+    },
+    {
+      "iter": 6,
+      "iou": 0.7276089420745269,
+      "dice": 0.84233060428688,
+      "sse": 75935.0,
+      "change_made": "Width sweep down (0.32 um) after regression; improved precision/size consistency."
+    }
+  ],
+  "verify_knob_response": {
+    "status": "passes",
+    "param": "delta_length_um",
+    "width_um": 0.32,
+    "delta_length_ok": true,
+    "area_ok": true,
+    "base_delta_length_um": 0.4420000000000073,
+    "perturbed_delta_length_um": 5.442000000000007,
+    "delta_response_um": 5.0,
+    "expected_area_growth_um2": 1.6,
+    "area_growth_um2": 1.5999999999999943
+  }
+}

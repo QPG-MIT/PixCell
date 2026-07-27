@@ -1,0 +1,37 @@
+{
+ "tunables": {
+  "width": 1.0,
+  "radius": 5.0,
+  "gap": 0.4,
+  "length_x": 14.0,
+  "length_y": 9.4
+ },
+ "infeasible_within_representation": true,
+ "infeasibility_reasoning": "Ring FSR = lambda^2*1000/(n_g*round_trip). The evaluator's n_g is fixed by the stack (single_mode_width solve): sin400 n_g=2.0213. Hitting FSR=8.22 nm requires round_trip = 2.4025*1000/(2.0213*8.22) = 144.6 um. The only exposed levers on round_trip = 2*pi*radius + 2*length_x + 2*length_y are radius, length_x, length_y, and all three also grow the bounding box: dx = 2*radius + length_x + 6, dy = 2*radius + length_y + 2*width + gap. Within the fixed footprint 30 x 21.8 um the round_trip is maximized by trading radius for straights (a bend spends both axes, a straight only one; d(round_trip)/d(radius) = 2*pi - 8 < 0), giving a hard ceiling of ~84 um -- barely more than half of the required 144.6 um. The reported config is the max-round-trip point that still fits exactly (dx=30.0, dy=21.8), yielding the MINIMUM achievable FSR = 15.20 nm, which is 84.9% above target. No assignment of the exposed tunables can reach 8.22 nm without violating max_footprint_um. The conflict is intrinsic: the spec FSR (authored on soi220, n_g=4.06) demands a fixed round_trip, but sin400's lower n_g (2.02) needs ~2x that length, which the shared footprint cannot hold. width=single_mode_width_um=1.0 and gap=0.4>=min_feature 0.4 are respected.",
+ "evaluator_report": {
+  "passes": false,
+  "verdicts": [
+   {
+    "metric": "ring_fsr_nm",
+    "tier": 0,
+    "verdict": "fail",
+    "target": {"metric": "ring_fsr_nm", "value": 8.22, "tolerance_rel": 0.02, "tier": 0},
+    "measured": 15.19636046098244,
+    "rel_error": 0.8487056521876446,
+    "source": "local"
+   }
+  ],
+  "unmeasured": [],
+  "reason": "failed targets: ring_fsr_nm",
+  "n_eff": 1.6415010690689087,
+  "n_g": 2.0212899446487427,
+  "delta_length_um": null,
+  "wavelength_um": 1.55,
+  "stack_label": "400 nm SiN strip",
+  "from_cache": true,
+  "bbox_um": [30.0, 21.8],
+  "max_footprint_um": [30.0, 21.8],
+  "footprint_ok": true
+ },
+ "calls_used": 1
+}

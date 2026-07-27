@@ -1,0 +1,11 @@
+{
+  "device": "mzi",
+  "wavelength_um": 1.55,
+  "targets": [
+    {"metric": "fsr_nm", "value": 8.0, "tolerance_rel": 0.02, "tier": 0},
+    {"metric": "extinction_ratio_db", "min": 20.0, "tier": 1},
+    {"metric": "insertion_loss_db", "max": 1.0, "tier": 1}
+  ],
+  "constraints": {"max_footprint_um": [91.1, 50.75]},
+  "note": "schema v2: tier>=1 metrics stay 'unmeasured' until fed via --measured from tier-1/2 full-wave runs; unmeasured never passes"
+}

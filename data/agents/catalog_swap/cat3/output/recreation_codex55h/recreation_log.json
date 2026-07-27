@@ -1,0 +1,62 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [25.5, 2.5]
+  },
+  "topology_reasoning_before_coding": {
+    "device_interpretation": "A compact 1x2 MMI/adabatic splitter. A single input guide enters from the left, widens slowly, then steps into a full-height multimode slab. At the right edge of the slab the material separates into two output tapers, leaving a central slot that grows as the two outputs narrow toward single-mode guide tips.",
+    "function": "The full-width central section supports multimode beating and power division; the input taper launches into the multimode body; the two output tapers sample the field symmetrically and transition to narrower output guides.",
+    "function_defining_knobs": [
+      "input_width_um",
+      "input_taper_length_um",
+      "mmi_width_um",
+      "mmi_length_um",
+      "output_taper_length_um",
+      "output_start_width_um",
+      "output_end_width_um",
+      "output_center_separation_um"
+    ],
+    "image_measurements_um": {
+      "input_taper_length_estimate": 9.99,
+      "mmi_length_estimate": 5.50,
+      "output_taper_length_estimate": 10.00,
+      "mmi_width_estimate": 2.50,
+      "input_width_estimate": 0.52,
+      "output_end_width_estimate": 0.52,
+      "output_start_width_estimate": 0.98,
+      "output_center_separation_estimate": 1.27
+    },
+    "implementation_plan": "Build only from gdsfactory primitive taper and rectangle components. Use an input taper centered at y=0, a centered full-width rectangle for the multimode slab, and two symmetric output tapers centered at +/- output_center_separation_um/2. Top-level tunables control all functional dimensions. Write lengths.json with two output path lengths so verify_knob_response can prove output_taper_length_um changes physical geometry."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.978740717440954,
+      "dice": 0.9892561555075594,
+      "sse": 3109.0,
+      "change_made": "Initial primitive MMI splitter: input taper 10.00 um from 0.52 to 1.00 um, 5.50 x 2.50 um MMI slab, and two symmetric 10.00 um output tapers from 0.98 to 0.52 um at 1.27 um center separation. Geometry exceeded the 0.85 IoU stop threshold, so no further shape iteration was run."
+    }
+  ],
+  "implementation_notes": [
+    "The GDS is written with_metadata=False so the non-metadata primitive cell is top-level and homi.spec_optimization area checks can measure layer (1,0).",
+    "No catalog stencils or raw polygons are used; the geometry is assembled from gf.components.taper and gf.components.rectangle primitives."
+  ],
+  "knob_verification": {
+    "param": "mmi_length_um",
+    "delta_um": 5.0,
+    "width_um": 2.5,
+    "base_value": 5.5,
+    "base_delta_length_um": 5.5,
+    "perturbed_delta_length_um": 10.5,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 36.35,
+    "perturbed_area_um2": 48.85000000000001,
+    "area_growth_um2": 12.500000000000007,
+    "expected_area_growth_um2": 12.5,
+    "area_ok": true,
+    "passes": true
+  }
+}

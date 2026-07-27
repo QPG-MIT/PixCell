@@ -1,0 +1,81 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [
+      6.38,
+      0.55
+    ]
+  },
+  "topology_reasoning": {
+    "device_identification": "A short one-dimensional corrugated photonic waveguide / subwavelength grating section. The black material is a continuous narrow central spine running the full footprint length, with periodic wider ribs that extend to the full footprint height.",
+    "operation": "The continuous spine carries the optical mode, while the periodic ribs perturb the effective index and form a grating/metamaterial section. Its function is primarily set by the grating period, rib duty factor, rib count/total length, rib/full width, and spine width.",
+    "function_defining_knobs": [
+      "delta_length: total grating/spine length",
+      "core_width_um: continuous spine width",
+      "rib_width_um: full corrugation width",
+      "period_um: rib pitch",
+      "rib_length_um: duty factor / longitudinal rib length",
+      "lead_gap_um: starting phase before first rib",
+      "rib_count: number of corrugation ribs"
+    ],
+    "measured_bitmap_features": {
+      "image_px": [
+        1602,
+        140
+      ],
+      "calibrated_bbox_px": [
+        1601,
+        139
+      ],
+      "scale_px_per_um": [
+        250.94043887147336,
+        252.72727272727272
+      ],
+      "full_material_width_um": 0.55,
+      "spine_width_um": 0.4510791366906475,
+      "rib_count": 20,
+      "lead_gap_um": 0.16737039350405997,
+      "rib_length_um": 0.16298688319800123,
+      "period_um": 0.3177520628554522,
+      "tail_after_last_rib_um": 0.011955028107432854,
+      "script_spine_width_um_after_dbu_snap": 0.452
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9941079378762128,
+      "dice": 0.9970452641946441,
+      "sse": 1203.0,
+      "change_made": "Initial primitive model: path-extruded 0.452 um spine plus 20 rectangular full-width ribs. Stopped because IoU exceeded 0.85; remaining diff is single-pixel edge quantization."
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.452,
+    "base_value": 6.38,
+    "base_delta_length_um": 6.38,
+    "perturbed_delta_length_um": 11.38,
+    "delta_response_um": 5.000000000000001,
+    "delta_length_ok": true,
+    "base_area_um2": 3.2012799999999992,
+    "perturbed_area_um2": 5.461279999999993,
+    "area_growth_um2": 2.259999999999994,
+    "expected_area_growth_um2": 2.2600000000000002,
+    "area_ok": true,
+    "passes": true
+  },
+  "final": {
+    "iou": 0.9941079378762128,
+    "dice": 0.9970452641946441,
+    "sse": 1203.0,
+    "iterations": 1,
+    "gds": "device.gds",
+    "script": "device.py",
+    "raster": "raster.png",
+    "diff": "diff.png"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "device_analysis": {
+    "topology": "Directional coupler with tapered coupling region",
+    "description": "Two waveguides that run parallel, approach each other via tapers, maintain close proximity for coupling, then separate via inverse tapers",
+    "function": "Optical power coupling between two waveguides via evanescent field overlap",
+    "key_parameters": {
+      "input_width": "Width of the input/output waveguides at the edges",
+      "taper_width": "Minimum width at the tips where coupling occurs",
+      "gap": "Vertical separation between the two waveguides in the coupling region",
+      "coupling_length": "Horizontal length of the parallel coupling section",
+      "taper_length": "Length of the taper transition from input_width to taper_width"
+    },
+    "geometry_observations": {
+      "total_length_um": 18,
+      "total_height_um": 3,
+      "upper_waveguide": "Tapers from wide to narrow, parallel section, tapers back to wide",
+      "lower_waveguide": "Mirror of upper waveguide with vertical offset (gap)",
+      "symmetry": "Horizontally symmetric (left-right mirror)"
+    },
+    "function_defining_knobs": [
+      "gap (controls coupling strength - primary)",
+      "coupling_length (controls interaction length - primary)",
+      "taper_width (affects mode matching - secondary)",
+      "taper_length (affects insertion loss - secondary)",
+      "input_width (port compatibility - fixed for fab)"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.108,
+      "dice": 0.195,
+      "sse": 411373.0,
+      "change_made": "Initial attempt with linear tapers. WRONG - target has smooth S-curves (sine/cosine transitions), not linear tapers. Need to use bends or parametric curves. Also input_width too narrow."
+    },
+    {
+      "iter": 2,
+      "iou": 0.085,
+      "dice": 0.157,
+      "sse": 420779.0,
+      "change_made": "Added smooth cosine tapers but IoU worse. Height mismatch: GDS=1.85um vs target=3um. Gap too large (0.5um), input_width still too small. Need input_width~1.4um, gap~0.2um to fill 3um footprint."
+    },
+    {
+      "iter": 3,
+      "iou": 0.07,
+      "dice": 0.13,
+      "sse": 438888.0,
+      "change_made": "Adjusted gap=0.2, input_width=1.4 but IoU still dropping. TOPOLOGY WRONG: I modeled narrow-tipped tapers. Target shows WIDE waveguides throughout (1.3-1.4um) that only slightly converge/diverge, NOT aggressive tapers to thin tips. Need taper_width~1.2um (minor shape change), not 0.25um."
+    },
+    {
+      "iter": 4,
+      "iou": 0.475,
+      "dice": 0.644,
+      "sse": 328968.0,
+      "change_made": "MAJOR improvement! Switched to wide waveguides (taper_width=1.25, gap=0.1). Red extra in middle = coupling_length too long. Blue missing at edges = need more curvature at ends, slightly wider overall."
+    },
+    {
+      "iter": 5,
+      "iou": 0.477,
+      "dice": 0.646,
+      "sse": 333234.0,
+      "change_made": "Slight improvement. Still have red middle (straight section visible). Target appears to be ONE continuous smooth curve end-to-end, not taper-straight-taper. Will try fully parametric curve."
+    },
+    {
+      "iter": 6,
+      "iou": 0.446,
+      "dice": 0.617,
+      "sse": 370604.0,
+      "change_made": "Tried fully continuous curve - IoU dropped. Best was iter 5 (0.477). Restoring that version."
+    }
+  ]
+}

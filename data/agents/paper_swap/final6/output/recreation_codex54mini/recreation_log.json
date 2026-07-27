@@ -1,0 +1,28 @@
+{
+  "topology_reasoning": [
+    "The target is a single connected, 4-way symmetric primitive centered in a square footprint.",
+    "It is best described as two orthogonal tapered waveguide bodies (horizontal and vertical) that overlap at the center, producing a clover/cross outline.",
+    "Each arm is straight on-center and narrows toward the tip; the black region is not a routing network, ring, or multi-stage interferometer.",
+    "Function-defining knobs are the arm reach and the width profile along the arm: center width, intermediate shoulder width, mid width, and tip width."
+  ],
+  "notes": [
+    "Target image copied to component.png in this directory.",
+    "Calibration generated from component.png and footprint.json before coding."
+  ],
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8003639232452792,
+      "dice": 0.8891134874582117,
+      "sse": 15689.0,
+      "change_made": "Initial four-arm straight-path recreation with a monotone taper profile; measured diff showed the arms were too narrow through the mid-body."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8561954491748295,
+      "dice": 0.9225272581671834,
+      "sse": 11319.0,
+      "change_made": "Broadened the arm profile with a mid-body bulge and added flattened GDS export so the knob verifier can read top-level polygons."
+    }
+  ]
+}

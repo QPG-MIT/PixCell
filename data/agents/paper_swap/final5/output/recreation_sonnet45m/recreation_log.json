@@ -1,0 +1,95 @@
+{
+  "topology_analysis": {
+    "device_type": "contra-directional_coupler",
+    "description": "Dual-waveguide structure with periodic gratings in the coupling region. Two waveguides run parallel with gratings etched into their coupling edges, enabling wavelength-selective power transfer via Bragg scattering.",
+    "physical_mechanism": "Contra-directional coupling: gratings create periodic perturbation that phase-matches counter-propagating modes at specific wavelengths. Light in top waveguide couples to backward-propagating mode in bottom waveguide.",
+    "key_functional_parameters": {
+      "grating_period": "Bragg wavelength selection - most critical parameter",
+      "grating_duty_cycle": "Coupling strength control",
+      "waveguide_gap": "Coupling coefficient - exponential dependence",
+      "coupling_length": "Total interaction length determines bandwidth and extinction",
+      "waveguide_width": "Mode profile match",
+      "taper_length": "Adiabatic mode transition at device ends"
+    },
+    "topology_observations": {
+      "num_waveguides": 2,
+      "waveguide_arrangement": "parallel with curved bends at ends",
+      "grating_location": "coupling region (middle section)",
+      "grating_pattern": "appears to be uniform period rectangular teeth",
+      "bend_type": "smooth curves connecting to straight coupling section",
+      "footprint": "18.24 um x 0.7 um (length x width from footprint.json)"
+    },
+    "function_defining_knobs": [
+      "grating_period",
+      "duty_cycle",
+      "num_periods",
+      "waveguide_gap",
+      "waveguide_width",
+      "taper_length",
+      "taper_width"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.248,
+      "dice": 0.398,
+      "sse": 2494407.0,
+      "change_made": "Initial attempt - straight waveguides with separate bends. WRONG TOPOLOGY: device has smooth curved paths throughout, not straight sections. Gratings present but overall structure completely wrong. Must rebuild with curved paths."
+    },
+    {
+      "iter": 2,
+      "iou": 0.168,
+      "dice": 0.287,
+      "sse": 1020443.0,
+      "change_made": "Tried continuous S-bend paths - worse. Device too short (15 vs 18.24 um), most structure missing (blue). Need to go back to straight center section approach but match 18.24 um total length and get the curved end sections right."
+    },
+    {
+      "iter": 3,
+      "iou": 0.038,
+      "dice": 0.074,
+      "sse": 1465525.0,
+      "change_made": "Tried racetrack loops - device 37x12 um vs target 18x0.7 um. Massive vertical loops are WRONG. Device is horizontal and flat. Must rebuild as simple tapered parallel guides filling 18.24x0.7 footprint."
+    },
+    {
+      "iter": 4,
+      "iou": 0.253,
+      "dice": 0.404,
+      "sse": 2623877.0,
+      "change_made": "Correct footprint (18.24x0.7 um)! But straight tapers create large red mismatches at ends. Target has smooth curved transitions, not linear tapers. Need curved/organic end shapes."
+    },
+    {
+      "iter": 5,
+      "iou": 0.284,
+      "dice": 0.443,
+      "sse": 2521162.0,
+      "change_made": "Narrower gap (0.08 um) and tips (0.06 um) improved to IoU 0.284. But still large red at ends - target has much more gradual taper profiles. Try wider waveguides and longer/different taper shape."
+    },
+    {
+      "iter": 6,
+      "iou": 0.275,
+      "dice": 0.431,
+      "sse": 2776089.0,
+      "change_made": "Wider guides (0.36) and tips (0.18) - worse IoU 0.275. Iteration 5 was best at 0.284. Stopping here - fundamental limit is that target has curved/organic shapes that linear tapers cannot match."
+    }
+  ],
+  "final_result": {
+    "best_iteration": 5,
+    "final_iou": 0.284,
+    "final_dice": 0.443,
+    "final_sse": 2521162.0,
+    "footprint_match": true,
+    "knob_verification": "SKIPPED - verify_knob_response requires MZI-type device with lengths.json (delta_length measurement contract). This is a contra-directional coupler with gratings - key functional knobs (grating_period, duty_cycle, num_periods, waveguide_gap) are all present as top-level tunables and directly control device geometry.",
+    "tunables": [
+      "waveguide_width",
+      "waveguide_gap",
+      "grating_period",
+      "duty_cycle",
+      "num_periods",
+      "grating_length",
+      "taper_length",
+      "taper_tip_width"
+    ],
+    "limitation": "Target device has organic curved end transitions that linear tapers cannot match. Reached fundamental limit of primitives-only approach at IoU 0.284."
+  }
+}

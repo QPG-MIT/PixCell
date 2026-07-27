@@ -1,0 +1,48 @@
+{
+  "device_type": "directional coupler (2x2)",
+  "topology_reasoning": {
+    "what": "Two single-mode strip waveguides that start well separated at the four ports (top-left, bottom-left, top-right, bottom-right), S-bend inward to run parallel with a small edge-to-edge gap through a central straight 'coupling region', then S-bend back out symmetrically. Classic 2x2 directional coupler / evanescent coupler.",
+    "how_it_works": "In the coupling region the two waveguide modes overlap evanescently; power beats between the two cores at a rate set by the even/odd supermode index splitting dn = n_even - n_odd. Fractional power transferred = sin^2(pi*L_c / (2*L_pi)) where L_pi = lambda/(2*dn) is the beat/coupling length. dn is set primarily by the gap; the coupling straight length sets how much of a beat period is traversed; the S-bends route light in/out without adding coupling.",
+    "function_knobs": {
+      "coupling_gap": "edge-to-edge gap between the two straights in the coupling region -> sets dn hence L_pi (exponential in gap). Measured ~0.20 um.",
+      "coupling_length": "length of the central parallel straight -> sets accumulated coupling phase / split ratio. Measured ~21 um.",
+      "wg_width": "single-mode guide width -> confinement, dn. Measured ~0.52 um.",
+      "sbend_length": "horizontal length of each input/output S-bend transition. Measured ~9.5 um.",
+      "port_sep": "center-to-center separation of the guides at the ports (fan-out)."
+    }
+  },
+  "measurements_from_image": {
+    "wg_width_um": 0.52,
+    "coupling_center_to_center_um": 0.72,
+    "coupling_edge_gap_um": 0.20,
+    "coupling_straight_span_x_um": [9.5, 30.5],
+    "port_centerline_offset_um": 1.98,
+    "sbend_horizontal_um": 9.5,
+    "sbend_shape": "cosine (zero slope at both ends) — matches the flat guide<->coupling transitions in the image to within ~1px over the whole S-bend",
+    "footprint_um": [40.0, 4.5]
+  },
+  "construction": "Primitives only: each of the two waveguides is a single gf.Path centerline (cosine S-bend -> straight -> cosine S-bend, sampled points) extruded to wg_width on layer (1,0). No gf.components stencils, no raw polygons. Component flattened before write so the device cell is a real top-level GDS cell.",
+  "iterations": [
+    {"iter": 1, "iou": 0.6785, "dice": 0.8078, "sse": 26458.0, "change_made": "initial directional coupler: cosine S-bends + coupling straight; coupling_length=15, sbend_length=12.5, port_sep=3.88, gap=0.20, width=0.52"},
+    {"iter": 2, "iou": 0.8837, "dice": 0.9382, "sse": 8518.0, "change_made": "re-measured target centerline densely: coupling straight is x=9.5..30.5 (~21um), S-bends ~9.5um each. Set coupling_length=21, sbend_length=9.5, port_sep=3.95"},
+    {"iter": 3, "iou": 0.9103, "dice": null, "sse": null, "change_made": "swept port_sep: S-bend amplitude residual (blue at port corners) — raised port_sep to 4.05 to fill the S-bend/port overlap"},
+    {"iter": 4, "iou": 0.9224, "dice": 0.9596, "sse": 5542.0, "change_made": "peak of port_sep sweep at 4.20 (4.30 overshoots); confirmed wg_width=0.52 best (0.50->0.921, 0.54->0.895). FINAL."}
+  ],
+  "final": {
+    "iou": 0.9223994287074506,
+    "dice": 0.9596334819217435,
+    "sse": 5542.0,
+    "precision": 0.9388,
+    "recall": 0.9814,
+    "tunables": {"wg_width": 0.52, "coupling_gap": 0.20, "coupling_length": 21.0, "sbend_length": 9.5, "port_sep": 4.20},
+    "gds_bbox_um": [40.0, 4.72]
+  },
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "knob": "coupling_length",
+    "delta_um": 5.0,
+    "result_width_um_0.52": {"area_growth_um2": 5.2, "expected_um2": 2.6, "area_ok": false, "delta_length_ok": false, "passes": false},
+    "result_width_um_1.04": {"area_growth_um2": 5.2, "expected_um2": 5.2, "area_ok": true},
+    "interpretation": "Perturbing coupling_length by +5 um grows layer-(1,0) area by exactly 5.20 um2 = 2 * wg_width * 5 um: BOTH coupled guides lengthen (a 2x2 coupler has two guides in the coupling region), so real geometry moves precisely as physics predicts. verify_knob_response's gates are MZI-shaped: (a) it expects area growth = wg_width*delta (one guide) — passes cleanly with width_um=1.04 accounting for both coupled guides; (b) its delta_length gate expects an MZI arm-length imbalance, which a SYMMETRIC directional coupler does not have (delta_length is identically 0), so that gate is not applicable here. The geometry-response proof (area moves by exactly the predicted amount) holds."
+  }
+}

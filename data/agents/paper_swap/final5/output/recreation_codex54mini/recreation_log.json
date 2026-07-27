@@ -1,0 +1,82 @@
+{
+  "phase": "A",
+  "image_hypothesis": "Folded interferometric coupler / MZI-like photonic device with two long outer arms, a central straight bus, and two periodic corrugated coupling sections.",
+  "topology_reasoning": [
+    "The silhouette is dominated by three long horizontal waveguide bands: an upper folded arm, a central straight section, and a lower folded arm.",
+    "The upper and lower bands each have large U-shaped return bends at opposite ends, which strongly suggests routed arms rather than isolated resonators or gratings.",
+    "Two repeated arrays of narrow vertical teeth sit on the inner edge of the upper and lower arms, consistent with a coupling or interaction region that uses periodic corrugation / interdigitated features.",
+    "The device appears bilateral and intentionally symmetric in the long-axis direction, so the first reconstruction should preserve that symmetry while allowing one arm-length imbalance knob for phase/delay tuning.",
+    "The central straight band is functionally important and likely represents a through arm or bias path; the reconstruction should keep it explicit instead of collapsing everything into a single outline.",
+    "The main function-defining knobs are the folded-arm transfer length, the taper length into/out of the corrugated sections, the taper tip width, the arm gap / vertical offset, the corrugation pitch and count, and a delta-length knob for the phase arm."
+  ],
+  "function_defining_knobs": [
+    "width_um",
+    "tip_width_um",
+    "gap_um",
+    "taper_length_um",
+    "transfer_length_um",
+    "finger_pitch_um",
+    "finger_count",
+    "finger_length_um",
+    "delta_length"
+  ],
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.0,
+      "dice": 0.0,
+      "sse": 1130730.0,
+      "change_made": "Initial primitives-only build with tapers and arm refs placed incorrectly; bbox doubled and raster overlap vanished."
+    },
+    {
+      "iter": 2,
+      "iou": 0.2931237595517257,
+      "dice": 0.4533576270431223,
+      "sse": 1128670.0,
+      "change_made": "Removed taper placement bugs and kept the folded smooth-arm layout with a central bus and comb rows."
+    },
+    {
+      "iter": 3,
+      "iou": 0.134508986644121,
+      "dice": 0.23712282269706605,
+      "sse": 1710585.0,
+      "change_made": "Moved the outer arms onto more separated rails; this reduced overlap with the target and was worse."
+    },
+    {
+      "iter": 4,
+      "iou": 0.11844147506747645,
+      "dice": 0.21179735857047108,
+      "sse": 1801620.0,
+      "change_made": "Split the outer rails into connector-plus-strip pieces; the geometry became too sparse and match quality dropped further."
+    },
+    {
+      "iter": 5,
+      "iou": 0.11270646939481438,
+      "dice": 0.20258077488506715,
+      "sse": 1808424.0,
+      "change_made": "Restored the earlier folded-arm state but with a narrower footprint and no improvement in overlap."
+    },
+    {
+      "iter": 6,
+      "iou": 0.29807335436071614,
+      "dice": 0.4592550233919766,
+      "sse": 1100701.0,
+      "change_made": "Restored the best-known folded-arm geometry and kept the delta_length detour as the real knob-controlled length change."
+    }
+  ],
+  "best_iteration": 6,
+  "best_iou": 0.29807335436071614,
+  "final_script": "experiments/paper_swap/final5/output/recreation_codex54mini/device.py",
+  "calibration": "experiments/paper_swap/final5/output/recreation_codex54mini/calibration.json",
+  "knob_verification": {
+    "param": "delta_length",
+    "width_um": 0.06,
+    "passes": true,
+    "delta_response_um": 4.992000000000004,
+    "area_ok": true
+  },
+  "notes": [
+    "The source image was treated as the only ground truth input.",
+    "The final IoU stayed below the 0.85 target, but the best measured result was preserved honestly."
+  ]
+}

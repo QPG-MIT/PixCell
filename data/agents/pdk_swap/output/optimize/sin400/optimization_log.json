@@ -1,0 +1,29 @@
+{
+  "stack": "sin400",
+  "stack_label": "400 nm SiN strip",
+  "spec": {"metric": "fsr_nm", "target": 8.0, "tolerance_rel": 0.02, "wavelength_um": 1.55},
+  "wg_width_um": 1.0,
+  "wg_width_rule": "= stack single_mode_width_um (rule-based, not searched); >= min_feature_um 0.4",
+  "geometry_note": "delta_length ~149 um folded into the 4-finger boustrophedon meander (primitives: straight + euler U-turns); delta_length stays the exact knob (bottom_len - top_len). SiN is weakly confined (low n_g), so it needs the largest imbalance of the three stacks.",
+  "iterations": [
+    {
+      "iter": 1,
+      "delta_length_requested_um": 148.57,
+      "delta_length_measured_um": 148.57,
+      "n_eff": 1.6415,
+      "n_g": 2.0213,
+      "fsr_nm": 8.0003,
+      "rel_error": 0.0000391,
+      "reasoning": "FSR = lambda^2/(n_g*delta_L). Pre-solved n_g=2.0213 for the SiN 400nm/1.0um strip, so required delta_L* = 2.4025/(2.0213*0.008) = 148.57 um. Set delta_length=148.57 and folded it into the meander (finger height ~23 um). Predicted FSR = 8.0 nm.",
+      "predicted_fsr_nm_next": null
+    }
+  ],
+  "converged": true,
+  "converged_iter": 1,
+  "final": {"fsr_nm": 8.0003, "rel_error": 0.0000391, "delta_length_um": 148.57, "n_g": 2.0213},
+  "fidelity_after_retune": {
+    "iou_vs_original_image": 0.0186,
+    "iou_before_retune_refined": 0.6275,
+    "note": "Expected large drop: geometry morphs to a compact meander delay to meet the FSR spec while the MZI topology persists. Not tuned back."
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "phase": "A",
+  "topology_reasoning": {
+    "device_interpretation": "Single-port-to-single-port rectangular spiral delay line / compact waveguide coil. The black material is one continuous constant-width layer-(1,0) waveguide with two open ends on the lower-right side. It uses nested rounded rectangular turns to pack optical path length into a 173.5 by 59.5 um footprint, with an inner left loop that returns into the long inner straight section.",
+    "operating_principle": "The function is governed by total guided path length and bend loss. The long folded path supplies delay/phase accumulation; constant pitch keeps adjacent turns separated, and large rounded turns reduce bend loss.",
+    "function_defining_knobs": [
+      "wg_width_um controls waveguide material width",
+      "path_scale_x and path_scale_y control the absolute footprint fit",
+      "path_offset_x_um and path_offset_y_um position the reconstructed centerline before absolute raster alignment",
+      "delta_length controls a real terminal trim section that changes total path length and material area",
+      "simplified centerline control points define the nested spiral topology derived from the calibrated bitmap"
+    ],
+    "primitive_strategy": "Build a single gf.Path from centerline control points and extrude it with a constant-width CrossSection on layer (1,0). This uses only gf.Path plus extrusion, no catalog stencil components and no raw polygon drawing."
+  },
+  "calibration": {
+    "footprint_um": [
+      173.5,
+      59.5
+    ],
+    "source_image": "component.png"
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9214050134178235,
+      "dice": 0.9590950444943565,
+      "sse": 11510.0,
+      "change_made": "Initial primitives-only gf.Path extrusion from calibrated centerline control points; wg_width_um set to 0.50 based on target material-width sweep. IoU exceeded 0.85, so iteration stopped."
+    }
+  ],
+  "knob_response": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.5,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 1317.2760080000098,
+    "perturbed_area_um2": 1319.7760080000098,
+    "area_growth_um2": 2.5,
+    "expected_area_growth_um2": 2.5,
+    "area_ok": true,
+    "passes": true
+  }
+}

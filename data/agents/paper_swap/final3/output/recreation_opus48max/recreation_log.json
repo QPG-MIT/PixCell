@@ -1,0 +1,77 @@
+{
+  "device": "2x2 directional coupler with tapered access (symmetric, evanescent)",
+  "footprint_um": [120, 4],
+  "calibration": {
+    "scale_px_per_um": [15.8167, 184.75],
+    "note": "anisotropic; vertical magnified 11.7x. compare_absolute renders X-left-aligned, Y-centered; device must be true 120x4 um and the anisotropic render matches the drawn (stretched) silhouette."
+  },
+  "topology_reasoning": "Two single-mode waveguides. Each enters at a narrow port tip, LINEARLY TAPERS up to a wider device width along a straight access section, then S-bends inward to a central region where the two guides run parallel at a small constant gap for a fixed length, then S-bends back out and tapers back down to a narrow output tip. Top-bottom mirror symmetric. This is the classic 2x2 evanescent directional coupler with adiabatic access tapers: NOT an MMI (no wide multimode slab), NOT a Y-branch (no merge), NOT an adiabatic-taper power splitter. The access tapers are directly visible in the image (the port stubs are narrow at the chip edge and widen toward the bends) and the conductor's brief names 'taper lengths, tip widths' as coupler function knobs.",
+  "how_it_works": "In the coupling region the two guides' evanescent fields overlap; the structure supports even and odd supermodes with different propagation constants. Over the transfer length Lc the accumulated phase difference beats power between the guides: cross-over fraction ~ sin^2(kappa*Lc). kappa is set by the edge-to-edge gap (smaller gap -> stronger coupling) and the device width. The narrow port tips are edge/access widths; the tapers adiabatically convert to the device mode. S-bends route the ports apart so they are independently addressable.",
+  "function_knobs": {
+    "tip_width": "waveguide width at the port tips (access/edge-coupling width)",
+    "device_width": "waveguide width through the bends and coupling region (sets modal confinement, kappa)",
+    "coupling_gap": "edge-to-edge gap in the coupling region; the dominant knob for coupling strength kappa",
+    "coupling_length": "transfer/interaction length Lc; with gap sets the power split ratio (THE primary function knob)",
+    "taper_length": "length of each access taper (tip_width -> device_width)",
+    "sbend_length": "horizontal length of each S-bend (access-routing adiabaticity)",
+    "input_port_sep / output_port_sep": "center-to-center separation of the outer ports (access routing)",
+    "sbend_steepness": "S-bend shape (0=raised cosine, >0=steeper middle)"
+  },
+  "measured_geometry_px_and_um": {
+    "waveguide_width_ports_px": "55-60 (tips) -> ~0.30 um",
+    "waveguide_width_bend_approach_px": "75-83 (fattest) -> device/bend region",
+    "coupling_top_guide_px": "76(left)->60(right)",
+    "coupling_bottom_guide_px": "39(left)->54(right)",
+    "coupling_center_to_center_sep_px": 85,
+    "coupling_center_to_center_sep_um": 0.46,
+    "input_port_sep_um": 3.44,
+    "output_port_sep_um": 3.67,
+    "input_flat_extent_um": "0..~19",
+    "left_sbend_extent_um": "~19..~32",
+    "coupling_flat_extent_um": "~33..~87"
+  },
+  "final_tunables": {
+    "tip_width": 0.284,
+    "device_width": 0.354,
+    "coupling_gap": 0.106,
+    "coupling_length": 56.0,
+    "sbend_length": 13.0,
+    "taper_length": 19.0,
+    "input_port_sep": 3.46,
+    "output_port_sep": 3.67,
+    "sbend_steepness": 1.5,
+    "note": "total length = 2*taper_length + 2*sbend_length + coupling_length = 120 um (X is left-aligned in the metric, so total must equal the footprint length). coupling_gap 0.106 chosen so device_width+gap = 0.46 um = the measured 85 px center-to-center separation, rather than the IoU-optimizer's slightly tighter 0.086 (honesty over +0.002 IoU)."
+  },
+  "iterations": [
+    {"iter": 1, "iou": 0.6587, "dice": 0.7942, "sse": 97570,
+     "change_made": "Initial symmetric constant-width directional coupler: straights + raised-cosine S-bends extruded at wg_width=0.31, single port_separation=3.56, coupling_length=54, sbend=16, input=17. Topology correct; ports/bends misaligned."},
+    {"iter": 2, "iou": 0.7261, "dice": 0.8414, "sse": null,
+     "change_made": "From column-by-column raster-vs-target profiling: split into input_port_sep=3.44 and output_port_sep=3.67 (drawing has asymmetric access separations); shortened+shifted the S-bends (sbend=13, input=19, coupling=56) to match the measured flat/steep extents; wg_width=0.308. Ports now aligned within a few px."},
+    {"iter": 3, "iou": 0.7291, "dice": null, "sse": null,
+     "change_made": "Steepened the S-bend middle (raised-cosine -> tanh, sbend_steepness=1.5) to better follow the measured centerline; small gain (width/steepness sweep confirmed wider width HURTS IoU, so width stays ~0.31 -- fattening is not the lever)."},
+    {"iter": 4, "iou": 0.7411, "dice": 0.8513, "sse": 73894,
+     "change_made": "TAPERED-ACCESS model: the input-tip crop clearly shows the access waveguides taper from ~55 px tips up to the fatter device/bend region, so re-modelled as tip_width -> device_width linear tapers (extrude_transition) on the access straights, constant device_width through bends+coupling. Jointly IoU-optimized all continuous knobs (coordinate descent, total length constrained to 120). Best honest config; final IoU 0.7411, Prec 0.864, Recall 0.839."}
+  ],
+  "investigations_and_rejected_alternatives": {
+    "wider_constant_width": "Sweeping wg_width up (0.33/0.35/0.37) monotonically LOWERS IoU (precision falls faster than recall rises): fattening to cover the drawing's fat bends over-fills the straights. Confirms the anti-fattening discipline; IoU-optimal single width ~0.31-0.35.",
+    "asymmetric_per_guide_widths": "Tested top_device != bottom_device (the top guide is drawn consistently fatter, ~1.3x). Best IoU 0.7564 -- only +0.015 over symmetric. REJECTED: the top/bottom difference is a CROSSING gradient (top thins left->right, bottom fattens left->right, ~constant sum), i.e. a drawing/brush artifact, not the two constant widths a real asymmetric coupler would have. Modelling it for +0.015 would be fitting drawing noise; kept the clean symmetric physical device.",
+    "iou_ceiling": "The drawing's stroke width varies ~55-83 px (0.30-0.45 um, ~50%) along the guides -- fattest in the bends (~78 px), thinner in the coupling (top 69 / bottom 45 px), narrow tips (55 px). A single constant device_width cannot satisfy fat bends (needs FN) and thinner coupling (needs FP) at once; this caps IoU near 0.74-0.76 even when fitting the artifacts. The centerline itself is matched within ~3 px everywhere (except an irreducible ~2.5 px coupling center-offset from the symmetric Y-centering). 0.85 is not reachable with an honest, physical, constant-width directional coupler for this particular drawing; 0.7411 is the honest best."
+  },
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "coupling_length",
+    "delta_um": 5.0,
+    "width_um_passed": 0.354,
+    "result": {
+      "base_area_um2": 82.457,
+      "perturbed_area_um2": 85.997,
+      "area_growth_um2": 3.54,
+      "delta_response_um": 0.0,
+      "passes": false
+    },
+    "interpretation": "The transfer-length knob DEMONSTRABLY moves real layer-(1,0) geometry: perturbing coupling_length by +5 um grows the polygon area by exactly 3.54 um2 = 2 * device_width * 5 (both parallel coupling straights extend). delta_length_ok / area_ok / passes are False only because those checks are MZI-specific: a SYMMETRIC 2x2 coupler has two equal arms so delta_length is identically 0, and the area grows by 2x (two arms) the single-arm width*delta the tool expects. The area growth landing exactly on the two-arm prediction (2*0.354*5=3.54) is the clean proof the knob is real."
+  },
+  "final_metrics": {"IoU": 0.7411, "Dice": 0.8513, "SSE": 73894, "Precision": 0.8644, "Recall": 0.8386},
+  "primitives_only": "straights, raised-cosine/tanh S-bend gf.Path centerlines, gf.cross_section + extrude / extrude_transition (linear tapers), @gf.cell assembly of two mirror-image guides on layer (1,0). No gf.components device stencils, no raw polygons.",
+  "outcome": "IoU 0.7411 after 4 refinement iterations (topology correct throughout). Honest best; ceiling set by drawing stroke-width inconsistency, not model/topology error."
+}

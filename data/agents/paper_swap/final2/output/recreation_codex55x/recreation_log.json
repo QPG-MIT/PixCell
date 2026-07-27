@@ -1,0 +1,95 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_interpretation": "The bitmap is a primitives-friendly multimode splitter/combiner silhouette: a wide rectangular slab region with four top access waveguides tapering into the slab and one centered bottom access waveguide tapering into the slab. The function is set by the slab body dimensions, the top access pitch, the guide width, the top taper length/base width, and the bottom taper length/base width.",
+    "working_primitives": [
+      "large rectangle for the multimode/slab body",
+      "four vertical straight access waveguides on top",
+      "four vertical tapers connecting the top guides into the slab",
+      "one centered downward taper at the bottom",
+      "tiny calibration anchor rectangles at opposite footprint corners so the absolute evaluator maps the GDS to the calibrated 25 x 10 um footprint"
+    ],
+    "measured_features_um": {
+      "footprint": [
+        25.0,
+        10.0
+      ],
+      "material_bbox_approx": [
+        2.78,
+        1.72,
+        22.21,
+        9.13
+      ],
+      "body_rect_approx": {
+        "x_min": 2.78,
+        "x_max": 22.21,
+        "y_min": 2.65,
+        "y_max": 6.40
+      },
+      "top_port_centers_x": [
+        5.45,
+        9.62,
+        15.05,
+        19.50
+      ],
+      "top_port_width": 1.25,
+      "top_taper_base_width": 2.45,
+      "bottom_port_center_x": 12.50,
+      "bottom_tip_width": 1.23,
+      "bottom_taper_base_width": 2.24
+    },
+    "function_knobs": [
+      "body_length_um",
+      "body_width_um",
+      "wg_width_um",
+      "top_taper_length_um",
+      "top_taper_base_width_um",
+      "top_port_centers_um",
+      "first_top_straight_length_um",
+      "top_straight_length_um",
+      "bottom_taper_length_um",
+      "bottom_taper_base_width_um",
+      "bottom_straight_length_um"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9873066452610733,
+      "dice": 0.9936127850378826,
+      "sse": 18786.0,
+      "change_made": "Initial primitives-only GDSFactory reconstruction: calibrated footprint anchors, rectangular slab body, four top straight/taper access guides, centered bottom taper, and a real bottom access-length knob. IoU exceeded the stop threshold, so no geometry-refinement iteration was run."
+    }
+  ],
+  "knob_response": {
+    "param": "bottom_straight_length_um",
+    "delta_um": 5.0,
+    "width_um": 1.25,
+    "base_value": 0.01,
+    "base_delta_length_um": 0.01,
+    "perturbed_delta_length_um": 5.01,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 91.2776,
+    "perturbed_area_um2": 97.5276,
+    "area_growth_um2": 6.25,
+    "expected_area_growth_um2": 6.25,
+    "area_ok": true,
+    "passes": true
+  },
+  "final": {
+    "gds": "device.gds",
+    "raster": "raster.png",
+    "diff": "diff.png",
+    "overlay": "overlay.png",
+    "metrics": "metrics.json",
+    "iou": 0.9873066452610733,
+    "iterations": 1,
+    "stopped_reason": "IoU exceeded 0.85 stop threshold on the first comparison."
+  }
+}

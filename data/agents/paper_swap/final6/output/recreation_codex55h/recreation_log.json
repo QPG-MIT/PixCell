@@ -1,0 +1,55 @@
+{
+  "phase": "A",
+  "input_image": "component.png",
+  "footprint_um": [4.7, 4.7],
+  "topology_reasoning": {
+    "device_identification": "Compact four-port 2x2 multimode/interference coupler. The mask is a single connected, fourfold-symmetric material region with narrow straight access guides on the left, right, top, and bottom. Each guide adiabatically opens into a broad petal/lobe; the four lobes overlap at the center, forming the coupling/interference body.",
+    "operation": "Light entering one access guide expands through the taper into the central multimode overlap region, couples/interferes with the orthogonal and opposite access lobes, and exits through the other guides. The image fidelity is therefore governed by access-guide width, taper smoothness, lobe width, lobe/transfer length, and the center waist/overlap.",
+    "primitive_strategy": "Represent the image as the Boolean union of four primitive path extrusions: two horizontal half-lobes and two vertical half-lobes. Each half-lobe is built only from straight gf.Path segments extruded through sine width transitions; short constant-width stem rectangles/paths define the ports. No raw polygons or device stencil components are used.",
+    "function_defining_knobs": [
+      "wg_width",
+      "stem_length",
+      "taper_length",
+      "lobe_length",
+      "lobe_width",
+      "center_width",
+      "transfer_length"
+    ],
+    "measured_from_image": {
+      "bbox_size_px": [557, 557],
+      "scale_px_per_um": 118.51063829787233,
+      "approx_port_width_um": 0.23,
+      "approx_lobe_width_um": 0.91,
+      "approx_total_footprint_um": [4.7, 4.7]
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9206448665230729,
+      "dice": 0.9586830783451482,
+      "sse": 6079.0,
+      "change_made": "Initial primitives-only model: four sine-tapered path-extruded lobes Boolean-unioned on layer (1,0), with exact 4.7 um by 4.7 um bbox. Stopped because IoU exceeded 0.85."
+    }
+  ],
+  "implementation_notes": [
+    "Wrote final GDS without GDSFactory metadata so homi.spec_optimization layer-area verification sees the actual device as the top-level cell.",
+    "Final comparison files: raster.png, diff.png, overlay.png, metrics.json."
+  ],
+  "knob_response": {
+    "param": "transfer_length",
+    "delta_um": 5.0,
+    "width_um": 0.23,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 4.999999999999999,
+    "delta_response_um": 4.999999999999999,
+    "delta_length_ok": true,
+    "base_area_um2": 4.947440000000003,
+    "perturbed_area_um2": 6.097440000000003,
+    "area_growth_um2": 1.1500000000000004,
+    "expected_area_growth_um2": 1.1500000000000001,
+    "area_ok": true,
+    "passes": true
+  }
+}

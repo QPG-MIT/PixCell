@@ -1,0 +1,35 @@
+[
+  {
+    "stack": "soi220",
+    "iter": 1,
+    "changed_params": {"wg_width_um": 0.5, "bus_width_um": 0.5, "straight_y_um": 3.43},
+    "physics": "Ring FSR_nm = 1000*lambda^2/(n_g*L_roundtrip). lambda=1.55, target FSR=8.22 nm, n_g(soi220,w=0.5)=4.0574 (mode solve). Required L* = 1000*1.55^2/(4.0574*8.22) = 72.04 um. L = 2*straight_bottom + 2*straight_y + 2*pi*R = 2*8.87 + 2*straight_y + 2*pi*7.55; solve straight_y = (72.04 - 17.74 - 47.44)/2 = 3.43 um.",
+    "predicted_value": {"ring_fsr_nm": 8.22, "L_roundtrip_um": 72.04},
+    "reasoning": "Inverse-linear knob set analytically. Footprint 30.0x19.74 <= 30x21.8, fits.",
+    "measured_value": {"ring_fsr_nm": 8.219804083, "bbox_um": [30.0, 19.74]},
+    "rel_error": 2.383e-05,
+    "verdict": "PASS"
+  },
+  {
+    "stack": "sin400",
+    "iter": 1,
+    "changed_params": {"wg_width_um": 1.0, "bus_width_um": 1.0, "corner_radius_um": 5.0, "straight_bottom_um": 19.0, "straight_top_um": 19.0, "straight_y_um": 9.0, "coupling_gap_um": 0.4},
+    "physics": "n_g(sin400,w=1.0)=2.0213. Required L* = 1000*1.55^2/(2.0213*8.22) = 144.6 um. Footprint 30x21.8 caps rounded-rect round-trip: straight_bottom+2R<=29 (x), straight_y+2R<=19.4 (y), giving L_max = 96.8 - 1.717*R (absolute ceiling ~96.8 um as R->0). 144.6 >> 96.8 => target unreachable. This config (R=5, straights at ceiling, L=87.4) establishes the empirical FSR floor.",
+    "predicted_value": {"ring_fsr_nm": 13.60, "L_roundtrip_um": 87.4, "absolute_floor_fsr_nm": 12.28},
+    "reasoning": "Even the largest well-formed ring in the box keeps FSR well above target. Respecting sin400 min_bend_radius=20 um is strictly impossible (2R=40 > 21.8 box height).",
+    "measured_value": {"ring_fsr_nm": 13.597645786, "bbox_um": [30.0, 21.4]},
+    "rel_error": 0.6542148158,
+    "verdict": "FAIL (infeasible_within_representation)"
+  },
+  {
+    "stack": "tfln400",
+    "iter": 1,
+    "changed_params": {"wg_width_um": 1.2, "bus_width_um": 1.2, "corner_radius_um": 5.0, "straight_bottom_um": 18.8, "straight_top_um": 18.8, "straight_y_um": 8.9, "coupling_gap_um": 0.5},
+    "physics": "n_g(tfln400,w=1.2)=2.2277. Required L* = 1000*1.55^2/(2.2277*8.22) = 131.2 um. Footprint caps L: straight_bottom+2R<=28.8 (x), straight_y+2R<=18.9 (y), L_max = 95.4 - 1.717*R (absolute ceiling ~95.4 um as R->0). 131.2 >> 95.4 => unreachable. This config (R=5, straights at ceiling, L=86.8) establishes the empirical FSR floor.",
+    "predicted_value": {"ring_fsr_nm": 12.42, "L_roundtrip_um": 86.8, "absolute_floor_fsr_nm": 11.30},
+    "reasoning": "Largest well-formed ring in box keeps FSR above target. Respecting tfln400 min_bend_radius=30 um is strictly impossible (2R=60 >> 21.8 box height).",
+    "measured_value": {"ring_fsr_nm": 12.422804005, "bbox_um": [30.0, 21.8]},
+    "rel_error": 0.5112900249,
+    "verdict": "FAIL (infeasible_within_representation)"
+  }
+]

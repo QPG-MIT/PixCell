@@ -1,0 +1,162 @@
+{
+  "stack": "tfln400",
+  "spec": {
+    "wavelength_um": 1.55,
+    "targets": {
+      "transmission_total_min": 0.95,
+      "split_balance": 0.5,
+      "split_balance_tolerance_abs": 0.02
+    },
+    "max_footprint_um": [150.0, 20.0]
+  },
+  "platform_constants": {
+    "single_mode_width_um": 1.2,
+    "min_feature_um": 0.5,
+    "min_bend_radius_um": 30.0,
+    "min_guide_spacing_um": 3.0
+  },
+  "phase_a_classification": "Three-guide adiabatic splitter/coupler: a central guide narrows while two symmetric side guides widen, then the side guides fan out as outputs.",
+  "pre_geometry_derivation": {
+    "rule_based_adaptation": "Set access/output waveguides to single_mode_width_um = 1.2. Set the central terminal and side input tips to min_feature_um = 0.5. Keep the coupled edge gap at min_feature_um = 0.5. This fixes the side-guide centers at +/-1.35 um because 1.2/2 + 0.5 + 0.5/2 = 1.35.",
+    "physics_reasoning": "The device remains a symmetric adiabatic mode-evolution splitter. The SOI cap showed that branch-gap detuning is too sensitive to use without calibration, while SiN passed exactly at 50/50 when symmetric. Therefore the TFLN first call stays symmetric. Unlike the SiN linear taper, the local TFLN solves show the tight region is where the three guides are close to equal width, so the taper is piecewise: fast start/end and a long slow middle section through the equal-width handoff, with complementary widths keeping the edge gap constant at 0.5 um.",
+    "local_mode_numbers": {
+      "single_guide_width_1p2": {
+        "n_eff": 1.8066,
+        "n_g": 2.2277
+      },
+      "start_slice_cores": "0.5:-1.35,1.2:0,0.5:1.35",
+      "start_slice_n_effs": [1.806731, 1.677544, 1.606732],
+      "early_slice_cores": "0.6:-1.35,1.1:0,0.6:1.35",
+      "early_slice_n_effs": [1.793437, 1.669449, 1.650084],
+      "handoff_entry_slice_cores": "0.75:-1.35,0.95:0,0.75:1.35",
+      "handoff_entry_slice_n_effs": [1.76737, 1.711867, 1.709941],
+      "equal_width_slice_cores": "0.85:-1.35,0.85:0,0.85:1.35",
+      "equal_width_slice_n_effs": [1.7492, 1.740516, 1.732737],
+      "handoff_exit_slice_cores": "0.95:-1.35,0.75:0,0.95:1.35",
+      "handoff_exit_slice_n_effs": [1.766963, 1.76335, 1.71053],
+      "late_slice_cores": "1.1:-1.35,0.6:0,1.1:1.35",
+      "late_slice_n_effs": [1.795752, 1.790722, 1.671757],
+      "end_slice_cores": "1.2:-1.35,0.5:0,1.2:1.35",
+      "end_slice_n_effs": [1.806719, 1.806565, 1.677599],
+      "output_pair_gap_1p5": {
+        "n_even": 1.806578,
+        "n_odd": 1.806542,
+        "dn": 0.000036,
+        "coupling_length_um": 21527.06
+      }
+    },
+    "derived_geometry": {
+      "coupled_center_y_um": 1.35,
+      "coupled_gap_um": 0.5,
+      "input_straight_length_um": 1.0,
+      "taper_segment_lengths_um": [25.0, 99.0, 25.0],
+      "center_widths_um": [1.2, 0.95, 0.75, 0.5],
+      "side_widths_um": [0.5, 0.75, 0.95, 1.2],
+      "device_output_separation_um": 2.7,
+      "fixture_output_separation_um": 6.0,
+      "fixture_fanout_length_um": 20.0,
+      "fixture_output_straight_length_um": 4.0
+    },
+    "initial_prediction": "Because SiN measured much better than the conservative local-spacing estimate and TFLN uses a shaped, slower handoff through the tight equal-width region, I predict the first TFLN call will pass or be close: transmission_total about 0.96. The symmetric geometry should give split_fraction 0.50."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "params": {
+        "wg_width_um": 1.2,
+        "min_feature_um": 0.5,
+        "coupled_gap_um": 0.5,
+        "coupled_center_y_um": 1.35,
+        "input_straight_length_um": 1.0,
+        "taper_segment_lengths_um": [25.0, 99.0, 25.0],
+        "upper_output_straight_length_um": 0.0,
+        "lower_output_straight_length_um": 0.0,
+        "fixture_fanout_length_um": 20.0,
+        "fixture_output_separation_um": 6.0,
+        "fixture_output_straight_length_um": 4.0
+      },
+      "predicted_T": 0.96,
+      "predicted_split_fraction": 0.5,
+      "measured_T": 0.92,
+      "measured_split_fraction": 0.5,
+      "measurement_call": 1,
+      "transmission_passes": false,
+      "split_passes": true,
+      "device_bbox_um": [150.0, 3.9],
+      "device_fits_budget": true,
+      "fixture_bbox_um": [177.0, 7.2],
+      "fixture_port_positions": {
+        "in": [-1.5, 0.0],
+        "out_top": [172.0, 3.0],
+        "out_bot": [172.0, -3.0]
+      },
+      "knob_verification": {
+        "tool": "homi.spec_optimization.verify_knob_response",
+        "param": "upper_output_straight_length_um",
+        "delta_um": 5.0,
+        "width_um": 1.2,
+        "delta_response_um": 5.0,
+        "area_growth_um2": 6.0,
+        "expected_area_growth_um2": 6.0,
+        "passes": true
+      },
+      "reasoning": "Initial TFLN measurement candidate. The geometry is symmetric to preserve balance and avoid the SOI detuning overshoot. All guide/tip/gap dimensions satisfy the 1.2 um single-mode width and 0.5 um min feature. The 149 um taper is split into 25/99/25 um segments so most of the length is spent around the modal handoff region identified by the equal-width and neighboring cross-section solves. The fixture follows the economical SiN pattern: 20 um fanout to 6 um output separation and 4 um straight stubs with probes halfway into the stubs.",
+      "diagnosis_after_measurement": "The split_fraction=0.500 exact means the symmetric topology is working and branch detuning should not be introduced. The miss is purely transmission: T=0.920 versus the 0.95 target. The conductor noted this is close to an independent TFLN result, so a platform loss floor near these dimensions is plausible. Still, the local slice data show that my first taper allocated too much length to the 0.95->0.75 handoff and too little to the late 0.75->0.5 center / 0.95->1.2 side exit where n_eff spacings are tight: handoff_exit n0-n1 is 0.003613 and late n0-n1 is 0.005030, while the earlier slices are much larger. The fixture fanout also used a smoothstep radius of only about 40 um, above the nominal 30 um guideline but not generous for TFLN. The next move stays symmetric, reallocates taper length toward the late exit, and modestly lengthens the fixture fanout without increasing output separation or stub length."
+    },
+    {
+      "iter": 2,
+      "params": {
+        "wg_width_um": 1.2,
+        "min_feature_um": 0.5,
+        "coupled_gap_um": 0.5,
+        "coupled_center_y_um": 1.35,
+        "input_straight_length_um": 1.0,
+        "taper_segment_lengths_um": [15.0, 84.0, 50.0],
+        "upper_output_straight_length_um": 0.0,
+        "lower_output_straight_length_um": 0.0,
+        "fixture_fanout_length_um": 30.0,
+        "fixture_output_separation_um": 6.0,
+        "fixture_output_straight_length_um": 4.0
+      },
+      "predicted_T": 0.95,
+      "predicted_split_fraction": 0.5,
+      "measured_T": 0.832,
+      "measured_split_fraction": 0.5,
+      "measurement_call": 2,
+      "transmission_passes": false,
+      "split_passes": true,
+      "device_bbox_um": [150.0, 3.9],
+      "device_fits_budget": true,
+      "fixture_bbox_um": [187.0, 7.2],
+      "fixture_port_positions": {
+        "in": [-1.5, 0.0],
+        "out_top": [182.0, 3.0],
+        "out_bot": [182.0, -3.0]
+      },
+      "knob_verification": {
+        "tool": "homi.spec_optimization.verify_knob_response",
+        "param": "upper_output_straight_length_um",
+        "delta_um": 5.0,
+        "width_um": 1.2,
+        "delta_response_um": 5.0,
+        "area_growth_um2": 6.0,
+        "expected_area_growth_um2": 6.0,
+        "passes": true
+      },
+      "reasoning": "Before changing geometry: preserve exact top/bottom symmetry because call 1 already passed balance. Keep total device length at 150 um and keep the same widths/gaps, but change segment lengths from 25/99/25 to 15/84/50. This makes the late center-narrowing/side-widening section twice as long, targeting the tight handoff_exit/late local mode spacings, while the shortened early section sits where the fundamental mode is well separated. Increase fixture fanout from 20 to 30 um while keeping separation 6 um and straight stubs 4 um; this raises the smoothstep bend radius estimate from about 40 um to about 91 um with only 10 um extra x-domain. Prediction: transmission improves to about 0.95, with split_fraction remaining 0.50 because the device is still exactly symmetric.",
+      "diagnosis_after_measurement": "The second call measured transmission_total=0.832, worse than the round-1 0.920, while balance stayed exactly 0.500. This falsifies the taper-redistribution hypothesis: putting more length in the late exit section does not reduce the TFLN loss. The conductor also reports an independent orthogonal attempt that opened the coupling gap and saturated around 0.930 -> 0.926. Two different changes have therefore failed to beat a ~0.93 platform/design-family ceiling within the 150 um footprint. Spending the final call on another uncalibrated shape is unlikely to reach 0.95; the honest best is round 1."
+    }
+  ],
+  "final_outcome": {
+    "status": "closed_floor_argument",
+    "calls_used": 2,
+    "calls_banked": 1,
+    "best_design": "iteration_1",
+    "best_transmission_total": 0.92,
+    "best_transmission_passes": false,
+    "best_split_fraction": 0.5,
+    "best_split_passes": true,
+    "floor_argument": "Round 1 achieved T=0.920 and exact balance with a symmetric shaped taper. Round 2's orthogonal length redistribution regressed to T=0.832. Independent context says opening the coupling gap on the same platform saturated around 0.930 -> 0.926. With two orthogonal approaches unable to clear about 0.93 inside the 150 um TFLN footprint, the remaining gap to the 0.95 target is best treated as a platform/footprint floor rather than a correctable one-call geometry defect.",
+    "artifact_note": "After closure, device_tfln400.py/fixture_tfln400.py and their GDS outputs were restored to the best measured iteration-1 geometry."
+  }
+}

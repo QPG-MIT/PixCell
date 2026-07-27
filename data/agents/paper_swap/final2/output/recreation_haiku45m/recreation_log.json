@@ -1,0 +1,111 @@
+{
+  "device": "mmi_1x4",
+  "topology_reasoning": "1x4 multimode interferometer (MMI): single input waveguide feeds into a wide rectangular core that supports 4 guided modes. The 4 output ports are arranged vertically at the top, each with a taper transitioning from the MMI core to single-mode width.",
+  "function_knobs": [
+    "wg_width: single-mode waveguide width",
+    "mmi_width: multimode core width (set to 24 \u03bcm, full footprint)",
+    "mmi_height: MMI core height (tuned to 7 \u03bcm)",
+    "taper_length: taper transition length (tuned to 1 \u03bcm)",
+    "taper_width_mmi: taper base width at MMI (tuned to 2.2 \u03bcm)",
+    "port_spacing: output port center spacing (tuned to 5.8 \u03bcm)"
+  ],
+  "iterations": [
+    {
+      "iter": 1,
+      "params": {
+        "wg_width": 0.5,
+        "mmi_width": 10.0,
+        "mmi_height": 20.0,
+        "taper_length": 5.0,
+        "port_spacing": 2.0
+      },
+      "iou": 0.2202,
+      "dice": 0.361,
+      "sse": 1968867,
+      "change": "Initial attempt with small MMI"
+    },
+    {
+      "iter": 2,
+      "params": {
+        "wg_width": 0.5,
+        "mmi_width": 24.0,
+        "mmi_height": 9.0,
+        "taper_length": 0.5,
+        "port_spacing": 6.0
+      },
+      "iou": 0.594,
+      "dice": 0.5946,
+      "sse": 2010914,
+      "change": "Scaled MMI to footprint width; height still too large"
+    },
+    {
+      "iter": 3,
+      "params": {
+        "wg_width": 1.0,
+        "mmi_width": 24.0,
+        "mmi_height": 8.0,
+        "taper_length": 1.0,
+        "taper_width_mmi": 1.0,
+        "port_spacing": 6.0
+      },
+      "iou": 0.1545,
+      "dice": 0.2677,
+      "sse": 1931633,
+      "change": "Simplified geometry, removed separate input taper \u2014 failed"
+    },
+    {
+      "iter": 4,
+      "params": {
+        "wg_width": 0.7,
+        "mmi_width": 24.0,
+        "mmi_height": 8.0,
+        "taper_length": 2.0,
+        "taper_width_mmi": 3.5,
+        "port_spacing": 6.0
+      },
+      "iou": 0.3898,
+      "dice": 0.561,
+      "sse": 1594193,
+      "change": "Reintroduced proper tapers with wider base"
+    },
+    {
+      "iter": 5,
+      "params": {
+        "wg_width": 0.6,
+        "mmi_width": 24.0,
+        "mmi_height": 8.0,
+        "taper_length": 1.5,
+        "taper_width_mmi": 2.8,
+        "port_spacing": 5.5
+      },
+      "iou": 0.4076,
+      "dice": 0.5791,
+      "sse": 1564552,
+      "change": "Refined taper widths and port spacing"
+    },
+    {
+      "iter": 6,
+      "params": {
+        "wg_width": 0.5,
+        "mmi_width": 24.0,
+        "mmi_height": 7.0,
+        "taper_length": 1.0,
+        "taper_width_mmi": 2.2,
+        "port_spacing": 5.8
+      },
+      "iou": 0.4388,
+      "dice": 0.6099,
+      "sse": 1323628,
+      "change": "Compact ports and shorter tapers \u2014 best IoU reached"
+    }
+  ],
+  "final_assessment": "Achieved IoU 0.4388 after 6 iterations. Topology is correct (1x4 MMI), but pixel-level fidelity is limited by reverse-engineering the exact taper profile from a B&W image. The device is parametric and functional; knobs move geometry as intended. Further improvement would require higher-fidelity source image or access to the original design parameters.",
+  "tunables": [
+    "wg_width",
+    "mmi_width",
+    "mmi_height",
+    "taper_length",
+    "taper_width_mmi",
+    "port_spacing"
+  ]
+}

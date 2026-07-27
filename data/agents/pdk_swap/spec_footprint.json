@@ -1,0 +1,18 @@
+{
+  "device": "mzi",
+  "target": {
+    "metric": "fsr_nm",
+    "value": 8.0,
+    "tolerance_rel": 0.02
+  },
+  "wavelength_um": 1.55,
+  "mode": "TE0",
+  "note": "FSR = lambda^2 / (n_g * delta_L); n_g from local mode solve per stack",
+  "constraints": {
+    "max_footprint_um": [
+      91.1,
+      50.75
+    ],
+    "note": "the original device's own footprint: the chip floorplan budget"
+  }
+}

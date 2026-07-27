@@ -1,0 +1,9 @@
+{
+  "paper": "papers/2.pdf",
+  "doi": "10.3390/ma9070516",
+  "title": "1x4 Power Splitter Based on an MMI Coupler in a Si-GaN Slot Waveguide Structure (Malka et al., Materials 2016, 9, 516)",
+  "figure": "Fig 1b, page 2 (x-z plane layout schematic; redrawn cleanly from stated dimensions)",
+  "dims_source": "Component dimensions from p2 text and p4 optimized values: input taper L=2 um (width 0.4->0.6 um), MMI body L_MMI=12.3 um x W_MMI=5.0 um (optimized via FV-BPM, p4), four output tapers L=5 um (width 0.6->0.4 um), output segment waveguides W=0.4 um x L=5 um, output port gap=0.7 um.",
+  "footprint_derivation": "L = input_taper(2.0) + L_MMI(12.3) + output_taper(5.0) = 19.3 um; W = W_MMI = 5.0 um. Matches curation_manifest max_footprint_um [19.3, 5.0].",
+  "notes": "Simulation-only paper (FV-BPM, RSoft). Redrawn horizontally (input left, 4 outputs right) to match FINAL_1 silhouette convention; paper draws it vertically (z up). Full device INCLUDING the 5 um output segment waveguides extends to 24.3 um along z (2+12.3+5+5), consistent with Fig 5b z-axis reaching 24.3 um; the reported footprint follows the manifest and covers input-taper->MMI->output-taper (the MMI functional core), stopping at the port taper tips. Home stack: Si-GaN horizontal slot (H_Si=300 nm, H_GaN=100 nm, W_S=400 nm; n_si=3.48, n_gan=2.305, clad SiO2). Operates ~1550 nm, 81 nm FWHM; IL 0.07 dB/port, 24.6% power per port (uniform 1x4)."
+}

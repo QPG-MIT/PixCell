@@ -1,0 +1,43 @@
+{
+  "device": "Racetrack-ring-loaded balanced Mach-Zehnder interferometer (MZI). An outer rounded-rectangle (racetrack/stadium) ring waveguide encloses a two-arm MZI: a left junction splits the guided light into an upper and a lower arm, each arm carries a rectangular slotted element (a rectangular frame subdivided by a central septum into two apertures/windows), and the arms recombine at a mirror-image right junction. The figure is symmetric left-right AND top-bottom, so the interferometer is drawn balanced (arm-length imbalance = 0).",
+  "how_it_works": "The outer racetrack is a resonant feedback loop; the internal MZI sets the round-trip phase/coupling. As an unbalanced MZI the transmission is two-beam interference with free spectral range FSR = lambda^2 / (n_g * delta_L); balanced as drawn (delta_L=0), retuned downstream by the delta_length knob. Each arm's two-aperture slotted box is the arm's functional coupler/phase element; the left/right junctions are the 1x2 splitter / 2x1 combiner (short fan-out tapers).",
+  "function_knobs": {
+    "delta_length": "MZI arm-length imbalance (um) -> the FSR knob (0 = balanced as drawn); adds a length detour to the lower arm. Named per the optimize-to-spec parametric contract.",
+    "arm_width_um": "arm waveguide width (mode confinement / effective index).",
+    "arm_sep_um": "center-to-center vertical separation of the two arms.",
+    "splitter_len_um / splitter_gap_um": "Y-junction fan-out length and the arm spacing where they meet the caps.",
+    "box_len_um / box_height_um / box_septum_um / box_wall_x_um / box_wall_y_um": "geometry of the slotted coupler element on each arm (window sizes, septum -> its coupling/resonance).",
+    "ring_outer_rx_um / ring_outer_ry_um / ring_hole_halfx_um / ring_hole_halfy_um / ring_inner_rx_um / ring_inner_ry_um": "the racetrack feedback loop: outer rounded-rect and the inner hole (the hole half-width sets the ring<->MZI coupling gap)."
+  },
+  "measured_geometry_um": {
+    "note": "Derived from calibrated pixel analysis of component.png. Calibration is anisotropic (scale_x=517, scale_y=141.8 px/um; 3.646x horizontal render stretch). GDS is designed in true microns; the renderer applies the stretch. GDS bbox = 3.0 (x) x 5.5 (y) fills the target bbox.",
+    "device": [3.0, 5.5],
+    "ring_outer_rrect_radii": [0.94, 2.50],
+    "ring_inner_hole_halfextents": [0.98, 2.22],
+    "arm_width": 0.44,
+    "arm_y_centers": {"upper": 3.667, "lower": 1.833},
+    "arm_attach": {"x": 0.52, "y_offset_from_center": 0.479},
+    "splitter_fan_len": 0.232,
+    "box": {"len": 0.892, "height": 1.043, "wall_x": 0.066, "wall_y": 0.254, "septum": 0.114, "window": [0.323, 0.535], "x_center": 1.5, "y_centers": [3.667, 1.833]}
+  },
+  "calibration": {"bbox": [31, 14, 1582, 794], "scale_px_per_um": [517.0, 141.818], "footprint_um": [3.0, 5.5]},
+  "iterations": [
+    {"iter": 1, "iou": 0.757, "dice": 0.862, "sse": 172031, "change_made": "Initial build: ring as a uniform-width rounded-rect frame with CIRCULAR corners (r=1.24), splitter+2 arms+2 slotted boxes+combiner, windows subtracted."},
+    {"iter": 2, "iou": 0.799, "dice": 0.888, "sse": 139944, "change_made": "Fit the outer contour: corners are ELLIPTICAL, not circular. Set elliptical centerline radii from the outer fit."},
+    {"iter": 3, "iou": 0.807, "dice": 0.893, "sse": 131900, "change_made": "Traced the arm centerline: attach at gy3.229 (not 3.06), fan reaches gy3.667 by gx0.752. Corrected splitter_len=0.232, arm_sep=1.834, splitter_gap=0.958."},
+    {"iter": 4, "iou": 0.874, "dice": 0.933, "sse": 80134, "change_made": "Rebuilt the ring as boolean(outer rounded-rect(0.94,2.50), inner-hole rounded-rect(0.98,2.22; radii 0.59,0.62)) from rectangles+ellipses. Independent inner/outer corners. BEST."},
+    {"iter": 5, "iou": 0.810, "dice": 0.895, "sse": 130653, "change_made": "Tried a uniform-width EXTRUDE ring (constant-perpendicular wall) + splitter body to hollow the shoulders. Regressed: the extruded outer bulges (halo) and the tight cap (radius-of-curvature 0.21 < wall/2 0.26) self-fills solid anyway. Reverted."},
+    {"iter": 6, "iou": 0.815, "dice": 0.898, "sse": 126183, "change_made": "Tried offset-hole ring (Component.offset / gdstk.offset) + body. Regressed: the polygon offset rounds the interior corner and does NOT reach into the shoulder either. Also tested large-radius rrect hole (0.837) and large-hole+body (0.837). All < 0.874. Kept the honest best (iter 4)."}
+  ],
+  "honest_best": {
+    "iou": 0.8738, "dice": 0.9326, "sse": 80134,
+    "residual_error": "Dominant remaining error is the four 'shoulder' wedges where the target ring is a THIN wall (hollow interior reaching into the caps) but the model's ring is solid there. This is a non-uniform / non-convex thin-cap wall (verified: wall ~0.52um on the rails but thinner in the diagonal caps; interior reaches gx0.44 in the corner vs gx0.52 at center). No clean convex-hole or constant-width-extrude parametric ring reproduces it without regressing the well-matched outer contour; faithful reproduction would need a traced non-uniform centerline. Kept the honest best rather than a lower-scoring 'more correct topology'."
+  },
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "delta_length", "delta_um": 0.4, "width_um": 0.44,
+    "delta_response_um": 0.4, "delta_length_ok": true,
+    "area_growth_um2": 0.097, "expected_area_growth_um2": 0.176, "area_ok": false,
+    "interpretation": "delta_length_ok=TRUE proves the knob moves real geometry: perturbing delta_length changes the arm-length differential (computed from the gf.Path centerlines, written to lengths.json) by exactly the requested amount. area_ok=FALSE only because the length detour is a compact pocket whose two 0.44um-wide legs overlap in the ~0.53um clear corridor of this dense device (ring at the perimeter, MZI filling the interior); no non-overlapping detour fits at baseline. Downstream FSR retuning (optimize-to-spec) reshapes with more room."
+  }
+}

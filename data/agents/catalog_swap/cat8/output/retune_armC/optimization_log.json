@@ -1,0 +1,87 @@
+{
+  "device": "first-order sidewall Bragg grating; spec metric bragg_wavelength_nm = 2*n_avg*period_um (evaluator hardcodes m=1)",
+  "target_nm": 1558.02,
+  "tolerance_rel": 0.02,
+  "iterations": [
+    {
+      "stack": "soi220",
+      "iter": 1,
+      "changed_params": {
+        "period_um": 0.30876,
+        "w0_um": 0.5,
+        "corrugation_um": 0.099,
+        "duty_cycle": 0.5125,
+        "num_periods": 20
+      },
+      "reasoning": "single_mode_width_um=0.5 -> w0_um=0.5; keep corrugation 0.099 so w_wide=0.5495 (<=0.55 width footprint) and w_narrow=0.4505 (>=0.18 min_feature). Solved n_eff(0.5495)=2.5845, n_eff(0.4505)=2.4615 -> n_avg=2.5230. First-order Bragg: period = lambda_B/(2*n_avg) = 1.55802/(2*2.5230) = 0.308763 um; set 0.30876. Length = 20*0.30876 = 6.175 um <= 6.38, width = 0.5495 <= 0.55: footprint OK. NOTE: grating half-segment len ~0.158 um < min_feature 0.18, but this is intrinsic to a first-order grating (period 0.309 < 2*0.18); not fixable by any tunable since the evaluator pins m=1. Widths and corrugation respect min_feature.",
+      "predicted_value": 1558.00,
+      "predicted_rel_error": 1.3e-5,
+      "measured_value": 1499.0994,
+      "measured_rel_error": 0.0378,
+      "verdict": "FAIL",
+      "postmortem": "Predicted with n_eff from lambda=1.55802, but the spec has no wavelength_um so the evaluator solves at lambda=1.55 where n_eff is lower (n(0.5495)=2.4956, n(0.4505)=2.3596 -> n_avg=2.4276). period 0.30876 too short."
+    },
+    {
+      "stack": "soi220",
+      "iter": 2,
+      "changed_params": {
+        "period_um": 0.32090,
+        "num_periods": 19
+      },
+      "reasoning": "Use the evaluator's own lambda=1.55 modes: n_avg=(2.4956+2.3596)/2=2.4276 (fixed by the two widths, which are unchanged). First-order Bragg: period* = 1.55802/(2*2.4276) = 0.320900 um. At 20 periods length=6.418>6.38 (footprint fail), so num_periods=19 -> length=6.097<=6.38; num_periods sets grating length/reflectivity, not the Bragg wavelength. w_wide=0.5495<=0.55.",
+      "predicted_value": 1558.04,
+      "predicted_rel_error": 1.3e-5,
+      "measured_value": 1558.0419,
+      "measured_rel_error": 1.4e-5,
+      "verdict": "PASS"
+    },
+    {
+      "stack": "sin400",
+      "iter": 1,
+      "changed_params": {
+        "period_um": 0.47498,
+        "num_periods": 13,
+        "w0_um": 1.0,
+        "corrugation_um": 0.099,
+        "duty_cycle": 0.5125
+      },
+      "reasoning": "single_mode_width_um=1.0 -> w0_um=1.0. n_eff@1.55: n(1.0495)=1.6466, n(0.9505)=1.6336 -> n_avg=1.6401. First-order Bragg: period* = 1.55802/(2*1.6401) = 0.474980 um. num_periods=13 keeps length 13*0.47498=6.175<=6.38. BUT the mean waveguide is 1.0 um wide (w_wide=1.0495), and the spec width footprint is 0.55 um: the bbox width 1.0495 > 0.55, so footprint fails on WIDTH no matter what. The Bragg metric is reachable; the footprint (frozen from the 0.5-um-wide SOI geometry) is not, because SiN's single-mode width (1.0 um) is ~2x the width budget. No exposed tunable can shrink the guide to 0.55 um without abandoning single_mode_width. Evaluated to document.",
+      "predicted_value": 1558.02,
+      "predicted_rel_error": 0.0,
+      "predicted_footprint_ok": false,
+      "predicted_verdict": "FAIL (footprint width 1.0495>0.55)",
+      "measured_value": 1558.0210,
+      "measured_rel_error": 6.5e-7,
+      "measured_footprint_ok": false,
+      "measured_bbox_um": [6.175, 1.05],
+      "verdict": "FAIL (bragg PASS, footprint EXCEEDS width) -> infeasible_within_representation"
+    },
+    {
+      "stack": "tfln400",
+      "iter": 1,
+      "changed_params": {
+        "period_um": 0.43108,
+        "num_periods": 14,
+        "w0_um": 1.2,
+        "corrugation_um": 0.099,
+        "duty_cycle": 0.5125
+      },
+      "reasoning": "single_mode_width_um=1.2 -> w0_um=1.2. n_eff@1.55: n(1.2495)=1.8140, n(1.1505)=1.8002 -> n_avg=1.8071. First-order Bragg: period* = 1.55802/(2*1.8071) = 0.431080 um. num_periods=14 keeps length 14*0.43108=6.035<=6.38. Same infeasibility as sin400 but worse: w_wide=1.2495 um >> 0.55 um width budget. TFLN single-mode width (1.2 um) is ~2.2x the frozen SOI width footprint; no exposed tunable shrinks the guide width. Bragg metric reachable, footprint width unreachable. Evaluated to document.",
+      "predicted_value": 1558.02,
+      "predicted_rel_error": 0.0,
+      "predicted_footprint_ok": false,
+      "predicted_verdict": "FAIL (footprint width 1.2495>0.55)",
+      "measured_value": 1558.0437,
+      "measured_rel_error": 1.5e-5,
+      "measured_footprint_ok": false,
+      "measured_bbox_um": [6.035, 1.25],
+      "verdict": "FAIL (bragg PASS, footprint EXCEEDS width) -> infeasible_within_representation"
+    }
+  ],
+  "summary": {
+    "soi220": "PASS (bragg 1558.04 nm, footprint 6.10x0.55 fits) in 2 calls",
+    "sin400": "FAIL / infeasible_within_representation (bragg reachable at 1558.02 nm, but single_mode_width 1.0 um > 0.55 um width footprint)",
+    "tfln400": "FAIL / infeasible_within_representation (bragg reachable at 1558.04 nm, but single_mode_width 1.2 um > 0.55 um width footprint)",
+    "root_cause_sin_tfln": "The spec's max_footprint_um width (0.55 um) was frozen from the 0.5-um-wide 220 nm SOI recreation. SiN (1.0 um) and TFLN (1.2 um) single-mode widths exceed it by ~2x; no exposed tunable controls guide width without abandoning the platform-width rule."
+  }
+}

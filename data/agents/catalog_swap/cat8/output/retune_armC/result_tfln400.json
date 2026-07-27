@@ -1,0 +1,43 @@
+{
+  "infeasible_within_representation": true,
+  "tunables": {
+    "period_um": 0.43108,
+    "num_periods": 14,
+    "w0_um": 1.2,
+    "corrugation_um": 0.099,
+    "duty_cycle": 0.5125,
+    "layer": [1, 0]
+  },
+  "derived": {
+    "w_wide_um": 1.2495,
+    "w_narrow_um": 1.1505,
+    "grating_length_um": 6.0351
+  },
+  "evaluator_report": {
+    "passes": false,
+    "verdicts": [
+      {
+        "metric": "bragg_wavelength_nm",
+        "tier": 0,
+        "verdict": "pass",
+        "target": {"metric": "bragg_wavelength_nm", "value": 1558.02, "tolerance_rel": 0.02, "tier": 0},
+        "measured": 1558.0437133407595,
+        "rel_error": 1.522017737866896e-05,
+        "source": "local"
+      }
+    ],
+    "unmeasured": [],
+    "reason": "footprint exceeds max_footprint_um",
+    "n_eff": 1.8065590858459473,
+    "n_g": 2.2277374267578125,
+    "delta_length_um": null,
+    "wavelength_um": 1.55,
+    "stack_label": "400 nm TFLN strip (isotropic approx)",
+    "from_cache": true,
+    "bbox_um": [6.035, 1.25],
+    "max_footprint_um": [6.38, 0.55],
+    "footprint_ok": false
+  },
+  "calls_used": 1,
+  "reasoning": "Same failure mode as sin400, more severe. The Bragg target IS reachable: w0_um = single_mode_width (1.2 um) and period* = lambda_B/(2*n_avg) with the evaluator's lambda=1.55 modes (n(1.2495)=1.8140, n(1.1505)=1.8002 -> n_avg=1.8071) gives period 0.43108 um -> measured 1558.04 nm (rel_error 1.5e-5). num_periods=14 keeps the length 6.035 um <= 6.38 um. INFEASIBLE only on footprint WIDTH: TFLN's single-mode width is 1.2 um (w_wide=1.2495 um), ~2.3x the spec's 0.55 um width budget frozen from the 0.5-um-wide SOI recreation. No exposed tunable changes the guide width without abandoning single_mode_width_um; period/num_periods/duty_cycle/corrugation only set kappa, Bragg wavelength, and length. Hence infeasible within the representation. (Aside: grating half-segments ~0.22 um also fall below tfln400 min_feature 0.5 um, intrinsic to a first-order grating; the widths themselves respect min_feature.)"
+}

@@ -1,0 +1,64 @@
+{
+  "device_analysis": {
+    "identification": "4-port waveguide crossing (low-loss/low-crosstalk optical waveguide intersection), also called an 'elliptical/lens-taper crossing'.",
+    "topology": "Four identical single-mode waveguide ports arrive from N, S, E, W at 90 degree spacing. Each port's straight waveguide widens through a smooth (sine-profile) taper to a wide 'lens' maximum width partway to the device center, then narrows again through a second smooth taper down to a narrow tip that meets exactly at the shared center point. The four lens-shaped arms overlap at the center, forming a four-petal 'flower' silhouette. This shape (wide multimode belly, narrow tips) minimizes back-reflection and radiation loss compared to an abrupt X-intersection: light entering from one port stays largely confined to a gradually-expanding-then-contracting multimode region as it crosses the orthogonal arm, instead of hitting a sharp width discontinuity.",
+    "function_defining_knobs": [
+      "wg_width - single-mode port waveguide width (sets the mode entering/leaving each port)",
+      "taper_up_length - length of the taper from the lens's widest point down to the port width (adiabaticity of the narrowing-to-port taper)",
+      "taper_down_length - length of the taper from the center tip up to the lens's widest point (adiabaticity of the widening-from-center taper)",
+      "lens_max_width - maximum width of the multimode belly (sets how multimode/wide the crossing region gets - trades crosstalk vs radiation loss)",
+      "lens_tip_width - width at the very center tip of each petal (near-zero; sets residual mode mismatch right at the intersection)",
+      "port_stub_length - length of straight single-mode waveguide stub visible at each of the 4 footprint edges"
+    ]
+  },
+  "primitive_plan": "Build one 'arm' outward from the device center (x=0): a tiny anchor stub at lens_tip_width -> gf.path.transition(lens_tip_width -> lens_max_width, width_type='sine') extruded over taper_down_length -> gf.path.transition(lens_max_width -> wg_width, width_type='sine') extruded over taper_up_length -> straight(wg_width) over port_stub_length. Instantiate 4 copies rotated at 0/90/180/270 degrees about the origin (no mirroring needed once the arm is built center-out), boolean-union all arms into one polygon on layer (1,0), wrap in @gf.cell.",
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.588,
+      "dice": 0.741,
+      "sse": 35601,
+      "change_made": "Initial script: arm built stub-first (port at x=0) -> up-taper (linear gf.path.straight npoints=2, i.e. trapezoid) -> down-taper to tip, mirrored+rotated into place. Eyeballed dimensions from pixel measurements (wg=0.23, port_stub=0.51, taper_up=0.98, taper_down=0.86, lens_max=0.91, tip=0.02)."
+    },
+    {
+      "iter": 2,
+      "iou": 0.561,
+      "dice": 0.719,
+      "sse": 38641,
+      "change_made": "Fixed the trapezoid/angular taper edges by setting npoints=200 on gf.path.straight so the sine width transition is actually sampled (previously only 2 points -> straight-line edges regardless of width_type). Visual shape became smooth/lens-like but IoU dropped slightly further - diff showed a mismatch pattern (thin red slivers near tips, blue deficiency in the belly), the same pattern as iter 1, indicating a parameter-value problem rather than a taper-smoothness problem."
+    },
+    {
+      "iter": 3,
+      "iou": null,
+      "dice": null,
+      "sse": null,
+      "change_made": "Diagnosed the true error: a numpy raster of the intended union-of-4-lens-arms model, least-squares fit to the target mask's measured width(radius) profile (excluding the crossing-overlap region), gave IoU=0.904 for params wg=0.223, r1(taper start radius)=2.298um, r_mid(peak radius)=0.513um, wmax=1.012um, wtip=0.058um -- proving the MODEL/params were right and the gdsfactory SCRIPT had a bug. Traced it: crossing_arm() was built stub-first (wg_width at local x=0) then mirrored+rotated about the origin, which pins the STUB (not the tip) to the device center - i.e. every arm had its port-width segment at the crossing center and its near-zero tip stranded out at the footprint edge, exactly backwards. Rewrote crossing_arm() to build outward from the center (tip at x=0 -> widen -> narrow to port width -> stub), removing the need to mirror. This is the discipline point: a plausible-looking smooth render can still be topologically inverted; the diff pattern (thin extra slivers near the tips consistently on both iters 1 and 2) was the tell that should have been caught earlier by checking WHERE peak width occurs, not just IoU."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9058,
+      "dice": 0.9506,
+      "sse": 7625,
+      "change_made": "Applied the corrected center-out arm construction with the least-squares-fit parameters (wg=0.222, port_stub=0.04, taper_up=1.7855, taper_down=0.5125, lens_max=1.012, lens_tip=0.058). IoU jumped from ~0.56 to 0.906, matching the numpy model prediction almost exactly -- confirms the orientation bug was the whole story."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9088,
+      "dice": 0.9522,
+      "sse": 7395,
+      "change_made": "gds_size_um came out [4.68, 4.68] vs target footprint 4.7 -- applied a uniform _scale = 4.7/4.68 correction factor to all length/width tunables (with width values snapped to the 0.002 um manufacturing grid required by gdsfactory 9.20.7's SymmetricalCrossSection). Small additional IoU gain from 0.9058 to 0.9088. Stopped here: above the 0.85 target with 5/6 iterations used and diminishing returns (remaining diff is a faint 4-fold rotational skew of a few pixels, likely from the offset_type='sine' default on gf.path.transition rather than a dimensional error)."
+    }
+  ],
+  "final_iou": 0.9088,
+  "iterations_used": 5,
+  "knob_verification": {
+    "note": "homi.spec_optimization.verify_knob_response is contractually tied to MZI-style scripts (requires a lengths.json with delta_length_um and a 'delta_length' top-level param); it does not apply to a 4-port crossing with no arm-length-difference concept. Ran the equivalent manual check instead: perturbed the primary function knob (lens_max_width, the crossing belly width) via a fresh-subprocess rebuild (matching the JEE-substitution discipline: regex-edit the top-level assignment, rerun the script in a clean directory, remeasure) and confirmed the layer-(1,0) polygon area responds.",
+    "knob": "lens_max_width",
+    "base_value_um": 1.016,
+    "perturbed_value_um": 1.322,
+    "base_area_um2": 5.508,
+    "perturbed_area_um2": 6.535,
+    "area_delta_um2": 1.027,
+    "result": "PASS - area grows monotonically with lens_max_width as expected; the knob moves real geometry, not just a reported number."
+  }
+}

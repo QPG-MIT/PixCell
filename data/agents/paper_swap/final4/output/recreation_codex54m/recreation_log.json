@@ -1,0 +1,55 @@
+{
+  "device_summary": {
+    "image": "component.png",
+    "footprint_um": [
+      18.0,
+      3.0
+    ],
+    "topology_hypothesis": "Symmetric two-waveguide directional coupler drawn as mirrored S-bends: two constant-width strip waveguides start widely separated, approach smoothly into a short parallel interaction region with a small gap, then separate symmetrically back to the original pitch.",
+    "operating_principle": "Power transfer is set by the coupled length and the minimum gap in the parallel center section. The long shallow approach and exit bends are there to adiabatically change the waveguide spacing without introducing extra discontinuities.",
+    "measured_features_from_bitmap": {
+      "guide_width_um": 0.66,
+      "end_gap_um": 1.69,
+      "center_gap_um": 0.29,
+      "top_center_y_end_um": 2.675,
+      "top_center_y_center_um": 1.975,
+      "bottom_center_y_end_um": 0.332,
+      "bottom_center_y_center_um": 0.987
+    },
+    "function_defining_knobs": [
+      "wg_width_um",
+      "end_gap_um",
+      "center_gap_um",
+      "approach_length_um",
+      "coupling_length_um",
+      "smoothing_radius_um",
+      "delta_length"
+    ],
+    "delta_length_note": "The target bitmap is a balanced coupler, so delta_length starts at 0.0. It is still exposed as a top-level phase-trim knob on one arm because homi.spec_optimization.verify_knob_response requires a real one-arm path-length knob with a measurable area response."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.6813705544607643,
+      "dice": 0.8104942157492321,
+      "sse": 119812.0,
+      "change_made": "Initial primitives-only directional coupler using mirrored smooth centerlines, measured widths/gaps, and a zeroed delta_length phase-trim knob on the lower arm."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8914582660591056,
+      "dice": 0.9426147878128744,
+      "sse": 36302.0,
+      "change_made": "Added explicit shoulder blend points, longer end straights, shorter center plateau, and reduced smoothing radius to match the target's earlier bend onset and more cosine-like shoulders."
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.66,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 3.2999999999999936,
+    "expected_area_growth_um2": 3.3000000000000003,
+    "passes": true
+  }
+}

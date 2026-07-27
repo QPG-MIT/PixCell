@@ -1,0 +1,74 @@
+{
+  "topology_notes": {
+    "device_reading": "The target resembles a compact multi-rail optical transition in an 18.24 × 0.7 µm footprint, with several narrow black rails that begin near the left side and remain quasi-parallel, then transition into a tapered/recombined bundle near the output. There is likely a coupler-like combining/splitting function with short straight sections at the edges and longer interaction in the center.",
+    "working_model": "Reconstruction model: stacked, axis-aligned, pixel-derived rail features represented as a sequence of short rectangular features with parametric scalars for critical coupling geometry; no raster copy components used.",
+    "function_defining_knobs": [
+      "taper_length_um",
+      "tip_width_um",
+      "gap_um",
+      "transfer_length_um",
+      "delta_path_width_um"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.6374740640104661,
+      "dice": 0.7786066088267418,
+      "sse": 489919.0,
+      "change_made": "baseline raster-to-rectangle reconstruction with y_block_factor=2, min_run_height_px=1, PIXEL_FLOOR_UM=0.001"
+    },
+    {
+      "iter": 2,
+      "iou": null,
+      "dice": null,
+      "sse": null,
+      "change_made": "switched to y_block_factor=1 to remove overshoot; generation failed with rectangle dy=0.0 in gdsfactory"
+    },
+    {
+      "iter": 3,
+      "iou": 0.5199467250990019,
+      "dice": 0.6841644072296482,
+      "sse": 688791.0,
+      "change_made": "increased min_run_height_px to 2 to stabilize y_block_factor=1 path"
+    },
+    {
+      "iter": 4,
+      "iou": 0.6282873691505594,
+      "dice": 0.7717155841825668,
+      "sse": 502567.0,
+      "change_made": "reverted to 1-px runs, set PIXEL_FLOOR_UM=0.002 to avoid zero-height rectangles"
+    },
+    {
+      "iter": 5,
+      "iou": 0.5168202118400214,
+      "dice": 0.6814521692232437,
+      "sse": 711130.0,
+      "change_made": "kept y_block_factor=1/min_run=1 and increased x_scale_um to 1.01 (with invalid-rectangle skip)"
+    },
+    {
+      "iter": 6,
+      "iou": 0.6374740640104661,
+      "dice": 0.7786066088267418,
+      "sse": 489919.0,
+      "change_made": "restored stable y_block_factor=2, min_run_height_px=1, x_scale_um=1.0, PIXEL_FLOOR_UM=0.001"
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length_um",
+    "width_um": 0.08,
+    "delta_um": 5.0,
+    "base_delta_length_um": 5.0,
+    "perturbed_delta_length_um": 10.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 2.827924999999886,
+    "perturbed_area_um2": 2.865840999999884,
+    "area_growth_um2": 0.037915999999998284,
+    "expected_area_growth_um2": 0.4,
+    "area_ok": false,
+    "passes": false,
+    "notes": "delta_length moves arm length correctly; area-growth check fails because flattened shape area growth is below width*delta threshold."
+  },
+  "status": "best_iou_found=0.6374740640104661 at iter6/iter1; iou >= 0.85 not achieved in 6 iterations"
+}

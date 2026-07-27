@@ -1,0 +1,37 @@
+cat3 codex55h: "IoU": 0.978740717440954 purity_hits=0
+cat4 codex55h: "IoU": 0.9837642745727591 purity_hits=0
+cat5 codex55h: "IoU": 0.8905844464676387 purity_hits=0
+cat6 codex55h: "IoU": 0.9646144953324083 purity_hits=0
+cat7 codex55h: "IoU": 0.9214050134178235 purity_hits=0
+cat2 codex55h: "IoU": 0.9678643882161126 purity_hits=0
+cat8 codex55h: "IoU": 0.9941079378762128 purity_hits=0
+cat3 opus48m: "IoU": 0.9841700432662592 purity_hits=0 [AIR]
+cat4 opus48m: "IoU": 0.9837642745727591 purity_hits=0 [AIR]
+cat1 codex55h: "IoU": 0.8248999764650506 purity_hits=0
+cat5 opus48m: "IoU": 0.9223994287074506 purity_hits=0 [AIR]
+cat8 opus48m: "IoU": 0.98952452579555 purity_hits=0 [AIR]
+cat2 opus48m: "IoU": 0.8810797968698958 purity_hits=0 [AIR]
+# Phase B wave 2 (conductor-verified, 23/24 field agreement):
+cat2 armA(primitives) 1/3 — sin/tfln FAIL 71%/56%: ring FSR infeasible in footprint (radius-bound physics)
+cat2 armB(stencil)    1/3 — same infeasibility (76%/60%)
+cat5 armA(primitives) 3/3 — all 0.00%
+cat5 armB(stencil)    2/3 — sin400 FAIL 22.9% (knob ceiling)
+cat7 armA(primitives) 1/3 — sin/tfln FAIL 50%/45% (recreation froze loop-count DOF; tune-only rule blocks extension)
+cat7 armB(stencil)    3/3 — n_loops/spacing knobs span the target
+cat8 armA(primitives) 3/3 — float-precision exact
+cat8 armB(stencil)    3/3 — stencil fully parametric for lambda_B; both span
+cat1 opus48m: "IoU": 0.8095829376962969 purity_hits=0 [AIR]
+cat6 opus48m: "IoU": 0.996232482242273 purity_hits=0 [AIR]
+cat7 opus48m: "IoU": 0.7456504943068707 purity_hits=0 [AIR]
+
+# Phase B v2.0 opus arms (C=agent-script, D=stencil-wrapper) — conductor-verified
+cat1 opus48m armC: soi220=pass(rel=3.68e-05,calls=1) sin400=pass(rel=2.13e-04,calls=1) tfln400=pass(rel=2.17e-04,calls=1) [AIR resume 2026-07-04]
+cat1 opus48m armD: soi220=pass(rel=3.68e-05,calls=1) sin400=INFEAS(rel=1.15e-01,calls=1) tfln400=pass(rel=1.19e-02,calls=1) [AIR resume 2026-07-04]
+cat2 opus48m armC: soi220=pass(rel=2.38e-05,calls=1) sin400=INFEAS(rel=6.54e-01,calls=1) tfln400=INFEAS(rel=5.11e-01,calls=1) [AIR resume 2026-07-04]
+cat2 opus48m armD: soi220=pass(rel=3.37e-05,calls=1) sin400=INFEAS(rel=8.49e-01,calls=1) tfln400=INFEAS(rel=6.99e-01,calls=1) [AIR resume 2026-07-04]
+cat5 opus48m armC: soi220=pass(rel=3.69e-06,calls=1) sin400=pass(rel=1.60e-05,calls=1) tfln400=INFEAS(rel=2.97e-05,calls=1) [AIR resume 2026-07-04]
+cat5 opus48m armD: soi220=pass(rel=1.24e-03,calls=1) sin400=pass(rel=1.06e-03,calls=1) tfln400=INFEAS(rel=1.38e-03,calls=1) [AIR resume 2026-07-04]
+cat7 opus48m armC: soi220=pass(rel=1.05e-02,calls=2) sin400=pass(rel=3.49e-03,calls=1) tfln400=pass(rel=1.91e-03,calls=1) [AIR resume 2026-07-04]
+cat7 opus48m armD: soi220=pass(rel=1.31e-06,calls=1) sin400=pass(rel=1.27e-04,calls=1) tfln400=pass(rel=1.47e-04,calls=1) [AIR resume 2026-07-04]
+cat8 opus48m armC: soi220=pass(rel=1.40e-05,calls=3) sin400=INFEAS(rel=6.53e-07,calls=1) tfln400=INFEAS(rel=1.52e-05,calls=1) [AIR resume 2026-07-04]
+cat8 opus48m armD: soi220=pass(rel=4.21e-05,calls=1) sin400=pass(rel=9.90e-05,calls=1) tfln400=pass(rel=1.43e-04,calls=1) [AIR resume 2026-07-04]

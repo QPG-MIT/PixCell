@@ -1,0 +1,41 @@
+{
+  "topology_reasoning": {
+    "device_type": "symmetric directional coupling region formed by two in-plane waveguide arms",
+    "observed_function": "two equal-width guides start vertically separated by ~1.13 \u00b5m, are brought together into ~0.2 \u00b5m minimum gap over a middle transfer region, then separated again over the full 18 \u00b5m footprint",
+    "workings": "This matches a 2x2 adiabatic/long-coupling element with coupling strength controlled by minimum gap and approach/interaction distance; both guides remain same width and are mirror-symmetric about the horizontal center line.",
+    "function_defining_knobs": [
+      "width_um",
+      "approach_length_um",
+      "interaction_length_um",
+      "min_gap_um",
+      "tail_length_um",
+      "device_width_um",
+      "curve_easing"
+    ],
+    "target_footprint_um": [
+      18,
+      3
+    ],
+    "image_observations": {
+      "component_bbox_px": [
+        0,
+        115,
+        1584,
+        558
+      ],
+      "two_components": true,
+      "component_height_px": 95,
+      "min_gap_px": 45,
+      "end_gap_px": 254
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8550467108851317,
+      "dice": 0.9218600328151823,
+      "sse": 49434.0,
+      "change_made": "Set width/gaps to match extracted target scale and DBU constraints: width_um=0.66, end_gap_um=1.68, min_gap_um=0.29; kept total footprint and length split topology."
+    }
+  ]
+}

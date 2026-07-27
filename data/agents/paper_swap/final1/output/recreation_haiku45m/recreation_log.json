@@ -1,0 +1,83 @@
+{
+  "device_name": "three_port_directional_coupler",
+  "topology": {
+    "description": "Adiabatic three-port directional coupler with gap-coupled waveguides",
+    "function": "Routes light from one input port among three output ports based on coupler strength",
+    "key_features": [
+      "Two parallel waveguides with left taper region",
+      "Gap-coupled coupling region in the middle",
+      "Right expansion region where waveguides separate again",
+      "Smooth S-bends for adiabatic operation"
+    ]
+  },
+  "function_defining_knobs": {
+    "wg_width_um": "Waveguide width at entrance/exit (nominal ~0.5 \u03bcm for SOI)",
+    "taper_width_min_um": "Minimum waveguide width in coupling region (nominal ~0.1-0.2 \u03bcm)",
+    "gap_um": "Spacing between waveguide centerlines during coupling (nominal ~0.3-0.5 \u03bcm)",
+    "coupler_length_um": "Length of high-overlap coupling region (nominal ~10-15 \u03bcm)",
+    "taper_length_um": "Length of adiabatic S-bend taper on each side (nominal ~5-10 \u03bcm)"
+  },
+  "primitives_plan": [
+    "Use gf.Path with extrude for S-bends (smooth tapering)",
+    "Rectangle for straight waveguide sections",
+    "Parametric control of all key knobs via top-level tunables"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "iou": 0.203,
+      "dice": 0.338,
+      "sse": 309023,
+      "change_made": "Initial attempt: 3-waveguide model. Issue: target is 2-waveguide coupler, not 3-port. My device height 0.85 \u03bcm vs target 1.7 \u03bcm. Need to rethink topology."
+    },
+    {
+      "iteration": 2,
+      "iou": 0.163,
+      "dice": 0.28,
+      "sse": 360624,
+      "change_made": "2-waveguide coupler but rectangular tapers. Target has smooth S-bends. Height now correct (1.7 \u03bcm). Need curved paths instead of rectangles."
+    },
+    {
+      "iteration": 3,
+      "iou": 0.291,
+      "dice": 0.451,
+      "sse": 320990,
+      "change_made": "Switched to polygon-based linear tapers. Much better match. Target has curved S-bends, not linear. Next: adjust params and add curvature."
+    },
+    {
+      "iteration": 4,
+      "iou": 0.288,
+      "dice": 0.447,
+      "sse": 320858,
+      "change_made": "Added cubic spline curvature to tapers. Improved visual match but IoU dropped slightly. Reverted to linear."
+    },
+    {
+      "iteration": 5,
+      "iou": 0.265,
+      "dice": 0.419,
+      "sse": 317378,
+      "change_made": "Aggressive parameter tuning (min_width 0.16, coupler 19\u03bcm). Poor result. Reverted."
+    },
+    {
+      "iteration": 6,
+      "iou": 0.291,
+      "dice": 0.451,
+      "sse": 319648,
+      "change_made": "3-segment piecewise linear tapers (more detailed approximation). No improvement. Reached iteration limit."
+    }
+  ],
+  "final_summary": {
+    "best_iou": 0.291,
+    "best_iteration": 3,
+    "limiting_factor": "Target image has smooth curved S-bends; my linear tapers are fundamentally different. To improve further would require Euler bend integration or real curve fitting.",
+    "tunables_final": {
+      "wg_width_um": 0.58,
+      "taper_width_min_um": 0.22,
+      "gap_um": 0.48,
+      "coupler_length_um": 17.0,
+      "taper_length_um": 7.5,
+      "total_length_um": 40.0
+    },
+    "status": "PHASE_A_INCOMPLETE - IoU 0.291 << target 0.85"
+  }
+}

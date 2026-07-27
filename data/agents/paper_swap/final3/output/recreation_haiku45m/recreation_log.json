@@ -1,0 +1,76 @@
+{
+  "device_type": "directional_coupler",
+  "topology": "two_parallel_waveguides_with_sbends",
+  "description": "A directional coupler consists of two single-mode waveguides that run in parallel for a coupling length, allowing evanescent coupling between them. The guides are connected at both ends via S-bend transitions to offset them vertically. The S-bends are smooth curves (radius-limited bends) that transition from the input/output section to the coupling region.",
+  "function_defining_knobs": [
+    "wg_width: core waveguide width in micrometers",
+    "coupling_gap: center-to-center spacing between guides during coupling section",
+    "coupling_length: length of parallel coupling region",
+    "sbend_height: vertical offset the S-bend must achieve (guides move from coupling_gap spacing to parallel)"
+  ],
+  "geometric_observations": {
+    "footprint_um": [
+      120,
+      4
+    ],
+    "scale_px_per_um": [
+      15.817,
+      184.75
+    ],
+    "bbox_px": [
+      438,
+      419,
+      2336,
+      1158
+    ],
+    "total_width_um": 120,
+    "total_height_um": 4,
+    "wg_width_estimate_um": 0.5,
+    "coupling_gap_estimate_um": 1.5,
+    "coupling_length_estimate_um": 60,
+    "sbend_length_estimate_um": 20
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.145,
+      "dice": 0.254,
+      "sse": 369487,
+      "change_made": "Initial linear S-bends; coupling_gap=1.5 too small; need smooth curves and taller gap"
+    },
+    {
+      "iter": 2,
+      "iou": 0.146,
+      "dice": 0.254,
+      "sse": 453430,
+      "change_made": "Smooth S-bends, coupling_gap=1.0, but wrong guide widths and gap; detected from image: guides are ~2μm wide, coupling gap only 0.12μm"
+    },
+    {
+      "iter": 3,
+      "iou": 0.150,
+      "dice": 0.260,
+      "sse": 570684,
+      "change_made": "Tapered coupler (narrow in/out, wide coupling) but tapers too sharp; going back to wide guides with smooth curves"
+    },
+    {
+      "iter": 4,
+      "iou": 0.174,
+      "dice": 0.296,
+      "sse": 1149560,
+      "change_made": "Simple directional coupler with linear tapers; 120μm width correct but missing curve detail"
+    },
+    {
+      "iter": 5,
+      "iou": 0.174,
+      "dice": 0.296,
+      "sse": 1149560,
+      "change_made": "Smooth easing S-bends; knob structure added but verify_knob_response shows no area movement (lengths.json is hard-coded, not derived from paths)"
+    }
+  ],
+  "final_status": {
+    "achieved_iou": 0.174,
+    "iterations_used": 5,
+    "converged": false,
+    "reason": "IoU plateaued below 0.85; polygon-based S-bends lack precision to match reference curves; knob infrastructure in place but lengths.json needs gf.Path integration for full verification"
+  }
+}

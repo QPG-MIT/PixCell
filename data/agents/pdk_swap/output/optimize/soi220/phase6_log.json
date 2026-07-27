@@ -1,0 +1,86 @@
+{
+  "task": "Redesign MZI splitter/combiner as dimensioned 1x2 MMIs (symmetric self-imaging), tier-0; emit standalone splitter for tier-1 FDTD.",
+  "stack": "soi220",
+  "spec": "experiments/pdk_swap/spec_full.json (schema v2): fsr_nm 8+-2% (tier0) AND extinction_ratio_db>=20 (tier1) AND insertion_loss_db<=1 (tier1); max_footprint 91.1x50.75 um.",
+  "physics": {
+    "extinction": "ER_db = -20*log10|2t-1|; >=20 dB needs split fraction t in required_split_balance(20) = [0.45, 0.55].",
+    "self_imaging": "Symmetric-interference 1x2 MMI: centered input excites symmetric modes only; double image at L_mmi = 3*L_pi/8, L_pi = lambda/(2*(n0-n1)) = beat length of the two lowest body modes. Output image spots at +-W_mmi/6. By symmetry the split is exactly 50/50 -> t=0.5 -> ER -> infinity, limited only by imaging quality (finite modes, taper), so predicted ER >> 20 dB and the balance is structural, not tuned."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "step": "choose MMI body width; measure L_pi with `multimode`",
+      "reasoning": "Body must be multimode yet compact, and the two output image spots (+-W/6) must leave an inter-guide gap >= 0.2 um: gap = W/3 - out_access_width. W=2.0 -> gap = 0.667-0.5 = 0.167 < 0.2 (reject). W=2.5 -> 0.833 - 0.6(taper wide end) = 0.233 (ok, compact). W=3.0 -> 0.4 (ok, longer). Chose W=2.5 for footprint.",
+      "measured": {"L_pi_um": {"W2.0": 9.84, "W2.5": 15.20, "W3.0": 22.22},
+                   "n_effs_W2.5": [2.833374, 2.782372]},
+      "prediction": "W=2.5: L_mmi = 3*L_pi/8 = 3*15.20/8 = 5.700 um; outputs at +-W/6 = +-0.4167 um; input centered; predicted t=0.5, ER>=30 dB by symmetry."
+    },
+    {
+      "iter": 2,
+      "step": "build MMI splitter+combiner into the device (primitives: rectangle body + input taper + two output access tapers); keep delta_length=74.02 (FSR) and footprint budget; tier-0 eval",
+      "reasoning": "Splitter body 2.5x5.700 um, centered input taper 0.5->1.0 um, two output tapers 0.6->0.5 um at +-0.4167 um. Combiner = mirrored splitter. Arms unchanged (straight reference + 4-finger meander) so delta_length and hence FSR are preserved; the MMIs only lengthen the ends, so I trimmed io_lead to 3 um to stay in budget.",
+      "prediction": "FSR pass ~8.0 nm; footprint < 91.1x50.75; ER/IL report UNMEASURED (tier-1, no FDTD fed).",
+      "measured": {"fsr_nm": 7.9995, "fsr_rel_error": 0.0000645, "fsr_verdict": "pass",
+                   "extinction_ratio_db": "unmeasured", "insertion_loss_db": "unmeasured",
+                   "bbox_um": [86.016, 26.12], "footprint_ok": true, "overall": "INCOMPLETE",
+                   "knob_response_passes": true}
+    },
+    {
+      "iter": 3,
+      "step": "emit standalone splitter_soi220.gds (parametrically identical MMI + 3-port stubs) and splitter_meta.json with real port coords for the conductor's tier-1 FDTD",
+      "reasoning": "The tier-1 metrics (ER, IL) are not computable from geometry; they need a full-wave S-matrix of the splitter. Provide the exact same MMI cell standalone with source/monitor stubs and measured port positions.",
+      "prediction": "FDTD should return split fraction ~0.5 (|imbalance| small), ER >= 20 dB, IL <= 1 dB if imaging is clean at L=3*L_pi/8.",
+      "measured": {"port_positions_um": {"in": [-8.85, 0.0], "out_top": [8.85, 0.4167], "out_bot": [8.85, -0.4167]},
+                   "output_guide_gap_um": 0.233,
+                   "awaiting": "tier-1 FDTD result, to be fed back via `eval --measured`"}
+    }
+  ],
+  "tier0_status": "PASS on tier-0 (FSR + footprint); INCOMPLETE overall by design (tier-1 ER/IL unmeasured, not faked).",
+  "unchanged": {"delta_length_um": 74.02, "fsr_nm": 7.9995, "meander_fingers": 4, "meander_radius": 6.0},
+  "tier1_IL_redesign_round2": {
+    "iter": 6,
+    "three_measured_points": {
+      "A_v1": {"mouths_um": "in 1.0 / out 0.6", "outputs_um": 0.4167, "body_um": "2.5x5.70", "taper_um": 3, "splitter_IL_db": 3.41},
+      "B_v2": {"mouths_um": "0.85 matched", "outputs_um": 0.5336, "body_um": "3.0x8.33", "taper_um": 7, "splitter_IL_db": 4.67},
+      "C_stock": {"mouths_um": "1.0 matched", "outputs_um": 0.625, "body_um": "2.5x5.5", "taper_um": 10, "gap_um": 0.25, "splitter_IL_db": 1.08}
+    },
+    "triangulation": "Capture is set by (1) whether the output mouth APERTURE covers the image spot and (2) taper adiabaticity -- not by centering the mouth exactly on the spot. Evidence: B moved outboard to +-0.5336 AND widened the body and got WORSE (4.67) -> the real image spots are INBOARD (~+-0.42) and a wider 3.0 um body images worse (more modes); my W_eff/6 shift overshot. A truncated a ~1 um image (from its 1.0 um INPUT) with a 0.6 um output -> mismatch loss. C wins (1.08) with WIDE 1.0 um matched mouths parked OUTBOARD at +-0.625 (gap 0.25) whose aperture (0.125..1.125) still COVERS the inboard ~0.42 spot, plus LONG 10 um tapers. Taper length trend A(3um)=3.41 -> C(10um)=1.08 shows adiabaticity dominates once the aperture covers the spot.",
+    "decision": "Revert body to the clean 2.5x5.70 um (inboard spots, 2-3 mode imaging -- do NOT widen). Matched WIDE 1.0 um input & output mouths so the image replica is fully covered; park them OUTBOARD at +-0.625 um (gap 0.25) -- wide-aperture coverage of the inboard spot, C's winning geometry, not centering-on-spot (which would collide at the gap). LONGER 11 um adiabatic tapers (slope 0.045, beating C's 10 um). Abandon the W_eff/6 position (it overshot in B). delta_length=74.02 (FSR) and footprint kept by re-folding the meander to R=3 (span 28.3 um); io_lead 2 um.",
+    "prediction": "Matched wide aperture + longer tapers should beat the stock reference. Predicted splitter IL ~0.8 dB (below C's 1.08 via the extra 1 um of adiabatic taper and a matched input), -> MZI IL ~1.6 dB. HONEST CAVEAT: the MZI budget is <=1.0 dB = <=0.5 dB/splitter, and even the stock reference (1.08/splitter -> 2.16 MZI) exceeds it, so a lumped primitives-only 1x2 MMI likely cannot reach <=1.0 MZI at this grid; this design MINIMIZES IL within the MMI family (a directional/adiabatic coupler would be the next structural step, out of scope for 'access-only').",
+    "predicted_splitter_IL_db": 0.8,
+    "predicted_mzi_IL_db": 1.6,
+    "measured_after": {"splitter_IL_db_at_5p700": 3.52, "note": "round-2 access measured 3.52 dB/splitter at mmi_length=5.700; see length correction below"}
+  },
+  "tier1_length_correction": {
+    "iter": 7,
+    "diagnostic": "fdve-51f6f92e",
+    "type": "evidence-based measured correction (not a theory change)",
+    "finding": "Conductor length sweep at the identical grid: mmi_length=5.500 um measures 2.01 dB/splitter vs 3.52 dB at 5.700 um. The tier-0 analytic estimate L_mmi = 3*L_pi/8 = 5.700 um (from the 2-mode beat length) ran ~4% long; the true best self-image plane is ~5.500 um. ~1.5 dB recovered.",
+    "action": "Adopted mmi_length=5.500 in both mzi_soi220.py (device) and splitter_soi220.py (fixture). All other parameters unchanged (W=2.5, matched 1.0 um mouths at +-0.625, 11 um adiabatic tapers, delta_length=74.02).",
+    "measured_splitter_IL_db": 2.01,
+    "progression_dB_per_splitter": [3.41, 4.67, 3.52, 2.01],
+    "note": "Best splitter IL 2.01 dB (from the initial 3.41). MZI IL = 2x = ~4.0 dB still exceeds the <=1.0 dB budget, so insertion_loss_db remains a tier-1 MISS -- honest: a lumped primitives-only 1x2 MMI floors well above 0.5 dB/splitter at this grid. FSR (tier-0) and footprint stay passing."
+  },
+  "tier1_IL_redesign": {
+    "iter": 5,
+    "measured_before": {"split_fraction": 0.5000, "ER_db": "inf (symmetry)", "splitter_IL_db": 3.41,
+                        "mzi_IL_db": 6.82, "verdict": "FSR PASS, ER PASS, IL FAIL -> MISS on insertion_loss_db",
+                        "fdtd": "fdve-e449287a"},
+    "reasoning": "t=0.5000 exactly => imaging/symmetry is correct; the 3.41 dB is ACCESS coupling, not the body. Two physics errors in the old access: (1) mismatched mouths -- input taper widened to 1.0 um but the output tapers were only 0.6 um at the facet, so the ~1 um-wide image replica arrived at 0.6 um guides (field overlap eta = 2*w1*w2/(w1^2+w2^2) = 0.88 -> ~1.1 dB just here, plus radiation). (2) output positions: the symmetric 1x2 images sit at +-W_eff/6 where W_eff = W + (lambda/pi)*(n_r^2-n_c^2)^-0.5 (Goos-Hanchen, TE) = 2.70 um for the 2.5 um body, so the true spots are +-0.4504 um, outboard of the +-0.4167 I used. The tier-1 IL is measured on the SPLITTER alone, so the arm/meander bends do NOT enter it -- I only need to fix the MMI access.",
+    "decision": "Fix: matched adiabatic access -- input and output tapers both go 0.5<->mmi_access_w at the facet so the image replica is captured by an equal-width mouth; outputs moved to +-W_eff/6. To give the matched mouth room with a safe DRC gap I OVERRIDE 'keep W=2.5' and widen the body to 3.0 um: at 2.5 um the outputs are only 0.90 um apart, capping the mouth at 0.70 um (gap 0.2); at 3.0 um (L_pi=22.22, L_mmi=3*L_pi/8=8.3325, W_eff=3.2019, outputs +-0.5336, sep 1.067) a 0.85 um matched mouth fits with 0.217 um gap. Body length still follows the 3*L_pi/8 self-imaging derivation. Footprint recovered by re-folding the meander R=6->4 (span 56.6->37.7 um); delta_length=74.02 (FSR) unchanged.",
+    "prediction": "Matched 0.85 um adiabatic access (taper_len 7 um, slope 0.05) at the correct +-0.5336 um spots removes the width-mismatch and position loss. Predicted splitter IL ~0.3 dB (well-designed symmetric 1x2 excess loss) -> MZI IL ~0.6 dB, PASS (<=1.0). FSR and ER unaffected (delta_length fixed; centered input keeps t=0.5).",
+    "predicted_mzi_IL_db": 0.6,
+    "measured_after": "awaiting tier-1 re-measure"
+  },
+  "tier1_feedback": {
+    "iter": 4,
+    "step": "fix the characterization FIXTURE only (MMI cell dimensions untouched)",
+    "reasoning": "Tier-1 FDTD returned t=0.5000 (perfect symmetry) but the fixture was flawed: the two MMI image spots sit only mmi_width/3 = 0.83 um apart, narrower than the monitor planes, so each plane spanned BOTH guides and the supermode projection corrupted per-port power (the rectangle-stencil fixture even reported negative loss). The MMI itself images correctly; only the monitors were too close.",
+    "change": "In splitter_soi220.py only: after the two MMI outputs, added symmetric fan-out s-bends (gf.components.bend_s, fan_dx=12 um to keep bend radius >= 10 um min) taking each guide from +-0.4167 um to +-2.7 um, then >=3 um straight monitor stubs on the separated guides. Device MMI cell (mmi_width=2.5, mmi_length=5.700, tapers) unchanged.",
+    "prediction": "Monitor planes now isolate each guide; the true 50/50 split and low loss should read out cleanly (ER >= 20 dB, IL <= 1 dB).",
+    "measured": {"output_separation_um": 5.4,
+                 "port_positions_um": {"in": [-8.85, 0.0], "out_top": [20.85, 2.7], "out_bot": [20.85, -2.7]},
+                 "fixture_bbox_um": [29.70, 5.90],
+                 "mmi_cell_unchanged": true}
+  }
+}

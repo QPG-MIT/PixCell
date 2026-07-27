@@ -1,0 +1,106 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "footprint.json",
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_type": "four-port directional coupler",
+    "evidence": [
+      "The bitmap contains two independent waveguides with four external ports.",
+      "Each guide is routed by S-bends into a long, close, parallel central region.",
+      "The parallel region is the function-defining interaction span where evanescent coupling transfers power between the guides."
+    ],
+    "operation": "Optical power launched into one input couples to the adjacent guide according to the supermode beat length set by waveguide width, gap, and coupling length; the S-bends only fan the ports out from the close interaction region.",
+    "function_defining_knobs": [
+      "coupling_length",
+      "coupling_gap",
+      "top_width",
+      "bottom_width",
+      "left_s_bend_radius",
+      "right_s_bend_radius",
+      "port_width",
+      "taper_length"
+    ],
+    "implementation_plan": "Use primitives only: two gf.Path centerlines smoothed through waypoints and extruded on layer (1,0), plus primitive path tapers/straight sections if needed. All knobs remain top-level assignments in device.py. The script will write lengths.json from the generated path lengths so verify_knob_response can prove coupling_length moves real geometry."
+  },
+  "calibration": {
+    "footprint_um": [
+      120,
+      4
+    ],
+    "target_bbox_px": [
+      438,
+      419,
+      2336,
+      1158
+    ],
+    "scale_px_per_um": [
+      15.816666666666666,
+      184.75
+    ],
+    "white_threshold": 245
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7546545656603074,
+      "dice": 0.860174510048156,
+      "sse": 66231.0,
+      "change_made": "Initial two-path directional coupler model with linear port tapers, smoothstep S-bends, top_width=0.36, bottom_width=0.26, coupling_gap=0.16, coupling_length=56.5."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7472054333373848,
+      "dice": 0.8553149149841267,
+      "sse": 68636.0,
+      "change_made": "Changed bend centerlines from diagonal smoothstep transitions to sampled Bezier vertical lobes. This underfilled target bend lobes and added inner-arc overdraw, so it was not the best candidate."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7743799951335467,
+      "dice": 0.8728457233032137,
+      "sse": 60271.0,
+      "change_made": "Replaced Bezier lobes with target-row-derived bend waypoints while keeping constant guide widths. This improved trajectory alignment but still underfilled broad bend shoulders."
+    },
+    {
+      "iter": 4,
+      "iou": 0.8101815924258886,
+      "dice": 0.8951384720912287,
+      "sse": 55035.0,
+      "change_made": "Added tapered bend-width boost primitives over the four S-bend lobes. Recall improved strongly, but lower-left and upper-right bends became red-heavy."
+    },
+    {
+      "iter": 5,
+      "iou": 0.8064308681672026,
+      "dice": 0.8928444286222855,
+      "sse": 55083.0,
+      "change_made": "Narrowed lower guide, widened upper guide, and reduced top-right/bottom-left bend boosts. False positives dropped but false negatives increased; iteration 4 remained the best."
+    },
+    {
+      "iter": 6,
+      "iou": 0.8169668163013819,
+      "dice": 0.8992644323184721,
+      "sse": 51986.0,
+      "change_made": "Used iteration-4-style upper width, intermediate lower width, moderate top-right/bottom-left boost reductions, shifted top-right bend left, and shifted bottom-left bend right. This was the best candidate after six comparison calls."
+    }
+  ],
+  "best_iteration": 6,
+  "knob_verification": {
+    "param": "coupling_length",
+    "delta_um": 5.0,
+    "width_um": 0.6,
+    "base_value": 56.5,
+    "base_delta_length_um": 56.5,
+    "perturbed_delta_length_um": 61.5,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 88.88242900000003,
+    "perturbed_area_um2": 91.88242900000003,
+    "area_growth_um2": 3.0,
+    "expected_area_growth_um2": 3.0,
+    "area_ok": true,
+    "passes": true
+  }
+}

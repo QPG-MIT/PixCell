@@ -1,0 +1,38 @@
+{
+  "infeasible_within_representation": true,
+  "reasoning": "The spec demands coupling_ratio=0.9439 AND a <=40x4.5 um footprint simultaneously. On TFLN (core_n=2.138, clad_n=1.444, t=0.4 um) the mode is weakly confined, so the two-core supermode split is tiny even at the tightest allowed gap. At w=single_mode_width_um=1.2 and gap=min_feature_um=0.50 (the SMALLEST gap the DRC permits), solve_supermodes gives dn=0.003771 -> beat length Lpi=205.52 um. coupling_ratio=sin^2(pi*L/(2*Lpi)); reaching 0.9439 requires L/Lpi=2*asin(sqrt(0.9439))/pi=0.847767, i.e. coupling_length=174.23 um. The device length is 2*sbend_length + coupling_length, so even with sbend_length=2.0 the bbox is 178.2 um long = 4.5x the 40 um budget. The only two knobs that could shorten Lpi are barred: width is pinned to single_mode_width_um by the platform-adaptation rule, and gap is already at min_feature_um. Reducing coupling_length to fit the footprint (max ~36 um) collapses the ratio to ~0.074, far below the 0.8939 acceptance floor. Ratio and footprint are therefore mutually exclusive within the exposed tunables. Confirmed by eval: at the ratio-correct L=174.23 the metric passes (0.94387) but footprint_ok=false (bbox 178.2x4.2).",
+  "tunables": {
+    "wg_width": 1.2,
+    "coupling_gap": 0.50,
+    "coupling_length": 174.2295,
+    "sbend_length": 2.0,
+    "port_sep": 3.0,
+    "note": "wg_width=single_mode_width_um and coupling_gap=min_feature_um are the platform floors; coupling_length shown is the ratio-correct value that overflows the footprint. No value of coupling_length satisfies ratio and footprint together."
+  },
+  "evaluator_report": {
+    "passes": false,
+    "verdicts": [
+      {
+        "metric": "coupling_ratio",
+        "tier": 0,
+        "verdict": "pass",
+        "target": {"metric": "coupling_ratio", "value": 0.9439, "tolerance_abs": 0.05, "tier": 0},
+        "measured": 0.9438720024111419,
+        "rel_error": 2.9661604892547136e-05,
+        "source": "local"
+      }
+    ],
+    "unmeasured": [],
+    "reason": "footprint exceeds max_footprint_um",
+    "n_eff": 1.8065590858459473,
+    "n_g": 2.2277374267578125,
+    "delta_length_um": null,
+    "wavelength_um": 1.55,
+    "stack_label": "400 nm TFLN strip (isotropic approx)",
+    "from_cache": false,
+    "bbox_um": [178.234, 4.2],
+    "max_footprint_um": [40.0, 4.5],
+    "footprint_ok": false
+  },
+  "calls_used": 1
+}

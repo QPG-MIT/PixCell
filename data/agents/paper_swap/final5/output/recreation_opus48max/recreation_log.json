@@ -1,0 +1,198 @@
+{
+  "device_identification": {
+    "name": "Grating-assisted contra-directional coupler (sidewall-Bragg-grating filter)",
+    "evidence": "Central coupling region = three parallel horizontal elements: TOP comb of isolated full-height teeth (grating), MIDDLE solid straight bar (bus waveguide), BOTTOM comb of teeth (grating). Two inverse-taper 'needle' edge couplers (top-left tip points left; bottom-right tip points right). Two 180-degree U-bends (hairpins): top-right folds the top grating arm back to a return guide; bottom-left folds the bottom grating arm to the lower guide. A top-left input bend enters from the chip edge and sweeps down into the top grating.",
+    "how_it_works": "Each corrugated guide is a sidewall Bragg grating: forward-propagating light is contra-directionally coupled into the BACKWARD mode of the adjacent bus when the phase-match (Bragg) condition lambda_B = 2*n_eff*Lambda is met. The grating pair + central bus form the coupler; the reflection band is centered at lambda_B with bandwidth and peak reflectivity set by kappa*L. Inverse tapers are edge couplers (spot-size converters) for fiber/chip I/O; the hairpins route the folded arms so both ports reach the chip facet."
+  },
+  "function_knobs": {
+    "grating_period": "Bragg period Lambda -> sets phase-match wavelength lambda_B (PRIMARY spectral knob).",
+    "grating_length": "coupling / transfer length L of the top grating -> sets kappa*L (bandwidth & peak reflectivity). CHOSEN as the most-important knob for verify_knob_response.",
+    "corrugation_height": "tooth vertical extent -> corrugation amplitude -> coupling strength kappa.",
+    "coupler_gap": "gap between each grating and the central bus -> evanescent overlap -> kappa; also sets the band y-spacing.",
+    "bus_width": "central bus waveguide width -> its n_eff (phase matching).",
+    "taper_length / tip_width": "inverse-taper edge-coupler geometry -> mode-size conversion efficiency.",
+    "wg_width": "routing / grating-arm guide width -> n_eff.",
+    "bend_radius": "hairpin U-turn radius -> bend loss."
+  },
+  "calibration_note": "footprint=[18.24,0.70] um mapped anisotropically (scale_x=200.05, scale_y=1620 px/um; sy/sx=8.098). Device designed in isotropic visual frame (18.24 x 5.67 um) then Y-squished by 8.098 so the written GDS bbox = 18.24 x 0.70 um; the evaluator's y-stretch inverts the squish exactly.",
+  "measured_geometry_visual_um": {
+    "top_grating": {
+      "yc": 3.33,
+      "tooth_h": 0.415,
+      "x": [
+        1.72,
+        14.9
+      ],
+      "period": 0.135,
+      "duty": "~0.82-0.87",
+      "teeth": "~90"
+    },
+    "middle_bus": {
+      "yc": 2.885,
+      "height": 0.235,
+      "x": [
+        1.91,
+        15.97
+      ]
+    },
+    "bottom_grating": {
+      "yc": 2.435,
+      "tooth_h": 0.415,
+      "x": [
+        3.05,
+        16.07
+      ],
+      "period": 0.13,
+      "teeth": "~100"
+    },
+    "top_return": {
+      "yc": 5.37,
+      "width": "~0.55",
+      "needle_tip_x": 2.3
+    },
+    "bottom_guide": {
+      "yc": 0.41,
+      "width": "~0.54",
+      "right_needle_tip_x": 15.6
+    },
+    "top_right_hairpin": {
+      "connects": "top grating (yc3.33) <-> top return (yc5.37)",
+      "r": 1.02
+    },
+    "bottom_left_hairpin": {
+      "connects": "bottom grating (yc2.44) <-> bottom guide (yc0.41)",
+      "r": 1.02
+    },
+    "bottom_right_descent": {
+      "from": [
+        16.07,
+        2.44
+      ],
+      "to_tip": [
+        17.85,
+        0.33
+      ]
+    },
+    "input_bend": {
+      "from": [
+        0.0,
+        5.45
+      ],
+      "to": [
+        2.05,
+        3.33
+      ]
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.39,
+      "dice": 0.561,
+      "sse": 1029048,
+      "change_made": "initial build: 3 central bands (top comb / bus / bottom comb) + routing in isotropic visual frame, Y-squished 8.098x to fill footprint"
+    },
+    {
+      "iter": 2,
+      "iou": 0.434,
+      "dice": 0.606,
+      "sse": null,
+      "change_made": "placement bug: rect via absolute gf.Path.extrude (ref.move silently dropped in this gf9 build->gdstk path)"
+    },
+    {
+      "iter": 3,
+      "iou": 0.711,
+      "dice": 0.831,
+      "sse": null,
+      "change_made": "tapers via extrude_transition (absolute placement); removed origin strays -> vertical centering jumped (cy 0.331->0.354)"
+    },
+    {
+      "iter": 4,
+      "iou": 0.73,
+      "dice": 0.844,
+      "sse": null,
+      "change_made": "elliptical hairpins (r_x 0.66 vs r_y 1.02); grating period + phase; thinner tapered descent; input width"
+    },
+    {
+      "iter": 5,
+      "iou": 0.784,
+      "dice": 0.879,
+      "sse": null,
+      "change_made": "pinned device bbox center to y=0.35 exactly (descent tip -> vy0.02) so evaluator Y-recenter is a no-op; killed the ~30px global shift"
+    },
+    {
+      "iter": 6,
+      "iou": 0.801,
+      "dice": 0.889,
+      "sse": null,
+      "change_made": "grating phase x0 optimized (cache-cleared sweep): top_x0=1.8, bot_x0=3.23"
+    },
+    {
+      "iter": 7,
+      "iou": 0.817,
+      "dice": 0.899,
+      "sse": null,
+      "change_made": "coordinate descent: hairpin arm x, bottom grating length"
+    },
+    {
+      "iter": 8,
+      "iou": 0.827,
+      "dice": 0.905,
+      "sse": null,
+      "change_made": "dedicated hp_width (U-turn thinner than return), return_width, duty tuning"
+    },
+    {
+      "iter": 9,
+      "iou": 0.8399,
+      "dice": 0.913,
+      "sse": 199906.0,
+      "change_made": "widened period search -> true grating period 0.1625 (32.5px), duty 0.83; final coordinate descent; boolean-OR dedupe of GDS"
+    }
+  ],
+  "final_result": {
+    "iou": 0.8399,
+    "dice": 0.913,
+    "sse": 199906.0,
+    "precision": 0.893,
+    "recall": 0.9339,
+    "iterations_run": 9,
+    "note": "honest best (< 0.85 target); topology exact, waveguide edges + U-turn shape are the residual",
+    "tunables": {
+      "grating_period": 0.1625,
+      "grating_length": 12.7,
+      "grating_duty": 0.83,
+      "corrugation_height": 0.416,
+      "bot_grating_period": 0.1625,
+      "bot_grating_length": 12.15,
+      "coupler_gap": 0.12,
+      "bus_width": 0.236,
+      "taper_length": 1.4,
+      "tip_width": 0.07,
+      "wg_width": 0.52,
+      "return_width": 0.53,
+      "bend_radius": 1.02,
+      "hp_rx": 0.66,
+      "hp_width": 0.48
+    },
+    "function_knobs_present": [
+      "grating_length (transfer/coupling length = PRIMARY)",
+      "grating_period",
+      "corrugation_height",
+      "coupler_gap",
+      "taper_length",
+      "tip_width"
+    ]
+  },
+  "knob_response": {
+    "param": "grating_length",
+    "delta_um": 5.0,
+    "width_um": 0.0426,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "area_growth_um2": 0.1953,
+    "expected_area_growth_um2": 0.213,
+    "area_ok": true,
+    "passes": true,
+    "note": "width_um = grating_duty*corrugation_height/Y_SQUISH = effective cross-height of the corrugated grating guide in the anisotropically-squished GDS"
+  }
+}

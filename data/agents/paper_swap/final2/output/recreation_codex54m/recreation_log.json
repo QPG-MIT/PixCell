@@ -1,0 +1,63 @@
+{
+  "topology_reasoning": {
+    "device_interpretation": "Binary silhouette only supports a geometric reading: a broad rectangular body with four identical upward tapered fingers and one centered downward tapered finger. The image does not expose routing, holes, or interference structure, so this recreation treats it as a pad-like multi-port body rather than inventing unseen internal physics.",
+    "how_it_works": "Functionally, the dominant behavior would be set by the body footprint, the four top finger apertures, and the centered bottom finger. The top fingers are uniform narrow stems fed by wider tapered shoulders; the bottom finger is shorter and also tapered. The simplest honest parametric contract is therefore footprint plus finger widths, lengths, taper bases, and x-positions.",
+    "function_defining_knobs": [
+      "body_width",
+      "body_height",
+      "top_stem_width",
+      "top_stem_length",
+      "top_base_width",
+      "top_taper_length",
+      "top_center_1",
+      "top_center_2",
+      "top_center_3",
+      "top_center_4",
+      "bottom_base_width",
+      "bottom_taper_length",
+      "bottom_tip_width",
+      "delta_length"
+    ],
+    "verified_knob": {
+      "name": "delta_length",
+      "reason": "It controls the straight terminal segment of the bottom finger, so perturbing it changes both the self-reported path length delta and the real layer-(1,0) area by bottom_tip_width * delta."
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.4803837673852043,
+      "dice": 0.6489989663068302,
+      "sse": 1396611.0,
+      "change_made": "Initial draft matched the silhouette ratios but incorrectly assumed the black-device bbox filled the full 25 x 10 um footprint, so the body and fingers were oversized in the comparator frame."
+    },
+    {
+      "iter": 2,
+      "iou": 0.49168453724901146,
+      "dice": 0.6592339398459999,
+      "sse": 968527.0,
+      "change_made": "Rescaled the visible device into the measured canvas margins from the source image; this improved body height and overall proportions but still ignored compare_absolute left-alignment and vertical-centering behavior."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9870174131038688,
+      "dice": 0.9934662943512652,
+      "sse": 19161.0,
+      "change_made": "Mapped target feature coordinates into the comparator calibration frame directly and added microscopic corner anchors so the GDS bbox stays 25 x 10 um while the visible geometry sits at the target offsets."
+    }
+  ],
+  "best_iteration": 3,
+  "best_metrics": {
+    "iou": 0.9870174131038688,
+    "dice": 0.9934662943512652,
+    "sse": 19161.0
+  },
+  "knob_verification": {
+    "param": "delta_length",
+    "width_um": 1.274,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 6.3700000000000045,
+    "expected_area_growth_um2": 6.37,
+    "passes": true
+  }
+}

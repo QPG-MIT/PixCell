@@ -1,0 +1,51 @@
+{
+  "phase": "B",
+  "device": "device_from_figure_final1",
+  "targets": {
+    "transmission_total_min": 0.95,
+    "split_fraction_target": 0.5,
+    "split_fraction_tolerance_abs": 0.02
+  },
+  "stacks": {
+    "soi220": {
+      "status": "partial_best_cap_reached",
+      "best_call": 2,
+      "calls_used": 3,
+      "transmission_total": 0.976,
+      "transmission_passes": true,
+      "split_fraction": 0.4495,
+      "split_passes": false,
+      "fits_device_budget": true,
+      "device_bbox_um": [60.0, 1.54],
+      "best_artifact_note": "Best measured geometry was iteration 2. Iteration 3 showed branch-gap sensitivity but worsened balance.",
+      "log": "soi220/optimization_log.json"
+    },
+    "sin400": {
+      "status": "full_pass",
+      "best_call": 1,
+      "calls_used": 1,
+      "calls_banked": 2,
+      "transmission_total": 0.974,
+      "transmission_passes": true,
+      "split_fraction": 0.5,
+      "split_passes": true,
+      "fits_device_budget": true,
+      "device_bbox_um": [150.0, 3.2],
+      "log": "sin400/optimization_log.json"
+    },
+    "tfln400": {
+      "status": "partial_best_floor_argument",
+      "best_call": 1,
+      "calls_used": 2,
+      "calls_banked": 1,
+      "transmission_total": 0.92,
+      "transmission_passes": false,
+      "split_fraction": 0.5,
+      "split_passes": true,
+      "fits_device_budget": true,
+      "device_bbox_um": [150.0, 3.9],
+      "floor_argument": "Best local result was T=0.920 with exact balance. A second taper redistribution regressed to T=0.832, and independent context reported coupling-gap opening saturated around 0.93, so the stack was closed as a likely TFLN 150 um footprint/platform floor rather than spending the final call.",
+      "log": "tfln400/optimization_log.json"
+    }
+  }
+}

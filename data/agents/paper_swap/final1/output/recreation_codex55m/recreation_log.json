@@ -1,0 +1,92 @@
+{
+  "phase": "PHASE_A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_identification": "The bitmap shows a compact 1x2 adiabatic splitter / edge-coupled Y-branch style device. A single central left bus taper narrows and terminates before the split, while two initially narrow branch tips begin slightly inboard, widen through the interaction region, then separate through mirrored S-bends into two output guides.",
+    "how_it_works": "The long central taper and two nearby tapered branch tips define an adiabatic power-transfer/splitting region. The branch gap and taper widths set modal overlap and splitting behavior; the following S-bends fan the two arms out to isolated output ports while preserving low-loss curvature.",
+    "function_defining_knobs": [
+      "input_taper_length",
+      "input_width",
+      "input_tip_width",
+      "branch_tip_x",
+      "branch_taper_length",
+      "branch_tip_width",
+      "branch_width",
+      "split_gap",
+      "s_bend_length",
+      "s_bend_offset",
+      "output_length",
+      "delta_length"
+    ],
+    "bitmap_measurements_um": {
+      "footprint": [40.0, 1.7],
+      "branch_tip_x": 3.07,
+      "input_taper_end_x": 25.05,
+      "center_bus_y": 0.835,
+      "upper_initial_y": 0.57,
+      "lower_initial_y": 1.112,
+      "upper_output_y": 0.12,
+      "lower_output_y": 1.58,
+      "output_width": 0.24
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7898350165754375,
+      "dice": 0.8825785720592955,
+      "sse": 54521.0,
+      "change_made": "Initial analytic primitive model: central straight taper plus two linear branch tapers and sinusoidal S-bend output paths."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7960705309004393,
+      "dice": 0.8864579839204183,
+      "sse": 53143.0,
+      "change_made": "Replaced analytic tapers/S-bends with piecewise gf.Path extrude_transition segments digitized from the allowed bitmap; snapped widths to the 0.002 um gdsfactory port grid."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7988369009136439,
+      "dice": 0.8881704622669327,
+      "sse": 52336.0,
+      "change_made": "Tried micron equivalent of a raster-estimated x/y alignment shift; official comparator vertical centering cancels most pure translation."
+    },
+    {
+      "iter": 4,
+      "iou": 0.5491229637571101,
+      "dice": 0.7089469029951171,
+      "sse": 136260.0,
+      "change_made": "Tried primitive bbox anchors to preserve internal alignment under comparator centering; rejected because bbox height perturbation degraded the render."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9867100186339886,
+      "dice": 0.9933105580374788,
+      "sse": 3131.0,
+      "change_made": "Corrected image-space y samples into GDS coordinates using y_gds = footprint_width - y_image and removed bbox anchors."
+    }
+  ],
+  "best_iteration": 5,
+  "final_metrics": {
+    "iou": 0.9867100186339886,
+    "dice": 0.9933105580374788,
+    "sse": 3131.0,
+    "gds_size_um": [39.975, 1.699],
+    "size_match": [true, true]
+  },
+  "knob_verification": {
+    "param": "delta_length",
+    "width_um": 0.244,
+    "base_delta_length_um": 0.0011638870799473011,
+    "perturbed_delta_length_um": 5.001163887079947,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 1.1999999999999993,
+    "expected_area_growth_um2": 1.22,
+    "passes": true
+  }
+}

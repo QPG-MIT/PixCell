@@ -1,0 +1,40 @@
+{
+  "device_identification": {
+    "what_it_is": "A balanced Mach-Zehnder interferometer nested inside an outer racetrack (stadium) loop. The loop connects to the MZI at its left and right vertices, so the two MZI arms plus the loop form a closed optical path (a loop-mirror / ring-loaded MZI).",
+    "how_it_works": "Light entering the loop is split by a 1->2 splitter at the left vertex into a top arm and a bottom arm. Each arm passes through a wide 'phase section' -- a solid rectangular block etched with two rectangular windows separated by a central bridge (a slotted/multimode phase-and-coupling region). The arms recombine at a mirror-image 2->1 combiner at the right vertex. The relative phase accrued in the two arms sets the interference; the surrounding stadium loop recirculates/reflects, making this a resonant interferometric element.",
+    "symmetry": "Mirror-symmetric about the vertical centerline (x=1.5um) and the horizontal centerline (y=2.75um).",
+    "function_knobs": {
+      "guide_w": "arm waveguide width -- sets single-mode confinement",
+      "arm_offset": "half-separation of the two MZI arms (arm pitch) -- the interferometer split geometry",
+      "ps_len": "phase-section length (x) -- the phase/coupling interaction length (MMI-like transfer length)",
+      "ps_h": "phase-section transverse height -- multimode width of the slotted block",
+      "slot_gap / bridge_w": "the etched-window gap and central bridge -- set the slot coupling",
+      "split_taper_len / split_tip_w": "splitter/combiner taper length and tip width -- the 1->2 junction",
+      "ring_wall": "loop waveguide width"
+    }
+  },
+  "calibration_note": "Image is anisotropically scaled: x maps 3.0um->1551px (517 px/um), y maps 5.5um->780px (141.8 px/um). All feature coordinates were measured as fractions of the bbox and converted x_um=frac*3.0, y_um=frac*5.5, so the device is built at 3.0um (x) by 5.5um (y) and the rasterizer's anisotropic scale reproduces the 2:1 visual aspect.",
+  "measurements_bbox_fraction": {
+    "ring_wall_frac": 0.09,
+    "top_arm_y_center": 0.3325,
+    "arm_thickness_y": 0.077,
+    "phase_section_x": [0.351, 0.647],
+    "phase_section_y_top_arm": [0.24, 0.427],
+    "hole1_x": [0.372, 0.481],
+    "hole2_x": [0.517, 0.627],
+    "hole_y": [0.283, 0.386],
+    "central_bridge_x": [0.481, 0.517],
+    "split_region_x": [0.12, 0.28]
+  },
+  "primitives_note": "Built from gf.components.rectangle, gf.components.ellipse (corner rounding), gf.components.taper (splitter wedges), gf.path.smooth+extrude (arms), gf.cross_section, and gf.boolean (loop annulus, etch windows). ellipse is used as a geometric primitive to render anisotropic (elliptical) corners forced by the x/y calibration mismatch. No gf.components device stencils (no mmi/coupler/etc.), no raw add_polygon.",
+  "iterations": [
+    {"iter": 1, "iou": 0.736, "dice": 0.848, "sse": null, "change_made": "Initial build: stadium (racetrack) loop via constant-width gf.Path extrude; splitter wedges; slotted phase sections (rect minus 2 windows); arms as sharp polyline extrudes."},
+    {"iter": 2, "iou": 0.678, "dice": 0.808, "sse": null, "change_made": "Loop -> rounded-rectangle path (target has flat top/sides, not semicircular caps); replaced thin stems with fat splitter wedges (split_base_w=1.30)."},
+    {"iter": 3, "iou": 0.594, "dice": 0.745, "sse": null, "change_made": "Reduced ring_wall to 0.32 and smoothed arm S-bends (gf.path.smooth) to kill miter spikes. Revealed the anisotropy problem: a constant-width loop renders thin top/bottom, fat sides."},
+    {"iter": 4, "iou": 0.644, "dice": 0.784, "sse": null, "change_made": "Rebuilt loop as boolean(outer_rect - inner_cavity_rect) with independent side (0.339) and top/bottom (0.517) wall thickness to absorb anisotropy. Straight walls now match; corners sharp (red outer / blue inner corners)."},
+    {"iter": 5, "iou": 0.774, "dice": 0.873, "sse": null, "change_made": "Rounded both outer and inner corners with elliptical corners (2 rects + 4 ellipses per rounded-rect). Initial radius guesses (outer 0.9/1.5, inner 0.55/0.95)."},
+    {"iter": 6, "iou": 0.873, "dice": 0.932, "sse": 79498.0, "change_made": "Fitted corner radii from the image corner curves: outer ellipse (0.9, 2.2), inner cavity ellipse (0.74, 1.57), ring_wall_x=0.31. IoU >= 0.85 reached; kept as honest best. (A follow-up wedge trim gave 0.8729 -- negligibly worse -- and was reverted.)"}
+  ],
+  "final": {"iou": 0.8733, "dice": 0.9324, "sse": 79498.0, "iterations": 6, "threshold_met": true},
+  "knob_verification": {"param": "delta_length", "width_um": 0.42, "delta_um": 0.5, "delta_length_ok": true, "area_ok": true, "passes": true, "area_growth_um2": 0.21, "expected_um2": 0.21}
+}

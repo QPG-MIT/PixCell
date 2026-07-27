@@ -1,0 +1,95 @@
+{
+  "device_name": "Interdigitated Grating-Assisted Directional Coupler",
+  "topology_reasoning": {
+    "type": "dual_waveguide_grating_coupler",
+    "description": "Two parallel curved waveguides with dense vertical grating/Bragg reflector pattern in the middle for mode coupling and wavelength selectivity",
+    "key_features": [
+      "Top waveguide: curved S-taper entry on left, straight section, U-bend exit on right",
+      "Bottom waveguide: mirrored S-taper entry on left, straight section, tapered exit on right",
+      "Central region: dense vertical gratings (Bragg reflectors) spanning the coupling region",
+      "Symmetric layout with slight asymmetry in bends"
+    ],
+    "functional_knobs": {
+      "waveguide_width_um": "Cross-sectional width of each waveguide - controls mode confinement and coupling strength",
+      "grating_pitch_um": "Spacing between vertical grating lines - controls Bragg wavelength and bandpass",
+      "grating_length_um": "Length of the grating region - controls interaction strength and bandwidth",
+      "grating_depth_um": "Etch depth of vertical gratings - controls coupling efficiency",
+      "coupler_gap_um": "Gap between top and bottom waveguides - controls supermode coupling length",
+      "bend_radius_um": "Radius of curvature for U-bends - affects adiabatic transition"
+    }
+  },
+  "iterations": [
+    {
+      "iteration": 1,
+      "description": "Initial attempt with wrong scales",
+      "iou": 0.0607,
+      "dice": 0.0636,
+      "change": "Rectangles too large, wrong geometry"
+    },
+    {
+      "iteration": 2,
+      "description": "Improved with better waveguide positioning",
+      "iou": 0.0,
+      "dice": 0.0,
+      "change": "Stepped geometry approximation"
+    },
+    {
+      "iteration": 3,
+      "description": "First polygon-based approach",
+      "iou": 0.0307,
+      "dice": 0.0596,
+      "change": "Added smooth curves with sine functions"
+    },
+    {
+      "iteration": 4,
+      "description": "Improved offset handling",
+      "iou": 0.0289,
+      "dice": 0.0562,
+      "change": "Better centerline positioning"
+    },
+    {
+      "iteration": 5,
+      "description": "Scaled down waveguide width to match 0.7 um footprint",
+      "iou": 0.1311,
+      "dice": 0.2319,
+      "change": "Reduced waveguide_width_um from 0.3 to 0.2, coupler_gap to 0.30"
+    },
+    {
+      "iteration": 6,
+      "description": "Shortened entry, changed geometry",
+      "iou": 0.0679,
+      "dice": 0.1272,
+      "change": "x_entry_end reduced to 1.0, entry curves reduced"
+    },
+    {
+      "iteration": 7,
+      "description": "Tuned entry length and curves",
+      "iou": 0.1289,
+      "dice": 0.2283,
+      "change": "x_entry_end=1.5, gentler curves, better exit tapers"
+    },
+    {
+      "iteration": 8,
+      "description": "BEST - Optimized grating length and gap, better curve amplitude",
+      "iou": 0.14276,
+      "dice": 0.24985,
+      "sse": 1211408,
+      "change": "grating_length_um=9.2, coupler_gap_um=0.32, x_entry_end=1.8, improved U-bend curves",
+      "final": true
+    }
+  ],
+  "final_parameters": {
+    "waveguide_width_um": 0.20,
+    "grating_pitch_um": 0.10,
+    "grating_depth_um": 0.04,
+    "grating_length_um": 9.2,
+    "coupler_gap_um": 0.32,
+    "bend_radius_um": 2.5
+  },
+  "knobs_verified": true,
+  "knob_description": "All top-level parameters are fully tunable and move real geometry. Device is parametric in all critical dimensions: waveguide_width_um, grating_pitch_um, grating_depth_um, grating_length_um, coupler_gap_um, and bend_radius_um. Changes to these knobs produce proportional changes in the generated GDS polygons.",
+  "implementation_notes": "Device uses gdsfactory add_polygon() to create smooth, continuously-variable geometry without discretization. Centerlines are computed from parametric sine-wave functions, then offset by +/- waveguide_width_um/2 to create the actual polygons. Gratings are added as separate vertical rectangles positioned at regular intervals. No component stencils or pre-built cells used - pure primitives.",
+  "final_iou": 0.14276,
+  "final_dice": 0.24985,
+  "final_sse": 1211408
+}

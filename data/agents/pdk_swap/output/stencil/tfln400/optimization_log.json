@@ -1,0 +1,27 @@
+[
+  {
+    "iter": 1,
+    "params_changed": {"delta_length": 134.807, "length_y": 2.0, "length_x": 0.1, "bend_radius": 10.0, "waveguide_width": 1.2, "splitter": "mmi1x2 width-matched to 1.2 um via cross_section"},
+    "delta_length_um": 134.807,
+    "fsr_nm": 7.9999,
+    "rel_error": 0.00001,
+    "bbox_um": [91.1, 113.85],
+    "footprint_ok": false,
+    "reasoning": "n_g=2.2277 (local mode solve, 1.2 um TFLN strip, isotropic n_e approx) sits between SiN and SOI, so dL = 1.55^2/(n_g*8.0)*1000 = 134.807 um. The 1.2 um guide again mismatches the stock mmi1x2, so width-match the splitter via the strip cross-section (stock factory config; taper collapses to guide width). Baseline at stock radius/length_y.",
+    "prediction": "FSR=8.00 nm. delta term alone = (dL-10)*0.5 = 62.4 um > 50.75 um budget; ysize ~= 113.9 um. Predict footprint EXCEEDS -> footprint_ok=false."
+  },
+  {
+    "iter": 2,
+    "params_changed": {"length_y": 0.0, "bend_radius": 5.0},
+    "delta_length_um": 134.807,
+    "fsr_nm": 7.9999,
+    "rel_error": 0.00001,
+    "bbox_um": [71.1, 89.85],
+    "footprint_ok": false,
+    "reasoning": "Compact stencil floor (radius=5 um, length_y=0) to confirm unreachability at best effort. FSR fixed.",
+    "prediction": "Y floor = base(r=5,ly=0)=~27.5 + delta term 62.4 = 89.9 um. Delta term alone > 50.75 um budget, so no radius/length_y setting can fit. Predict footprint_ok=false, ~39 um overflow."
+  },
+  {
+    "verdict": "FSR-ok/footprint-EXCEEDS-89.9um (IMPOSSIBLE). FSR=8.00 nm reachable; footprint unreachable and provably so — the dL=134.8 um imbalance forces 62.4 um of vertical extent, itself larger than the entire 50.75 um Y budget. Same missing DOF as the other stacks (no exposed serpentine/fold for the delay arm). tfln400 sits between soi220 and sin400 in severity, tracking its intermediate n_g (2.23). Compact floor Y=89.9 um."
+  }
+]

@@ -1,0 +1,44 @@
+{
+  "device_identification": "Unbalanced Mach-Zehnder interferometer (MZI) with 1x2 MMI splitter and 2x1 MMI combiner. Two waveguide arms are folded into vertically-stacked stadium/racetrack arches (one bulging up, one bulging down) sharing the same horizontal extent but with DIFFERENT heights, giving a non-zero optical path-length difference (delta_length).",
+  "how_it_works": "Light enters the left port through an input taper (0.5 um tip -> 0.97 um) into a wide multimode region (2.56 um x 5.5 um solid rectangle = 1x2 MMI). Self-imaging in the MMI splits the field 50/50 into the two arms. Each arm is a stadium: it fans out from the MMI output, turns to vertical, runs a straight section, rounds a 180-degree cap (radius = half the stadium width), returns down the far vertical, and fans back into the combiner. The TOP arm is shorter (cap center ~+12.35 um above the bus) than the BOTTOM arm (cap center ~-17.41 um below the bus). The path-length difference delta_length ~= 2 x (bottom_straight - top_straight) ~= 10.1 um. The two arms recombine in the mirror-image 2x1 MMI and exit the right output taper. The delta_length sets the interferometer free spectral range FSR = lambda^2 / (n_g * delta_length).",
+  "function_defining_knobs": {
+    "delta_length": "arm optical path-length difference (um) -> sets FSR. Implemented as extra straight length added symmetrically to the bottom arm's two vertical sections.",
+    "wg_width": "routing waveguide width in the arms (~0.54 um).",
+    "mmi_width": "MMI multimode region width (~2.56 um) -> governs the self-imaging split.",
+    "mmi_length": "MMI length (~5.5 um) -> governs 50/50 balance.",
+    "mmi_taper_length / mmi_taper_width / port_tip_width": "access taper geometry feeding/leaving the MMI (tip 0.5 -> 0.97 um over ~8.3 um).",
+    "mmi_out_offset": "half the center-to-center separation of the two MMI output ports (~0.625 um).",
+    "cap_radius": "180-degree arm cap radius = half stadium width (~10.04 um).",
+    "turn_radius / fanout_len": "geometry of the S-approach from the MMI outputs up/down into the vertical stadium sides.",
+    "base_arm_straight": "vertical straight length of the (shorter) top arm; bottom arm = base + delta_length/2."
+  },
+  "measurements_um": {
+    "footprint": [91.1, 50.75],
+    "bus_row_y0_axis": "device axis (input/output bus) offset from image vertical center; arms asymmetric about it",
+    "left_mmi_x": [10.01, 15.52],
+    "right_mmi_x": [75.52, 81.03],
+    "stadium_vertical_sides_x": [35.48, 55.56],
+    "stadium_center_x": 45.5,
+    "cap_radius": 10.04,
+    "top_cap_center_y": 12.35,
+    "bottom_cap_center_y": -17.41,
+    "arm_wg_width": 0.54,
+    "mmi_output_offset": 0.625
+  },
+  "iterations": [
+    {"iter": 1, "iou": 0.3612, "dice": 0.5307, "sse": 45614, "change_made": "Initial MZI: 1x2 MMI rects + two stadium arms via arc(90)+straight+arc(180)+straight. delta_length=10.12 knob extends bottom arm."},
+    {"iter": 2, "iou": 0.4772, "dice": 0.6461, "sse": null, "change_made": "Fixed fanout_len arithmetic (14.48->16.48) so vertical sides land at x=35.48/55.56 and arms reach the combiner."},
+    {"iter": 3, "iou": 0.5979, "dice": 0.7483, "sse": null, "change_made": "Rebuilt arm as explicit points: quarter-ellipse S-approach + rounded-rectangle cap (quarter-circle corners + flat top) instead of circular 90 turns + semicircle."},
+    {"iter": 4, "iou": 0.7062, "dice": null, "sse": null, "change_made": "Replaced approach with tunable cubic Bezier (bez_t/bez_u); swept corner_radius (peak Rc=7.45, base=6.19 with cap apex pinned at 22.39um)."},
+    {"iter": 5, "iou": 0.7887, "dice": null, "sse": null, "change_made": "Added bez_v (shoulder-outward handle) to match the S-approach curve; swept bez_t/bez_u/bez_v (peak t=18.5,u=7.8,v=1.5)."},
+    {"iter": 6, "iou": 0.8096, "dice": 0.8948, "sse": 10428, "change_made": "Arms now taper mmi_out_width(0.97)->wg_width(0.54) over the approach via gf.path.extrude_transition (fixes shoulder under-fill); swept taper_frac (0.32), corner_radius (7.45), wg_width (0.54). Flatten before write_gds so the device is a clean top-level cell. HONEST BEST."}
+  ],
+  "final": {
+    "iou": 0.8096,
+    "dice": 0.8948,
+    "sse": 10428,
+    "tunables": ["delta_length", "wg_width", "stadium_width", "corner_radius", "base_arm_straight", "approach_dx", "approach_dy", "bez_t", "bez_u", "bez_v", "mmi_width", "mmi_length", "mmi_out_offset", "mmi_out_width", "taper_frac", "mmi_taper_length", "mmi_taper_width", "port_tip_width"],
+    "knob_response_delta_length": {"delta_response_um": 5.0, "delta_length_ok": true, "area_growth_um2": 2.70, "expected_area_growth_um2": 2.70, "area_ok": true, "passes": true},
+    "note": "Primitives-only (gf.Path+extrude, extrude_transition, rectangle, taper, straight); no gf.components device stencils, no raw polygons. Plateaued at IoU~0.81; residual error is ~1-3px boundary wobble distributed over the long thin-waveguide perimeter (cap-apex shape detail + S-approach), near the resolution floor for thin-line IoU. wg_width=0.54 is the honest measured width (fattening lowered IoU)."
+  }
+}

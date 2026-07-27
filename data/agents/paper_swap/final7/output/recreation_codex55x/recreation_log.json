@@ -1,0 +1,75 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_class": "A compact symmetric racetrack-loop / interferometric coupler layout drawn as one connected layer-(1,0) material region.",
+    "visual_evidence": [
+      "The calibrated black mask has one connected component over a 3.0 um by 5.5 um footprint.",
+      "A wide racetrack loop defines the outer boundary, with top and bottom straight sections and rounded end turns.",
+      "Two symmetric interior straight interaction rails sit above and below the center line.",
+      "Each interior rail contains a rectangular widened section with two rectangular clear slots separated by a narrow center post.",
+      "Left and right junction/taper regions connect the interior rails into the outer racetrack side regions."
+    ],
+    "working_model": "The outer racetrack provides the long recirculating/phase path while the paired interior rails and slotted widened sections define coupling and local effective index. The function is therefore controlled mainly by the racetrack width/radius, the straight interaction length, the inner rail separation, slot geometry, and the taper/junction widths.",
+    "function_defining_knobs": [
+      "guide_width_um",
+      "loop_straight_um",
+      "loop_radius_x_um",
+      "loop_radius_y_um",
+      "inner_rail_width_um",
+      "inner_gap_um",
+      "interaction_length_um",
+      "junction_length_um",
+      "slot_length_um",
+      "slot_height_um",
+      "center_post_um"
+    ],
+    "initial_measurements_um": {
+      "footprint": [3.0, 5.5],
+      "outer_bbox": [0.0, 0.0, 3.0, 5.49],
+      "outer_top_bottom_thickness": 0.52,
+      "inner_upper_y_span": [1.32, 2.36],
+      "inner_lower_y_span": [3.16, 4.19],
+      "slot_x_spans": [[1.11, 1.45], [1.55, 1.88]],
+      "upper_slot_y_span": [1.56, 2.12],
+      "lower_slot_y_span": [3.39, 3.96],
+      "center_post_x_span": [1.45, 1.55]
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8231908287556723,
+      "dice": 0.903022125574754,
+      "sse": 118448.0,
+      "change_made": "Initial primitive model: extruded racetrack loop, slotted interaction blocks, rail/connectors. Diff showed high recall but extra material in the four inner side openings."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8631967975288017,
+      "dice": 0.9265760854394751,
+      "sse": 86803.0,
+      "change_made": "Added symmetric stepped rectangular side-opening cutouts to remove the overfilled racetrack side regions while preserving the rail and slot topology. Stopped because IoU exceeded 0.85."
+    }
+  ],
+  "knob_response": {
+    "param": "delta_length",
+    "delta_um": 0.05,
+    "width_um": 0.43,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 0.04999999999999982,
+    "delta_response_um": 0.04999999999999982,
+    "delta_length_ok": true,
+    "base_area_um2": 8.379843500000003,
+    "perturbed_area_um2": 8.401343500000003,
+    "area_growth_um2": 0.02149999999999963,
+    "expected_area_growth_um2": 0.021500000000000002,
+    "area_ok": true,
+    "passes": true
+  }
+}

@@ -1,0 +1,83 @@
+[
+  {
+    "stack": "soi220",
+    "iter": 1,
+    "tunables": {
+      "delta_length": 6.38,
+      "core_width_um": 0.5,
+      "rib_width_um": 0.55,
+      "period_um": 0.31361818908363803,
+      "rib_length_um": 0.16298688319800123,
+      "lead_gap_um": 0.16737039350405997,
+      "rib_count": 20
+    },
+    "metric": "bragg_wavelength_nm",
+    "target_nm": 1558.02,
+    "measured_nm": 1558.02,
+    "rel_error": 0.0,
+    "n_eff_default_width": 2.449714183807373,
+    "n_g_default_width": 4.0574421882629395,
+    "bbox_um": [
+      6.38,
+      0.55
+    ],
+    "footprint_ok": true,
+    "calls_used": 2,
+    "reasoning": "SOI: set narrow width to stack single_mode_width_um=0.5 and wide width to footprint limit 0.55; period predicted from target/(2*avg(n_eff(0.5),n_eff(0.55))*1000).",
+    "predicted_bragg_nm_next": 1558.02
+  },
+  {
+    "stack": "sin400",
+    "iter": 1,
+    "tunables": {
+      "delta_length": 6.38,
+      "core_width_um": 0.4,
+      "rib_width_um": 0.55,
+      "period_um": 0.5183735682600488,
+      "rib_length_um": 0.16298688319800123,
+      "lead_gap_um": 0.16737039350405997,
+      "rib_count": 12
+    },
+    "metric": "bragg_wavelength_nm",
+    "target_nm": 1558.02,
+    "measured_nm": 1558.0199999999998,
+    "rel_error": 1.4593758452602153e-16,
+    "n_eff_default_width": 1.6415010690689087,
+    "n_g_default_width": 2.0212899446487427,
+    "bbox_um": [
+      6.38,
+      0.55
+    ],
+    "footprint_ok": true,
+    "calls_used": 1,
+    "reasoning": "SiN: nominal single_mode_width_um=1.0 exceeds 0.55 footprint height, so used minimum lateral feature 0.4 and footprint-limit wide width 0.55; period predicted from Bragg relation.",
+    "predicted_bragg_nm_next": 1558.02
+  },
+  {
+    "stack": "tfln400",
+    "iter": 1,
+    "tunables": {
+      "delta_length": 6.38,
+      "core_width_um": 0.5,
+      "rib_width_um": 0.55,
+      "period_um": 0.48525131018553996,
+      "rib_length_um": 0.16298688319800123,
+      "lead_gap_um": 0.16737039350405997,
+      "rib_count": 13
+    },
+    "metric": "bragg_wavelength_nm",
+    "target_nm": 1558.02,
+    "measured_nm": 1558.02,
+    "rel_error": 0.0,
+    "n_eff_default_width": 1.8065590858459473,
+    "n_g_default_width": 2.2277374267578125,
+    "bbox_um": [
+      6.38,
+      0.55
+    ],
+    "footprint_ok": true,
+    "calls_used": 1,
+    "reasoning": "TFLN: nominal single_mode_width_um=1.2 exceeds 0.55 footprint height, so used minimum lateral feature 0.5 and footprint-limit wide width 0.55; period predicted from Bragg relation.",
+    "predicted_bragg_nm_next": 1558.02
+  }
+]

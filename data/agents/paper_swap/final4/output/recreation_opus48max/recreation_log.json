@@ -1,0 +1,83 @@
+{
+  "device_type": "directional coupler (symmetric 2x2 evanescent coupler)",
+  "footprint_um": [18, 3],
+  "topology_reasoning": {
+    "what_it_is": "Two identical single-mode strip waveguides. Each enters straight at a port, S-bends toward the other, runs parallel across a central coupling region at a minimum edge-to-edge gap, then S-bends apart and exits straight. The silhouette is mirror-symmetric top/bottom about the horizontal midline (y=1.5um).",
+    "how_it_works": "In the coupling region the two guides are close enough that their evanescent fields overlap; the even/odd supermodes beat, transferring optical power from the input guide to the neighbor. Fractional power transfer = sin^2(kappa * L_eff), where kappa (per-length coupling) is set by the gap and the S-bend approaches contribute additional coupling (effective length > the straight coupling_length).",
+    "function_defining_knobs": {
+      "coupling_gap": "edge-to-edge separation of the two cores in the coupling region -> sets kappa (coupling strength). Smallest gap in the whole device.",
+      "coupling_length": "length of the parallel coupling region -> sets total accumulated coupling / power-transfer ratio.",
+      "wg_width": "waveguide core width -> mode confinement / single-mode operation; also sets kappa via mode overlap.",
+      "sbend_length": "horizontal length of each S-bend approach -> adiabaticity / bend loss and the extra coupling accumulated on the bends.",
+      "bend_offset": "vertical displacement of each S-bend (half the change in center-to-center separation from coupling region to port) -> sets how far the guides fan out to the ports.",
+      "input_length": "straight section length at each of the 4 port stubs."
+    },
+    "measurements_from_target_um": {
+      "note": "extracted by vertical-column band scan on component.png using calibration scale (88 px/um x, 149 px/um y)",
+      "wg_width": 0.66,
+      "port_center_to_center": 2.34,
+      "port_edge_gap": 1.69,
+      "coupling_center_to_center": 0.95,
+      "coupling_edge_gap": 0.30,
+      "port_guide_center_from_midline": 1.17,
+      "coupling_guide_center_from_midline": 0.475,
+      "flat_input_extent_um": "~1.0 (centerline constant y at x=0.0 and x=0.9)",
+      "flat_coupling_extent_um": "~2-3 (centerline flat near x=8-10, midline x=9)"
+    },
+    "parametric_model": "Each guide centerline = straight(input_length) -> cosine S-bend(sbend_length, bend_offset) -> straight(coupling_length) -> mirror. Built as a gf.Path polyline extruded to wg_width on layer (1,0). Cosine profile y=y0+(y1-y0)*(1-cos(pi*u))/2 gives zero slope at both ends (smooth, kink-free junctions). Total length = 2*input_length + 2*sbend_length + coupling_length = 18 um. Half center-to-center at coupling = (coupling_gap+wg_width)/2; at ports = that + bend_offset.",
+    "hand_fit_check": "cosine model with input_length=1.0, sbend_length=6.5, coupling_length=3.0, bend_offset=0.70 reproduces the measured top-guide centerline (0.326->1.023 um from top) to within ~0.03 um (~4 px) across all sampled columns."
+  },
+  "initial_params": {
+    "wg_width": 0.66,
+    "coupling_gap": 0.30,
+    "coupling_length": 3.0,
+    "sbend_length": 6.5,
+    "bend_offset": 0.70,
+    "input_length": 1.0
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9667,
+      "dice": 0.9831,
+      "sse": 10720,
+      "params": {"wg_width": 0.66, "coupling_gap": 0.30, "coupling_length": 3.0, "sbend_length": 6.5, "bend_offset": 0.70, "input_length": 1.0},
+      "change_made": "Initial cosine-S-bend directional coupler built from image measurements (6 top-level function knobs). gds bbox 18.0x3.02 um.",
+      "diff_study": "Thin (2-4 px) edge fringes only. Systematic patterns: (a) ~0.011 um port-separation overshoot on the input/output straights (mine slightly more spread than target); (b) small +0.027 um bump where the cosine S-bend approaches the coupling region."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9724,
+      "dice": 0.9860,
+      "sse": 8848,
+      "params": {"wg_width": 0.66, "coupling_gap": 0.30, "coupling_length": 3.0, "sbend_length": 6.5, "bend_offset": 0.689, "input_length": 1.0},
+      "change_made": "Reduced bend_offset 0.70 -> 0.689 to correct the measured +0.011 um port-separation overshoot (from column-by-column centerline comparison of raster vs target). Improved input/output straight alignment; precision/recall balanced to 0.986/0.986. gds bbox 18.0x2.998 um.",
+      "diff_study": "Remaining residual is the S-bend tail: target descent matches a cosine exactly for u<=0.55 of the bend, then approaches the coupling region ~0.04 um more gently than any symmetric easing. Capturing it needs an asymmetric-bend knob that trades middle-fit for tail-fit."
+    }
+  ],
+  "stopped_because": "IoU 0.9724 >> 0.85 target after 2 iterations. Further gains require abandoning the clean 6-knob cosine parameterization for an asymmetric-bend pixel-fit; deliberately kept the clean parametric model (better for downstream spec-retargeting) as the honest best.",
+  "best": {"iter": 2, "iou": 0.9724, "gds": "device.gds", "script": "device.py"},
+  "final_params": {"wg_width": 0.66, "coupling_gap": 0.30, "coupling_length": 3.0, "sbend_length": 6.5, "bend_offset": 0.689, "input_length": 1.0},
+  "gds_write_note": "device.py writes with with_metadata=False so the device cell (directional_coupler) stays top-level. Otherwise kfactory wraps it in a $$$CONTEXT_INFO$$$ cell that becomes the sole top-level cell; _layer_area/_layer_bbox skip $$$ cells and would read 0 area / error (also breaks Phase-B footprint checks). compare_absolute is unaffected (IoU identical 0.9724).",
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "most_important_function_knob": "coupling_length (sets accumulated coupling / power-transfer ratio; the knob that changes total material area, so it is the one an area-based check can measure)",
+    "verify_knob_response_coupling_length": {
+      "delta_um": 5.0,
+      "area_growth_um2": 6.60,
+      "delta_length_ok": false,
+      "area_ok_width_um_0.66_per_brief": false,
+      "area_ok_width_um_1.32_two_guides": true,
+      "passes": false,
+      "interpretation": "The knob DOES move real geometry: +5 um coupling_length grows layer-(1,0) area by 6.60 um2 = 2*wg_width*5 (BOTH waveguides extend). verify_knob_response is MZI-shaped: its delta_length check is structurally N/A for a symmetric/balanced coupler (both arms equal by design -> no imbalance for a symmetric knob to move), and its single-guide area expectation is half the real two-guide growth (area_ok passes only with width_um=2*wg_width). Neither boolean-false is a knob failure."
+    },
+    "direct_area_sweep_tool_independent": {
+      "coupling_length_um": [2.0, 3.0, 4.0, 5.0],
+      "layer10_area_um2": [22.559, 23.879, 25.199, 26.519],
+      "dArea_dL_um2_per_um": 1.320,
+      "expected_2x_wg_width": 1.320,
+      "verdict": "PASS - perfectly linear, exactly 2*wg_width; coupling_length moves real geometry as physics predicts."
+    },
+    "note_on_coupling_gap": "coupling_gap is the other primary function knob (sets kappa). In this parameterization changing it translates the guides apart without changing their length or area, so an area/length-based check (verify_knob_response) is blind to it by construction; its geometric effect is the min edge-to-edge gap, verified visually against the target (0.30 um) at IoU 0.9724."
+  }
+}

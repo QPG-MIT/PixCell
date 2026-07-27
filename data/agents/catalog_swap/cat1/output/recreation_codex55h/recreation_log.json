@@ -1,0 +1,105 @@
+{
+  "phase": "A",
+  "ground_truth_inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json"
+  },
+  "topology_reasoning": {
+    "device": "unbalanced Mach-Zehnder interferometer built from a left splitter/combiner rectangle, a right splitter/combiner rectangle, and two routed waveguide arms",
+    "evidence": [
+      "The black material is one connected optical circuit with a single horizontal input and output.",
+      "Two identical rectangular multimode bodies sit on the input/output axis and launch/recombine two close parallel guides.",
+      "The upper and lower arms route away from the coupler axis into large rounded loops before returning to the second rectangle.",
+      "The lower arm is visibly longer than the upper arm because it bends farther downward from the off-center coupler axis."
+    ],
+    "working_principle": "The first rectangular body splits optical power between two arms. Their unequal optical path lengths accumulate phase difference. The second rectangular body recombines the arms, producing interferometric wavelength-dependent output.",
+    "function_defining_knobs": [
+      "wg_width: single-mode guide width and dominant area/linewidth knob",
+      "mmi_length and mmi_width: rectangular splitter/combiner dimensions",
+      "split_gap: separation of the two MMI access arms",
+      "arm_transition_length: straight/tapered access region between MMI and bends",
+      "bend_radius and route_smooth_radius: curvature of the large loop arms",
+      "top_y and bottom_y: loop extrema that set footprint and relative path length",
+      "delta_length: extra lower-arm horizontal path length; primary interferometer phase/FSR knob"
+    ],
+    "initial_measurements_um": {
+      "footprint": [91.1, 50.75],
+      "mmi_rect": [5.57, 2.56],
+      "left_mmi_x": [9.96, 15.53],
+      "right_mmi_x": [75.51, 81.08],
+      "mmi_center_y_relative": 2.53,
+      "estimated_waveguide_width": 0.9
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.44291815036812693,
+      "dice": 0.613919992974136,
+      "sse": 43961.0,
+      "change_made": "Initial smoothed parametric MZI: rectangular MMI splitter/combiner bodies, straight input/output bus, and two gf.Path smooth arms."
+    },
+    {
+      "iter": 2,
+      "iou": 0.2829255687757667,
+      "dice": 0.4410631071072171,
+      "sse": 61051.0,
+      "change_made": "Replaced smoothed shoulders with explicit racetrack straight-plus-bend primitive paths; this overflowed height because Euler endpoint semantics expanded the bends."
+    },
+    {
+      "iter": 3,
+      "iou": 0.4376343560680086,
+      "dice": 0.6088256784081834,
+      "sse": 46042.0,
+      "change_made": "Switched the racetrack bends from Euler to circular arc primitives, restoring the correct footprint."
+    },
+    {
+      "iter": 4,
+      "iou": 0.4203488048141751,
+      "dice": 0.5918951786905182,
+      "sse": 41612.0,
+      "change_made": "Reduced waveguide width to match bus/access strokes and widened the racetrack span."
+    },
+    {
+      "iter": 5,
+      "iou": 0.5980476326751248,
+      "dice": 0.7484728495532961,
+      "sse": 25282.0,
+      "change_made": "Replaced ideal racetrack arms with measured x-sampled gf.Path centerlines while keeping MMI rectangles and top-level knobs."
+    },
+    {
+      "iter": 6,
+      "iou": 0.8248999764650506,
+      "dice": 0.9040495228269281,
+      "sse": 9672.0,
+      "change_made": "Replaced x-sampled centerlines with skeleton-traced gf.Path centerlines to preserve near-vertical sidewalls; kept the same 0.62 um guide width."
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.62,
+    "base_value": 0.0,
+    "base_delta_length_um": 10.188999999999993,
+    "perturbed_delta_length_um": 15.188999999999993,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 159.11436149999997,
+    "perturbed_area_um2": 162.2143615,
+    "area_growth_um2": 3.1000000000000227,
+    "expected_area_growth_um2": 3.1,
+    "area_ok": true,
+    "passes": true
+  },
+  "final": {
+    "status": "max_iterations_reached",
+    "best_iter": 6,
+    "iou": 0.8248999764650506,
+    "dice": 0.9040495228269281,
+    "sse": 9672.0,
+    "gds": "device.gds",
+    "raster": "raster.png",
+    "diff": "diff.png",
+    "note": "Stopped after the required maximum of 6 comparison iterations. Best result is below the 0.85 target but is the honest best from the allowed loop."
+  }
+}

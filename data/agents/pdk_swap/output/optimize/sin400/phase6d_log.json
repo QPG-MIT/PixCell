@@ -1,0 +1,45 @@
+{
+  "task": "Phase 6D -- close the transferability claim: derive the 1x2 MMI for SiN400 per-stack (not transplant) and produce a measurable splitter fixture that beats the stock-cell transplant (3.06 dB).",
+  "stack": "sin400 (SiN 1.996 / SiO2 1.444, t=0.4 um, single_mode_width=1.0 um)",
+  "reference_to_beat": {"stock_cell_transplanted_to_sin_db": 3.06},
+  "derivation": {
+    "body_width": {
+      "reasoning": "SiN is weakly confined, so a wider body is needed to be multimode. Multimode solve gives a beat length at W=4.0 (27.23 um), 5.0 (41.27), 6.0 (58.52). Chose the SMALLEST clearly-multimode body W=4.0 um: fewest modes -> cleanest imaging (the SOI lesson that a wider 3.0 um body imaged worse), and most compact.",
+      "mmi_width_um": 4.0,
+      "n_effs_W4": [1.735345, 1.706886]
+    },
+    "imaging_length": {
+      "L_pi_um": 27.23,
+      "analytic_3Lpi_8_um": 10.211,
+      "empirical_calibration": "SOI saga established the tier-0 3*L_pi/8 estimate runs ~4% long (5.70 um theory vs 5.50 um FDTD-optimal, task fdve-51f6f92e). Apply the same scale factor 5.50/5.70 = 0.9649 to SiN.",
+      "mmi_length_um": 9.853
+    },
+    "access": {
+      "reasoning": "SOI final recipe: matched WIDE mouths whose aperture covers the inboard image spot + LONG adiabatic tapers; park the mouths outboard for the DRC gap (do not center on the spot -- that collides). Scaled to SiN's 1.0 um single mode.",
+      "wg_width_um": 1.0,
+      "mmi_access_w_um": 1.6,
+      "mmi_taper_len_um": 15.0,
+      "output_offset_um": 1.0,
+      "output_gap_um": 0.40,
+      "spot_estimate_W_over_6_um": 0.667,
+      "aperture_um": [0.20, 1.80],
+      "min_gap_ok": "0.40 >= 0.2 (brief) and >= 0.4 (stack min_feature)"
+    },
+    "fixture": {
+      "out_separation_um": 6.0,
+      "fan_dx_um": 14.0,
+      "stub_len_um": 3.0,
+      "port_positions_um": {"in": [-22.927, 0.0], "out_top": [36.927, 3.0], "out_bot": [36.927, -3.0]},
+      "all_routing_cross_sections_um": 1.0,
+      "bbox_um": [59.85, 7.0]
+    }
+  },
+  "prediction": {
+    "reasoning": "Per-stack-derived geometry with the calibrated imaging length + matched wide aperture + long adiabatic tapers should beat the 3.06 dB stock transplant, comparable to (slightly above) the SOI final 2.01 dB since SiN is weakly confined (larger mode, harder capture).",
+    "predicted_splitter_IL_db": 2.3,
+    "predicted_split_fraction": 0.5,
+    "predicted_ER_db": ">=30 (symmetry)",
+    "honest_caveat": "2.3 dB/splitter -> MZI ~4.6 dB still exceeds the <=1.0 dB budget; a lumped primitives-only 1x2 MMI floors well above 0.5 dB/splitter on both stacks. The claim being closed is TRANSFERABILITY of the derivation (per-stack derivation beats the transplant), not meeting the tier-1 IL budget.",
+    "measured_after": "awaiting conductor tier-1 FDTD"
+  }
+}

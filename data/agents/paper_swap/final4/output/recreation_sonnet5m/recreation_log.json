@@ -1,0 +1,57 @@
+{
+  "device_identity": "Symmetric S-bend (cosine) directional coupler / evanescent coupler. Two waveguides run as parallel straight buses at wide separation at both left and right edges, each curves inward via a raised-cosine S-bend transition, then runs parallel at a narrow fixed gap through a short straight 'coupling length' section at the center, then mirrors back out to the wide bus separation on the other side. The whole layout is mirror-symmetric about both the horizontal midline (top guide is bottom guide reflected) and the vertical midline (left half mirrors right half).",
+  "how_it_works": "This is the classic 'S-bend' (also called 'sine-bend' or 'cosine-bend') directional coupler used to split/combine optical power between two waveguides via evanescent-field coupling. Two waveguides brought to sub-micron gap over a well-defined 'coupling length' exchange power at a rate set by the local mode overlap (which falls off exponentially with gap); the S-bend transitions smoothly (zero slope at both ends, raised-cosine profile) so as to add negligible bend loss/mode mismatch while carrying the guides from a well-isolated bus separation down to the coupling gap and back out again.",
+  "function_defining_knobs": [
+    "gap_min_um -- the coupling gap (edge-to-edge separation at the narrowest point). Sets the coupling coefficient/power-splitting ratio; the single most important knob for device function.",
+    "coupling_length_um -- length of the straight parallel section held at gap_min_um. Directly sets the interaction length and hence how much power transfers (together with gap_min_um).",
+    "bend_length_um -- length of each S-bend transition (there are two, one on each side of the coupling region). Controls adiabaticity/excess loss of the transition between bus separation and coupling gap.",
+    "gap_max_um -- the bus (isolation) gap at the two device edges, where the waveguides must be far enough apart to be optically decoupled from each other and from other components.",
+    "wg_width_um -- the (constant) waveguide width of both arms.",
+    "bus_length_um -- straight run at the outer bus separation on each end (for edge/port alignment)."
+  ],
+  "measurement_evidence": {
+    "waveguide_width_px": "~96px vertically at all sampled x -> 96/149 px_per_um = 0.644 um",
+    "gap_at_edges_px": "254px (x=0..~80, flat) -> 254/149 = 1.705 um",
+    "gap_at_center_px": "46px, flat plateau from x~725 to x~825 (100px) -> 46/149 = 0.309 um coupling gap, ~100/88 = 1.136 um coupling length",
+    "midline_constant": "top+bottom centerline midpoint stays at y=336px across all x -> confirms exact mirror symmetry about horizontal midline",
+    "edge_flat_bus_px": "~80-90px flat gap at each end before S-bend begins -> ~1.0 um straight bus on each side",
+    "calibration_scale": "scale_px_per_um = [88.0, 149.0], bbox_size_px=[1584,447] -> matches footprint_um=[18,3]"
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9091984339709717,
+      "dice": 0.9524399536405607,
+      "sse": 29710.0,
+      "change_made": "Initial script: 5-segment centerline per waveguide (flat bus 1.0um, raised-cosine S-bend 7.43um, flat coupling 1.14um, mirrored S-bend, flat bus), gap_min=0.309um, gap_max=1.705um, wg_width=0.644um, all from direct pixel measurement of device_bw.png."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9652935921792629,
+      "dice": 0.9823403444865192,
+      "sse": 11034.0,
+      "change_made": "diff.png showed systematic red(extra)/blue(missing) banding through the S-bend transitions -- my curve lagged the target's (stayed wide too long). Fit bus_length_um, bend_length_um (coupling_length_um derived from total=18um) via least-squares against the sampled gap(x) profile using scipy Nelder-Mead: bus_length_um 1.0->0.750, bend_length_um 7.43->7.005, coupling_length_um 1.136->2.486."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9707159766622551,
+      "dice": 0.9851404141009997,
+      "sse": 9426.0,
+      "change_made": "diff.png still showed thin blue rims on the curved sections (my extruded width reads slightly thin vs raster antialiasing on curves). Nudged wg_width_um 0.644->0.664 (within pixel-measurement uncertainty). Also fixed a bug where write_gds('device.gds') resolved relative to the shell's cwd instead of the script's own directory -- switched to Path(__file__).parent so reruns always land in this workdir."
+    }
+  ],
+  "stopping_reason": "IoU=0.971 well above the 0.85 threshold after 3 iterations; diff.png residual is thin antialiasing-scale rims on the curved sections with no structural mismatch remaining. Stopped early (honest best) rather than spend remaining iterations chasing sub-pixel gains.",
+  "knob_verification": {
+    "attempted_verify_knob_response": "Called homi.spec_optimization.verify_knob_response(param='gap_min_um', delta_um=0.2, width_um=0.664) -- raised RuntimeError: 'device.py did not write lengths.json'. That function's measurement contract is MZI-specific (requires a 2-arm lengths.json with a delta_length_um imbalance); this device is a symmetric directional coupler with no arm-length-imbalance knob, so the contract does not apply.",
+    "manual_equivalent_check": "Reproduced the same before/after-rebuild discipline by hand with gdstk: perturbed gap_min_um by +0.2um in a copy of the script, rebuilt both variants in isolated tmp dirs, sliced the written GDS at the device's x-center with a thin boolean-AND rectangle, and measured the edge-to-edge y-gap between the two waveguide polygons directly from the GDS geometry (not from any reported number).",
+    "result": {
+      "base_gap_min_um": 0.309,
+      "base_measured_center_gap_um": 0.31,
+      "perturbed_gap_min_um": 0.509,
+      "perturbed_measured_center_gap_um": 0.51,
+      "response_um": 0.2,
+      "expected_um": 0.2,
+      "passes": true
+    }
+  }
+}

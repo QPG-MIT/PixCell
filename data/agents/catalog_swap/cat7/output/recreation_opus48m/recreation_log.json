@@ -1,0 +1,53 @@
+{
+  "device_identification": {
+    "what_it_is": "Rectangular spiral waveguide delay line (paperclip/racetrack spiral). A single continuous single-mode waveguide wound as ~6 nested rounded-rectangle loops with a tall central ∩-shaped U-turn 'hook' near the center-left. Used to realize a long, compact optical path length (group delay / phase accumulation / a long interferometer arm) in a small footprint.",
+    "how_it_works": "Light enters, travels the full wound length accumulating optical path length L_opt = n_eff * L_phys (~2.66 mm here), then exits. It is an in-and-out spiral: the outer arm spirals inward, a central hook reverses direction, and an inner return arm (two full-width bottom straights joined by a right-end U) carries the guide back out. Interleaving/nesting is why the visible tracks appear as symmetric top/bottom pairs about the vertical center. Minimum bend radius (hook, corner rounding) sets the bend-loss floor; track pitch sets crosstalk between adjacent guides.",
+    "function_defining_knobs": [
+      "wg_width_um (0.65): single-mode waveguide width -> n_eff, loss",
+      "pitch_um (3.00): center-to-center spacing between adjacent tracks -> crosstalk, packing density",
+      "n_loops (6): number of wound loops -> primary control of total path length (delay)",
+      "corner_radius_top_um / corner_radius_bot_um: rectangular-turn bend radii -> bend loss (bottom/seam corners are measurably tighter)",
+      "hook_corner_um / right_u_radius_um: central bulb-hook and return-U bend radii -> min-bend bend-loss floor",
+      "lead_in_um: input access-waveguide length -> linear (1:1) control of the total optical path length / delay",
+      "outer_half_width_um / outer_half_height_um: footprint of the outermost loop"
+    ]
+  },
+  "measurements_from_image": {
+    "footprint_um": [173.5, 59.5],
+    "scale_px_per_um": [9.2277, 9.2437],
+    "wg_width_um_est": 0.65,
+    "track_pitch_um_est": 3.00,
+    "n_loops": 6,
+    "corner_radius_top_um_eff": 6.0,
+    "corner_radius_bottom_right_um_eff": 4.0,
+    "structure": "6 symmetric nested rounded-rectangle loops (top/bottom track centers pair about y-center) + a tall central ∩-bulb hook (left wall x=-68.6um, right wall x=-48.5um, apex y=+11.8um) feeding two inner return straights at b_inner+pitch and b_inner+2*pitch, joined by a right-end U.",
+    "key_finding": "Corner radius ~constant ~6um for top/left corners but the bottom-right (spiral-seam) corners are tighter (~4um); rasterized set-radius must be ~1.35x the target effective radius to match after the thick-line/shallow-arc rendering bias."
+  },
+  "build_approach": "Primitives only: a single gf.Path centerline for the loop bank (per-vertex circular fillet with independent top/bottom radii), a second gf.Path for the ∩-bulb hook, and a smooth() arc for the return U — each extruded on a width=0.65um layer-(1,0) CrossSection. No gf.components stencils, no raw polygons.",
+  "iterations": [
+    {"iter": 1, "iou": 0.452, "dice": 0.623, "change_made": "Initial concentric inward rectangular spiral (constant corner radius, no inner arm), circular arc bends; identified device as spiral delay line."},
+    {"iter": 2, "iou": 0.519, "dice": 0.684, "change_made": "Removed the out-of-footprint port tail so device bbox = footprint (173.5x59.5); tracks stopped shifting outward."},
+    {"iter": 3, "iou": 0.643, "dice": 0.783, "change_made": "Added the inner return arm (two full-width bottom straights) that the target has and my single spiral lacked."},
+    {"iter": 4, "iou": 0.684, "dice": 0.812, "change_made": "Tuned pitch to 3.00um (sharp optimum; tracks aligned within 1px across all 6 loops)."},
+    {"iter": 5, "iou": 0.733, "dice": 0.846, "change_made": "Per-vertex fillet with corner set-radius ~8um (renders to measured ~6um); corners were the dominant error. Rebuilt the central hook as the true tall ∩-bulb."},
+    {"iter": 6, "iou": 0.746, "dice": 0.854, "sse": 45101, "change_made": "Gave top vs bottom-right corners independent radii (target seam corners ~4um vs ~6um). Final: precision 0.769, recall 0.961."}
+  ],
+  "final": {
+    "iou": 0.7456504943068707,
+    "dice": 0.8542952861854964,
+    "sse": 45101.0,
+    "precision": 0.7692146584674815,
+    "recall": 0.9605375953505267,
+    "gds_size_um": [173.49, 59.49],
+    "footprint_um": [173.5, 59.5],
+    "note": "Honest best over 6 refinement iterations. Recall 0.96 => nearly all target material is reproduced; the residual (precision 0.77) is sub-pixel registration at the ~4um tight seam corners of a very fine 3um-pitch / 0.65um-line structure, where a 1px offset roughly halves per-line overlap. IoU 0.746 < 0.85 stop threshold reflects that pixel-exact corner registration on this fine spiral is at the limit of hand-tuned parametric fitting, not a topology error."
+  },
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "lead_in_um",
+    "width_um": 0.65,
+    "delta_um": 5.0,
+    "result": {"delta_response_um": 5.0, "delta_length_ok": true, "area_growth_um2": 3.144, "expected_area_growth_um2": 3.25, "area_ok": true, "passes": true},
+    "note": "Tool is MZI-shaped (needs a 2-arm lengths.json + a 1:1 length knob). For this delay line the two 'arms' are the wound optical path vs the straight port-to-port reference, so delta_length_um = the excess path = the delay the device adds. lead_in_um is the linear delay knob and passes both checks. The primary topology knobs also move real geometry (uncached builders): n_loops 6->7 changes loop path length 2359->2669um; pitch 3.0->3.3 changes it 2359->2323um."
+  }
+}

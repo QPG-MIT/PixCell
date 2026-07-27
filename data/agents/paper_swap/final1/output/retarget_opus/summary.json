@@ -1,0 +1,77 @@
+{
+  "experiment": "paper_swap final1 - cross-stack retarget of the adiabatic 1x2 mode-evolution splitter",
+  "spec": "transmission_total >= 0.95 AND split_balance = 0.5 +/- 0.02, at 1550nm fundamental TE",
+  "measured_by": "conductor FDTD (tier-1), capped at 3 calls/stack; agent is the optimizer (tier-0 mode solves)",
+  "stacks": {
+    "soi220": {
+      "verdict": "HONEST PARTIAL (T miss, balance pass)",
+      "committed_device": "round-1",
+      "T": 0.928,
+      "T_pass": false,
+      "T_miss": 0.022,
+      "balance": 0.5,
+      "balance_pass": true,
+      "fits_budget": true,
+      "device_bbox_um": [
+        57.0,
+        6.5
+      ],
+      "budget_um": [
+        60,
+        8
+      ],
+      "calls_used": 3,
+      "note": "Best is round-1 (tight merged-regime coupling). The gap-opening unmerge fix that CLOSED sin400 REGRESSED soi220 on both axes (T 0.928->0.880, balance ->0.4638): strong confinement prefers the tighter coupling. 0.022 short of spec."
+    },
+    "sin400": {
+      "verdict": "FULL PASS",
+      "committed_device": "round-2",
+      "T": 0.967,
+      "T_pass": true,
+      "balance": 0.5,
+      "balance_pass": true,
+      "fits_budget": true,
+      "device_bbox_um": [
+        149.0,
+        7.0
+      ],
+      "budget_um": [
+        150,
+        18
+      ],
+      "calls_used": 2,
+      "note": "Flagged-risk stack, closed on round 2. Round-1 diagnosis (merged Y-junction pinch-tip radiation) fixed by opening the constant gap mf/2 -> mf (unmerged evanescent coupler, 6.2x adiabatic) + C1 sine fan-out."
+    },
+    "tfln400": {
+      "verdict": "HONEST T-FAIL (floor quantified, balance pass)",
+      "committed_device": "round-2",
+      "T": 0.93,
+      "T_pass": false,
+      "T_miss": 0.02,
+      "balance": 0.5075,
+      "balance_pass": true,
+      "fits_budget": true,
+      "device_bbox_um": [
+        149.0,
+        7.2
+      ],
+      "budget_um": [
+        150,
+        20
+      ],
+      "calls_used": 3,
+      "gap_sweep_T": {
+        "0.25": 0.84,
+        "0.30": 0.93,
+        "0.35": 0.926
+      },
+      "note": "Gap trend saturated at T~0.93. Floor: the 0.5um min_feature pinch tip radiates; a clean un-merge (gap=mf=0.5) needs Lc=64um -> ~200um device > 150um budget. >=0.95 not reachable for TFLN within budget."
+    }
+  },
+  "cross_cutting_findings": [
+    "Split balance is structurally exact (0.500-0.5075) on ALL stacks: mirror symmetry -> even supermode -> 50/50, independent of platform. Transmission was the entire fight.",
+    "Dominant loss was NOT transfer adiabaticity (all designs were 4-13x adiabatic) but the center pinch-off tip radiating in the merged-gap regime; opening the gap to min_feature is the cure where the budget allows it.",
+    "Retargeting is regime-dependent, not one-size-fits-all: the same unmerge move closed SiN (weak confinement) but regressed SOI (strong confinement).",
+    "TFLN's min_feature (0.5um) sets a hard within-budget transmission floor (~0.93) for this Y-junction-regime splitter."
+  ]
+}

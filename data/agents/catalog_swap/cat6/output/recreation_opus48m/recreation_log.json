@@ -1,0 +1,33 @@
+{
+  "device_identification": {
+    "class": "waveguide crossing (elliptical mode-expander crossing)",
+    "footprint_um": [8.0, 8.0],
+    "symmetry": "4-fold: mirror-symmetric about both the horizontal (y=4) and vertical (x=4) centerlines; the two arms are identical, one rotated 90 deg from the other",
+    "how_it_works": "Two single-mode waveguides cross orthogonally at the center. A naive butt crossing radiates and cross-couples badly. This design places an adiabatic mode-expander taper on each arm: the guided mode is widened (elliptical lens lobe) before the intersection so that at the crossing point the beam is quasi-collimated and diffraction/crosstalk into the orthogonal arm is minimized, then re-focused back to the single-mode access waveguide on the far side. The 4-pointed-star silhouette is the boolean union of the two orthogonal lens lobes; the four thin spikes are the single-mode access waveguide tapers reaching the die edge.",
+    "function_defining_knobs": {
+      "wg_width": "single-mode access waveguide width at each of the 4 ports (die edge) ~0.505 um",
+      "neck_width": "waveguide width at the throat where the access taper meets the lens lobe ~0.80 um",
+      "lobe_width": "full transverse width of a lens lobe at the crossing center (=2x mode-expander half width) ~2.20 um; sets how much the mode is expanded -> governs crossing loss/crosstalk",
+      "lobe_semi_major": "half-length of the lens lobe along its arm ~3.0 um; the adiabatic taper length of the mode expander -> longer = more adiabatic = lower loss",
+      "taper_length": "length of the access-waveguide taper from die edge (wg_width) to the lobe throat (neck_width) ~1.2 um"
+    }
+  },
+  "measurement_basis": {
+    "method": "row/column pixel-width profiling of component.png at scale 200.125 px/um; the region |y-4|>~1.1 um is vertical-arm-only, giving the pure arm half-width profile",
+    "fit": "arm half-width w(t) = max(neck_taper, ellipse) with ellipse = lobe_width*sqrt(1-(dy/lobe_semi_major)^2), dy=|t-4|. Fit gives lobe_semi_major=3.0, lobe_width=2.20, neck_width~0.80, wg_width~0.505; model reproduces measured widths at y=1.2/1.5/2.0/2.5 (0.79/1.22/1.64/1.91 vs measured 0.78/1.21/1.64/1.91) and the union width at y=3.25 (4.38 vs measured 4.38) within 1-3%."
+  },
+  "build_strategy": "primitives only: each arm is a chain of ~80 gf.components.taper segments approximating the smooth half-width profile along a straight centerline; the vertical arm is the horizontal arm rotated 90 deg; the device is gf.boolean OR of the two arms on layer (1,0). No device stencils, no raw polygons.",
+  "iterations": [
+    {"iter": 1, "iou": 0.98909, "dice": 0.99452, "sse": 8240.0, "change_made": "initial build from pixel-fitted model: wg_width=0.505, neck_width=0.80, lobe_width=2.20, lobe_semi_major=3.0, taper_length=1.20, 80 taper segments/arm. Precision 0.989 (slight over-fill at throats), recall 0.9998."},
+    {"iter": 2, "iou": 0.99296, "dice": 0.99647, "sse": 5278.0, "change_made": "neck_width 0.80 -> 0.70 to trim over-filled throat shoulders (false positives). Balanced prec 0.997 / rec 0.996."},
+    {"iter": 3, "iou": 0.99623, "dice": 0.99811, "sse": 2826.0, "change_made": "neck_width 0.70 -> 0.74 (swept 0.74/0.76; 0.74 optimal). prec 0.9965 / rec 0.9997. Also fixed GDS write to flatten geometry into a top-level cell so gdstk-based area measurement (verify_knob_response) sees the (1,0) polygons instead of only the skipped $$$CONTEXT_INFO$$$ wrapper. IoU unchanged by the flatten."}
+  ],
+  "final": {"iou": 0.99623, "dice": 0.99811, "sse": 2826.0, "iterations_used": 3},
+  "knob_verification": {
+    "primary_function_knob": "lobe_semi_major (adiabatic mode-expander taper length — the defining knob of a low-loss crossing)",
+    "method": "homi.spec_optimization.verify_knob_response, param=lobe_semi_major, delta_um=0.5, width_um=0.505 (actual access-guide width)",
+    "result_file": "knob_response.json",
+    "geometry_response": "layer-(1,0) area 18.662 -> 20.727 um2 (+2.065 um2 for +0.5 um): the knob moves real geometry, monotonic and correctly signed. lobe_width +0.5 -> +2.440 um2; taper_length +0.5 -> -0.151 um2 (reshape). All three function knobs verified to move real layer geometry.",
+    "note": "verify_knob_response's boolean flags (delta_length_ok, area_ok) are MZI-calibrated: delta_length_ok expects a two-arm length imbalance to move, and area_ok expects area to grow as guide_width*delta (a straight-waveguide extension). This device is a SYMMETRIC waveguide crossing: delta_length is identically 0 (two orthogonal arms of equal 8 um length) and its function knobs reshape an elliptical lobe rather than extend a guide-width straight, so both flags read False by construction. That is the honest, correct outcome for a crossing, not a knob failure — the substantive check (does the declared knob change real (1,0) geometry?) passes decisively via the measured area response above."
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "tunables": {
+    "wg_width_um": 1.0,
+    "delta_length": 7.650819607079029,
+    "path_scale_x": 0.9978999999999999,
+    "path_scale_y": 0.994,
+    "path_offset_x_um": 0.0,
+    "path_offset_y_um": 0.0
+  },
+  "evaluator_report": {
+    "stack_label": "400 nm SiN strip",
+    "metric": "group_delay_ps",
+    "measured": 17.7645,
+    "target": 35.6739,
+    "rel_error": 0.5020,
+    "verdict": "fail",
+    "bbox_um": [173.5, 59.5],
+    "max_footprint_um": [173.5, 59.5],
+    "footprint_ok": true,
+    "n_eff": 1.6415,
+    "n_g": 2.0213,
+    "delta_length_um": 7.651,
+    "from_cache": true,
+    "raw_cli": "[400 nm SiN strip] group_delay_ps=17.7645 (50.20% off) FAIL | bbox=173.5x59.5 um vs budget 173.5x59.5 -> fits => MISS (failed targets: group_delay_ps) [n_eff=1.6415, n_g=2.0213, dL=7.651 um, cached]"
+  },
+  "feasibility_evidence": {
+    "target_total_path_um": 5291.05989754712,
+    "best_footprint_feasible_total_path_um_found": 2634.777314308594,
+    "generous_centerline_upper_bound_total_path_um": 2655.19443027086,
+    "generous_centerline_upper_bound_delay_ps": 17.90211080958493,
+    "reason": "The target requires roughly double the existing path length. The only length-increasing exposed knob appends a straight segment, and the existing spiral already fills the footprint, leaving only microns of append room."
+  },
+  "calls_used": 1
+}

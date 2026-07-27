@@ -1,0 +1,107 @@
+{
+  "stack": "sin400",
+  "spec": {
+    "wavelength_um": 1.55,
+    "targets": {
+      "transmission_total_min": 0.95,
+      "split_balance": 0.5,
+      "split_balance_tolerance_abs": 0.02
+    },
+    "max_footprint_um": [150.0, 18.0]
+  },
+  "platform_constants": {
+    "single_mode_width_um": 1.0,
+    "min_feature_um": 0.4,
+    "min_bend_radius_um": 20.0,
+    "min_guide_spacing_um": 3.0
+  },
+  "phase_a_classification": "Three-guide adiabatic splitter/coupler: a central guide narrows while two symmetric side guides widen, then the side guides fan out as outputs.",
+  "pre_geometry_derivation": {
+    "rule_based_adaptation": "Set all access/output waveguides to the stack single_mode_width_um = 1.0. Set central terminal and side tip widths to min_feature_um = 0.4. The minimum legal coupled edge gap is 0.4, which fixes the symmetric coupled rail centers at +/-1.1 um because 1.0/2 + 0.4 + 0.4/2 = 1.1.",
+    "physics_reasoning": "This remains a symmetric mode-evolution splitter. Transmission is controlled by adiabatic following of the even mode from the central guide into the symmetric side-guide pair; split balance should be exactly 0.5 for a symmetric device. The SOI cap showed branch-gap detuning is very sensitive, so the SiN first call stays symmetric and spends the length budget on transfer rather than biasing balance.",
+    "local_mode_numbers": {
+      "single_guide_width_1p0": {
+        "n_eff": 1.6415,
+        "n_g": 2.0213
+      },
+      "start_slice_cores": "0.4:-1.1,1.0:0,0.4:1.1",
+      "start_slice_n_effs": [1.641991, 1.573245, 1.493402],
+      "middle_slice_cores": "0.7:-1.1,0.7:0,0.7:1.1",
+      "middle_slice_n_effs": [1.6041, 1.577226, 1.563248],
+      "end_slice_cores": "1.0:-1.1,0.4:0,1.0:1.1",
+      "end_slice_n_effs": [1.643442, 1.64003, 1.575961],
+      "output_pair_gap_1p2": {
+        "n_even": 1.641645,
+        "n_odd": 1.639166,
+        "dn": 0.002479,
+        "coupling_length_um": 312.68
+      }
+    },
+    "derived_geometry": {
+      "coupled_center_y_um": 1.1,
+      "coupled_gap_um": 0.4,
+      "input_straight_length_um": 1.0,
+      "coupled_taper_length_um": 149.0,
+      "device_output_separation_um": 2.2,
+      "fixture_output_separation_um": 6.0,
+      "fixture_fanout_length_um": 20.0,
+      "fixture_output_straight_length_um": 4.0
+    },
+    "initial_prediction": "The midpoint even-mode separation is much smaller than SOI, so this first shot is length-limited even at the full 150 um footprint. I predict total transmission around 0.82, with the main uncertainty being whether the lower-index SiN mode extension makes the adiabatic transfer more forgiving than the local effective-index spacing suggests. The symmetric geometry should give split_fraction near 0.50."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "params": {
+        "wg_width_um": 1.0,
+        "min_feature_um": 0.4,
+        "coupled_gap_um": 0.4,
+        "coupled_center_y_um": 1.1,
+        "input_straight_length_um": 1.0,
+        "coupled_taper_length_um": 149.0,
+        "upper_output_straight_length_um": 0.0,
+        "lower_output_straight_length_um": 0.0,
+        "fixture_fanout_length_um": 20.0,
+        "fixture_output_separation_um": 6.0,
+        "fixture_output_straight_length_um": 4.0
+      },
+      "predicted_T": 0.82,
+      "predicted_split_fraction": 0.5,
+      "measured_T": 0.974,
+      "measured_split_fraction": 0.5,
+      "measurement_call": 1,
+      "transmission_passes": true,
+      "split_passes": true,
+      "device_bbox_um": [150.0, 3.2],
+      "device_fits_budget": true,
+      "fixture_bbox_um": [177.0, 7.0],
+      "fixture_port_positions": {
+        "in": [-1.5, 0.0],
+        "out_top": [172.0, 3.0],
+        "out_bot": [172.0, -3.0]
+      },
+      "knob_verification": {
+        "tool": "homi.spec_optimization.verify_knob_response",
+        "param": "upper_output_straight_length_um",
+        "delta_um": 5.0,
+        "width_um": 1.0,
+        "delta_response_um": 5.0,
+        "area_growth_um2": 5.0,
+        "expected_area_growth_um2": 5.0,
+        "passes": true
+      },
+      "reasoning": "Initial SiN measurement candidate. The device is symmetric to avoid the SOI detuning overshoot failure mode, all waveguide/tip/gap dimensions satisfy the 1.0 um width and 0.4 um min-feature rules, and the 149 um taper uses nearly the entire 150 um device budget for mode transfer. The fixture is economical: it starts at the device outputs, fans to 6 um separation over 20 um, and adds only 4 um straight stubs with probes halfway into the stubs."
+    }
+  ],
+  "final_outcome": {
+    "status": "closed_full_pass",
+    "calls_used": 1,
+    "calls_banked": 2,
+    "best_design": "iteration_1",
+    "best_transmission_total": 0.974,
+    "best_transmission_passes": true,
+    "best_split_fraction": 0.5,
+    "best_split_passes": true,
+    "calibration_gap": "The first-call T prediction of 0.82 was too pessimistic. The local cross-section effective-index spacing was useful for choosing a long symmetric taper, but it over-penalized adiabaticity in this low-contrast SiN geometry; the measured mode evolution is much more forgiving and achieved T=0.974 within 149 um."
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "phase": "PHASE_A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_identification": "Symmetric four-port multimode waveguide crossing / compact star junction. Four narrow strip ports enter from west, east, north, and south and flare into broad rounded lobes that overlap at the center.",
+    "operation": "Each strip port expands adiabatically into a wider multimode region at the crossing core. The rounded flare controls modal mismatch and scattering; the centered overlap of the four broad taper ends defines the coupling/crossing region.",
+    "image_measurements": {
+      "footprint_um": [4.7, 4.7],
+      "bbox_px": [524, 173, 1081, 730],
+      "scale_px_per_um": 118.51063829787233,
+      "edge_port_width_um": "approximately 0.22 to 0.25",
+      "single_lobe_peak_width_um": "approximately 0.92 before central overlap",
+      "central_overlap": "black material reaches the full footprint height/width around the centerline because the orthogonal lobes overlap"
+    },
+    "function_defining_knobs": [
+      "port_width: strip access waveguide width",
+      "flare_length: adiabatic expansion length from port to crossing core",
+      "lobe_width: maximum width of each rounded taper lobe",
+      "flare_profile_power: curvature/rounding of taper profile",
+      "center_overlap: amount by which wide taper ends overlap into the central crossing",
+      "delta_length: zeroed recreation knob used to prove a path-length/area tunable moves real geometry"
+    ],
+    "primitive_strategy": "Build four rotated gf.Path straight segments extruded with sinusoidal cross-section transitions. Use primitive rectangles for access extensions if needed and boolean OR only if polygon cleanup becomes necessary. No raw polygons or gdsfactory device stencils."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9392769392769392,
+      "dice": 0.9686877828054299,
+      "sse": 4671.0,
+      "change_made": "Initial primitive model: two orthogonal through paths, each built from six sine-stepped taper/straight sections; stopped because IoU exceeded 0.85 threshold."
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.236,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 4.999999999999999,
+    "delta_response_um": 4.999999999999999,
+    "delta_length_ok": true,
+    "base_area_um2": 5.555231999999996,
+    "perturbed_area_um2": 6.735231999999995,
+    "area_growth_um2": 1.1799999999999988,
+    "expected_area_growth_um2": 1.18,
+    "area_ok": true,
+    "passes": true
+  },
+  "best": {
+    "iter": 1,
+    "gds": "device.gds",
+    "raster": "raster_iter1.png",
+    "diff": "diff_iter1.png",
+    "metrics": "metrics_iter1.json",
+    "iou": 0.9392769392769392,
+    "dice": 0.9686877828054299,
+    "sse": 4671.0
+  }
+}

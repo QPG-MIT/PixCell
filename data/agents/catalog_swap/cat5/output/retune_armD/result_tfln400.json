@@ -1,0 +1,47 @@
+{
+  "tunables": {
+    "gap": 0.5,
+    "length": 174.61,
+    "dy": 4.0,
+    "dx": 10.0
+  },
+  "evaluator_report": {
+    "passes": false,
+    "verdicts": [
+      {
+        "metric": "coupling_ratio",
+        "tier": 0,
+        "verdict": "pass",
+        "target": {
+          "metric": "coupling_ratio",
+          "value": 0.9439,
+          "tolerance_abs": 0.05,
+          "tier": 0
+        },
+        "measured": 0.9452031953405519,
+        "rel_error": 0.00138064979399502,
+        "source": "local"
+      }
+    ],
+    "unmeasured": [],
+    "reason": "footprint exceeds max_footprint_um",
+    "n_eff": 1.8065590858459473,
+    "n_g": 2.2277374267578125,
+    "delta_length_um": null,
+    "wavelength_um": 1.55,
+    "stack_label": "400 nm TFLN strip (isotropic approx)",
+    "from_cache": true,
+    "bbox_um": [
+      194.61,
+      4.5
+    ],
+    "max_footprint_um": [
+      40.0,
+      4.5
+    ],
+    "footprint_ok": false
+  },
+  "calls_used": 1,
+  "infeasible_within_representation": true,
+  "reasoning": "coupling_ratio depends only on length (via sin^2(pi*L/(2*Lc))) and gap (via Lc). On tfln400 the mode is weakly confined (core n=2.138, clad 1.444, t=400nm), so at the min_feature gap floor gap=0.5 um the coupling length Lc=205.53 um is the smallest attainable. Reaching coupling_ratio=0.9439 needs L*=0.8496*Lc=174.6 um, but the same length is bounded by max_footprint_um length=40 um (bbox length = length + 2*dx >= length). The demonstrating eval sets length=174.61: metric PASSES (0.9452) yet bbox length=194.6 um exceeds 40 um by ~4.4x -> overall FAIL. Symmetrically, any length<=40 that fits footprint yields coupling_ratio<=sin^2(pi*40/(2*205.53))=~0.089, far below target. Lowering Lc enough to fit would require gap far below min_feature=0.5 um, which the task forbids. No combination of the exposed tunables (gap,length,dx,dy) satisfies both the coupling_ratio target and the footprint constraint simultaneously."
+}

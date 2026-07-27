@@ -1,0 +1,64 @@
+{
+  "topology_reasoning": [
+    "The bitmap is a device-only black-on-white MZI-like layout on layer (1,0), with the material bbox equal to the supplied 91.1 um by 50.75 um footprint.",
+    "The left side is a narrow input taper into a compact rectangular multimode splitter. Immediately after that rectangle the material separates into two close, parallel waveguide outputs.",
+    "Those two outputs become smooth routed arms: the upper arm rises to the top footprint edge, runs horizontally through the middle of the device, and returns to the upper input of the right combiner.",
+    "The lower arm mirrors the topology but extends farther downward than the upper arm extends upward from the splitter axis, creating the MZI path-length imbalance.",
+    "The right side is the mirror of the left: two close waveguide inputs taper into a compact rectangular combiner and then into a narrow output taper.",
+    "The reconstruction should therefore use only tapers, rectangles, and two extruded gf.Path centerlines; no prebuilt MZI, coupler, or raw polygon stencil is needed."
+  ],
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.534229749822225,
+      "dice": 0.6964142754813972,
+      "sse": 7205.0,
+      "change_made": "Initial primitive reconstruction using taper/rectangle splitter-combiner sections and explicit Euler-path top/bottom arms."
+    },
+    {
+      "iter": 2,
+      "iou": 0.5247205650414867,
+      "dice": 0.6882842365639757,
+      "sse": 6931.0,
+      "change_made": "Narrowed routed waveguide width and split tapers to reduce false-positive material from iteration 1."
+    },
+    {
+      "iter": 3,
+      "iou": 0.5335133638000277,
+      "dice": 0.6958053009436944,
+      "sse": 6737.0,
+      "change_made": "Increased Euler bend extent to shorten the vertical flats and better match the turn regions."
+    },
+    {
+      "iter": 4,
+      "iou": 0.7343490960764191,
+      "dice": 0.8468296235604715,
+      "sse": 3365.0,
+      "change_made": "Replaced symmetric Euler arms with cubic gf.Path centerlines fitted to the bitmap turn topology while preserving delta_length as lower-arm vertical extension."
+    },
+    {
+      "iter": 5,
+      "iou": 0.7662872366190361,
+      "dice": 0.8676813382695736,
+      "sse": 2895.0,
+      "change_made": "Moved the inner turn point outward and the outer turn point inward to tighten the vertical-side match."
+    },
+    {
+      "iter": 6,
+      "iou": 0.7912526470109138,
+      "dice": 0.8834629200200064,
+      "sse": 2563.0,
+      "change_made": "Slightly relaxed the inner turn point, lowered the outer turn point, and widened split taper mouths; kept this as the best of six iterations."
+    }
+  ],
+  "best_iteration": 6,
+  "contract_check": {
+    "verify_knob_response": true,
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.5,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 2.500000000000199,
+    "expected_area_growth_um2": 2.5
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "device_analysis": {
+    "type": "directional_coupler",
+    "description": "Two waveguides that run parallel, curve toward each other in center for evanescent coupling, then curve back out",
+    "function": "Evanescent power transfer between waveguides. Coupling ratio depends on gap and interaction length.",
+    "function_defining_knobs": [
+      "coupling_gap_um - gap between waveguides at closest point (controls coupling strength)",
+      "coupling_length_um - length of parallel coupling region (controls coupling ratio)",
+      "waveguide_width_um - width of waveguides",
+      "port_separation_um - vertical distance between input/output ports"
+    ],
+    "topology": "Each arm: S-bend inward -> coupling straight -> S-bend outward"
+  },
+  "iterations": [
+    {"iter": 1, "iou": 0.237, "dice": 0.383, "sse": 314292, "change_made": "Initial guess: width=0.4, gap=0.15, coupling_len=4.0, port_sep=1.2"},
+    {"iter": 2, "iou": 0.546, "dice": 0.706, "sse": 164056, "change_made": "Increased width=0.5, gap=0.2, coupling_len=5.0, port_sep=2.5"},
+    {"iter": 3, "iou": 0.650, "dice": 0.788, "sse": 118356, "change_made": "Tuned gap=0.35, coupling_len=5.5, port_sep=2.0 - BEST"},
+    {"iter": 4, "iou": 0.634, "dice": 0.776, "sse": 119612, "change_made": "Tried width=0.45, gap=0.5, coupling_len=6.0 - worse"},
+    {"iter": 5, "iou": 0.648, "dice": 0.786, "sse": 117085, "change_made": "Intermediate values - similar to best"},
+    {"iter": 6, "iou": 0.412, "dice": 0.583, "sse": 232336, "change_made": "Tried gap=0 (touching) - much worse"}
+  ],
+  "final_result": {
+    "iou": 0.650,
+    "dice": 0.788,
+    "sse": 118356,
+    "size_match": [true, true],
+    "gds_size_um": [18.0, 3.0],
+    "footprint_um": [18, 3]
+  },
+  "knob_verification": {
+    "knob": "coupling_gap_um",
+    "test_values": [0.25, 0.45],
+    "areas_um2": [18.149, 18.118],
+    "moves_geometry": true
+  },
+  "tunables": ["waveguide_width_um", "coupling_gap_um", "coupling_length_um", "port_separation_um"]
+}

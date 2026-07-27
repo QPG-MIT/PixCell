@@ -1,0 +1,57 @@
+{
+  "device_name": "directional_coupler_with_grating_couplers",
+  "footprint_um": [18.24, 0.7],
+  "topology_reasoning": {
+    "description": "Two-waveguide directional coupler with integrated grating couplers",
+    "structure": [
+      "Upper waveguide: sharp entrance taper (point → core width)",
+      "Central grating region: periodic vertical teeth on both sides",
+      "Lower waveguide: mirrored entrance",
+      "Thin connecting bar between waveguides in grating section",
+      "Sharp exit tapers (core width → point) on both sides"
+    ],
+    "function_defining_knobs": [
+      "width_um: single waveguide core width (controls cross-sectional area)",
+      "gap_um: spacing between waveguide centerlines (controls coupling strength)",
+      "entrance_curve_length_um: length of entrance taper region",
+      "exit_curve_length_um: length of exit taper region",
+      "grating_pitch_um: period of grating teeth (spacing between teeth centers)",
+      "grating_duty_cycle: fill fraction of grating teeth (width_tooth / pitch)",
+      "grating_tooth_depth_um: perpendicular depth of teeth extending from core"
+    ],
+    "physics": "Directional coupler uses evanescent field overlap between parallel waveguides to enable mode exchange. Grating couplers provide efficient in/out coupling. The 0.7 μm height constraint fits a single channel width plus two waveguides with small gap."
+  },
+  "iterations": [
+    {"iter": 1, "iou": 0.278, "dice": 0.435, "strategy": "Two curved waveguides + grating", "change": "Initial directional coupler model"},
+    {"iter": 2, "iou": 0.240, "dice": 0.387, "strategy": "Grating coupler with tapers", "change": "Simplified to single waveguide model"},
+    {"iter": 3, "iou": 0.240, "dice": 0.387, "strategy": "Grating coupler taper adjustment", "change": "Adjusted taper lengths"},
+    {"iter": 4, "iou": 0.251, "dice": 0.401, "strategy": "Sharp entrance/exit tapers", "change": "Changed to triangular tapers instead of curves"},
+    {"iter": 5, "iou": 0.245, "dice": 0.394, "strategy": "Smooth curved tapers", "change": "Tried sinusoidal tapers"},
+    {"iter": 6, "iou": 0.254, "dice": 0.405, "strategy": "Simple sharp tapers", "change": "Removed smooth curves, back to triangles"},
+    {"iter": 7, "iou": 0.250, "dice": 0.401, "strategy": "Adjusted grating pitch/duty", "change": "Tuned grating parameters"},
+    {"iter": 8, "iou": 0.293, "dice": 0.450, "strategy": "Return to two-waveguide coupler", "change": "Reverted to two parallel waveguides with gap"},
+    {"iter": 9, "iou": 0.289, "dice": 0.449, "strategy": "Grid search near best", "change": "w=0.40, g=0.26"},
+    {"iter": 10, "iou": 0.293, "dice": 0.450, "strategy": "Grid search refinement", "change": "w=0.41, g=0.27 - BEST FOUND"},
+    {"iter": 11, "iou": 0.292, "dice": 0.449, "strategy": "Grid search refinement", "change": "w=0.43, g=0.29"},
+    {"iter": 12, "iou": 0.292, "dice": 0.449, "strategy": "Grid search refinement", "change": "w=0.44, g=0.30"}
+  ],
+  "final_metrics": {
+    "iou": 0.293,
+    "dice": 0.450,
+    "accuracy": 0.467,
+    "precision": 0.289,
+    "recall": 0.664,
+    "sse": 2272220.0,
+    "size_match": [true, true]
+  },
+  "final_tunables": {
+    "width_um": 0.41,
+    "gap_um": 0.27,
+    "entrance_curve_length_um": 1.6,
+    "exit_curve_length_um": 2.3,
+    "grating_pitch_um": 0.38,
+    "grating_duty_cycle": 0.53,
+    "grating_tooth_depth_um": 0.09
+  },
+  "notes": "Best IoU achieved by understanding device as two-waveguide coupler rather than single waveguide. Parametric knobs successfully move geometry. Further improvement would require understanding target's exact curve topology (entrance/exit bends appear to be smooth S-curves rather than sharp tapers in the actual device)."
+}

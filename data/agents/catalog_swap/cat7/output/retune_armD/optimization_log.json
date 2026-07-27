@@ -1,0 +1,41 @@
+[
+  {
+    "stack": "soi220",
+    "iter": 0,
+    "changed_params": {
+      "length": 100.0,
+      "spacing": 3.0,
+      "n_loops": 6
+    },
+    "predicted_value": 35.6735,
+    "reasoning": "Spiral delay line: group_delay_ps = n_g * L_centerline / c. Evaluator mode-solves the stack strip at single_mode_width_um=0.5 -> n_g=4.0574. Spec target 35.6739 ps derived on soi220 tier-0 from this default geometry (length=100,spacing=3,n_loops=6 -> path=2635.836 um, bbox 173.5x59.5 == footprint cap). Predict gd = 4.0574*2635.836/299.792458 = 35.6735 ps. No change needed (0.5 um strip == single_mode_width, respects min_feature 0.18).",
+    "measured_value": 35.67385336872696,
+    "rel_error": 1.3071537747156594e-06
+  },
+  {
+    "stack": "sin400",
+    "iter": 0,
+    "changed_params": {
+      "length": 95.717,
+      "spacing": 1.0,
+      "n_loops": 14
+    },
+    "predicted_value": 35.6786,
+    "reasoning": "n_g at single_mode_width_um=1.0 is 2.0213 (mode solve), ~2x smaller than SOI, so to hold group_delay=35.6739 ps the centerline path must ~double: L* = 35.6739*299.792458/2.0213 = 5291.7 um. Default geometry gives only 2635.8 um (gd~17.8, -50%). Spiral packs path ~ area/pitch, so shrink spacing 3->1.0 (denser winding frees y-room; 1.0>=min_feature 0.4) and raise n_loops 6->14; both x and y bbox grow +6/loop so denser pitch keeps dy<=59.5. Family n=14,sp=1.0: path is linear in length (dP/dL=30, ddx/dL=1). Solve L=90+(5291.72-5120.22)/30=95.717 -> path=5291.73, bbox=(163.2,49.5)<=[173.5,59.5]. Predict gd=2.0213*5291.73/299.792458=35.6786 ps (rel_err 0.013%).",
+    "measured_value": 35.678418030102975,
+    "rel_error": 0.00012664805650550382
+  },
+  {
+    "stack": "tfln400",
+    "iter": 0,
+    "changed_params": {
+      "length": 108.089,
+      "spacing": 1.0,
+      "n_loops": 12
+    },
+    "predicted_value": 35.6786,
+    "reasoning": "n_g at single_mode_width_um=1.2 is 2.2277 (mode solve). Required centerline path L* = 35.6739*299.792458/2.2277 = 4801.4 um (default 2635.8 gives gd~19.6, -45%). Reuse the dense sp=1.0 family; n=12 suffices (path ~1.82x default). Family n=12,sp=1.0: dP/dL=26, ddx/dL=1, dy=45.5 fixed. Solve L=100+(4801.44-4591.12)/26=108.089 -> path=4801.44, bbox=(171.6,45.5)<=[173.5,59.5]. 1.0 um strip >= min_feature 0.5. Predict gd=2.2277*4801.44/299.792458=35.6786 ps (rel_err 0.013%).",
+    "measured_value": 35.67916019707599,
+    "rel_error": 0.00014745225713992013
+  }
+]

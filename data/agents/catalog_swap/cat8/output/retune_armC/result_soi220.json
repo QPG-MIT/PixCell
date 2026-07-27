@@ -1,0 +1,42 @@
+{
+  "tunables": {
+    "period_um": 0.32090,
+    "num_periods": 19,
+    "w0_um": 0.5,
+    "corrugation_um": 0.099,
+    "duty_cycle": 0.5125,
+    "layer": [1, 0]
+  },
+  "derived": {
+    "w_wide_um": 0.5495,
+    "w_narrow_um": 0.4505,
+    "grating_length_um": 6.0971
+  },
+  "evaluator_report": {
+    "passes": true,
+    "verdicts": [
+      {
+        "metric": "bragg_wavelength_nm",
+        "tier": 0,
+        "verdict": "pass",
+        "target": {"metric": "bragg_wavelength_nm", "value": 1558.02, "tolerance_rel": 0.02, "tier": 0},
+        "measured": 1558.0418831825257,
+        "rel_error": 1.404550809726347e-05,
+        "source": "local"
+      }
+    ],
+    "unmeasured": [],
+    "reason": "",
+    "n_eff": 2.449714183807373,
+    "n_g": 4.0574421882629395,
+    "delta_length_um": null,
+    "wavelength_um": 1.55,
+    "stack_label": "220 nm SOI strip",
+    "from_cache": true,
+    "bbox_um": [6.097, 0.55],
+    "max_footprint_um": [6.38, 0.55],
+    "footprint_ok": true
+  },
+  "calls_used": 3,
+  "notes": "single_mode_width_um=0.5 -> w0_um=0.5; corrugation kept at 0.099 so w_wide=0.5495<=0.55 (width footprint) and w_narrow=0.4505>=0.18 (min_feature). period* = lambda_B/(2*n_avg) with the evaluator's lambda=1.55 modes n(0.5495)=2.4956, n(0.4505)=2.3596 -> n_avg=2.4276. num_periods trimmed 20->19 to keep length 6.097<=6.38 (num_periods sets grating length/reflectivity, not the Bragg wavelength). Grating half-segments (~0.16 um) fall below min_feature 0.18, but that is intrinsic to a first-order grating whose period (0.321) < 2*min_feature and is not fixable by any exposed tunable (the evaluator pins m=1); widths and corrugation all respect min_feature."
+}

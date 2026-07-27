@@ -1,0 +1,68 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device": "symmetric two-waveguide directional coupler",
+    "evidence": [
+      "Two equal-width waveguides enter from the left and exit on the right.",
+      "The guides are far apart at the ports, bend toward each other, run through a close central coupling region, and bend back out symmetrically.",
+      "There are no MMI slabs, rings, gratings, metal features, or crossings; the functional geometry is set by the evanescent coupling region."
+    ],
+    "operation": "Optical power transfers between the two guides through the close central section. The transfer ratio is mainly controlled by guide width, central gap, effective parallel coupling length, and transition/taper shape into and out of that section.",
+    "function_defining_knobs": [
+      "wg_width",
+      "central_gap",
+      "port_pitch",
+      "coupling_length",
+      "transition_length",
+      "profile_exponent"
+    ],
+    "initial_measurements_um": {
+      "footprint": [
+        18.0,
+        3.0
+      ],
+      "guide_width_estimate": 0.65,
+      "central_gap_estimate": 0.30,
+      "port_pitch_estimate": 2.33
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7084891074043472,
+      "dice": 0.8293750359119726,
+      "sse": 106902.0,
+      "change_made": "Initial smooth symmetric two-path directional coupler. Diff showed generated waveguides moved inward too early through the S-bends, with red inner excess and blue outer missing material."
+    },
+    {
+      "iter": 2,
+      "iou": 0.920653510032596,
+      "dice": 0.9586877645796418,
+      "sse": 25949.0,
+      "change_made": "Set measured guide width/port pitch/central gap and shortened the close-coupling flat while lowering the profile exponent so the S-bend separation follows the bitmap centerline curve. Stopped because IoU exceeded 0.85."
+    }
+  ],
+  "final": {
+    "gds": "device.gds",
+    "metrics": "metrics.json",
+    "raster": "raster.png",
+    "diff": "diff.png",
+    "iou": 0.920653510032596,
+    "iterations": 2,
+    "knob_response": {
+      "file": "knob_response.json",
+      "param": "delta_length",
+      "delta_um": 5.0,
+      "width_um": 0.652,
+      "delta_response_um": 5.0,
+      "area_growth_um2": 3.2600000000000016,
+      "expected_area_growth_um2": 3.2600000000000002,
+      "passes": true
+    }
+  }
+}

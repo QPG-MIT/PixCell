@@ -1,0 +1,52 @@
+{
+  "topology_reasoning": {
+    "device_hypothesis": "Three-core adiabatic splitter / mode-evolution structure: two outer rails begin as narrow taps, thicken while running parallel to a central core, then peel outward into two wide output guides while the central core tapers down and terminates before the fork.",
+    "working_principle": "The long parallel section sets the interaction / mode-evolution region. The central rail perturbs the local supermodes, and the outward branch transition converts that coupled region into two separated output waveguides. For bitmap recreation, the function-defining geometry is the outer-rail launch widths, the interaction-region widths and length, the central-core taper and stop position, and the branch offset/length that controls the fork shape.",
+    "parametric_knobs": [
+      "outer_tip_width",
+      "outer_interaction_width",
+      "output_width",
+      "interaction_length",
+      "branch_transition_length",
+      "outer_start_offset_um",
+      "outer_end_offset_um",
+      "center_start_width",
+      "center_end_width",
+      "center_end_x",
+      "delta_length"
+    ],
+    "measurement_contract_note": "For HOMI verification, the script will expose two honest arm centerlines (upper/lower outer rails) in lengths.json. delta_length will add real straight length to the upper output rail, so knob-response area growth is physical rather than reported-only."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8462466968975304,
+      "dice": 0.9167211492587423,
+      "sse": 37704.0,
+      "change_made": "Initial primitives-only reconstruction: linear-width outer tapers into smooth outward branches, plus a central taper that terminates before the fork."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8533667966038341,
+      "dice": 0.9208827935922553,
+      "sse": 35698.0,
+      "change_made": "Recentered the three-rail stack upward slightly and trimmed the center-core taper widths to reduce systematic vertical mismatch and excess middle-core area."
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.244,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 17.19931699999999,
+    "perturbed_area_um2": 18.370068,
+    "area_growth_um2": 1.1707510000000099,
+    "expected_area_growth_um2": 1.22,
+    "area_ok": true,
+    "passes": true
+  }
+}

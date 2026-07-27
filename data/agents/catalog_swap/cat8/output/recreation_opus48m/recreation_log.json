@@ -1,0 +1,53 @@
+{
+  "device_identification": {
+    "what": "Symmetric sidewall Bragg grating (rectangular-corrugated strip waveguide)",
+    "how_it_works": "A single-mode strip waveguide whose width is periodically modulated as a square wave. The periodic effective-index modulation creates a distributed Bragg reflector: light near the Bragg wavelength lambda_B = 2*n_eff*Lambda is reflected. Used as an in-line wavelength-selective mirror / filter. Corrugation is symmetric about the waveguide axis (both sidewalls pull in/out together), so the mode stays centered and the grating is TE-polarized-index modulation, not a mode converter.",
+    "evidence_from_image": {
+      "image_px": [1602, 140],
+      "footprint_um": [6.38, 0.55],
+      "material_fraction": 0.905,
+      "height_levels_px": {"wide": 139, "narrow": 114},
+      "period_px": 80,
+      "period_um": 0.319,
+      "num_periods_counted": 20,
+      "duty_cycle_wide_fraction": 0.5125,
+      "symmetry": "both top and bottom edges oscillate by ~12-13 px (edge pulls in symmetrically) -> symmetric width modulation about centerline"
+    }
+  },
+  "function_knobs": {
+    "period_um": "Bragg period Lambda -> sets Bragg wavelength lambda_B = 2 n_eff Lambda (THE defining knob)",
+    "num_periods": "grating length N -> reflectivity/bandwidth (kappa*L)",
+    "w0_um": "nominal (mean) waveguide width -> n_eff, single-mode operation",
+    "corrugation_um": "full width swing dw = w_wide - w_narrow -> coupling coefficient kappa / bandwidth",
+    "duty_cycle": "fraction of period at wide width -> harmonic content / apodization"
+  },
+  "measured_targets": {
+    "w_wide_um": 0.55,
+    "w_narrow_um": 0.451,
+    "w0_um": 0.5,
+    "corrugation_um": 0.10,
+    "period_um": 0.319,
+    "num_periods": 20,
+    "duty_cycle": 0.5125
+  },
+  "iterations": [
+    {"iter": 1, "iou": 0.8325, "dice": 0.9086, "sse": 37233.0, "change_made": "Initial parametric Bragg grating: alternating centered rectangles, WIDE-first per period, w0=0.5, corrugation=0.099, period=0.319, 20 periods, duty=0.5125. Interior perfect; diff showed red/blue alternation at both corrugation bands = half-tooth horizontal phase offset."},
+    {"iter": 2, "iou": 0.98952, "dice": 0.99473, "sse": 2145.0, "change_made": "Flipped per-period segment order to NARROW-first (target grating begins with a narrow segment, measured from pixel edge transitions). Phase aligned; only sub-pixel corner residuals remain."}
+  ],
+  "final": {
+    "iou": 0.98952,
+    "dice": 0.99473,
+    "sse": 2145.0,
+    "iterations_used": 2,
+    "target_met": true,
+    "tunables": ["period_um", "num_periods", "w0_um", "corrugation_um", "duty_cycle"]
+  },
+  "knob_verification": {
+    "note": "homi.spec_optimization.verify_knob_response is MZI-specific (requires lengths.json with exactly 2 arms + delta_length_um); a Bragg grating has no interferometer arms, so a 2-arm lengths.json would fabricate structure the device lacks. Verified the most important function knob (period_um) instead with a direct gdstk geometry measurement (see knob_response.json).",
+    "param": "period_um",
+    "delta_um": 0.05,
+    "length_um": [6.38, 7.38],
+    "area_um2": [3.208, 3.71],
+    "passes": true
+  }
+}

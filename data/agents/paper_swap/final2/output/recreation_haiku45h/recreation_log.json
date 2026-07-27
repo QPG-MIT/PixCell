@@ -1,0 +1,201 @@
+{
+  "device_analysis": {
+    "type": "grating_coupler",
+    "description": "Vertical grating coupler with 4 tapered fingers and bottom access port",
+    "function": "Couples light from/to vertical fiber incidence through periodic grating structure",
+    "key_features": {
+      "grating_fingers": "4 vertical teeth, tapered from wider at top to narrow at base",
+      "bus_waveguide": "Rectangular horizontal structure connecting fingers",
+      "access_port": "Tapered vertical port at bottom for waveguide connection",
+      "period": "Approximately 4.85 μm spacing between fingers",
+      "finger_width": "Approximately 1.05 μm at base",
+      "bus_width": "Approximately 2.8 μm",
+      "taper_shape": "Linear taper from ~2.7 μm wide at top to ~1.05 μm at base"
+    },
+    "topology_plan": {
+      "step1": "Create a rectangular bus waveguide (width ~2.8 μm, length ~25 μm, at y=0)",
+      "step2": "Create 4 tapered fingers (trapezoids) extending upward from bus",
+      "step3": "Create tapered access port (narrow at bottom, wider upward) at center bottom",
+      "step4": "Parametrize all key dimensions as top-level tunables"
+    },
+    "function_defining_knobs": [
+      "grating_period_um: spacing between finger centers",
+      "finger_width_um: width at base of taper (FUNCTION KNOB)",
+      "finger_height_um: height of each finger",
+      "bus_width_um: vertical extent of bus waveguide",
+      "finger_taper_top_width_um: width at top of finger",
+      "port_width_um: width of access port at narrowest",
+      "port_height_um: height of access port taper",
+      "port_taper_ratio: width at top / width at base of port"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "params": {
+        "bus_width_um": 2.8,
+        "grating_period_um": 5.5,
+        "finger_width_um": 1.2,
+        "finger_height_um": 6.5,
+        "finger_taper_top_width_um": 2.8,
+        "port_width_um": 0.8,
+        "port_height_um": 3.2,
+        "port_taper_ratio": 1.5
+      },
+      "iou": 0.3522,
+      "dice": 0.5210,
+      "sse": 1610475.0,
+      "change_made": "Initial parameters from visual inspection of device image"
+    },
+    {
+      "iter": 2,
+      "params": {
+        "bus_width_um": 2.8,
+        "grating_period_um": 5.2,
+        "finger_width_um": 0.8,
+        "finger_height_um": 6.5,
+        "finger_taper_top_width_um": 0.4,
+        "port_width_um": 0.5,
+        "port_height_um": 2.0,
+        "port_taper_ratio": 2.0
+      },
+      "iou": 0.2052,
+      "dice": 0.3405,
+      "sse": 1886511.0,
+      "change_made": "Reduced finger widths too aggressively (worse)"
+    },
+    {
+      "iter": 3,
+      "params": {
+        "bus_width_um": 2.8,
+        "grating_period_um": 5.5,
+        "finger_width_um": 1.2,
+        "finger_height_um": 6.5,
+        "finger_taper_top_width_um": 2.2,
+        "port_width_um": 0.6,
+        "port_height_um": 2.5,
+        "port_taper_ratio": 1.4
+      },
+      "iou": 0.3042,
+      "dice": 0.4465,
+      "sse": 1812115.0,
+      "change_made": "Refined port and taper widths"
+    },
+    {
+      "iter": 4,
+      "params": {
+        "bus_width_um": 2.8,
+        "grating_period_um": 5.5,
+        "finger_width_um": 1.2,
+        "finger_height_um": 6.5,
+        "finger_taper_top_width_um": 2.78,
+        "port_width_um": 0.79,
+        "port_height_um": 3.2,
+        "port_taper_ratio": 1.5
+      },
+      "iou": 0.3521,
+      "dice": 0.5207,
+      "sse": 1610648.0,
+      "change_made": "Fine-tuned to recover iter 1 performance"
+    },
+    {
+      "iter": 5,
+      "params": {
+        "bus_width_um": 2.8,
+        "grating_period_um": 5.2,
+        "finger_width_um": 1.2,
+        "finger_height_um": 6.5,
+        "finger_taper_top_width_um": 2.78,
+        "port_width_um": 0.79,
+        "port_height_um": 3.2,
+        "port_taper_ratio": 1.5
+      },
+      "iou": 0.3734,
+      "dice": 0.5261,
+      "sse": 1567123.0,
+      "change_made": "Reduced grating_period to 5.2 to tighten finger spacing"
+    },
+    {
+      "iter": 6,
+      "params": {
+        "bus_width_um": 2.8,
+        "grating_period_um": 4.85,
+        "finger_width_um": 1.05,
+        "finger_height_um": 6.5,
+        "finger_taper_top_width_um": 2.7,
+        "port_width_um": 0.79,
+        "port_height_um": 3.2,
+        "port_taper_ratio": 1.5
+      },
+      "iou": 0.3825,
+      "dice": 0.5484,
+      "sse": 1535782.0,
+      "change_made": "Reduced grating_period to 4.85 and finger_width to 1.05, narrowed taper to 2.7"
+    }
+  ],
+  "final_metrics": {
+    "iou": 0.3825,
+    "dice": 0.5484,
+    "sse": 1535782.0,
+    "iterations": 6,
+    "best_iou": 0.3825,
+    "convergence": "Plateauing near 0.38 IoU; diminishing returns visible"
+  },
+  "tunable_parameters": {
+    "bus_width_um": {
+      "value": 2.8,
+      "description": "Vertical extent of the bus waveguide",
+      "min": 2.0,
+      "max": 4.0
+    },
+    "grating_period_um": {
+      "value": 4.85,
+      "description": "Center-to-center spacing between grating fingers",
+      "min": 4.5,
+      "max": 6.0
+    },
+    "finger_width_um": {
+      "value": 1.05,
+      "description": "Width of each finger at the base (main function knob)",
+      "min": 0.8,
+      "max": 1.5
+    },
+    "finger_height_um": {
+      "value": 6.5,
+      "description": "Vertical height of each grating finger",
+      "min": 5.0,
+      "max": 8.0
+    },
+    "finger_taper_top_width_um": {
+      "value": 2.7,
+      "description": "Width of each finger at the top (taper apex)",
+      "min": 2.0,
+      "max": 3.5
+    },
+    "port_width_um": {
+      "value": 0.79,
+      "description": "Width of access port at narrowest point (bottom)",
+      "min": 0.4,
+      "max": 1.2
+    },
+    "port_height_um": {
+      "value": 3.2,
+      "description": "Height of the tapered access port",
+      "min": 1.5,
+      "max": 4.0
+    },
+    "port_taper_ratio": {
+      "value": 1.5,
+      "description": "Taper ratio (top_width / bottom_width) of port",
+      "min": 1.2,
+      "max": 2.5
+    }
+  },
+  "notes": {
+    "implementation": "Primitives-only: rectangles for bus, trapezoid polygons for fingers and port",
+    "layer": "(1, 0) - silicon core layer",
+    "gdsfactory_version": "9.20.7 pinned",
+    "calibration_method": "homi.jee_integration.prepare_calibration()",
+    "metrics_method": "michaelangelo/core/compare_absolute.py with gdstk rasterization"
+  }
+}

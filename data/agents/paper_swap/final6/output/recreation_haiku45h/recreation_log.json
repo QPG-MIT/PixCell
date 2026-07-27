@@ -1,0 +1,121 @@
+{
+  "timestamp": "2026-07-03T14:50:00Z",
+  "device_name": "2x2_directional_coupler",
+  "footprint_um": [
+    4.7,
+    4.7
+  ],
+  "topology": {
+    "description": "Symmetric 2x2 directional coupler with four-lobed butterfly tapering pattern",
+    "function": [
+      "Couples light from two input waveguides into a central interaction region",
+      "The taper pairs (top/bottom, left/right) widen from narrow guides into the coupler core",
+      "Interaction occurs in the central region where waveguide modes overlap",
+      "Light is redistributed symmetrically to two output ports"
+    ],
+    "key_parameters": [
+      "waveguide_width_um: width of input/output waveguide arms (narrow straight sections)",
+      "coupler_width_um: width of the central interaction region (widest part of tapers)",
+      "coupler_length_um: length of the central region (controls coupling strength/phase)",
+      "taper_length_um: axial length of each taper from narrow to wide",
+      "taper_base_y: vertical position of base guides"
+    ],
+    "function_defining_knobs": [
+      "coupler_width_um \u2014 directly controls gap width and mode overlap in interaction region",
+      "taper_length_um \u2014 taper gradient affects adiabaticity and mode confinement",
+      "coupler_length_um \u2014 interaction length controls cross-talk and power transfer"
+    ]
+  },
+  "geometric_observations": {
+    "symmetry": "4-fold rotational symmetry about center",
+    "material": "silicon (black region, layer 1 0)",
+    "structure_outline": [
+      "Four lobes: top (vertical taper up), bottom (vertical taper down), left (horizontal taper left), right (horizontal taper right)",
+      "Central bulge: wider oval region where lobes meet",
+      "Input ports: narrow rectangles at cardinal ends of each lobe"
+    ],
+    "estimated_dimensions": {
+      "waveguide_width_um": "~0.5-0.8",
+      "coupler_width_um": "~2.5-3.0",
+      "coupler_length_um": "~2.5-3.0",
+      "taper_length_um": "~1.0-1.5"
+    }
+  },
+  "implementation_strategy": {
+    "primitives": [
+      "gf.Path for waveguide backbone with width transitions",
+      "Bezier or elliptical tapers for smooth mode expansion",
+      "Boolean operations to merge components cleanly"
+    ],
+    "approach": "Build four mirrored taper arms, merge at central region, add straight input guides"
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "params": {
+        "waveguide_width_um": 0.5,
+        "coupler_width_um": 2.8,
+        "coupler_length_um": 2.5,
+        "taper_length_um": 1.2
+      },
+      "iou": 0.49,
+      "dice": 0.5
+    },
+    {
+      "iter": 2,
+      "params": {
+        "waveguide_width_um": 0.5,
+        "coupler_width_um": 1.8,
+        "coupler_length_um": 1.6,
+        "taper_length_um": 0.8
+      },
+      "iou": 0.34,
+      "dice": 0.51
+    },
+    {
+      "iter": 3,
+      "params": {
+        "waveguide_width_um": 0.5,
+        "coupler_width_um": 2.2,
+        "coupler_length_um": 1.9,
+        "taper_length_um": 1.0
+      },
+      "iou": 0.458,
+      "dice": 0.63
+    },
+    {
+      "iter": 4,
+      "params": {
+        "waveguide_width_um": 0.5,
+        "coupler_width_um": 2.25,
+        "coupler_length_um": 1.95,
+        "taper_length_um": 1.02
+      },
+      "iou": 0.447,
+      "dice": 0.6
+    },
+    {
+      "iter": 5,
+      "params": {
+        "waveguide_width_um": 0.5,
+        "coupler_width_um": 2.2,
+        "coupler_length_um": 1.9,
+        "taper_length_um": 1.0
+      },
+      "iou": 0.458,
+      "dice": 0.63
+    }
+  ],
+  "final_best": {
+    "iou": 0.458,
+    "dice": 0.628,
+    "iterations_used": 5,
+    "tunables": [
+      "waveguide_width_um (input/output width)",
+      "coupler_width_um (central interaction region width - function-defining)",
+      "coupler_length_um (central interaction region length - function-defining)",
+      "taper_length_um (taper expansion length - function-defining)"
+    ]
+  },
+  "status": "PHASE_A_COMPLETE"
+}

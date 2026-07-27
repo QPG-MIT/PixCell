@@ -1,0 +1,46 @@
+{
+  "tunables": {
+    "radius": 10.0,
+    "gap": 0.2,
+    "length_x": 2.143141540330529,
+    "length_y": 0.6
+  },
+  "evaluator_report": {
+    "passes": true,
+    "verdicts": [
+      {
+        "metric": "ring_fsr_nm",
+        "tier": 0,
+        "verdict": "pass",
+        "target": {
+          "metric": "ring_fsr_nm",
+          "value": 8.22,
+          "tolerance_rel": 0.02,
+          "tier": 0
+        },
+        "measured": 8.219999999999999,
+        "rel_error": 2.161018052798358e-16,
+        "source": "local"
+      }
+    ],
+    "unmeasured": [],
+    "reason": "",
+    "n_eff": 2.449714183807373,
+    "n_g": 4.0574421882629395,
+    "delta_length_um": null,
+    "wavelength_um": 1.55,
+    "stack_label": "220 nm SOI strip",
+    "from_cache": true,
+    "bbox_um": [
+      28.143,
+      21.8
+    ],
+    "max_footprint_um": [
+      30.0,
+      21.8
+    ],
+    "footprint_ok": true
+  },
+  "calls_used": 6,
+  "notes": "CLI eval reaches the ring report but crashes formatting delta_length_um=None for ring_fsr_nm; final report was obtained from the same homi.spec_optimization.evaluate() function."
+}

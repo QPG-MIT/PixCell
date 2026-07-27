@@ -1,0 +1,116 @@
+{
+  "phase": "6C",
+  "stack": "soi220",
+  "mmi_design": {
+    "body_width_um": 2.5,
+    "body_length_um": 5.55,
+    "mouth_width_um": 1.0,
+    "mouth_center_offset_um": 0.6,
+    "mouth_gap_um": 0.2,
+    "input_taper_length_um": 10.0,
+    "output_taper_length_um": 10.0,
+    "fixture_output_separation_um": 5.5
+  },
+  "tier0_multimode": {
+    "width_um": 2.5,
+    "n_effs": [
+      2.833374,
+      2.782372,
+      2.695435,
+      2.569336
+    ],
+    "beat_length_um": 15.2,
+    "three_eighths_beat_um": 5.7
+  },
+  "shared_fDTD_knowledge_used": [
+    "2.5x5.70 um body with 0.5 um guides centered at +/-0.4167 measured 3.41 dB/splitter, so narrow direct guides miss too much modal power.",
+    "The same body with 0.85 um mouths at +/-0.5336 measured 4.67 dB, so moving mouths outboard hurt despite widening.",
+    "The 2.5x5.5 um reference with 1.0 um mouths on about 10 um tapers centered +/-0.625 measured 1.08 dB, showing wide mouths that cover the inboard spots are the right direction."
+  ],
+  "reasoning": "Tier-0 multimode physics gives a 3*Lpi/8 image length near 5.70 um for a 2.5 um SOI body, but the shared full-wave data shows the practical low-loss point is shorter, near 5.5 um, when wide tapered mouths collect the inboard images. I therefore used a 2.5 x 5.55 um MMI body, 1.0 um mouths, and moved the mouth centers slightly inboard from the 1.08 dB reference (+/-0.625 um) to +/-0.60 um, which is the minimum-gap-safe value for 1.0 um mouths. This preserves a 0.20 um mouth gap, covers the reported image spots near +/-0.42 um, and should reduce excess loss relative to the 1.08 dB reference without relying on a fake full-wave measurement. The MZI lower-arm meander was then lengthened laterally to restore the SOI FSR while keeping the original footprint.",
+  "predictions_not_measurements": {
+    "predicted_splitter_insertion_loss_db": 0.95,
+    "predicted_basis": "Interpolation from the measured 1.08 dB reference C, with the mouth centers moved slightly inboard while preserving 1.0 um mouth width and 0.20 um min gap.",
+    "predicted_extinction_ratio_db": ">=20 if the conductor FDTD confirms near-50/50 splitting; the geometry is mirror-symmetric by construction."
+  },
+  "tier0_eval_spec_full": {
+    "passes_overall": false,
+    "reason": "unmeasured targets: extinction_ratio_db, insertion_loss_db",
+    "verdicts": [
+      {
+        "metric": "fsr_nm",
+        "tier": 0,
+        "verdict": "pass",
+        "target": {
+          "metric": "fsr_nm",
+          "value": 8.0,
+          "tolerance_rel": 0.02,
+          "tier": 0
+        },
+        "measured": 8.019744652432296,
+        "rel_error": 0.002468081554036994,
+        "source": "local"
+      },
+      {
+        "metric": "extinction_ratio_db",
+        "tier": 1,
+        "verdict": "unmeasured",
+        "target": {
+          "metric": "extinction_ratio_db",
+          "min": 20.0,
+          "tier": 1
+        },
+        "measured": null,
+        "rel_error": null,
+        "source": null
+      },
+      {
+        "metric": "insertion_loss_db",
+        "tier": 1,
+        "verdict": "unmeasured",
+        "target": {
+          "metric": "insertion_loss_db",
+          "max": 1.0,
+          "tier": 1
+        },
+        "measured": null,
+        "rel_error": null,
+        "source": null
+      }
+    ],
+    "fsr_nm": 8.019744652432296,
+    "delta_length_um": 73.83300000000001,
+    "bbox_um": [
+      91.1,
+      41.125
+    ],
+    "footprint_ok": true,
+    "note": "Overall is incomplete because extinction_ratio_db and insertion_loss_db are tier-1 and intentionally unmeasured here."
+  },
+  "arm_lengths": {
+    "arms": {
+      "top": 68.39,
+      "bottom": 142.223
+    },
+    "delta_length_um": 73.83300000000001
+  },
+  "splitter_fixture": {
+    "script": "splitter_soi220.py",
+    "gds": "splitter_soi220.gds",
+    "metadata": "splitter_meta.json",
+    "port_positions": {
+      "in": [
+        0.0,
+        0.0
+      ],
+      "out_top": [
+        53.55,
+        2.75
+      ],
+      "out_bot": [
+        53.55,
+        -2.75
+      ]
+    }
+  }
+}

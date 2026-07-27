@@ -1,0 +1,57 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [
+      8.0,
+      8.0
+    ]
+  },
+  "topology_reasoning": {
+    "device_identification": "Four-port orthogonal waveguide crossing / compact multimode crossing. Two single-mode access waveguides cross at 90 degrees through a common expanded central multimode region.",
+    "operation": "The narrow guides adiabatically expand into a broad central region so the fundamental field can pass across the crossing with reduced diffraction and lower interaction with the orthogonal arm; the symmetric vertical and horizontal body keeps the crossing balanced.",
+    "image_observations": "Black material fills four narrow ports about 0.50 um wide at the footprint edges. Both axes broaden through curved shoulders to an approximately 2.5 um wide central neck near +/-1 um, then merge into an 8 um by 8 um shared crossing silhouette. The shape is close to the union of two identical variable-width waveguide paths rotated by 90 degrees.",
+    "function_defining_knobs": [
+      "port_width_um",
+      "shoulder_width_*",
+      "center_width_um",
+      "segment lengths along each axis",
+      "horizontal_extra_length_um"
+    ],
+    "implementation_plan": "Use only primitive taper segments plus boolean union. Build a horizontal chain of tapers with top-level widths sampled from the bitmap; build a vertical chain with the same profile rotated by 90 degrees; boolean-or the two chains on layer (1,0). Write lengths.json from the primitive path extents, and expose horizontal_extra_length_um as the knob used for verify_knob_response."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9646144953324083,
+      "dice": 0.9819885760022327,
+      "sse": 27364.0,
+      "change_made": "Initial primitive reconstruction: boolean union of horizontal and vertical taper chains using bitmap-sampled widths snapped to the GDSFactory 0.002 um port grid; stopped because IoU exceeded 0.85."
+    }
+  ],
+  "knob_verification": {
+    "param": "horizontal_extra_length_um",
+    "delta_um": 5.0,
+    "width_um": 0.5044,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 19.203096000000006,
+    "perturbed_area_um2": 21.843034000000007,
+    "area_growth_um2": 2.639938000000001,
+    "expected_area_growth_um2": 2.522,
+    "area_ok": true,
+    "passes": true
+  },
+  "final": {
+    "iou": 0.9646144953324083,
+    "dice": 0.9819885760022327,
+    "sse": 27364.0,
+    "iterations": 1,
+    "gds": "device.gds",
+    "script": "device.py"
+  }
+}

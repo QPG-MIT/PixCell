@@ -1,0 +1,117 @@
+{
+  "stack": "tfln400",
+  "derivation": {
+    "device": "adiabatic 1x2 mode-evolution power splitter (from Phase-A classification)",
+    "spec": "transmission_total >= 0.95 (adiabatic/low-loss) AND split_balance = 0.5 +/- 0.02",
+    "how_the_FoM_is_governed": {
+      "split_balance": "Structural: the geometry is mirror-symmetric about the axis, so the input fundamental excites only the SYMMETRIC supermode, which by symmetry deposits equal power in the two outer guides. 50/50 is guaranteed by construction, independent of platform. Predict 0.500.",
+      "transmission_total": "Adiabaticity + bend loss. Power stays in the fundamental supermode iff the taper evolves slowly vs the local supermode beat length L_beat = lambda/(2*dn); the bottleneck is the phase-match point (minimum dn). Radiation at the fan-out adds loss unless the S-bend radius >= min_bend_radius."
+    },
+    "what_must_change_with_platform_and_why": [
+      "1) Guide widths -> single_mode_width_um (rule-based): center_input = arm_width = wg; all tips = min_feature. Wider, less-confined platforms need wider single-mode guides.",
+      "2) Coupling gap -> min_feature (strongest fab-allowed coupling => shortest adiabatic length). arm_offset = wg/2 + coupling_gap. With COMPLEMENTARY linear tapers (center wg->tip, outer tip->wg) the two widths sum to ~const, so center-outer edge gap stays ~= coupling_gap through the whole transfer and phase-match sits at w = wg/2.",
+      "3) Transfer (taper) length -> set from the LOCAL supermode coupling length at phase-match L_c = lambda/(2*dn) at (w=wg/2, gap=min_feature). Adiabaticity needs L_taper >~ a few x L_c. This is the platform-dependent scaling and is COMPUTED from mode solves, not guessed.",
+      "4) Fan-out S-bend -> sized so effective radius R_eff = 2*L^2/(pi^2*dy) >= min_bend_radius (bend radiation also cuts T).",
+      "5) Footprint kept within the per-stack budget (which scales with confinement)."
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "params": {
+        "wg": 1.2,
+        "min_feature": 0.5,
+        "arm_offset": 1.1,
+        "taper_length": 100.0,
+        "sbend_length": 26.0,
+        "output_offset": 3.0,
+        "device_bbox_um": [
+          133.0,
+          7.2
+        ],
+        "budget_um": [
+          150,
+          20
+        ]
+      },
+      "tier0_numbers": {
+        "n_eff_wg(w=1.2)": 1.8066,
+        "n_g": 2.2277,
+        "phase_match_Lc(w=0.6,gap=0.5)_um": 25.46,
+        "full_width_Lc(w=1.2,gap=0.5)_um": 205.53,
+        "source": "python -m homi.spec_optimization solve/supermodes"
+      },
+      "predicted_T": 0.97,
+      "predicted_balance": 0.5,
+      "measured_T": null,
+      "measured_balance": null,
+      "reasoning": "Moderate confinement. At full width L_c is huge (206um) but the transfer happens at intermediate widths: phase-match L_c(w=0.6)=25.5um. taper=100um = 3.9x L_c => adiabatic within the 150um budget. Fan-out R_eff=2*26^2/(pi^2*1.9)=72um >= 30um. Predict T~0.97."
+    },
+    {
+      "iter": 2,
+      "params": {
+        "arm_offset": 1.15,
+        "gap_um": 0.3,
+        "taper": 115.0,
+        "sbend": 28.0,
+        "fanout": "sine C1",
+        "bbox": [
+          149.0,
+          7.2
+        ]
+      },
+      "tier0_numbers": {
+        "phase_match_Lc(w0.85,gap0.3)_um": 28.16,
+        "taper_over_Lc": 4.1,
+        "Lc_at_gap0.5_um": 64.36
+      },
+      "predicted_T": 0.93,
+      "predicted_balance": 0.5,
+      "measured_T": 0.93,
+      "measured_balance": 0.5075,
+      "reasoning": "tfln is the hard stack. Opening fully to gap=mf=0.5um makes Lc=64um -> only 1.6x adiabatic in the 150um budget (non-adiabatic). Compromise gap=0.30um (arm_offset 1.15): Lc=28.16um, 4.1x adiabatic, and larger gap than round-1's 0.25 so the 0.5um pinch tip is less merged. But gap 0.30 < mf 0.5 means still partly merged; the 0.5um min_feature tip is a hard Y-junction radiation floor in TFLN. Predict T~0.93 (improved from 0.84 but may fall short of 0.95 within budget)."
+    },
+    {
+      "iter": 3,
+      "params": {
+        "arm_offset": 1.2,
+        "gap_um": 0.35,
+        "taper": 120.0,
+        "sbend": 22.0,
+        "fanout": "sine C1",
+        "bbox": [
+          148.0,
+          7.2
+        ]
+      },
+      "tier0_numbers": {
+        "phase_match_Lc(w0.85,gap0.35)_um": 34.99,
+        "taper_over_Lc": 3.4
+      },
+      "predicted_T": 0.95,
+      "predicted_balance": 0.5,
+      "measured_T": 0.926,
+      "measured_balance": 0.5,
+      "reasoning": "Loss is gap/merging-dominated: opening gap 0.25->0.30 cut loss 0.160->0.070 (more than halved). This is my last call, so I spend it on the clear trend: open gap 0.30->0.35 (arm_offset 1.20). Lc rises 28->35um so adiabaticity eases 4.1x->3.4x (still comfortably adiabatic), while the 0.5um pinch tip is further un-merged. Extrapolating the loss trend predicts ~0.04-0.05 loss -> T~0.95 (right at threshold). If it still misses, the honest floor is: full unmerge (gap=mf=0.5) needs Lc=64um -> a ~200um device, over the 150um budget, so a >=0.95 clean-evanescent design is not reachable for TFLN's 0.5um min_feature within this budget.",
+      "procedural_error": "Round-3 device_tfln400.py/gds (gap 0.35) was rebuilt but fixture_tfln400.gds was NOT regenerated, so the FDTD re-measured round-2 geometry (void, identical digits). Fixture GDS now regenerated and VERIFIED: bbox x=154 (=X_OUT_END 148 + 6um stub) and a point-sampled phase-match column shows center-outer gap=0.35um. Ports moved to x=153 (meta updated).",
+      "result": "Gap trend SATURATED: 0.25->0.840, 0.30->0.930, 0.35->0.926. Opening past 0.30 no longer helps; the loss is at its within-budget floor."
+    }
+  ],
+  "final": {
+    "status": "HONEST T-FAIL (floor reached)",
+    "best_iter": 2,
+    "best_device": "round-2 geometry gap=0.30 (restored as the committed device_tfln400.py/gds)",
+    "measured_T": 0.93,
+    "measured_balance": 0.5075,
+    "balance_pass": true,
+    "T_pass": false,
+    "T_miss": 0.02,
+    "fits_budget": true,
+    "gap_sweep": {
+      "0.25": 0.84,
+      "0.30": 0.93,
+      "0.35": 0.926
+    },
+    "floor_argument": "The dominant loss is radiation from the center pinch-off tip in the partly-merged regime; the tip width is pinned at min_feature=0.5um (a hard fab floor). Un-merging (opening the gap toward mf=0.5) is the only clean cure, but at gap=0.5 the phase-match coupling length is Lc=64um, so >=3x adiabaticity needs a ~200um transfer -> a device well over the 150um footprint budget. Within 150um the gap can only open to ~0.30-0.35, where the empirical trend has SATURATED at T~0.93. Conclusion: T>=0.95 is not reachable for TFLN's 0.5um min_feature adiabatic 1x2 splitter within the 150um budget; 0.930 is the honest best. Balance is structurally exact (0.500-0.5075)."
+  }
+}

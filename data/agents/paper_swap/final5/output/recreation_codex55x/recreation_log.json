@@ -1,0 +1,93 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [18.24, 0.7],
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_identification": "The bitmap is a compact wrapped, grating-assisted multi-guide coupler. The function-defining region is a long central straight interaction bus with two parallel corrugated coupling rows above and below it. Large access guides route into and out of the corrugated rows with U/S-style bends, and two tapered horizontal terminals sit at the top-left and bottom-right sides of the footprint.",
+    "working_principle": "The central bus and the two rows of periodic teeth define an interaction/coupling length and grating pitch. The access bends route light into/out of the grating rows while the tapers provide adiabatic transitions to narrow tips. The strongest functional knobs are the center bus interaction length, grating pitch, tooth width/height, coupling gaps from the center bus, guide width, bend geometry, and taper length/tip width.",
+    "measured_features": {
+      "center_bus": {"x0_um": 1.93, "x1_um": 15.98, "width_um": 0.0296},
+      "grating_rows": {
+        "teeth_per_row": 56,
+        "pitch_um": 0.156,
+        "tooth_width_um": 0.132,
+        "tooth_height_um": 0.052,
+        "upper_y_range_um": [0.386, 0.438],
+        "lower_y_range_um": [0.275, 0.327]
+      },
+      "access_guides": {
+        "wide_guide_width_um": 0.068,
+        "corrugated_guide_width_um": 0.052,
+        "top_taper_x_um": [2.22, 3.87],
+        "bottom_taper_x_um": [14.74, 15.64]
+      }
+    },
+    "primitive_strategy": "Use gf.Path + extrude for all curved and straight access guides, gf.Path + extrude for the center bus so the verified length knob changes real guide area, gf.components.rectangle for every grating tooth and block, and gf.components.taper for the two pointed terminals. No raw polygons or compound device stencils are used."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.6254148060712019,
+      "dice": 0.769544861699513,
+      "sse": 538210.0,
+      "change_made": "Initial topology-first primitive build: paths for access guides and center bus, rectangles for two 56-tooth grating rows, tapers for pointed terminals. Diff showed a consistent GDS-down/GDS-left centering offset plus oversized bend patches."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7874697344444045,
+      "dice": 0.8810999361498807,
+      "sse": 277464.0,
+      "change_made": "Added a footprint-origin edge anchor and left input edge to align the assembled GDS bbox with the calibrated image frame. Remaining diff showed extra material in large access bends, a too-short bottom taper, and a lower-right output curve that bent downward too early."
+    },
+    {
+      "iter": 3,
+      "iou": 0.8068427600354111,
+      "dice": 0.8930968182528493,
+      "sse": 247644.0,
+      "change_made": "Started the bottom terminal taper at x=13.18 instead of x=14.74, tightened the lower-left U-turn, and delayed/lifted the lower-right output bend. Remaining error is dominated by grating duty-cycle mismatch and residual oversized access-bend edges."
+    },
+    {
+      "iter": 4,
+      "iou": 0.8415344438697642,
+      "dice": 0.9139491761027074,
+      "sse": 199456.0,
+      "change_made": "Replaced uniform ideal grating teeth with per-tooth rectangle ranges measured from the calibrated target image. Remaining error is mostly false-positive material in tooth edges, center bus width, and the outer access-bend edges."
+    },
+    {
+      "iter": 5,
+      "iou": 0.8458119086210985,
+      "dice": 0.9164659786521332,
+      "sse": 189874.0,
+      "change_made": "Shrank the center bus from 0.0296 um to 0.0260 um and inset each measured grating tooth by sub-pixel amounts. This improved precision but introduced grating and bus false negatives; final pass targets bottom taper missing area and side-bend overfill."
+    },
+    {
+      "iter": 6,
+      "iou": 0.8410763595561731,
+      "dice": 0.9136789521961282,
+      "sse": 196025.0,
+      "change_made": "Tried narrowing side access paths and widening/lifting the bottom taper. This over-corrected and reduced IoU, so the final script was reverted to the iteration 5 best geometry."
+    }
+  ],
+  "best_iter": 5,
+  "best_iou": 0.8458119086210985,
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.026,
+    "base_value": 14.05,
+    "base_delta_length_um": 14.05,
+    "perturbed_delta_length_um": 19.05,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 3.4988859999999966,
+    "perturbed_area_um2": 3.6288859999999965,
+    "area_growth_um2": 0.1299999999999999,
+    "expected_area_growth_um2": 0.13,
+    "area_ok": true,
+    "passes": true
+  }
+}

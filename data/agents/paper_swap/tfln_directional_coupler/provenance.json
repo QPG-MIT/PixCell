@@ -1,0 +1,9 @@
+{
+  "paper": "papers/4.pdf",
+  "doi": "10.1364/OL.480131",
+  "title": "Fabrication-tolerant directional couplers on thin-film lithium niobate (Huang, Chen, Liu, Optics Letters 48(5):1264, 2023)",
+  "device": "tfln_directional_coupler (3-dB variant)",
+  "figure": "Fig 5(a), page 3 (top view of the 3-dB coupler structure: DC coupling region + four S-bends for fan-out)",
+  "dims_source": "p3 text: 'the width of the TFLN waveguide is then adjusted to 1.1 um. Other parameters are Ls = 40 um and L = 17.5 um for a low overall insertion loss and an ideal 3-dB power splitting ratio at 1550 nm.' Gap: p3 'the gap increases gradually from 0.9 um to 2.9 um from the DC region'. W=1.1um / g=0.9um also labeled on Figs 3(b)/5 subplots and the SEM row (papers/images/paper_4/page3_img1.png).",
+  "notes": "3-dB VARIANT extracted (not the long-DC fab-tolerance model of Fig 2a). Home stack: x-cut TFLN ridge, H(LN)=250nm, ridge/etch h=110nm, sidewall 60deg, SiO2 PECVD clad (p1-2). device_bw.png is a schematic silhouette with the transverse axis exaggerated ~6x for legibility (the true footprint is ~97.5um x 5.1um => 19:1, at which the S-bends are imperceptible); the paper's own Fig 5(a) is likewise not to scale. True proportions are recorded in footprint.json. Geometry: symmetric, input(left)->two S-bends converge to gap 0.9um->straight coupling region L=17.5um->two S-bends diverge to gap 2.9um->thr/cro (right). Headline metric: L_pi constant over +/-100nm width error (fab tolerance); 3-dB split deviation 0.18dB (sim) / 0.5dB (measured)."
+}

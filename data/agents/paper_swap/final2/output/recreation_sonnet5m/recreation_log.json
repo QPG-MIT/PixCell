@@ -1,0 +1,63 @@
+{
+  "device_identity": "4-port to 1-port adiabatic waveguide combiner (fan-in taper/horn combiner into a wide multimode transfer section, then a single output taper)",
+  "topology_reasoning": [
+    "Image shows 4 narrow parallel waveguide stubs entering from the top, each widening (horn/taper) as it approaches a wide central rectangular block.",
+    "The 4 tapered horns visually merge into the block with zero gap at the merge line -- i.e. adjacent tapers are sized/spaced so their edges touch exactly, forming a solid top edge on the block.",
+    "The central rectangular block is a multimode 'transfer'/combining region -- its length is the function-defining knob analogous to an MMI beat length or adiabatic transfer length: it must be long enough for the 4 input modes to combine into the fundamental mode of the single output waveguide with low loss/reflection.",
+    "The block's bottom edge is FLAT and full-width (not itself tapering down) -- a separate, narrower output taper drops from the block's bottom edge as a centered 'paddle', stepping down from a wide entry width to the single-mode output waveguide width, then exits as the single bottom port.",
+    "Function-defining knobs: wg_width_um (single-mode I/O width), port_pitch_um (input array spacing == what determines whether adjacent input tapers touch cleanly), input_taper_length_um and input_taper_entry_width_um (how aggressively/adiabatically each input horn flares), block_width_um / block_height_um (the multimode transfer region -- height is the critical 'transfer length' knob), output_taper_length_um / entry / exit width (how the combined mode transitions back down to a single-mode waveguide)."
+  ],
+  "measurement_method": "Thresholded component.png (arr<245) to a binary mask. The naive bbox from homi.jee_integration.prepare_calibration was corrupted by a stray single-pixel-wide border-noise cluster at column x=1887 (rows ~1710 and ~2271), which inflated the true device bbox. Recomputed calibration.json using scipy morphological opening + largest-connected-component filtering to get a clean bbox: [317,196,1693,1880] px, scale_px_per_um=[55.04,168.4] (anisotropic per this repo's calibration convention: footprint_um[0]=length maps to image x-extent, footprint_um[1]=width maps to image y-extent). Row-by-row segment scans (contiguous dark-pixel runs per scanline) were used to find: stem widths/positions (constant-width region), the flare start/merge transition rows, the block top/bottom edges, and the output taper profile.",
+  "measured_geometry_um": {
+    "device_total_height_um": 9.98,
+    "block_width_um": 25.0,
+    "wg_width_um": 1.6,
+    "port_centers_um_from_left": [3.45, 8.80, 15.76, 21.48],
+    "measured_pitch_um": [5.35, 6.96, 5.72],
+    "note_on_pitch": "measured pitch is slightly non-uniform (symmetric-ish, larger central gap) -- approximated as uniform pitch = block_width/4 = 6.25um for a clean parametric tiling; this is the main expected source of residual IoU error",
+    "input_stem_length_um": 1.8,
+    "input_taper_length_um": 1.85,
+    "input_taper_entry_width_um": 6.25,
+    "block_height_um": 5.05,
+    "output_taper_length_um": 1.22,
+    "output_taper_entry_width_um": 3.1,
+    "output_taper_exit_width_um": 1.6
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.895643632959034,
+      "dice": 0.9449493748579372,
+      "sse": 168082.0,
+      "change_made": "Initial build: uniform port_pitch_um=6.25 (=block_width/4), uniform input_taper_entry_width_um=6.25 for all 4 ports, all other geometry from direct pixel measurement."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9258226125131647,
+      "dice": 0.9614827518355727,
+      "sse": 117058.0,
+      "change_made": "Diff showed an alternating red/blue offset pattern across the 4 ports (systematic drift from forcing uniform pitch onto a non-uniform array). Replaced uniform port_pitch_um with explicit measured per-port x-positions [-9.02,-3.48,3.48,9.02] um (symmetric-averaged from the real non-uniform pitch 5.35/6.96/5.72 um)."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9733763889902702,
+      "dice": 0.9865085995969819,
+      "sse": 39756.0,
+      "change_made": "Diff showed large solid red wedge triangles filling each input taper's flare region -- traced to a wrong modeling assumption that the 4 input horns must widen enough to touch each other edge-to-edge before the block starts. Re-measured pixel widths at the actual last row before the block's solid full-width span begins (row ~810-815) and found each horn is only ~3.1-3.3um wide there (not ~5.5-6.3um) -- the block rectangle itself fills the remaining gap between horns, they don't touch. Replaced input_taper_entry_widths_um with the directly measured per-port values [3.13,3.18,3.16,3.27]. Stopped here: IoU well above the 0.85 target with only thin sub-pixel boundary residuals remaining (small residual asymmetry in port2/port3 x-position, ~0.1-0.2um, from symmetric-averaging the pitch)."
+    }
+  ],
+  "final_iou": 0.9733763889902702,
+  "stopped_reason": "IoU=0.973 >> 0.85 threshold after 3 iterations; remaining diff is sub-pixel boundary noise, not a structural mismatch.",
+  "knob_verification": {
+    "note": "homi.spec_optimization.verify_knob_response is hard-wired to the MZI two-arm/lengths.json parametric contract (requires an 'arms' dict with exactly 2 arms) and does not apply to this combiner topology (no arms/delta_length concept). Performed the equivalent manual check instead: perturb the most important function knob (block_height_um, the multimode transfer-length) by a known delta, rebuild the GDS in a temp dir, and measure real layer-(1,0) polygon area via gdstk.",
+    "knob": "block_height_um",
+    "base_value": 5.05,
+    "perturbed_value": 6.05,
+    "base_area_um2": 158.3415,
+    "perturbed_area_um2": 183.3415,
+    "area_growth_um2": 25.0,
+    "expected_area_growth_um2": 25.0,
+    "expected_formula": "block_width_um * delta_um",
+    "passes": true
+  }
+}

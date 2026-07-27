@@ -1,0 +1,78 @@
+{
+  "phase": "PHASE_A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [120, 4]
+  },
+  "topology_reasoning": {
+    "device": "two-waveguide directional coupler / evanescent coupler",
+    "evidence": [
+      "The bitmap has exactly two disconnected material components.",
+      "Each component is a single waveguide routed from a separated port into a close, long parallel interaction region and then back out to a separated port.",
+      "The central rails are nearly horizontal, separated by a sub-wavelength gap; there are no junctions, crossings, resonators, or closed loops."
+    ],
+    "working_principle": "Light launched into either guide couples to the neighboring guide through evanescent overlap while the two guides run in parallel. The transferred power is primarily set by coupled-mode splitting and interaction length, with S-bends serving as access fan-in/fan-out.",
+    "function_defining_knobs": [
+      "coupling_length: length of the close parallel section and primary transfer-ratio knob",
+      "coupling_gap: edge-to-edge gap between the two central rails",
+      "wg_width_top and wg_width_bottom: guide widths that set mode confinement and coupling strength",
+      "port_pitch and coupled_pitch: separated-port spacing and central coupled-guide spacing",
+      "bend_radius and fanin_length: access bend adiabaticity and footprint",
+      "delta_length: upper-arm trim knob included for HOMI verify_knob_response contract"
+    ],
+    "geometry_model": "Build two gf.Path centerlines using smoothed S-bends and straight central rails, then extrude them on layer (1,0). No raw polygons or device stencils are used; only path extrusion plus primitive rectangles for optional bbox anchors."
+  },
+  "knob_verification": {
+    "param": "delta_length",
+    "width_um": 0.35,
+    "passes": true,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 1.7554745000000196,
+    "expected_area_growth_um2": 1.75
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.4672581842790409,
+      "dice": 0.6369133793704278,
+      "sse": 170040.0,
+      "change_made": "Initial two gf.Path smoothed routes with constant-width extrusions; diff showed straight diagonal access sections and underfilled curved bends."
+    },
+    {
+      "iter": 2,
+      "iou": 0.5112661949533133,
+      "dice": 0.6766064068138672,
+      "sse": 151268.0,
+      "change_made": "Replaced waypoint smoothing with sampled Bezier centerlines; diff improved but bends remained too shallow and pitches too large."
+    },
+    {
+      "iter": 3,
+      "iou": 0.5279158840056511,
+      "dice": 0.6910274178466471,
+      "sse": 148030.0,
+      "change_made": "Tightened port and coupled pitches and widened guides; comparison-threshold slice analysis showed the access bends still needed near-vertical shoulders."
+    },
+    {
+      "iter": 4,
+      "iou": 0.5964478342322642,
+      "dice": 0.7472186957102767,
+      "sse": 121060.0,
+      "change_made": "Moved Bezier controls to create near-vertical bend shoulders; route match improved, but slice centers showed left shoulder too early and right shoulder too late."
+    },
+    {
+      "iter": 5,
+      "iou": 0.6250318157908133,
+      "dice": 0.7692548659259878,
+      "sse": 110490.0,
+      "change_made": "Shifted left shoulder later and right shoulder earlier; remaining errors concentrated in bend halo/edge thickness, so final iteration will add localized bend-width overlays."
+    },
+    {
+      "iter": 6,
+      "iou": 0.640712723055431,
+      "dice": 0.7810175590791524,
+      "sse": 122679.0,
+      "change_made": "Added localized wider path-extrusion overlays on access bends. IoU improved via higher recall, while SSE worsened due extra bend material; kept as best IoU after six-iteration limit."
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "phase": "PHASE_A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "calibration_json": "calibration.json",
+    "footprint_um": [120.0, 4.0],
+    "calibrated_bbox_px": [319, 0, 4464, 3584],
+    "scale_px_per_um": [34.541666666666664, 896.0]
+  },
+  "topology_reasoning_before_coding": {
+    "device_identification": "The black material forms a long, vertically symmetric, two-sided multi-rail coupler/MMI-like structure. Five narrow center rails run almost the full 120 um interaction length. Above and below them are mirrored access/comb structures: a broad slab-like access region near the center and a nested comb of five rails returning into thick side rails. The geometry is therefore best recreated as a primitive assembly of straight rails, broad slab sections, and smooth side-return paths rather than as a library device stencil.",
+    "operating_interpretation": "The five full-length center rails define the narrow coupling/interaction region. The upper and lower broad slabs act as access/multimode reservoirs, while the nested side-return rails control how fields are brought into or isolated from the central rail stack. Symmetry about y=0 is function-defining.",
+    "function_defining_knobs": [
+      "transfer_length_um: horizontal length of the long interaction rails",
+      "rail_width_um: width of the narrow guide rails",
+      "rail_pitch_um: spacing of the central and comb rail stack",
+      "center_gap_um: gap between the two nearest central rails around the device midline",
+      "access_slab_height_um: height of the broad upper/lower access slabs",
+      "access_slab_length_um: straight length of the slab sections",
+      "side_rail_width_um: thickness of the side-return rails",
+      "side_taper_length_um: x/y extent of the side access transition",
+      "trim_delta_length_um: verifier knob that lengthens one real rail by one rail width per micron"
+    ],
+    "measured_geometry_um": {
+      "rail_width_um": 0.065,
+      "central_rail_y_centers_um": [0.194, 0.095, -0.007, -0.107, -0.208],
+      "central_rail_x_span_um": [0.03, 119.96],
+      "upper_comb_rail_y_centers_um": [1.202, 1.102, 1.002, 0.902, 0.802],
+      "lower_comb_rail_y_centers_um": [-0.802, -0.902, -1.002, -1.102, -1.202],
+      "access_slab_y_spans_um": [[0.267, 0.735], [-0.735, -0.269]],
+      "access_slab_mid_x_span_um": [7.83, 112.08],
+      "outer_side_rail_x_spans_at_y_1p95_um": [[4.27, 5.60], [114.31, 115.61]],
+      "inner_side_rail_x_spans_at_y_1p95_um": [[6.56, 7.80], [112.08, 113.36]]
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9164021168360305,
+      "dice": 0.9563776921192358,
+      "sse": 611619.0,
+      "change_made": "Initial primitives-only parametric script using measured rail centers, scan-derived slab slices, comb rail rectangles, and extruded side-return paths. Stopped because IoU exceeded 0.85; residual diff is dominated by thin rail edge offsets and slightly over-wide side-return strokes."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9164021168360305,
+      "dice": 0.9563776921192358,
+      "sse": 611619.0,
+      "change_made": "Metadata/top-level-cell write fix only: wrote the GDS with metadata disabled so spec_optimization layer-area helpers see recreated_device as the top cell. Geometry and IoU unchanged."
+    }
+  ],
+  "knob_response": {
+    "param": "trim_delta_length_um",
+    "delta_um": 5.0,
+    "width_um": 0.066,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 238.54434400000005,
+    "perturbed_area_um2": 238.87434400000006,
+    "area_growth_um2": 0.3300000000000125,
+    "expected_area_growth_um2": 0.33,
+    "area_ok": true,
+    "passes": true
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "device_name": "ring_resonator_with_side_cavities",
+  "topology_reasoning": "Vertically symmetric ring resonator with integrated side-coupled phase modulators. Top and bottom features are mirrored rectangular cavities (likely for tuning or modulation). Central parallel waveguides suggest a coupling region. Outer curved boundary encloses the ring waveguide. Function knobs: ring radius (curved path geometry), coupler gap (vertical spacing between parallel guides), cavity widths/heights (rectangular cutouts), bend radius (curvature of outer ring).",
+  "function_knobs": [
+    "straight_width_um",
+    "ring_radius_um",
+    "coupler_gap_um",
+    "cavity_width_um",
+    "cavity_height_um",
+    "cavity_offset_y_um"
+  ],
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.254,
+      "dice": 0.405,
+      "sse": 574822,
+      "change_made": "Initial parametric design with ring topology, two straight guides, four cavity modulators"
+    },
+    {
+      "iter": 2,
+      "iou": 0.128,
+      "dice": 0.228,
+      "sse": 573550,
+      "change_made": "Scaled all components 50% smaller to fit 3x5.5μm footprint"
+    },
+    {
+      "iter": 3,
+      "iou": 0.089,
+      "dice": 0.163,
+      "sse": 603558,
+      "change_made": "Switched to tapered coupler + straight guides architecture"
+    },
+    {
+      "iter": 4,
+      "iou": 0.083,
+      "dice": 0.154,
+      "sse": 603558,
+      "change_made": "Circular arc coupler with refined positioning"
+    },
+    {
+      "iter": 5,
+      "iou": 0.067,
+      "dice": 0.154,
+      "sse": 575840,
+      "change_made": "Larger coupler radius (1.45μm) to better match target oval"
+    },
+    {
+      "iter": 6,
+      "iou": 0.060,
+      "dice": 0.114,
+      "sse": 603558,
+      "change_made": "Linear tapers at ends + thinner guides; converged back to lower IoU"
+    }
+  ],
+  "final_result": {
+    "iter_best": 1,
+    "iou_best": 0.254,
+    "dice_best": 0.405,
+    "sse_best": 574822,
+    "reason_stopped": "6 iterations completed; IoU < 0.85 threshold. Topology appears to require different interpretation than ring-based model; further iteration would require image-level feature extraction or human guidance on actual device structure."
+  },
+  "knob_verification": {
+    "coupler_gap_um": {
+      "status": "verified",
+      "test_values": [0.3, 0.5],
+      "result": "generates distinct GDS files, confirming parametric variability"
+    }
+  }
+}

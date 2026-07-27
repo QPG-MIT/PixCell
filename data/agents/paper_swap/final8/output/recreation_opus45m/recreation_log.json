@@ -1,0 +1,14 @@
+{
+  "device_type": "MMI_with_adiabatic_sbend_tapers",
+  "topology_reasoning": "This is a 1xN MMI coupler structure. Looking at the image: (1) Two large rectangular MMI regions at top and bottom, each spanning nearly the full width. (2) Between them, multiple parallel straight waveguides (I count ~5 waveguides). (3) The transitions from the MMI regions to the parallel waveguides use adiabatic S-bend tapers that smoothly fan out/in. The structure is vertically symmetric. The MMI regions are where multimode interference occurs, splitting/combining light. The parallel waveguides in the middle are the coupling region.",
+  "function_defining_knobs": [
+    "mmi_width - width of the MMI multimode region (controls mode interference pattern)",
+    "mmi_length - length of MMI region (critical for self-imaging)",
+    "num_waveguides - number of output/input waveguides from MMI",
+    "waveguide_width - width of individual waveguides",
+    "waveguide_pitch - spacing between parallel waveguides",
+    "taper_length - length of the adiabatic S-bend transition",
+    "coupling_length - length of the parallel waveguide section"
+  ],
+  "iterations": []
+}

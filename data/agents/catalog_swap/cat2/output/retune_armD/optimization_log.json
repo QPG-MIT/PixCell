@@ -1,0 +1,40 @@
+[
+ {
+  "stack": "soi220",
+  "iter": 1,
+  "changed_params": {"width": 0.5, "radius": 10.0, "gap": 0.2, "length_x": 4.0, "length_y": 0.6},
+  "predicted_value": 8.220,
+  "reasoning": "Ring FSR = lambda^2*1000/(n_g*round_trip). Evaluator's n_g uses the stack single_mode_width solve = 4.0574 for soi220. round_trip = 2*pi*r + 2*lx + 2*ly = 2*pi*10 + 8 + 1.2 = 72.03 um. FSR = 2.4025*1000/(4.0574*72.03) = 8.220 nm = target. Default geometry (spec provenance is soi220 tier-0) already lands on target; width=single_mode_width_um=0.5 (unchanged), gap=0.2>=min_feature 0.18.",
+  "measured_value": 8.2203,
+  "rel_error": 3.37e-05,
+  "footprint_bbox_um": [30.0, 21.8],
+  "footprint_ok": true,
+  "result": "PASS"
+ },
+ {
+  "stack": "sin400",
+  "iter": 1,
+  "changed_params": {"width": 1.0, "radius": 5.0, "gap": 0.4, "length_x": 14.0, "length_y": 9.4},
+  "predicted_value": 15.20,
+  "reasoning": "sin400 n_g=2.0213. Target FSR 8.22 needs round_trip = 2.4025*1000/(2.0213*8.22) = 144.6 um. Footprint budget dx=2r+lx+6<=30, dy=2r+ly+2*width+gap<=21.8. Max round_trip (min r, max straights) is ~84 um -> physically bounded far below 144.6. This config is the max-round-trip point that still fits (dx=30, dy=21.8): round_trip = 2*pi*5 + 28 + 18.8 = 78.22 um. Predicted min achievable FSR = 2402.5/(2.0213*78.22) = 15.20 nm >> 8.22. No exposed-tunable config can double the ring within the fixed footprint -> infeasible; recording the best-effort floor.",
+  "predicted_footprint_bbox_um": [30.0, 21.8],
+  "measured_value": 15.1964,
+  "rel_error": 0.8487,
+  "footprint_bbox_um": [30.0, 21.8],
+  "footprint_ok": true,
+  "result": "FAIL (infeasible: min achievable FSR 15.20 nm > target 8.22 nm at footprint limit)"
+ },
+ {
+  "stack": "tfln400",
+  "iter": 1,
+  "changed_params": {"width": 1.2, "radius": 5.0, "gap": 0.5, "length_x": 14.0, "length_y": 8.9},
+  "predicted_value": 13.97,
+  "reasoning": "tfln400 n_g=2.2277. Target FSR 8.22 needs round_trip = 2.4025*1000/(2.2277*8.22) = 131.2 um. Same footprint physics as sin400: dx=2r+lx+6<=30, dy=2r+ly+2*width+gap<=21.8 (width=1.2, gap=0.5). Max-round-trip config that still fits exactly (dx=30, dy=21.8): r=5, lx=14, ly=8.9 -> round_trip = 2*pi*5 + 28 + 17.8 = 77.22 um. Predicted min achievable FSR = 2402.5/(2.2277*77.22) = 13.97 nm >> 8.22. Round_trip ceiling ~80 um is far below the 131.2 um required -> infeasible; recording best-effort floor. width=single_mode_width_um=1.2, gap=0.5>=min_feature 0.5.",
+  "predicted_footprint_bbox_um": [30.0, 21.8],
+  "measured_value": 13.9667,
+  "rel_error": 0.6991,
+  "footprint_bbox_um": [30.0, 21.8],
+  "footprint_ok": true,
+  "result": "FAIL (infeasible: min achievable FSR 13.97 nm > target 8.22 nm at footprint limit)"
+ }
+]

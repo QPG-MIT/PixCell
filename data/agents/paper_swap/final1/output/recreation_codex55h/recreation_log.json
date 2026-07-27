@@ -1,0 +1,68 @@
+{
+  "phase": "A",
+  "ground_truth_inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json"
+  },
+  "topology_reasoning": {
+    "device_identification": "The image shows a primitives-level adiabatic 1x2 splitter/trident. A central input guide enters from the left, holds a short constant-width section, then tapers down to a narrow terminal tip. Two disconnected upper/lower guides begin as narrow tips near the same x position, adiabatically widen beside the central taper, then follow smooth S-bends to separated output rails at the upper and lower edges of the footprint.",
+    "operating_principle": "The central taper gradually transfers the input mode into the two widening side branches while keeping gaps and taper angles small enough for adiabatic splitting. The S-bends then fan the two branches out into output ports without changing the guide width.",
+    "function_defining_knobs": [
+      "input_width",
+      "input_straight_length",
+      "central_taper_length",
+      "central_tip_width",
+      "branch_tip_width",
+      "branch_taper_length",
+      "branch_start_gap",
+      "output_width",
+      "bend_length",
+      "output_separation",
+      "delta_length"
+    ],
+    "parametric_strategy": "Use only straight path extrusions, taper primitives, and sampled gf.Path extrusions. The central material is a fixed-width straight plus a taper; each side branch is a taper followed by a smooth cosine S-bend and output straight. The delta_length knob extends only the upper output rail for verify_knob_response while the baseline remains matched to the image."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.939666654219102,
+      "dice": 0.9688949925237603,
+      "sse": 14541.0,
+      "change_made": "Initial primitives-only trident/Y-splitter model. Diff review showed residual bend-shape mismatch: red on outer bend edges and blue on inner bend edges, but IoU exceeded the 0.85 Phase A threshold and footprint matched exactly, so no further geometry changes were made."
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.242,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0012749579187314453,
+    "perturbed_delta_length_um": 4.9987250420812686,
+    "delta_response_um": 4.997450084162537,
+    "delta_length_ok": true,
+    "base_area_um2": 18.490662,
+    "perturbed_area_um2": 19.700662000000005,
+    "area_growth_um2": 1.2100000000000044,
+    "expected_area_growth_um2": 1.21,
+    "area_ok": true,
+    "passes": true
+  },
+  "best": {
+    "iter": 1,
+    "gds": "device.gds",
+    "raster": "raster.png",
+    "diff": "diff.png",
+    "overlay": "overlay.png",
+    "iou": 0.939666654219102,
+    "dice": 0.9688949925237603,
+    "sse": 14541.0,
+    "gds_size_um": [
+      40.0,
+      1.7
+    ],
+    "size_match": [
+      true,
+      true
+    ]
+  }
+}

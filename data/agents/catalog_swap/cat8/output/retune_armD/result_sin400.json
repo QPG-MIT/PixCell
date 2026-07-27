@@ -1,0 +1,49 @@
+{
+  "stack": "sin400",
+  "verdict": "pass",
+  "calls_used": 1,
+  "tunables": {
+    "w1": 0.44,
+    "w2": 0.54,
+    "l1": 0.2587,
+    "l2": 0.2587,
+    "n": 12
+  },
+  "min_feature_note": "min_feature_um=0.4. Transverse widths (0.44/0.54) respect it. single_mode_width_um=1.0 could not be used: it exceeds the 0.55 footprint-width budget, so width was capped by the footprint constraint. Grating teeth l1=l2=0.2587 = period/2 sit below min_feature (physics-set first-order Bragg pitch, same exemption the soi220-derived home target relies on).",
+  "evaluator_report": {
+    "passes": true,
+    "verdicts": [
+      {
+        "metric": "bragg_wavelength_nm",
+        "tier": 0,
+        "verdict": "pass",
+        "target": {
+          "metric": "bragg_wavelength_nm",
+          "value": 1558.02,
+          "tolerance_rel": 0.02,
+          "tier": 0
+        },
+        "measured": 1557.8658225059507,
+        "rel_error": 9.895732663844879e-05,
+        "source": "local"
+      }
+    ],
+    "unmeasured": [],
+    "reason": "",
+    "n_eff": 1.6415010690689087,
+    "n_g": 2.0212899446487427,
+    "delta_length_um": null,
+    "wavelength_um": 1.55,
+    "stack_label": "400 nm SiN strip",
+    "from_cache": false,
+    "bbox_um": [
+      6.225,
+      0.54
+    ],
+    "max_footprint_um": [
+      6.38,
+      0.55
+    ],
+    "footprint_ok": true
+  }
+}

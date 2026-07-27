@@ -1,0 +1,37 @@
+{
+  "topology_analysis": {
+    "device_type": "contra-directional_grating_coupler",
+    "description": "Two waveguides with 180-degree U-bends couple to a central straight bus via periodic Bragg gratings. Top waveguide enters from left, bends right 180deg, couples through grating teeth, exits left. Bottom waveguide mirrors this - enters from right, bends left 180deg, couples, exits right. Tapered tips at all four ports.",
+    "function": "Wavelength-selective coupling via Bragg reflection. Light in one waveguide contra-directionally couples to the other at the Bragg wavelength determined by grating period.",
+    "function_defining_knobs": [
+      "grating_period_um - sets Bragg wavelength",
+      "grating_tooth_width_um - coupling strength",
+      "coupling_length_um - total grating interaction length",
+      "gap_um - spacing between bus and curved guides",
+      "waveguide_width_um - mode confinement",
+      "bend_radius_um - curvature of U-bends",
+      "taper_length_um - adiabatic transition at ports"
+    ],
+    "geometry_notes": "Footprint 18.24um appears to be the grating coupling region length. 0.7um is the waveguide width. Total device is wider due to the 180-degree bends on both sides."
+  },
+  "iterations": [
+    {"iter": 1, "iou": 0.04, "dice": 0.08, "change_made": "Initial attempt with path-based approach - completely wrong scale and position"},
+    {"iter": 2, "iou": 0.31, "dice": 0.47, "change_made": "Recalculated dimensions, used isotropic scaling"},
+    {"iter": 3, "iou": 0.29, "dice": 0.44, "change_made": "Adjusted taper and coupling lengths"},
+    {"iter": 4, "iou": 0.30, "dice": 0.46, "change_made": "Refined arc directions and positioning"},
+    {"iter": 5, "iou": 0.29, "dice": 0.46, "change_made": "Further parameter tuning"},
+    {"iter": 6, "iou": 0.31, "dice": 0.47, "change_made": "Reverted to best configuration with rectangle+arc approach"}
+  ],
+  "final_result": {
+    "iou": 0.31,
+    "dice": 0.47,
+    "gds_size_um": [18.94, 6.05],
+    "target_size_um": [18.24, 5.7],
+    "tunables": ["waveguide_width_um", "coupling_length_um", "grating_period_um", "grating_tooth_width_um", "gap_um", "bend_radius_um", "taper_length_um", "taper_tip_width_um"]
+  },
+  "blockers": [
+    "Arc positioning creates overlapping geometry - rendering as solid block instead of separated waveguides",
+    "The comparison tool shows excess material (red) between expected separate waveguide paths",
+    "gdsfactory arc extrusion behavior differs from expectations - arcs seem to be placed offset from intended positions"
+  ]
+}

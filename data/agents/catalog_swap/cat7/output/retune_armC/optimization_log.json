@@ -1,0 +1,38 @@
+{
+  "device": "cat7 rectangular spiral waveguide delay line (armC)",
+  "metric": "group_delay_ps",
+  "physics": "group_delay_ps = n_g * path.total_um / 299.792458 ; total_um = wound_um (full optical path light traverses). Required L* = target_ps * c / n_g = 10696.35 / n_g.",
+  "contract_note": "device.py originally wrote only the MZI arms/delta_length shape; the group_delay_ps metric requires lengths.json path.total_um. Surfaced the already-computed wound_um under path.total_um (measurement-contract output; no geometry/primitive/parameter/topology change). wg_width set to each stack single_mode_width_um (centerline path length is width-independent, so it only moves n_g).",
+  "n_g_by_stack": {"soi220": 4.0574, "sin400": 2.0213, "tfln400": 2.2277},
+  "L_star_um_by_stack": {"soi220": 2636.3, "sin400": 5291.6, "tfln400": 4801.0},
+  "iterations": [
+    {
+      "stack": "soi220",
+      "iter": 1,
+      "changed_params": {"wg_width_um": 0.5},
+      "predicted_value": {"group_delay_ps": 36.048, "wound_um": 2663.45, "rel_error": 0.0105},
+      "reasoning": "Home stack. wound_um=2663.45 unchanged (width-independent centerline). n_g(0.5)=4.0574 -> 4.0574*2663.45/299.792458=36.048 ps, +1.05% < 2% tol. Footprint 173.34x59.34 <= 173.5x59.5.",
+      "measured_value": {"group_delay_ps": 36.0476, "rel_error": 0.01048},
+      "result": "PASS (2 calls: summary + --json capture)"
+    },
+    {
+      "stack": "sin400",
+      "iter": 1,
+      "changed_params": {"wg_width_um": 1.0, "n_loops": 13, "pitch_um": 1.6, "corner_radius_top_um": 0.72, "corner_radius_bot_um": 0.72, "corner_radius_step_um": 0.0, "corner_radius_min_um": 0.7, "right_u_radius_um": 0.72, "outer_half_width_um": 86.1, "outer_half_height_um": 29.1},
+      "predicted_value": {"group_delay_ps": 35.55, "wound_um": 5272.61, "rel_error": -0.0035},
+      "reasoning": "n_g(1.0)=2.0213 (~half of soi), so need ~2x path: L*=10696.35/2.0213=5291.6 um. Packed loops by raising n_loops 6->13 and tightening pitch 3.0->1.6 (gap=0.6>=min_feature 0.4); reduced corner radii to 0.72<pitch to avoid corner overlap. Shaved outer half-extents to 86.1/29.1 for footprint margin (real bbox 173.2x59.2). Free run gives wound=5272.61 -> 2.0213*5272.61/299.792458=35.550 ps, -0.35% < 2% tol.",
+      "measured_value": {"group_delay_ps": 35.5495, "rel_error": 0.003487},
+      "result": "PASS (1 call)"
+    },
+    {
+      "stack": "tfln400",
+      "iter": 1,
+      "changed_params": {"wg_width_um": 1.2, "n_loops": 12, "pitch_um": 1.9, "corner_radius_top_um": 0.85, "corner_radius_bot_um": 0.85, "corner_radius_min_um": 0.7, "right_u_radius_um": 0.85, "outer_half_width_um": 86.0, "outer_half_height_um": 29.0},
+      "predicted_value": {"group_delay_ps": 35.605, "wound_um": 4791.58, "rel_error": -0.0019},
+      "reasoning": "n_g(1.2)=2.2277, L*=10696.35/2.2277=4801.0 um. Between soi and sin path length. n_loops=12, pitch=1.9 (gap=0.7>=min_feature 0.5), corner radii 0.85<pitch. Outer half-extents 86.0/29.0 (wg=1.2 -> real bbox 173.2x59.2). Free run wound=4791.58 -> 2.2277*4791.58/299.792458=35.605 ps, -0.19% < 2% tol.",
+      "measured_value": {"group_delay_ps": 35.6059, "rel_error": 0.001906},
+      "result": "PASS (1 call)"
+    }
+  ],
+  "summary": "All three stacks pass in <=2 eval calls each. group_delay is exactly linear in wound_um (n_g fixed per stack from cache), so precomputing L*=target*c/n_g and packing loops to hit wound=L* landed first-shot every time. soi220 passed at home geometry (only wg_width adapted); sin400 and tfln400 required ~2x/1.8x path, achieved by raising n_loops and tightening pitch to min_feature-limited spacing (never lead_in, which would break footprint)."
+}

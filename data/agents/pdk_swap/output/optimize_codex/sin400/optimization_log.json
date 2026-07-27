@@ -1,0 +1,39 @@
+{
+  "stack": "sin400",
+  "width_rule": "wg_width set to single_mode_width_um=1.0; all feature widths remain >= min_feature_um=0.4.",
+  "physics_rule": "FSR_nm = wavelength_um^2 * 1000 / (n_g * delta_length_um); at 1.55 um and 8.0 nm target, delta_length_target_um = 300.3125 / n_g.",
+  "iterations": [
+    {
+      "iter": 1,
+      "delta_length_requested_um": 10.5,
+      "delta_length_measured_um": 10.5,
+      "n_eff": 1.6415048837661743,
+      "n_g": 2.0212899446487427,
+      "fsr_nm": 113.19975365992634,
+      "rel_error": 13.149969207491792,
+      "reasoning": "Initial SiN evaluation with wg_width=1.0 shows the recreated 10.5 um imbalance is far too short. Since FSR=lambda^2/(n_g*delta_L), the lower SiN group index requires a larger path imbalance than SOI: delta_L=300.3125/2.0212899446487427=148.5746766786533 um. The longer lower arm is generated from gf.Path geometry controlled by delta_length, so I will set delta_length to this target.",
+      "predicted_fsr_nm_next": 8.0
+    },
+    {
+      "iter": 2,
+      "delta_length_requested_um": 148.5746766786533,
+      "delta_length_measured_um": 148.574,
+      "n_eff": 1.6415010690689087,
+      "n_g": 2.0212899446487427,
+      "fsr_nm": 8.00003643591225,
+      "rel_error": 0.0000045544890312498865,
+      "reasoning": "The computed SiN imbalance converged. The measured gf.Path imbalance is 148.574 um after path quantization; substituting it into FSR=lambda^2/(n_g*delta_L) gives 8.00003643591225 nm, safely inside the 2% tolerance. No further geometry move is needed.",
+      "predicted_fsr_nm_next": 8.00003643591225
+    }
+  ],
+  "final_raster": {
+    "iou": 0.1389690204439985,
+    "dice": 0.24402598832727673,
+    "sse": 13730.0,
+    "gds_size_um": [
+      91.10000000000001,
+      119.777
+    ],
+    "note": "Rasterized optimized GDS against the original image calibration after spec convergence; IoU drop is expected because the lower arm was lengthened to meet FSR."
+  }
+}

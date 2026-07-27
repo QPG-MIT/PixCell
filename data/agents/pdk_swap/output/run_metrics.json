@@ -1,0 +1,186 @@
+{
+  "note": "retroactive collection 2026-07-02; durations from CLI status-line captures + git timestamps; context = point-in-time readbacks; costs = billed via web.real_cost",
+  "cloud_total_billed_flexcredits": 4.366,
+  "workers": {
+    "fable5_xhigh_infra": {
+      "cli": "claude",
+      "model": "claude-fable-5",
+      "effort": "xhigh",
+      "pane": "%4110",
+      "phases": {
+        "P1_evaluator_tdd": {
+          "duration_min": 9.8,
+          "ctx_after_k": 118
+        },
+        "P5_schema_v2": {
+          "duration_min": 10.2,
+          "ctx_after_k": 192
+        },
+        "P8_cross_section": {
+          "duration_min": null,
+          "ctx_after_k": null,
+          "status": "in_flight"
+        }
+      }
+    },
+    "opus48_medium_design": {
+      "cli": "claude",
+      "model": "claude-opus-4-8",
+      "effort": "medium",
+      "pane": "%4111",
+      "phases": {
+        "P2_mzi_recreation": {
+          "duration_min": 33.4,
+          "ctx_after_k": 207,
+          "iou": 0.5654,
+          "iterations": 6
+        },
+        "P3_retune_x3": {
+          "duration_min": 11.9,
+          "ctx_after_k": 263,
+          "result": "3/3 FSR pass, 1 call/stack"
+        },
+        "P6_mmi_redesign": {
+          "duration_min": 9.0,
+          "ctx_after_k": 317,
+          "il_db": 3.41
+        },
+        "P6_fixture_fix": {
+          "duration_min": 3.3,
+          "ctx_after_k": 336
+        },
+        "P6_redesign_r1": {
+          "duration_min": 8.1,
+          "ctx_after_k": 373,
+          "il_db": 4.67,
+          "predicted": 0.6
+        },
+        "P6_redesign_r2": {
+          "duration_min": 6.3,
+          "ctx_after_k": 403,
+          "il_db": 3.52,
+          "predicted": 1.6
+        },
+        "P6_adopt_L55": {
+          "duration_min": 1.7,
+          "ctx_after_k": 417,
+          "il_db": 2.01
+        },
+        "P6D_sin_mmi": {
+          "duration_min": 4.3,
+          "ctx_after_k": 437,
+          "il_db": 1.09,
+          "predicted": 2.3
+        }
+      }
+    },
+    "codex_gpt55_xhigh": {
+      "cli": "codex",
+      "model": "gpt-5.5",
+      "effort": "xhigh",
+      "tier": "fast",
+      "pane": "%4112",
+      "phases": {
+        "P2_mzi_recreation": {
+          "duration_min": 12.3,
+          "iou": 0.7913,
+          "iterations": 6
+        },
+        "P3_retune_x3": {
+          "duration_min": 4.3,
+          "result": "3/3 FSR pass, 2 calls/stack"
+        },
+        "P4_refold_footprint": {
+          "duration_min": 6.5,
+          "result": "3/3 fit, 1 call/stack"
+        },
+        "P6C_mmi_redesign": {
+          "duration_min": 4.3,
+          "il_db": 2.99,
+          "predicted": 0.95
+        }
+      },
+      "note": "codex context shown as % of window; not systematically captured this run"
+    },
+    "opus48_medium_stencil_control": {
+      "cli": "claude",
+      "model": "claude-opus-4-8",
+      "effort": "medium",
+      "pane": "%4115",
+      "phases": {
+        "CONTROL_stencil_x3": {
+          "duration_min": 16.0,
+          "ctx_after_k": 122,
+          "result": "FSR 3/3 pass, footprint 0/3, impossibility analysis"
+        }
+      }
+    },
+    "codex_gpt55_xhigh_validator": {
+      "cli": "codex",
+      "model": "gpt-5.5",
+      "effort": "xhigh",
+      "pane": "%4114",
+      "phases": {
+        "VALIDATION_adversarial": {
+          "duration_min": 3.6,
+          "result": "7 findings, then REVALIDATION PASS"
+        }
+      }
+    },
+    "final1_coupler_opus": {
+      "cli": "claude",
+      "model": "claude-opus-4-8",
+      "effort": "medium",
+      "pane": "%4116",
+      "phases": {
+        "PA_recreation": {
+          "duration_min": 16.8,
+          "ctx_after_k": 170,
+          "iou": 0.9473,
+          "iterations": 3
+        },
+        "PB_retarget_x3": {
+          "wall_min_approx": 67,
+          "rounds": 4,
+          "measurements": 8,
+          "result": "sin400 FULL PASS / soi220 partial / tfln400 floor-fail",
+          "ctx_after_k": 306
+        }
+      }
+    },
+    "final1_coupler_codex": {
+      "cli": "codex",
+      "model": "gpt-5.5",
+      "effort": "xhigh",
+      "pane": "%4117",
+      "phases": {
+        "PA_recreation": {
+          "duration_min": 6.9,
+          "ctx_pct": 18,
+          "tokens_used_k": 172,
+          "iou": 0.9491,
+          "iterations": 1
+        },
+        "PB_retarget_x3": {
+          "wall_min_approx": 67,
+          "rounds": 6,
+          "measurements": 6,
+          "result": "sin400 FULL PASS / soi220 partial / tfln400 floor-fail",
+          "tokens_used_k": 657
+        }
+      }
+    }
+  },
+  "conductor_wallclock": {
+    "session_start_approx": "16:45",
+    "mzi_proof_complete": "22:25",
+    "commit_timeline_source": "git log --date=format",
+    "mzi_experiment_hours_approx": 5.7
+  },
+  "pilot_serial_baseline": {
+    "note": "FINAL_1 phase B, two workers serial-per-stack + conductor-serviced measurements; the 'before' column for the cell-parallel sweep speedup claim",
+    "wall_minutes_phase_b": 67,
+    "cells": 6,
+    "cloud_billed_flexcredits": 6.458
+  }
+}

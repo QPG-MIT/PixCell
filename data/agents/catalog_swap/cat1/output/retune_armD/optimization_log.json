@@ -1,0 +1,35 @@
+[
+  {
+    "stack": "soi220",
+    "iter": 1,
+    "changed_params": {"delta_length": 10.0, "length_y": 2.0, "length_x": 0.1},
+    "predicted_value": {"metric": "fsr_nm", "value": 59.21},
+    "reasoning": "Home stack. Evaluator solves n_g at single_mode_width=0.5 um -> n_g=4.0574. FSR=lambda^2/(n_g*dL)*1000 = 1.55^2/(4.0574*10)*1000 = 59.21 nm. Default geometry footprint = 91.1x50.75 = exactly max_footprint (fits, <=). No change needed.",
+    "measured_value": {"metric": "fsr_nm", "value": 59.2122},
+    "rel_error": 3.68e-05,
+    "footprint_ok": true,
+    "verdict": "PASS"
+  },
+  {
+    "stack": "sin400",
+    "iter": 1,
+    "changed_params": {"delta_length": 18.0, "length_y": 0.0, "length_x": 0.1},
+    "predicted_value": {"metric": "fsr_nm", "value": 66.03},
+    "reasoning": "n_g at single_mode_width=1.0 um = 2.0213. Required dL* = lambda^2/(n_g*FSR_target)*1000 = 2402.5/(2.0213*59.21) = 20.07 um to hit 59.21 nm. BUT footprint binds: ysize = 46.75 + 2*length_y + (delta_length-10)/2 <= 50.75. Even at length_y=0 the max feasible delta_length = 18.0 (ysize=50.75, at limit). delta_length only extends vertical arms; length_y/length_x cannot change the path imbalance, so FSR is set solely by delta_length given fixed n_g. At the footprint-max dL=18.0: FSR = 2402.5/(2.0213*18.0) = 66.03 nm, i.e. 11.5% above target -> outside the 2% band. Evaluating the best-achievable point to document infeasibility with a measured number.",
+    "measured_value": {"metric": "fsr_nm", "value": 66.0332},
+    "rel_error": 0.1152,
+    "footprint_ok": true,
+    "verdict": "FAIL (best-achievable within footprint; infeasible)"
+  },
+  {
+    "stack": "tfln400",
+    "iter": 1,
+    "changed_params": {"delta_length": 18.0, "length_y": 0.0, "length_x": 0.1},
+    "predicted_value": {"metric": "fsr_nm", "value": 59.91},
+    "reasoning": "n_g at single_mode_width=1.2 um = 2.2277. Required dL* = 2402.5/(2.2277*59.21) = 18.22 um, which is just above the footprint cap. Max feasible delta_length within ysize<=50.75 is 18.0 um (length_y=0). At dL=18.0: FSR = 2402.5/(2.2277*18.0) = 59.91 nm -> rel_error = (59.91-59.21)/59.21 = 1.19% < 2% tolerance -> PASS. length_y set to 0 to keep footprint at the 50.75 limit exactly.",
+    "measured_value": {"metric": "fsr_nm", "value": 59.9138},
+    "rel_error": 0.0119,
+    "footprint_ok": true,
+    "verdict": "PASS"
+  }
+]

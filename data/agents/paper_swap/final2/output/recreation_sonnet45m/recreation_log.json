@@ -1,0 +1,30 @@
+{
+  "topology_analysis": {
+    "device_type": "1x4_mmi_splitter",
+    "description": "MMI-based 1-to-4 optical power splitter with central multimode interference region and four tapered outputs",
+    "function_defining_knobs": {
+      "mmi_width": "MMI body width - controls mode interference pattern (critical)",
+      "mmi_length": "MMI body length - determines splitting ratio (critical)",
+      "output_spacing": "Center-to-center spacing between outputs",
+      "output_taper_length": "Length of output tapers - affects loss (critical for adiabatic transition)",
+      "output_wg_width": "Final output waveguide width",
+      "input_wg_width": "Input waveguide width"
+    }
+  },
+  "iterations": [
+    {"iter": 1, "iou": 0.0, "dice": 0.0, "sse": 1564220.0, "change_made": "Wrong topology - used cascaded Y-branches instead of MMI"},
+    {"iter": 2, "iou": 0.284, "dice": 0.443, "sse": 1331229.0, "change_made": "Fixed to MMI topology but body too narrow (11 um vs target ~22-24 um)"},
+    {"iter": 3, "iou": 0.519, "dice": 0.683, "sse": 1030991.0, "change_made": "Scaled MMI to 22 um width, improved output tapers. BEST RESULT."},
+    {"iter": 4, "iou": 0.473, "dice": 0.640, "sse": 1217344.0, "change_made": "Attempted refinement but went backwards"},
+    {"iter": 5, "iou": 0.517, "dice": 0.682, "sse": 1243482.0, "change_made": "Rebuilt with continuous geometry, still had gap issues"},
+    {"iter": 6, "iou": 0.473, "dice": 0.641, "sse": 1289644.0, "change_made": "Narrowed output taper bases but made slots too thin - went backwards"}
+  ],
+  "final_result": {
+    "best_iteration": 3,
+    "final_iou": 0.519,
+    "final_dice": 0.683,
+    "final_sse": 1030991.0,
+    "iterations_used": 6,
+    "note": "Did not reach IoU >= 0.85 target. Device topology correct but dimensional tuning needs more iterations."
+  }
+}
