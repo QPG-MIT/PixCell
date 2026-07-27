@@ -30,13 +30,19 @@ TARGET_DIR = Path(__file__).with_name("fig_target_assets")
 TARGET_MANIFEST = TARGET_DIR / "manifest.json"
 FIGURE_DIR = REPO / "arxiv" / "figures"
 
-INK = "#1b1b1b"
-RULE = "#242424"
+INK = "#17191c"
+RULE = "#17191c"
+HEADER_HEIGHT_FIGURE = 0.072
 
 plt.rcParams.update(
     {
         "font.family": "serif",
-        "font.serif": ["STIXGeneral", "Times New Roman", "DejaVu Serif"],
+        "font.serif": [
+            "Iowan Old Style",
+            "STIX Two Text",
+            "STIXGeneral",
+            "Times New Roman",
+        ],
         "mathtext.fontset": "stix",
         "pdf.fonttype": 42,
         "ps.fonttype": 42,
@@ -131,40 +137,41 @@ def _add_card(
             0.984,
             facecolor="white",
             edgecolor=RULE,
-            linewidth=0.78,
+            linewidth=0.72,
         )
     )
 
-    header_y = 0.82
+    header_y = 1.0 - HEADER_HEIGHT_FIGURE / rect[3]
+    header_center_y = (1.0 + header_y) / 2.0
     card.plot(
         [0.006, 0.994],
         [header_y, header_y],
         color=RULE,
-        linewidth=0.68,
+        linewidth=0.72,
         solid_capstyle="butt",
     )
     card.text(
         0.04,
-        0.91,
+        header_center_y,
         left_label,
         ha="left",
         va="center",
-        fontsize=13.0,
-        fontweight="bold",
+        fontsize=15.2,
+        fontweight="normal",
         color=INK,
     )
     if right_label:
         card.text(
             0.96,
-            0.91,
+            header_center_y,
             right_label,
             ha="right",
             va="center",
-            fontsize=11.5,
+            fontsize=14.0,
             color=INK,
         )
 
-    image_ax = card.inset_axes([0.035, 0.045, 0.93, 0.735])
+    image_ax = card.inset_axes([0.035, 0.045, 0.93, header_y - 0.085])
     if binary:
         image_ax.imshow(
             image,

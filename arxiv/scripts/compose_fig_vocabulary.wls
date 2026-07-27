@@ -379,20 +379,18 @@ groupText[content_, position_, alignment_: {Left, Center}] :=
   text[
     content,
     position,
-    4.45,
+    6.10,
     alignment,
-    FontColor -> ink,
-    FontWeight -> Bold
+    FontColor -> ink
   ];
 
 panelHeading[tag_String, title_String, x_, y_] := {
-  text[tag, {x, y}, 7.25, {Left, Center}, FontWeight -> Bold],
+  text[tag, {x, y}, 7.40, {Left, Center}],
   displayText[
     title,
     {x + 3.25, y + 0.02},
-    7.25,
-    {Left, Center},
-    FontWeight -> Bold
+    7.40,
+    {Left, Center}
   ]
 };
 
@@ -415,7 +413,7 @@ horizontalDimension[x1_, x2_, y_, label_] := {
   Line[{{x1, y}, {x2, y}}],
   Line[{{x1, y - 0.20}, {x1, y + 0.20}}],
   Line[{{x2, y - 0.20}, {x2, y + 0.20}}],
-  text[label, {(x1 + x2)/2, y + 1.35}, 4.10]
+  text[label, {(x1 + x2)/2, y + 1.35}, 5.30]
 };
 
 verticalDimension[x_, y1_, y2_, label_, side_: -1] := {
@@ -427,7 +425,7 @@ verticalDimension[x_, y1_, y2_, label_, side_: -1] := {
   text[
     label,
     {x + side 0.48, (y1 + y2)/2},
-    4.15,
+    5.30,
     If[side < 0, {Right, Center}, {Left, Center}]
   ]
 };
@@ -436,7 +434,7 @@ callout[anchor_, elbow_, labelPosition_, label_, side_: {Left, Center}] := {
   ruleStrong,
   AbsoluteThickness[0.50],
   Line[{anchor, elbow, labelPosition + {-0.20, 0}}],
-  text[label, labelPosition, 4.15, side]
+  text[label, labelPosition, 5.30, side]
 };
 
 pathGraphic[
@@ -486,17 +484,17 @@ fig1Prims = {
   panelField[{1.4, 16.35}, {41.7, 36.75}],
   panelField[{42.1, 16.35}, {73.6, 36.75}],
   panelField[{74.0, 16.35}, {98.7, 36.75}],
-  panelField[{1.4, 4.20}, {32.7, 12.35}],
-  panelField[{33.2, 4.20}, {64.3, 12.35}],
-  panelField[{64.8, 4.20}, {98.7, 12.35}],
+  panelField[{1.4, 3.70}, {32.7, 11.85}],
+  panelField[{33.2, 3.70}, {64.3, 11.85}],
+  panelField[{64.8, 3.70}, {98.7, 11.85}],
   panelHeading["A", "Primitive catalog", 1.5, 38.7],
-  panelHeading["B", "Geometric operators", 1.5, 14.1],
+  panelHeading["B", "Geometric operators", 1.5, 13.25],
   groupText["Regions", {2.5, 35.5}],
   groupText["Port-bearing components", {43.2, 35.5}],
   groupText["Paths", {75.1, 35.5}],
   rule,
   AbsoluteThickness[0.52],
-  Line[{{1.5, 15.5}, {98.5, 15.5}}]
+  Line[{{1.5, 14.85}, {98.5, 14.85}}]
 };
 
 (* The complete region catalog remains the dominant field. *)
@@ -527,7 +525,7 @@ Do[
         ToLowerCase[f1["basic"][[i, "name"]]]
       ],
       {basicX[[col]], basicY[[row]] - 3.22},
-      If[f1["basic"][[i, "name"]] == "regular_polygon", 3.85, 4.10]
+      If[f1["basic"][[i, "name"]] == "regular_polygon", 4.40, 4.90]
     ]
   ],
   {i, Length[f1["basic"]]}
@@ -558,7 +556,7 @@ Do[
     codeText[
       f1["waveguides"][[i, "name"]],
       {waveX[[col]], waveY[[row]] - 3.25},
-      If[f1["waveguides"][[i, "name"]] == "coupler_straight", 3.65, 3.92]
+      If[f1["waveguides"][[i, "name"]] == "coupler_straight", 4.50, 4.85]
     ]
   ],
   {i, Length[f1["waveguides"]]}
@@ -589,7 +587,7 @@ Do[
         StringReplace[f1["paths"][[i, "name"]], "path." -> ""]
       ],
       {pathX[[col]], pathY[[row]] - 2.18},
-      3.95
+      4.90
     ]
   ],
   {i, Length[f1["paths"]]}
@@ -604,21 +602,21 @@ demoPathSource = {
 
 constantPathSpec = specFromRange[
   demoPathSource,
-  {{3.5, 9.9}, {7.0, 9.5}},
+  {{3.5, 9.9}, {6.5, 9.0}},
   True
 ];
 constantBodySpec = specFor[
   f1["constant_body", "polygons"],
-  {{17.3, 26.5}, {5.8, 10.3}},
+  {{17.3, 26.5}, {5.3, 9.8}},
   True
 ];
 AppendTo[
   fig1Prims,
   {
     pathStroke[demoPath, constantPathSpec, verified, 0.90],
-    text["+", {11.3, 8.15}, 6.0],
-    reliefRectangle[{12.8, 7.25}, {13.25, 9.05}, crimson, {0.16, -0.23}],
-    arrowLine[{14.6, 8.15}, {16.3, 8.15}],
+    text["+", {11.3, 7.65}, 6.0],
+    reliefRectangle[{12.8, 6.75}, {13.25, 8.55}, crimson, {0.16, -0.23}],
+    arrowLine[{14.6, 7.65}, {16.3, 7.65}],
     reliefPolys[
       f1["constant_body", "polygons"],
       constantBodySpec,
@@ -628,38 +626,37 @@ AppendTo[
     portDisks[f1["constant_body", "ports"], constantBodySpec, 0.10],
     text[
       "cross-section",
-      {13.0, 9.85},
-      3.35,
-      Center,
-      FontColor -> crimson
+      {13.0, 5.15},
+      4.90,
+      Center
     ],
-    groupText["extrude", {2.5, 11.1}]
+    groupText["extrude", {2.5, 10.6}]
   }
 ];
 
 variablePathSpec = specFromRange[
   demoPathSource,
-  {{34.4, 40.8}, {7.0, 9.5}},
+  {{34.4, 40.8}, {6.5, 9.0}},
   True
 ];
 variableBodySpec = specFor[
   f1["variable_body", "polygons"],
-  {{49.6, 58.8}, {5.5, 10.6}},
+  {{49.6, 58.8}, {5.0, 10.1}},
   True
 ];
 transitionGlyph = {
-  {43.60, 7.65},
-  {43.60, 8.65},
-  {45.55, 9.45},
-  {45.55, 6.85}
+  {43.60, 7.15},
+  {43.60, 8.15},
+  {45.55, 8.95},
+  {45.55, 6.35}
 };
 AppendTo[
   fig1Prims,
   {
     pathStroke[demoPath, variablePathSpec, verified, 0.90],
-    text["+", {42.2, 8.15}, 6.0],
+    text["+", {42.2, 7.65}, 6.0],
     reliefEntries[{{transitionGlyph, crimson}}, {0.16, -0.23}, 0.30],
-    arrowLine[{46.9, 8.15}, {48.6, 8.15}],
+    arrowLine[{46.9, 7.65}, {48.6, 7.65}],
     reliefPolys[
       f1["variable_body", "polygons"],
       variableBodySpec,
@@ -669,18 +666,17 @@ AppendTo[
     portDisks[f1["variable_body", "ports"], variableBodySpec, 0.10],
     text[
       "transition",
-      {44.6, 9.95},
-      3.35,
-      Center,
-      FontColor -> crimson
+      {44.6, 5.15},
+      4.90,
+      Center
     ],
-    groupText["extrude_transition", {34.3, 11.1}]
+    groupText["extrude_transition", {34.3, 10.6}]
   }
 ];
 
 (* Exact boolean inputs and all four accepted operator strings. *)
 inputPolys = {f1["boolean_inputs", "A"], f1["boolean_inputs", "B"]};
-inputSpec = specFor[inputPolys, {{65.8, 72.1}, {5.65, 10.35}}, True];
+inputSpec = specFor[inputPolys, {{65.8, 72.1}, {5.15, 9.85}}, True];
 AppendTo[
   fig1Prims,
   {
@@ -690,9 +686,9 @@ AppendTo[
     FaceForm[Directive[diffBlue, Opacity[0.58]]],
     EdgeForm[Directive[diffBlue, AbsoluteThickness[0.42]]],
     Polygon[tpoly[inputPolys[[2]], inputSpec]],
-    codeText["A", {66.2, 10.95}, 3.75, {Left, Center}],
-    codeText["B", {71.2, 10.95}, 3.75, {Right, Center}],
-    arrowLine[{73.0, 8.0}, {75.5, 8.0}]
+    codeText["A", {66.2, 10.45}, 4.90, {Left, Center}],
+    codeText["B", {71.2, 10.45}, 4.90, {Right, Center}],
+    arrowLine[{73.0, 7.5}, {75.5, 7.5}]
   }
 ];
 
@@ -714,7 +710,7 @@ Do[
     f1["booleans"][[i, "polygons"]],
     {
       {booleanCenters[[i]] - 2.15, booleanCenters[[i]] + 2.15},
-      {5.9, 10.0}
+      {5.4, 9.5}
     },
     True
   ];
@@ -735,7 +731,7 @@ Do[
     fig1Prims,
     groupText[
       operation,
-      {booleanCenters[[i]], 11.1},
+      {booleanCenters[[i]], 10.6},
       Center
     ]
   ],
@@ -749,7 +745,10 @@ fig1 = Graphics[
   ImagePadding -> {{3, 3}, {3, 3}},
   Background -> paper,
   AspectRatio -> 36.6/100,
-  ImageSize -> {515, 189}
+  (* LaTeX expands this canvas to the full two-column width.  A compact
+     compositor width makes absolute type and rule weights land at the same
+     final publication scale as the Matplotlib-composed verification figure. *)
+  ImageSize -> 370
 ];
 
 exportFigure[fig1, "fig_primitives", 2200];
@@ -774,15 +773,15 @@ groupColors = <|
 fig2Prims = {
   panelField[{1.4, 14.35}, {26.8, 35.8}],
   panelField[{34.5, 14.35}, {98.7, 35.8}],
-  panelField[{1.4, 0.45}, {44.0, 10.45}],
-  panelField[{61.5, 0.45}, {98.7, 10.45}],
+  panelField[{1.4, 0.45}, {44.0, 9.65}],
+  panelField[{61.5, 0.45}, {98.7, 9.65}],
   panelHeading["A", "From geometric primitives to a PCell", 1.5, 37.8],
-  panelHeading["B", "Same PCell source, new geometry", 1.5, 11.9],
+  panelHeading["B", "Same PCell source, new geometry", 1.5, 11.15],
   groupText["Exact instances", {2.0, 35.0}],
   groupText["Connected cell", {35.4, 35.0}],
   rule,
   AbsoluteThickness[0.52],
-  Line[{{1.5, 13.2}, {98.5, 13.2}}]
+  Line[{{1.5, 12.8}, {98.5, 12.8}}]
 };
 
 (* Left: literal multiplicity.  Whitespace and visible endpoint ports keep the
@@ -806,17 +805,21 @@ AppendTo[
   {
     displayText[
       "four straights",
-      {16.3, 31.1},
-      5.35,
-      {Left, Center},
-      FontWeight -> Bold
+      {14.8, 31.25},
+      6.10,
+      {Left, Center}
     ],
     text[
-      Row[{symLs, " = 8.0 ", mu, "    ", symW, " = 0.50 ", mu}],
-      {16.3, 29.7},
-      3.90,
-      {Left, Center},
-      FontColor -> muted
+      Row[{symLs, " = 8.0 ", mu}],
+      {14.8, 29.85},
+      5.00,
+      {Left, Center}
+    ],
+    text[
+      Row[{symW, " = 0.50 ", mu}],
+      {14.8, 28.60},
+      5.00,
+      {Left, Center}
     ]
   }
 ];
@@ -870,30 +873,24 @@ AppendTo[
   {
     displayText[
       "four S-bends",
-      {16.3, 25.0},
-      5.35,
-      {Left, Center},
-      FontWeight -> Bold
+      {14.8, 25.15},
+      6.10,
+      {Left, Center}
+    ],
+    text[
+      Row[{symLb, " = 18.0 ", mu}],
+      {14.8, 23.70},
+      5.00,
+      {Left, Center}
     ],
     text[
       Row[{
-        symLb, " = 18.0 ", mu, "    ", deltaY, " = ",
+        deltaY, " = ",
         Style["\[PlusMinus]", FontFamily -> mathFont], "3.0 ", mu
       }],
-      {16.3, 23.55},
-      3.78,
-      {Left, Center},
-      FontColor -> muted
-    ],
-    text[
-      Row[{
-        Style["green endpoint", FontColor -> verified],
-        " = coupling side"
-      }],
-      {16.3, 22.25},
-      3.15,
-      {Left, Center},
-      FontColor -> muted
+      {14.8, 22.45},
+      5.00,
+      {Left, Center}
     ]
   }
 ];
@@ -922,20 +919,28 @@ AppendTo[
   {
     displayText[
       "coupling section",
-      {16.3, 19.0},
-      5.35,
-      {Left, Center},
-      FontWeight -> Bold
+      {14.8, 18.45},
+      6.10,
+      {Left, Center}
     ],
     text[
-      Row[{symLc, " = 10.0 ", mu, "    ", symG, " = 0.25 ", mu}],
-      {16.3, 17.55},
-      3.90,
-      {Left, Center},
-      FontColor -> muted
+      Row[{symLc, " = 10.0 ", mu}],
+      {14.8, 16.95},
+      5.00,
+      {Left, Center}
+    ],
+    text[
+      Row[{symG, " = 0.25 ", mu}],
+      {14.8, 15.70},
+      5.00,
+      {Left, Center}
     ],
     arrowLine[{27.4, 25.3}, {34.0, 25.3}],
-    codeText["8 connect(...) calls", {30.7, 27.0}, 3.55]
+    codeText[
+      Column[{"8 calls", "connect(...)"}, Alignment -> Center, Spacings -> 0.05],
+      {30.7, 27.25},
+      4.90
+    ]
   }
 ];
 
@@ -1051,22 +1056,22 @@ AppendTo[
     text[
       Row[{symG, ": 0.25 \[Rule] 0.75 ", mu}],
       {52.9, 8.45},
-      4.05
+      5.10
     ],
     text[
       Row[{symLc, ": 10 \[Rule] 16 ", mu}],
       {52.9, 3.85},
-      4.05
+      5.10
     ],
     text[
       Row[{symG, " = 0.25 ", mu, "    ", symLc, " = 10 ", mu}],
-      {25.0, 1.35},
-      3.95
+      {25.0, 1.45},
+      5.00
     ],
     text[
       Row[{symG, " = 0.75 ", mu, "    ", symLc, " = 16 ", mu}],
-      {80.5, 1.35},
-      3.95
+      {80.5, 1.45},
+      5.00
     ]
   }
 ];
@@ -1078,7 +1083,7 @@ fig2 = Graphics[
   ImagePadding -> {{3, 3}, {3, 3}},
   Background -> paper,
   AspectRatio -> 39/100,
-  ImageSize -> {515, 201}
+  ImageSize -> 370
 ];
 
 exportFigure[fig2, "fig_composition", 2200];
