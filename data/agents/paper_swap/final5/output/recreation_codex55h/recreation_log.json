@@ -1,0 +1,93 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_identification": "The image is a long, thin three-waveguide grating-assisted coupler/filter. A straight center bus runs horizontally through the middle. Above and below it are routed waveguide loops/arms that approach the bus through periodic rectangular teeth in two coupling gaps, with smooth fan-in/fan-out bends and tapered terminations.",
+    "working_principle": "The periodic teeth define a grating-assisted coupling region: pitch, duty, tooth height, gap to the center bus, guide width, and coupling length set phase matching and transfer strength. The routed upper/lower guides provide loop or resonator path length; taper lengths and tip widths define the adiabatic terminations visible at the top-left and bottom-right.",
+    "function_defining_knobs": [
+      "guide_width",
+      "bus_width",
+      "bus_to_top_gap",
+      "bus_to_bottom_gap",
+      "period",
+      "tooth_width",
+      "tooth_height",
+      "coupling_length",
+      "top_taper_length",
+      "bottom_taper_length",
+      "tip_width",
+      "delta_length"
+    ],
+    "implementation_plan": "Use gf.Path + extrude for smooth routed waveguides, gf.components.taper for visible tapered terminations, and gf.components.rectangle for the center bus and grating teeth. Avoid GDSFactory device stencils and raw polygon insertion."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.5518231496889774,
+      "dice": 0.7111933467413165,
+      "sse": 664147.0,
+      "change_made": "Initial primitives-only reconstruction: path-routed upper/lower guides, straight bus, taper terminations, and two grating-tooth rectangle arrays."
+    },
+    {
+      "iter": 2,
+      "iou": 0.5073235285468287,
+      "dice": 0.6731448410891935,
+      "sse": 753896.0,
+      "change_made": "Raised the bus/grating corridor and outer straight centers to address apparent low registration; result worsened, so this change is not the best."
+    },
+    {
+      "iter": 3,
+      "iou": 0.6880861275240463,
+      "dice": 0.8152263279756675,
+      "sse": 425429.0,
+      "change_made": "Reverted the failed central y nudge and lowered the right output tail to make the routed device set a better vertical bbox for absolute comparison."
+    },
+    {
+      "iter": 4,
+      "iou": 0.7485065344094017,
+      "dice": 0.856166699613996,
+      "sse": 331782.0,
+      "change_made": "Raised bus, grating rows, and outer straight centers while keeping the lower output endpoint fixed for bbox alignment."
+    },
+    {
+      "iter": 5,
+      "iou": 0.6872537379761066,
+      "dice": 0.8146418318805809,
+      "sse": 426473.0,
+      "change_made": "Raised the main optical features further and pulled the upper-right return bend left; this overshot vertical registration and was not retained as best."
+    },
+    {
+      "iter": 6,
+      "iou": 0.7533813320011088,
+      "dice": 0.8593468154942492,
+      "sse": 323833.0,
+      "change_made": "Returned to the iteration-4 vertical registration and kept a moderate upper-right bend pullback; this is the honest best after six iterations."
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.066,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 3.560886499999997,
+    "perturbed_area_um2": 3.890886499999997,
+    "area_growth_um2": 0.33000000000000007,
+    "expected_area_growth_um2": 0.33,
+    "area_ok": true,
+    "passes": true
+  },
+  "best": {
+    "iter": 6,
+    "iou": 0.7533813320011088,
+    "dice": 0.8593468154942492,
+    "sse": 323833.0
+  }
+}

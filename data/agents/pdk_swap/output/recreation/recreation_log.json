@@ -1,0 +1,28 @@
+{
+  "target": "experiments/pdk_swap/mzi_input.png",
+  "footprint_um": [91.1, 50.75],
+  "topology": "unbalanced Mach-Zehnder interferometer: input -> coupler1 (splitter bar) -> {top arm up-racetrack, bottom arm down-racetrack} -> coupler2 (combiner bar) -> output",
+  "primitives_used": ["gf.path.straight", "gf.path.euler", "gf.path.extrude", "gf.cross_section.cross_section", "gf.components.rectangle (basic shape)", "@gf.cell assembly"],
+  "no_stencils": true,
+  "no_raw_polygons": true,
+  "stop_reason": "converged to honest best over 6 logged refinement iterations; IoU ceiling ~0.57 is set by thin-outline (0.5 um) linewidth precision under pixel IoU, so the 0.85 target is not reachable for a skeleton drawing with this metric",
+  "iterations": [
+    {"iter": 1, "iou": 0.0169, "dice": 0.0333, "sse": 19894.0, "change_made": "v1: symmetric up/down racetrack arms + two rectangle couplers, single euler R=5, wg 0.5um. Topology correct but compare centers the GDS bbox while the target waveguide centerline sits above image center -> almost no overlap."},
+    {"iter": 2, "iou": 0.1753, "dice": 0.2983, "sse": null, "change_made": "Made bottom racetrack taller than top: matches the drawing (bottom deeper) AND shifts the bbox center down so the compare's vertical centering lands the waveguide centerline at 22.7um, aligning it with the target."},
+    {"iter": 3, "iou": 0.2233, "dice": 0.3651, "sse": null, "change_made": "Fit geometry to measured target coordinates: walls at x=35.1/56.0, caps at y=0/50.6, coupler bars at x=12.7/78.4 (len 5.4). Derived arm_lead/cap/verticals from the euler offset."},
+    {"iter": 4, "iou": 0.4298, "dice": null, "sse": null, "change_made": "Corrected the wall-width formula (each cap corner advances x by an euler offset, so wall separation = 2*e_cap + arm_cap) which had put the right wall ~11um too far right; adopted two radii (tight fan-out R_in=7.5 keeps arms near center, rounder cap R_cap=7.3 for stadium ends), wg 1.1um."},
+    {"iter": 5, "iou": 0.5195, "dice": null, "sse": null, "change_made": "Realized delta_length as the bottom arm being TALLER (each wall +delta_length/2) instead of a wider cap. Removes the bottom-loop over-widening (target bottom loop is same width, just deeper) and makes measured (bottom_len - top_len) == delta_length exactly."},
+    {"iter": 6, "iou": 0.5654, "dice": 0.7224, "sse": 7426.0, "change_made": "Split the two arms by arm_gap near the couplers so they render as two parallel guides (as in the image) instead of one overlapping line; joint gap/width tune settled at arm_gap=0.7, wg_width=1.0. Honest best."}
+  ],
+  "final": {
+    "iou": 0.5654,
+    "dice": 0.7224,
+    "sse": 7426.0,
+    "precision": 0.609,
+    "recall": 0.889,
+    "delta_length_um": 10.6,
+    "measured_delta_length_um": 10.6,
+    "tunables": ["wg_width", "coupler_length", "coupler_width", "bend_radius_in", "bend_radius_cap", "arm_lead", "arm_vertical_top", "arm_cap", "delta_length", "arm_gap", "coupler1_cx", "device_length"],
+    "knob_response": {"param": "delta_length", "delta_um": 5.0, "delta_response_um": 5.0, "delta_length_ok": true, "area_growth_um2": 5.0, "expected_area_growth_um2": 5.0, "area_ok": true, "passes": true}
+  }
+}

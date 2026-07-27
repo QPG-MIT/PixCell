@@ -1,0 +1,63 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [40.0, 1.7]
+  },
+  "topology_reasoning": {
+    "device_identification": "Three-guide adiabatic splitter/coupler silhouette. A central input taper enters from the left and narrows into a coupled region between two long tapered side rails. The side rails then separate through mirrored S-bends and continue as two output waveguides to the right.",
+    "working_principle": "The function is defined by adiabatic coupling from the central guide into the upper and lower rails. Power transfer is governed mainly by the central taper length and terminal width, the side rail taper/tip widths, the gaps between the three guides in the coupled region, and the S-bend separation/outgoing guide width.",
+    "function_defining_knobs": [
+      "input_length_um",
+      "input_width_left_um",
+      "input_width_right_um",
+      "rail_taper_start_um",
+      "rail_taper_length_um",
+      "rail_tip_width_um",
+      "rail_width_um",
+      "upper_coupled_y_um",
+      "lower_coupled_y_um",
+      "s_bend_length_um",
+      "output_separation_um",
+      "upper_output_straight_length_um",
+      "lower_output_straight_length_um"
+    ],
+    "primitive_plan": "Use gf.components.taper for the three straight adiabatic tapers and gf.Path plus extrude for constant-width output S-bends and right output straights, all on layer (1,0)."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9490910146947784,
+      "dice": 0.9738806526111897,
+      "sse": 12271.0,
+      "change_made": "Initial primitives-only model: central flat-plus-taper input, two side rail tapers, and mirrored constant-width S-bend output paths. Widths were snapped to gdsfactory's 0.002 um grid before this first successful comparison."
+    }
+  ],
+  "best": {
+    "iter": 1,
+    "iou": 0.9490910146947784,
+    "dice": 0.9738806526111897,
+    "sse": 12271.0,
+    "gds": "device.gds",
+    "raster": "raster.png",
+    "diff": "diff.png"
+  },
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "upper_output_straight_length_um",
+    "delta_um": 5.0,
+    "width_um": 0.244,
+    "base_value": 4.6,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 18.655842999999997,
+    "perturbed_area_um2": 19.875842999999996,
+    "area_growth_um2": 1.2199999999999989,
+    "expected_area_growth_um2": 1.22,
+    "area_ok": true,
+    "passes": true
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "device": "device_from_figure_final1",
+  "wavelength_um": 1.55,
+  "targets": [
+    {
+      "metric": "transmission_total",
+      "min": 0.95,
+      "tier": 1,
+      "note": "sum of both output-arm powers at 1550nm, fundamental TE; measured by the conductor (tier 1)"
+    },
+    {
+      "metric": "split_balance",
+      "value": 0.5,
+      "tolerance_abs": 0.02,
+      "tier": 1
+    }
+  ],
+  "constraints": {
+    "max_footprint_um": [
+      150.0,
+      20.0
+    ],
+    "note": "budget scales with confinement; original figure is 40x1.7 on its home platform"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "black_material_layer": [1, 0]
+  },
+  "topology_reasoning": {
+    "observed_device": "A compact 120 um by 4 um multi-rail/slotted waveguide structure. The target is symmetric about the horizontal centerline. It has five narrow full-length rails through the center gap, plus upper and lower slab regions containing five narrow internal rails/slots and broad tapered side walls at both ends.",
+    "working_interpretation": "The function is defined by coupled parallel rails and slotted slab regions rather than a simple directional coupler. Optical behavior is governed by rail width, rail pitch, rail count, upper/lower slab transfer length, slab body thickness, and the tapered side-wall access geometry.",
+    "function_defining_knobs": [
+      "guide_width",
+      "center_pitch",
+      "transfer_length",
+      "inner_rail_pitch",
+      "inner_rail_width",
+      "slab_height",
+      "slab_taper_offset",
+      "sidewall_width"
+    ],
+    "implementation_plan": "Use only GDSFactory primitive rectangles and gf.Path extrusions. Horizontal rails are straight extruded paths or rectangles; tapered slab side edges are approximated as a stack of thin rectangles, which preserves primitive-only construction without raw polygons. The transfer_length knob controls the middle center rail and is reported in lengths.json for verify_knob_response."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9340372388260189,
+      "dice": 0.9658937481400196,
+      "sse": 470685.0,
+      "change_made": "Initial primitive-only reconstruction: five full-length center rails, mirrored upper/lower inner rails, tapered slab bands built from rectangle slices, and broad side access rails. Stopped because IoU exceeded 0.85."
+    }
+  ],
+  "knob_verification": {
+    "param": "transfer_length",
+    "delta_um": 5.0,
+    "width_um": 0.06,
+    "base_value": 119.9,
+    "base_delta_length_um": 119.9,
+    "perturbed_delta_length_um": 124.9,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 220.2407660000002,
+    "perturbed_area_um2": 220.5407660000002,
+    "area_growth_um2": 0.29999999999998295,
+    "expected_area_growth_um2": 0.3,
+    "area_ok": true,
+    "passes": true
+  }
+}

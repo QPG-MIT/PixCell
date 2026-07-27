@@ -1,0 +1,63 @@
+{
+  "topology_reasoning": {
+    "inputs": {
+      "component_png": "component.png",
+      "footprint_um": [30.0, 21.8]
+    },
+    "observations": [
+      "The bitmap contains two material components on layer (1,0): a large closed rounded-rectangle loop and a separate straight bus waveguide along the bottom edge.",
+      "The guide/bus material width is about 0.52 um from the bottom bus and the top/bottom straight portions of the loop.",
+      "The loop is best interpreted as a racetrack/ring resonator side-coupled to the bottom bus. The resonator has long nearly flat top/bottom sections, short vertical side sections, and large rounded corners.",
+      "The bus spans essentially the full 30 um footprint width. The resonator outer top nearly touches the top of the footprint; its lower outer edge sits about 0.19 um above the bus."
+    ],
+    "device": "single-bus racetrack/ring resonator",
+    "working_principle": "Light in the straight bus evanescently couples into the nearby closed resonator at the lower straight section. The resonator perimeter sets the resonance condition; the bus-to-ring gap and parallel coupling length set coupling strength; waveguide width sets mode confinement and effective index.",
+    "function_defining_knobs": [
+      "wg_width: resonator guide width",
+      "bus_width: bus guide width",
+      "coupling_gap: physical gap between bus and resonator",
+      "coupling_length: bus/ring parallel interaction span, expressed by the bottom straight length of the racetrack",
+      "corner_radius: bend radius and footprint curvature",
+      "delta_length: extra resonator perimeter length, implemented by widening the rounded rectangle so a +delta change adds +delta um of ring centerline length"
+    ],
+    "implementation_plan": "Use only parametric GDSFactory primitives: a gf.Path centerline for the closed resonator extruded to wg_width and a rectangular primitive for the bus. No device stencil components and no raw polygons."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8108636208271619,
+      "dice": 0.8955545978186669,
+      "sse": 33201.0,
+      "change_made": "Initial rounded-rectangle resonator with circular corners, 0.52 um guide width, 0.524 um full-width bus."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7831965016222316,
+      "dice": 0.8784186161309002,
+      "sse": 38423.0,
+      "change_made": "Tried elliptical corners with shorter top/bottom straight sections; rejected as worse because it underfilled the target shoulders while overfilling side arcs."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9678643882161126,
+      "dice": 0.9836698036834649,
+      "sse": 5164.0,
+      "change_made": "Replaced analytic loop with a simplified gf.Path centerline traced from the clean loop skeleton; set ring width to 0.514 um from measured area/length while keeping the bus rectangle at 0.524 um."
+    }
+  ],
+  "final": {
+    "accepted_iter": 3,
+    "iou": 0.9678643882161126,
+    "dice": 0.9836698036834649,
+    "sse": 5164.0,
+    "knob_response": {
+      "param": "delta_length",
+      "delta_um": 5.0,
+      "width_um": 0.514,
+      "delta_response_um": 5.0,
+      "area_growth_um2": 2.57139300000005,
+      "expected_area_growth_um2": 2.5700000000000003,
+      "passes": true
+    }
+  }
+}

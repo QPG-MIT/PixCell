@@ -1,0 +1,34 @@
+{
+  "tunables": {
+    "wg_width_um": 1.2,
+    "delta_length": 7.7333249151706696,
+    "path_scale_x": 0.9967999999999999,
+    "path_scale_y": 0.9905999999999999,
+    "path_offset_x_um": 0.0,
+    "path_offset_y_um": 0.0
+  },
+  "evaluator_report": {
+    "stack_label": "400 nm TFLN strip (isotropic approx)",
+    "metric": "group_delay_ps",
+    "measured": 19.5496,
+    "target": 35.6739,
+    "rel_error": 0.4520,
+    "verdict": "fail",
+    "bbox_um": [173.5, 59.5],
+    "max_footprint_um": [173.5, 59.5],
+    "footprint_ok": true,
+    "n_eff": 1.8066,
+    "n_g": 2.2277,
+    "delta_length_um": 7.733,
+    "from_cache": true,
+    "raw_cli": "[400 nm TFLN strip (isotropic approx)] group_delay_ps=19.5496 (45.20% off) FAIL | bbox=173.5x59.5 um vs budget 173.5x59.5 -> fits => MISS (failed targets: group_delay_ps) [n_eff=1.8066, n_g=2.2277, dL=7.733 um, cached]"
+  },
+  "feasibility_evidence": {
+    "target_total_path_um": 4800.730121507663,
+    "best_footprint_feasible_total_path_um_found": 2630.8409032805557,
+    "generous_centerline_upper_bound_total_path_um": 2655.19443027086,
+    "generous_centerline_upper_bound_delay_ps": 19.730569765144928,
+    "reason": "The target requires roughly 2170 um more path than the footprint-feasible script can provide. The exposed knobs only scale the existing centerline and append one straight segment; they cannot add another folded delay path without changing topology."
+  },
+  "calls_used": 1
+}

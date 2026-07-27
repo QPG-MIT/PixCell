@@ -1,0 +1,87 @@
+{
+  "topology_analysis": {
+    "device_type": "4-port directional coupler",
+    "structure": "Four tapered waveguides meeting at a central coupling region",
+    "symmetry": "4-fold rotational symmetry",
+    "key_features": [
+      "Narrow input/output waveguides on all four ports",
+      "Tapered transitions from narrow inputs to wider coupling tips",
+      "Central elliptical/circular coupling region formed by four overlapping tapers",
+      "Each taper appears to widen from ~0.5um input to ~1.5um at the tip"
+    ],
+    "function_defining_knobs": {
+      "input_width": "Width of input/output waveguides (controls mode matching)",
+      "taper_length": "Length of taper transition (controls adiabaticity)",
+      "taper_tip_width": "Width at taper tip (controls coupling strength)",
+      "coupling_gap": "Gap between tips at center (fine-tunes coupling ratio)"
+    },
+    "construction_strategy": "Use gf.Path with linear taper for each arm, then boolean union to form coupling region"
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.2076,
+      "dice": 0.3438,
+      "sse": 124239.0,
+      "change_made": "Initial attempt with separate tapered arms. FAILED: arms too long, central region wrong shape - need elliptical lobes not separate tapers. Total footprint 5.7um vs target 4.7um. Must use ellipse primitives for coupling region."
+    },
+    {
+      "iter": 2,
+      "iou": 0.4308,
+      "dice": 0.6021,
+      "sse": 56359.0,
+      "change_made": "Switched to elliptical coupling lobes. Device too small (3.6um). Need to scale up."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7088,
+      "dice": 0.8296,
+      "sse": 27435.0,
+      "change_made": "Increased input_length to 0.85um and adjusted lobe sizes. BEST RESULT - size matches perfectly (4.7x4.7um)."
+    },
+    {
+      "iter": 4,
+      "iou": 0.6726,
+      "dice": 0.8043,
+      "sse": 30655.0,
+      "change_made": "Reduced lobe_minor to 0.85, increased input_width to 0.48. Worse than iter 3."
+    },
+    {
+      "iter": 5,
+      "iou": 0.6998,
+      "dice": 0.8234,
+      "sse": 27930.0,
+      "change_made": "Adjusted all parameters. Close to iter 3 but not better."
+    },
+    {
+      "iter": 6,
+      "iou": 0.6988,
+      "dice": 0.8227,
+      "sse": 28025.0,
+      "change_made": "Fine-tuned parameters. Marginally worse than iter 3. Iter 3 is best."
+    }
+  ],
+  "final_result": {
+    "best_iteration": 3,
+    "final_iou": 0.7088,
+    "final_dice": 0.8296,
+    "final_sse": 27435.0,
+    "footprint_match": true,
+    "tunables": {
+      "input_width": 0.45,
+      "input_length": 0.85,
+      "lobe_major": 1.5,
+      "lobe_minor": 0.95
+    },
+    "knob_verification": {
+      "tested_knob": "lobe_major",
+      "baseline_value": 1.5,
+      "perturbed_value": 1.7,
+      "baseline_area_um2": 7.122,
+      "perturbed_area_um2": 7.868,
+      "area_change_um2": 0.745,
+      "area_change_percent": 10.5,
+      "knob_moves_geometry": true
+    }
+  }
+}

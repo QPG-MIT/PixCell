@@ -1,0 +1,37 @@
+{
+  "stack": "tfln400",
+  "pass": false,
+  "infeasible_within_representation": true,
+  "tunables": {
+    "wg_width_um": 1.2,
+    "corner_radius_um": 5.0,
+    "straight_bottom_um": 18.8,
+    "straight_top_um": 18.8,
+    "straight_y_um": 8.9,
+    "coupling_gap_um": 0.5,
+    "bus_width_um": 1.2,
+    "bus_length_um": 30.0,
+    "ring_center_x_um": 15.0
+  },
+  "reasoning": "Ring FSR = 1000*lambda^2/(n_g*L). n_g(tfln400,1.2um)=2.2277, so FSR=8.22 nm requires round-trip L* = 1000*1.55^2/(2.2277*8.22) = 131.2 um. The exposed length knobs (ring straights + corner_radius) form a rounded rectangle whose round-trip L = 2*straight_bottom + 2*straight_y + 2*pi*R is bounded by the 30 x 21.8 um footprint. With single_mode_width=1.2 guides plus bus and a 0.5 um (min_feature) coupling gap, the constraints straight_bottom+2R <= 28.8 and straight_y+2R <= 18.9 give L_max = 95.4 - 1.717*R, an absolute ceiling of ~95.4 um as R->0. That corresponds to a MINIMUM reachable FSR of 1000*1.55^2/(2.2277*95.4) = 11.30 nm, 37% ABOVE the 8.22 nm target and unlowerable within the footprint. The measured config (L=86.8 um) gives FSR=12.42 nm (51% off) at bbox 30.0x21.8, already flush against the footprint ceiling. Respecting tfln400's min_bend_radius=30 um is strictly impossible (2R=60 um >> 21.8 um box height). Infeasible on this stack using only the exposed tunables: matching the soi220-derived absolute FSR on a lower-index platform needs a proportionally longer ring (1/n_g scaling) than the fixed footprint permits.",
+  "evaluator_report": {
+    "passes": false,
+    "verdicts": [
+      {"metric": "ring_fsr_nm", "tier": 0, "verdict": "fail",
+       "target": {"metric": "ring_fsr_nm", "value": 8.22, "tolerance_rel": 0.02, "tier": 0},
+       "measured": 12.422804004858225, "rel_error": 0.5112900249219251, "source": "local"}
+    ],
+    "unmeasured": [],
+    "reason": "failed targets: ring_fsr_nm",
+    "n_eff": 1.8065590858459473,
+    "n_g": 2.2277374267578125,
+    "delta_length_um": 11.2,
+    "wavelength_um": 1.55,
+    "stack_label": "400 nm TFLN strip (isotropic approx)",
+    "from_cache": true,
+    "bbox_um": [30.0, 21.8],
+    "max_footprint_um": [30.0, 21.8],
+    "footprint_ok": true
+  },
+  "calls_used": 1
+}

@@ -1,0 +1,78 @@
+{
+  "experiment": "FINAL_1 trident 1x2 splitter \u2014 paper-figure input, blind recreation, de-hinted cross-stack retarget",
+  "protocol": "phase A blind (image+footprint only); phase B de-hinted (no device class, no mechanism, no formulas in any worker input); measure-request loop, 3 tier-1 FDTD calls/stack cap; all numbers conductor-measured",
+  "phase_a": {
+    "opus_4.8_medium": {
+      "iou": 0.9473,
+      "iterations": 3,
+      "duration_min": 16.8
+    },
+    "codex_gpt5.5_xhigh": {
+      "iou": 0.9491,
+      "iterations": 1,
+      "duration_min": 6.9
+    },
+    "reference": "June 2026 benchmark best on same fixture: 0.695"
+  },
+  "phase_b_grid": {
+    "opus_4.8_medium": {
+      "soi220": {
+        "verdict": "partial",
+        "T": 0.928,
+        "T_pass": false,
+        "balance": 0.5,
+        "balance_pass": true,
+        "calls": 3
+      },
+      "sin400": {
+        "verdict": "FULL PASS",
+        "T": 0.967,
+        "balance": 0.5,
+        "calls": 2
+      },
+      "tfln400": {
+        "verdict": "T-fail, floor confirmed (gap saturation 0.930->0.926)",
+        "T": 0.93,
+        "balance": 0.5,
+        "calls": "3+1 redo (staleness void)"
+      }
+    },
+    "codex_gpt5.5_xhigh": {
+      "soi220": {
+        "verdict": "partial",
+        "T": 0.976,
+        "T_pass": true,
+        "balance": 0.4495,
+        "balance_pass": false,
+        "note": "balance = 19.9dB ER vs the 20dB-equivalent conductor-default line",
+        "calls": 3
+      },
+      "sin400": {
+        "verdict": "FULL PASS",
+        "T": 0.974,
+        "balance": 0.5,
+        "calls": 1
+      },
+      "tfln400": {
+        "verdict": "T-fail, floor confirmed (profile redistribution regressed 0.920->0.832)",
+        "T": 0.92,
+        "balance": 0.5,
+        "calls": "2 (banked call 3 with joint floor argument)"
+      }
+    }
+  },
+  "cross_findings": [
+    "regime dependence: the unmerge move that closed weak-confinement SiN regressed strong-confinement SOI (opus)",
+    "gap-asymmetry sensitivity quantified: 4.04 split-fraction per um (codex, 3-point measurement)",
+    "TFLN ~0.93 transmission floor at 150um budget confirmed by two orthogonal approaches from independent agents",
+    "cross-attack learning: codex's soi220 asymmetry burn -> mirror-symmetric designs on later stacks (first-shot sin400 pass)",
+    "sin400 = easiest cell for both models (2 and 1 calls); both models converge on symmetric architectures by the end"
+  ],
+  "spec_provenance": "targets are conductor engineering defaults (labeled): T>=0.95, balance 0.5+/-0.02 (== 20dB ER); FINAL_1 has no source-paper text",
+  "cloud_billed_flexcredits": 6.458,
+  "conductor_rulings": [
+    "fixture-economy decline (codex soi220 call 3, not consumed)",
+    "staleness void + flagged redo (opus tfln400)",
+    "conductor-mediated cross-context on the TFLN floor (logged, deliberate)"
+  ]
+}

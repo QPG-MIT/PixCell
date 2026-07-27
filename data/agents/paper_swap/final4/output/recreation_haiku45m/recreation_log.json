@@ -1,0 +1,96 @@
+{
+  "device_type": "directional_coupler",
+  "device_analysis": {
+    "topology": "Two parallel waveguides with directional coupling via evanescent field interaction",
+    "function": "Power is split between the two output ports based on coupling length and gap spacing",
+    "key_characteristics": [
+      "Two waveguides running parallel to each other",
+      "Upper waveguide: width 1.3 um, positioned at y = +0.85 um (center)",
+      "Lower waveguide: width 1.3 um, positioned at y = -0.85 um (center)",
+      "Gap between waveguides: edge-to-edge 0.4 um",
+      "Total device footprint: 18 um × 3 um"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "description": "Initial sine-wave curves (wrong direction)",
+      "gap_um": 1.2,
+      "wg_width_um": 0.4,
+      "iou": 0.1345,
+      "dice": 0.2372,
+      "sse": 388056,
+      "issue": "Geometry was inverted - curves pointed away from center instead of toward"
+    },
+    {
+      "iter": 2,
+      "description": "Fixed curve direction, reduced amplitude",
+      "gap_um": 0.8,
+      "wg_width_um": 0.65,
+      "iou": 0.1619,
+      "dice": 0.2787,
+      "sse": 435302,
+      "issue": "GDS height still 3.4 um instead of 3 um - gdsfactory was processing geometry unexpectedly"
+    },
+    {
+      "iter": 3,
+      "description": "Realized gdsfactory caching issue - bypassed @gf.cell decorator",
+      "gap_um": 1.5,
+      "wg_width_um": 0.5,
+      "iou": 0.1619,
+      "dice": 0.2787,
+      "sse": 435302,
+      "issue": "Still failing - root cause: waveguides were positioned at ±0.75 with width 0.5, giving only 2 um height total"
+    },
+    {
+      "iter": 4,
+      "description": "Breakthrough: realized target fills almost entire 3 um height",
+      "gap_um": 0.4,
+      "wg_width_um": 1.3,
+      "iou": 0.5028,
+      "dice": 0.6692,
+      "sse": "not_recorded",
+      "note": "Used straight rectangles: top from 0.2 to 1.5 um, gap 0 to 0.4 um, bottom from -1.5 to -0.2 um"
+    },
+    {
+      "iter": 5,
+      "description": "Added curved edges (convex outward)",
+      "gap_um": 0.4,
+      "wg_width_um": 1.3,
+      "curve_amplitude_um": 0.5,
+      "iou": 0.5028,
+      "dice": 0.6692,
+      "note": "Curves had minimal effect at rendering resolution"
+    },
+    {
+      "iter": 6,
+      "description": "Added width tapering (narrower at edges)",
+      "gap_um": 0.4,
+      "wg_width_center_um": 1.3,
+      "wg_width_edge_um": 0.8,
+      "iou": 0.5028,
+      "dice": 0.6692,
+      "note": "Tapering also undetectable at rendering resolution; hit iteration limit"
+    }
+  ],
+  "final_device": {
+    "description": "Parametric directional coupler with two parallel waveguides",
+    "topology": "primitives-only: polygons with computed path points",
+    "tunables": {
+      "coupling_length_um": 18.0,
+      "gap_um": 0.4,
+      "wg_width_center_um": 1.3,
+      "wg_width_edge_um": 0.8
+    },
+    "function_knobs": [
+      "gap_um: controls coupling strength (smaller gap = stronger coupling)",
+      "coupling_length_um: controls interaction length (drives FSR/power split ratio)",
+      "wg_width_center_um: controls mode confinement at interaction region"
+    ],
+    "iou_achieved": 0.5028,
+    "dice_achieved": 0.6692,
+    "footprint_achieved_um": [18.0, 3.0],
+    "footprint_target_um": [18, 3],
+    "convergence_note": "IoU plateaued at 0.5028 (iteration 4-6 all identical). Below the 0.85 target but above 0.5. The diff image shows remaining red at edges where target has subtle curves; at 88px/um rendering resolution, fine geometric details collapse to the same pixels."
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "topology_reasoning": {
+    "device_identification": "Adiabatic 3-waveguide directional coupler (ADC) used as a broadband, fabrication-tolerant 1x2 power splitter/combiner (topology matches Papes et al., 'Fabrication tolerant SOI-based IR polarization independent power splitter', Opt. Express 2016). Three parallel single-mode waveguides run alongside each other in a coupling region: a central 'bus' waveguide enters at full (single-mode) width and adiabatically tapers DOWN to a near-zero tip, while two flanking 'arm' waveguides simultaneously taper UP from near-zero tips to full width. Because the total local width budget is roughly conserved, the local supermode evolves adiabatically from 'all power in the bus' to 'power symmetrically split between the two arms' without abrupt mode mismatch (hence 'adiabatic', not a resonant/interference coupler like an MMI or ring). After the coupling region the bus has vanished (zero width) and the two arms -- now full-width single-mode waveguides -- separate via a symmetric S-bend into two spatially isolated output ports.",
+    "how_it_works": "Pixel measurement of the target image (see below) shows all three waveguide centerlines are perfectly straight and parallel through the coupling region -- only WIDTH changes with x, not lateral position. This rules out a curved/converging-waveguide directional coupler (fixed-gap, index-coupling design) in favor of the width-adiabatic-taper topology: coupling strength is set by the closing width ratio, not by decreasing a fixed physical gap. The measured edge-to-edge gap between bus and arm stays roughly constant (~0.10-0.12um) across the coupling region because width(bus)+width(arm) is roughly conserved -- confirming the adiabatic-taper mechanism.",
+    "function_defining_knobs": [
+      "coupling_length -- length over which bus narrows / arms widen; sets adiabaticity (longer = lower loss, more fab-tolerant)",
+      "tip_width -- minimum feature width at the bus tip and the arm tips; the fabrication-limited taper start/end width",
+      "bus_width_in / arm_width_full -- single-mode waveguide width entering the bus and leaving each arm",
+      "arm_offset -- lateral separation (bus centerline to arm centerline) during the coupling region; sets the coupling gap",
+      "sbend_length / sbend_dy -- output S-bend geometry that separates the two arms to isolated ports",
+      "lead_in_length / leadout_length -- straight sections before/after the tapered/S-bend regions"
+    ],
+    "pixel_measurements": {
+      "calibration": "scale_x=40.4 px/um, scale_y=307.06 px/um (non-uniform -- image y-axis is stretched relative to x for visibility), footprint_um=[40.0, 1.7]",
+      "bus_center_y_um": 0.833,
+      "bus_width_in_um": 0.267,
+      "bus_tip_width_um": 0.070,
+      "arm_tip_width_um": 0.068,
+      "arm_width_full_um": 0.240,
+      "arm_offset_from_bus_center_um": 0.265,
+      "lead_in_length_um_approx": 3.5,
+      "coupling_region_x_um": "3.5 to 25.1 (length 21.6)",
+      "sbend_region_x_um": "25.1 to 36.6 (length 11.4), dy ~= 0.46-0.48",
+      "leadout_length_um_approx": 3.4,
+      "final_output_center_separation_um": 1.459,
+      "final_output_width_um": 0.241
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.4842,
+      "dice": 0.6525,
+      "sse": 160396.0,
+      "change_made": "Initial script from pixel-measured tunables (adc_splitter: bus lead-in + taper, top/bottom arm tapers + bend_s + leadout). Bug: bend_s size dy sign was inverted for both arms, so the two output arms crossed through each other (X shape) instead of separating outward -- diff.png showed a large red X where the arms should have diverged."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8870,
+      "dice": 0.9401,
+      "sse": 27966.0,
+      "change_made": "Fixed bend_s sign: top arm now uses +sbend_dy (moves further from centerline, matching its already-positive arm_offset), bottom arm uses -sbend_dy. Re-measured raster S-bend trajectory column-by-column against target pixel measurements: centers matched target within <0.02um at every sampled x. Remaining diff is sub-pixel edge blur, not a topology or dimension error. Stopped here: IoU exceeds the 0.85 target after 2 iterations."
+    }
+  ],
+  "knob_verification": {
+    "note": "homi.spec_optimization.verify_knob_response is hard-wired to the MZI lengths.json/delta_length contract (requires exactly 2 named arms and a delta_length_um knob) and does not apply to this 3-waveguide adiabatic splitter topology. Ran an equivalent manual check instead: rebuilt the script with arm_width_full perturbed by +0.02um and measured total layer-(1,0) polygon area via gdstk.",
+    "param": "arm_width_full",
+    "base_value_um": 0.240,
+    "perturbed_value_um": 0.260,
+    "base_area_um2": 32.702044,
+    "perturbed_area_um2": 34.472988,
+    "area_delta_um2": 1.770944,
+    "passes": true,
+    "interpretation": "Area grows monotonically and by the right order of magnitude (~2 arms x (leadout+sbend_arc+half coupling length) x delta_width) when the declared width knob is perturbed -- confirms the knob moves real geometry, not just a reported number."
+  }
+}

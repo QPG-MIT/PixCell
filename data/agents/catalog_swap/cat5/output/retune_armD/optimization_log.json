@@ -1,0 +1,59 @@
+[
+  {
+    "stack": "soi220",
+    "iter": 1,
+    "changed_params": {
+      "gap": 0.18,
+      "length": 17.25,
+      "dy": 3.8,
+      "dx": 10.0
+    },
+    "predicted_value": 0.9438,
+    "reasoning": "coupling_ratio = sin^2(pi*L/(2*Lc)). Supermode solve at w=single_mode_width=0.5, gap=0.18 (=min_feature) gives smallest Lc=20.31 um. Target 0.9439 => smallest arg theta=1.33475 => L*=2*Lc*theta/pi=0.8496*Lc=17.25 um. Predict sin^2(pi*17.25/(2*20.31))=0.9438. gap=0.18 chosen (min Lc => shortest L) so bbox length=L+2*dx=37.25<=40 and width=dy+wg=4.3<=4.5 both fit.",
+    "measured_value": 0.9450718625772099,
+    "rel_error": 0.0012415113647737202,
+    "footprint_um": [
+      37.25,
+      4.3
+    ],
+    "verdict": "pass"
+  },
+  {
+    "stack": "sin400",
+    "iter": 1,
+    "changed_params": {
+      "gap": 0.4,
+      "length": 35.8,
+      "dy": 1.0,
+      "dx": 2.0
+    },
+    "predicted_value": 0.9449,
+    "reasoning": "w=single_mode_width=1.0, gap=0.4=min_feature => smallest Lc=42.16 um. Target 0.9439 => theta=1.33475 => L*=0.8496*Lc=35.82 um; use length=35.8. Predict sin^2(pi*35.8/(2*42.16))=0.9449. Footprint forces length+2dx<=40 => dx<=2.1; dx=2.0,dy=1.0 passes gf strip radius_min=5.0 (bend solver non-monotonic) giving bbox 39.8x1.5<=40x4.5.",
+    "measured_value": 0.9448992300257927,
+    "rel_error": 0.0010586185250479065,
+    "footprint_um": [
+      39.8,
+      1.5
+    ],
+    "verdict": "pass"
+  },
+  {
+    "stack": "tfln400",
+    "iter": 1,
+    "changed_params": {
+      "gap": 0.5,
+      "length": 174.61,
+      "dy": 4.0,
+      "dx": 10.0
+    },
+    "predicted_value": 0.9452,
+    "reasoning": "w=single_mode_width=1.2, gap floored at min_feature=0.5 => smallest achievable Lc=205.53 um (weak confinement: LiNbO3 n=2.138 vs clad 1.444 at 400nm). Hitting coupling_ratio=0.9439 requires L*=0.8496*Lc=174.61 um. But footprint caps total length (=length+2dx, min = length itself) at 40 um. length=174.61 sets ratio to 0.9452 (PASS) but forces bbox length ~194.61 um, ~4.4x over budget => footprint FAIL. Conversely any length<=40 that fits footprint gives CR<=sin^2(pi*40/(2*205.53))=~0.089, far below target. The one knob controlling the ratio (length) is the same one footprint bounds; gap cannot lower Lc further without breaching min_feature. Infeasible within exposed tunables.",
+    "measured_value": 0.9452031953405519,
+    "rel_error": 0.00138064979399502,
+    "footprint_um": [
+      194.61,
+      4.5
+    ],
+    "verdict": "fail (metric ok, footprint exceeded)"
+  }
+]

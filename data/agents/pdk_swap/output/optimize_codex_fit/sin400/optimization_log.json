@@ -1,0 +1,29 @@
+{
+  "stack": "sin400",
+  "constraint": {
+    "max_footprint_um": [
+      91.1,
+      50.75
+    ]
+  },
+  "strategy": "Refit the longer lower arm as a compact smooth serpentine built from gf.Path waypoints and extruded on layer (1,0); keep the Phase-3 physics delta and stack-specific single-mode width.",
+  "iterations": [
+    {
+      "iter": 1,
+      "delta_length_requested_um": 148.5746766786533,
+      "delta_length_measured_um": 148.575,
+      "n_eff": 1.6415010690689087,
+      "n_g": 2.0212899446487427,
+      "fsr_nm": 7.999982590807517,
+      "rel_error": 2.176149060395538e-06,
+      "bbox_um": [
+        91.1,
+        49.95
+      ],
+      "footprint_ok": true,
+      "passes": true,
+      "reasoning": "The SiN stack has lower group index, so it requires a much larger delta_L near 148.575 um. A five-lane smooth meander uses the lower half of the original footprint with centerline lane spacing far above the 1.0 um waveguide width plus 0.4 um min feature. The bottom centerline stays at -24.075 um, so with 1.0 um width the layer bbox should remain under 50.75 um. The pre-build path lengths predicted delta_L=148.575 um, giving FSR essentially 8.0 nm.",
+      "predicted_fsr_nm_next": 7.999982590807517
+    }
+  ]
+}

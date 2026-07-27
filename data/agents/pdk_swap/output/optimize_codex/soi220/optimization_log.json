@@ -1,0 +1,39 @@
+{
+  "stack": "soi220",
+  "width_rule": "wg_width set to single_mode_width_um=0.5; all feature widths remain >= min_feature_um=0.18.",
+  "physics_rule": "FSR_nm = wavelength_um^2 * 1000 / (n_g * delta_length_um); at 1.55 um and 8.0 nm target, delta_length_target_um = 300.3125 / n_g.",
+  "iterations": [
+    {
+      "iter": 1,
+      "delta_length_requested_um": 10.5,
+      "delta_length_measured_um": 10.5,
+      "n_eff": 2.449732780456543,
+      "n_g": 4.0574421882629395,
+      "fsr_nm": 56.392553040288945,
+      "rel_error": 6.049069130036119,
+      "reasoning": "Initial SOI evaluation with wg_width=0.5 shows the recreated 10.5 um imbalance is far too short: FSR scales as 1/(n_g*delta_L), so the measured 56.39 nm FSR must be reduced by increasing delta_L. The target is delta_L=300.3125/4.0574421882629395=74.01522586537922 um. The script realizes delta_length physically by extending the longer lower gf.Path arm, so I will set the top-level delta_length to that value.",
+      "predicted_fsr_nm_next": 8.0
+    },
+    {
+      "iter": 2,
+      "delta_length_requested_um": 74.01522586537922,
+      "delta_length_measured_um": 74.01499999999999,
+      "n_eff": 2.449714183807373,
+      "n_g": 4.0574421882629395,
+      "fsr_nm": 8.00002441293027,
+      "rel_error": 0.0000030516162836669025,
+      "reasoning": "The physics move converged. The measured delta_length is 74.015 um after path quantization, and FSR remains inversely proportional to n_g*delta_L: 1.55^2*1000/(4.0574421882629395*74.015)=8.00002441293027 nm, inside the 2% tolerance. No further geometry move is needed.",
+      "predicted_fsr_nm_next": 8.00002441293027
+    }
+  ],
+  "final_raster": {
+    "iou": 0.0668230973270761,
+    "dice": 0.12527493544993784,
+    "sse": 18294.0,
+    "gds_size_um": [
+      91.10000000000001,
+      82.498
+    ],
+    "note": "Rasterized optimized GDS against the original image calibration after spec convergence; IoU drop is expected because the lower arm was lengthened to meet FSR."
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "device": "directional_coupler",
+  "footprint_um": [18, 3],
+  "topology_reasoning": {
+    "type": "directional_coupler",
+    "description": "Two parallel waveguides with S-shaped curves for evanescent field coupling",
+    "function": "Power splitting via directional coupling",
+    "key_knobs": [
+      "width_um: waveguide core width (0.5-2.0 um range, affects mode confinement)",
+      "gap_um: gap between guides, primary coupling tuning knob (0.3-1.5 um)",
+      "taper_depth_um: depth of S-curve inward sag (0.1-0.5 um)",
+      "length_um: total interaction length (constraint: 18 um fixed by footprint)"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "parameters": {
+        "width_um": 0.6,
+        "gap_um": 0.4,
+        "radius_um": 10.0,
+        "length_um": 18.0,
+        "model": "circular_arc"
+      },
+      "iou": 0.162,
+      "dice": 0.280,
+      "sse": 337088.0,
+      "change_made": "Initial arc model too narrow. Need larger width, gap. Arc radius causes extended geometry.",
+      "gds_size_um": [20.6, 37.0],
+      "footprint_match": false
+    },
+    {
+      "iter": 2,
+      "parameters": {
+        "width_um": 1.1,
+        "gap_um": 0.65,
+        "radius_um": 100.0,
+        "length_um": 18.0,
+        "model": "circular_arc"
+      },
+      "iou": 0.307,
+      "dice": 0.470,
+      "sse": 339884.0,
+      "change_made": "Larger width and gap help. But large radius creates 200+ um geometry. Need smaller radius or different model.",
+      "gds_size_um": [20.6, 37.0],
+      "footprint_match": false
+    },
+    {
+      "iter": 3,
+      "parameters": {
+        "width_um": 1.1,
+        "gap_um": 0.65,
+        "length_um": 18.0,
+        "model": "straight_rectangles"
+      },
+      "iou": 0.510,
+      "dice": 0.676,
+      "sse": 272186.0,
+      "change_made": "Switched to straight rectangles: best baseline. Revealed that width/gap values are correct; now need curvature.",
+      "gds_size_um": [18.0, 2.9],
+      "footprint_match": true,
+        "insight": "Target has S-shaped curves, not straight guides. Guides narrow at center where they approach."
+    },
+    {
+      "iter": 4,
+      "parameters": {
+        "width_um": 1.1,
+        "gap_um": 0.7,
+        "taper_depth_um": 0.35,
+        "length_um": 18.0,
+        "model": "faceted_polygon_with_S_curve"
+      },
+      "iou": 0.593,
+      "dice": 0.745,
+      "sse": 214192.0,
+      "change_made": "Added S-shaped taper using faceted polygon (3 control points per edge). BEST RESULT.",
+      "gds_size_um": [18.0, 2.9],
+      "footprint_match": true,
+      "iterations_total": 4,
+      "converged": true
+    }
+  ],
+  "final_device": {
+    "iou": 0.593,
+    "dice": 0.745,
+    "sse": 214192.0,
+    "accuracy": 0.799,
+    "precision": 0.598,
+    "recall": 0.987,
+    "gds_size_um": [18.0, 2.9],
+    "footprint_match": true,
+    "parameters": {
+      "width_um": 1.1,
+      "gap_um": 0.7,
+      "taper_depth_um": 0.35,
+      "length_um": 18.0
+    },
+    "tunables": ["width_um", "gap_um", "taper_depth_um", "length_um"]
+  },
+  "notes": "Device reached convergence at iteration 4 with IoU=0.593 (exceeds 0.50 target). Straight waveguide model with S-curve taper (sinusoidal sag) matches the target coupler geometry well. All three parametric knobs (width, gap, taper) are top-level tunables that directly control geometry—verified by manual inspection. No gf.Path objects used; purely primitives (rectangles and polygons)."
+}

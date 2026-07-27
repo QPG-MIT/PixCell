@@ -1,0 +1,32 @@
+[
+  {
+    "stack": "soi220",
+    "iter": 1,
+    "changed_params": {"wg_width": 0.5, "coupling_gap": 0.20, "coupling_length": 18.6146, "sbend_length": 9.5, "port_sep": 3.8},
+    "predicted_value": {"coupling_ratio": 0.9439, "footprint_um": [37.62, 4.3]},
+    "reasoning": "coupling_ratio = sin^2(pi*L/(2*Lpi)). Solved two-core supermodes at w=single_mode_width_um=0.5, gap=0.20 (>=min_feature 0.18): dn=0.035296 -> Lpi=21.957 um. Target 0.9439 needs L/Lpi = 2*asin(sqrt(0.9439))/pi = 0.847767, so coupling_length=18.6146. Evaluator uses the same cached Lpi and exact sin^2, so prediction is exact (float length, no grid snap). port_sep reduced 4.20->3.8 so bbox height port_sep+wg_width=4.3<=4.5; total_x=2*9.5+18.61=37.62<=40. Both footprint dims and ratio pass.",
+    "measured_value": {"coupling_ratio": 0.9438965199227476, "footprint_um": [37.615, 4.3]},
+    "rel_error": 3.6869130759310484e-06,
+    "verdict": "PASS"
+  },
+  {
+    "stack": "sin400",
+    "iter": 1,
+    "changed_params": {"wg_width": 1.0, "coupling_gap": 0.40, "coupling_length": 35.7406, "sbend_length": 2.0, "port_sep": 3.4},
+    "predicted_value": {"coupling_ratio": 0.9439, "footprint_um": [39.74, 4.4]},
+    "reasoning": "Same relation. gap set to min_feature_um=0.40 (the floor) to MINIMIZE Lpi, because SiN's low index contrast makes the beat length long and footprint is the binding constraint. Supermodes at w=single_mode_width_um=1.0, gap=0.40: dn=0.018383 -> Lpi=42.159 um. coupling_length=0.847767*42.159=35.7406. total_x=2*sbend+L; to fit <=40 the sbends must be short: sbend_length=2.0 -> total_x=39.74<=40. port_sep=3.4 so bbox height port_sep+wg_width=4.4<=4.5. Prediction exact (same cached Lpi + sin^2).",
+    "measured_value": {"coupling_ratio": 0.9438848970278351, "footprint_um": [39.746, 4.4]},
+    "rel_error": 1.6000606171091433e-05,
+    "verdict": "PASS"
+  },
+  {
+    "stack": "tfln400",
+    "iter": 1,
+    "changed_params": {"wg_width": 1.2, "coupling_gap": 0.50, "coupling_length": 174.2295, "sbend_length": 2.0, "port_sep": 3.0},
+    "predicted_value": {"coupling_ratio": 0.9439, "footprint_um": [178.23, 4.2], "footprint_ok": false, "overall": "FAIL"},
+    "reasoning": "INFEASIBILITY DEMONSTRATION. TFLN is weakly confined (core_n 2.138 vs clad 1.444, w=single_mode_width_um=1.2, t=0.4): even at gap=min_feature_um=0.50 (the SMALLEST allowed) the supermode split is dn=0.003771 -> Lpi=205.52 um. Reaching coupling_ratio 0.9439 requires L=0.847767*Lpi=174.23 um (principal branch is the shortest solution; every branch needs L>=0.8478*Lpi). That is >4x the 40 um footprint budget: total_x=2*2+174.23=178.2 um. Conversely, the longest L that fits the footprint (~36 um) yields sin^2(pi*36/(2*205.52))=0.074, far below the 0.8939 acceptance floor. gap cannot go below min_feature and width is fixed to single_mode_width, so Lpi cannot be shortened. The ratio and footprint constraints are mutually exclusive within the exposed tunables -> infeasible. This eval sets L to the ratio-correct value to show ratio PASSES while footprint FAILS.",
+    "measured_value": {"coupling_ratio": 0.9438720024111419, "footprint_um": [178.234, 4.2], "footprint_ok": false},
+    "rel_error": 2.9661604892547136e-05,
+    "verdict": "FAIL (footprint exceeds max_footprint_um; infeasible within representation)"
+  }
+]

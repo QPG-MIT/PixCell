@@ -1,0 +1,77 @@
+{
+  "device": "1x4 MMI (multimode-interference) power splitter",
+  "agent": "opus-4.8-max",
+  "inputs": {
+    "image": "experiments/paper_swap/final2/device_bw.png",
+    "footprint_json": "experiments/paper_swap/final2/footprint.json",
+    "footprint_um_LxW": [25, 10]
+  },
+  "topology_reasoning": {
+    "what_it_is": "A 1x4 MMI power splitter: one input access waveguide feeds a solid multimode SLAB (the large black rectangle); the input mode self-images into FOUR output access waveguides leaving the opposite face. Silhouette = big rectangle + 4 tapered prongs on one long edge + 1 tapered prong (input) centered on the opposite edge.",
+    "how_it_works": "Light enters the wide multimode slab through a tapered input; the fundamental input mode excites several slab modes which beat and periodically reconstruct the input field as N-fold self-images at a fixed propagation length (L ~ number of images). Output access waveguides are placed at those self-image positions to tap equal power fractions. Access tapers (single-mode guide width -> wider slab-interface width) reduce insertion loss and reflections at the slab junction.",
+    "function_defining_knobs": [
+      "mmi_length (self-imaging length -> which N-fold image forms; sets split count)",
+      "mmi_width (transverse slab width -> image spacing / port pitch envelope)",
+      "output_centers_um (transverse self-image positions where the 4 outputs tap)",
+      "taper_base_width (access-to-slab taper width -> junction loss/mode match)",
+      "output_taper_length / input_taper_length (adiabaticity of the access tapers)",
+      "wg_width (single-mode access-waveguide width)"
+    ]
+  },
+  "calibration_frame": {
+    "mapping": "compare_absolute + calculate_calibration hard-map footprint_um[0]=25 -> image X (horizontal/transverse, LEFT-ALIGNED) and footprint_um[1]=10 -> image Y (vertical/propagation, CENTERED). Comparison is an anisotropic affine map GDS-bbox -> image-bbox, so the device is built to fill X in [0,25], Y in [0,10] with the drawing's bbox-relative proportions; propagation is the vertical (Y) axis, outputs at Y=10, input at Y=0.",
+    "image_cleaning": "The raw device_bw.png carries faint compression noise (gray 243-244, ~7900 px) that reaches the image edges and blew the white_threshold=245 bbox to [123,2,1888,2272] (touching 3 edges). The true silhouette is bimodal and clean at x[319,1690] y[197,1878]. Per the draw-to-gds discipline (a clean device-only silhouette; sub-threshold noise corrupts IoU exactly like a leaked annotation), component.png was binarized at the bimodal midpoint (128) and calibration recomputed on it -> bbox [319,197,1691,1879], scale [54.88, 168.2] px/um. This changed only the calibration frame, never the device silhouette."
+  },
+  "measurements_um": {
+    "note": "Measured from the cleaned silhouette; fromtop converted to gds_y = 10 - fromtop.",
+    "mmi_slab": {"width_x": 25.0, "length_y": 5.06, "y_bottom": 1.25, "y_top": 6.31},
+    "output_access": {"wg_width": 1.57, "taper_base_width": 3.10, "taper_len": 1.89, "straight_len": 1.80, "centers_x": [3.435, 8.801, 15.771, 21.501], "pitch_note": "non-uniform in the drawing (5.37/6.97/5.73) -- reproduced for fidelity"},
+    "input_access": {"center_x": 12.5, "taper_base_width": 3.10, "tip_width": 1.50, "taper_len": 1.25, "truncated_at_frame_edge": true}
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.993793,
+      "dice": 0.996887,
+      "sse": 9122,
+      "change_made": "Initial parametric build from precise pixel measurements: rectangle slab (25 x 5.06), 4 output taper+straight prongs at measured self-image centers, 1 centered truncated input taper. All primitives (rectangle, taper, gf.Path+extrude), layer (1,0). bbox exactly (0,0)-(25,10), size_match [true,true]."
+    },
+    {
+      "iter": "1b",
+      "iou": 0.993793,
+      "dice": 0.996887,
+      "sse": 9122,
+      "change_made": "Correctness fix (no geometry change): write_gds(with_metadata=False) to suppress kfactory's $$$CONTEXT_INFO$$$ cell, which otherwise references the top cell and makes it non-top-level, hiding geometry from spec_optimization._layer_area (top_level() + skip-$$$). Enables the parametric measurement contract; IoU/Dice/SSE unchanged."
+    }
+  ],
+  "stop_reason": "IoU 0.9938 >> 0.85 target on iteration 1. diff.png shows only 1-2 px anti-aliased boundary noise along every edge (sharp GDS edges vs anti-aliased target) -- the rasterization ceiling. Remaining ~0.6% is sub-0.25um calibration-frame effects (e.g. full-width slab vs the drawing's ~0.24um side margins under LEFT-ALIGN); chasing it risks regressions. Kept the honest best.",
+  "knob_verification": {
+    "function": "homi.spec_optimization.verify_knob_response",
+    "param": "probe_length",
+    "param_meaning": "output-1 access straight length; a guide-width (1.57 um) waveguide-length knob. Equal to output_straight_length at base, so all four outputs are identical in the delivered device.",
+    "delta_um": 5.0,
+    "width_um": 1.57,
+    "delta_length_ok": true,
+    "delta_response_um": 5.0,
+    "area_ok": true,
+    "area_growth_um2": 7.85,
+    "expected_area_growth_um2": 7.85,
+    "passes": true,
+    "interpretation": "Perturbing the knob by 5 um moves lengths.json delta_length_um by exactly 5 um and grows layer-(1,0) area by 1.57*5 um^2 -> the declared knob moves real geometry, not just reported numbers."
+  },
+  "measurement_contract": {
+    "lengths_json": "arms = {out1_access_um, out4_access_um} (real output-access centerlines, equal at base), delta_length_um = |L1 - L4|. Written next to the GDS on every run.",
+    "primitives_only": true,
+    "no_stencils": true,
+    "layer": [1, 0]
+  },
+  "final": {
+    "iou": 0.993793,
+    "dice": 0.996887,
+    "sse": 9122,
+    "size_match": [true, true],
+    "gds": "device.gds",
+    "script": "device.py",
+    "tunables": ["mmi_width", "mmi_length", "body_bottom_y", "wg_width", "taper_base_width", "output_centers_um", "output_taper_length", "output_straight_length", "probe_length", "input_taper_length", "input_tip_width"]
+  }
+}

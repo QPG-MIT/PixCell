@@ -1,0 +1,86 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [18.0, 3.0],
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device": "two-waveguide directional coupler / adiabatic coupling section",
+    "observations": [
+      "The bitmap contains exactly two disconnected black components on layer (1,0), each spanning the full 18 um length.",
+      "The two components are mirror-symmetric around the footprint centerline y=1.5 um.",
+      "Each component is a constant-width strip waveguide, about 0.65 um wide, with horizontal input/output ports.",
+      "The guides start far apart near the top and bottom footprint edges, bend smoothly toward a short central near-parallel interaction region, then bend back to the original separation.",
+      "The minimum center-to-center spacing is about 0.95 um, giving a central gap of about 0.30 um for a 0.65 um waveguide width."
+    ],
+    "working_principle": "The input/output S-bends separate ports from the coupling region. In the central region the two waveguides run close together so their even/odd supermodes exchange power. Coupling strength is dominated by the minimum gap and the effective interaction length; bend/transition shape controls excess loss and footprint.",
+    "function_defining_knobs": [
+      "wg_width_um: waveguide strip width and the area-response width for verification.",
+      "min_gap_um: closest edge-to-edge coupling gap, the main coupling-strength knob.",
+      "port_gap_um: edge-to-edge spacing at the input/output ports.",
+      "interaction_length_um: length of the near-minimum-gap middle section.",
+      "transition_length_um: length of each smooth S-bend from port separation to coupling separation.",
+      "curve_power: controls how quickly the guide separation changes through the S-bends.",
+      "delta_length: an explicit arm-length imbalance knob used only to prove the parametric geometry response contract; baseline is 0 for the symmetric target."
+    ],
+    "primitive_plan": "Use two gf.Path centerlines generated from a smooth, mirrored separation function, then gf.path.extrude each path at constant width on layer (1,0). No raw polygons or component stencils. The @gf.cell assembly writes the GDS and a lengths.json derived from the gf.Path lengths."
+  },
+  "initial_measurements_um": {
+    "guide_width_mean_um": 0.6563,
+    "guide_width_median_um": 0.6510,
+    "center_to_center_port_sep_um": 2.3423,
+    "center_to_center_min_sep_um": 0.9530,
+    "port_gap_um": 1.6913,
+    "min_gap_um": 0.3020,
+    "symmetry_axis_y_um": 1.5
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9810608089164149,
+      "dice": 0.9904398739310055,
+      "sse": 6012.0,
+      "change_made": "Initial primitive gf.Path recreation using mirrored raised-cosine centerline separation; stopped because IoU exceeded 0.85."
+    }
+  ],
+  "best": {
+    "iter": 1,
+    "gds": "device.gds",
+    "raster": "raster.png",
+    "diff": "diff.png",
+    "overlay": "overlay.png",
+    "metrics": "metrics.json",
+    "iou": 0.9810608089164149,
+    "dice": 0.9904398739310055,
+    "sse": 6012.0
+  },
+  "final_tunables": {
+    "length_um": 18.0,
+    "wg_width_um": 0.652,
+    "min_gap_um": 0.3149,
+    "port_gap_um": 1.6837,
+    "interaction_length_um": 0.0,
+    "input_straight_um": 1.1032,
+    "curve_power": 1.6532,
+    "num_points": 801,
+    "delta_length": 0.0
+  },
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.652,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 23.582198000000012,
+    "perturbed_area_um2": 26.842020000000012,
+    "area_growth_um2": 3.2598219999999998,
+    "expected_area_growth_um2": 3.2600000000000002,
+    "area_ok": true,
+    "passes": true
+  }
+}

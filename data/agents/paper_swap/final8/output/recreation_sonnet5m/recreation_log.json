@@ -1,0 +1,39 @@
+{
+  "device": "final8",
+  "topology_reasoning": {
+    "orientation": "Calibration (prepare_calibration) shows the image X axis (4800px, bbox 4145px) maps to the 120um LENGTH, and image Y axis (3584px) maps to the 4um WIDTH -- i.e. the device is drawn with propagation along the horizontal image axis and only 4um tall (transverse) in total.",
+    "cross_section_along_width": "Scanning the image along Y (width) at a fixed length position reveals 7 bands, symmetric about the width center: margin(white) - comb_outer1(5 fine fingers) - pad1(solid) - comb_mid(5 fine fingers) - pad2(solid) - comb_outer2(5 fine fingers) - margin(white). Measured band heights (px, /896 px/um): margin=686/683px (~0.76um), comb_outer=447/450px (~0.50um), pad=420/418px (~0.47um), comb_mid=480px (~0.54um).",
+    "length_envelope": "Along the length (X) axis, material extent is NOT uniform: the mid comb (between the two pads) spans the full 120um bbox (inset ~0). The pads are shorter, inset ~7.6-7.9um symmetrically from each end (length ~104-105um). The outer combs (between a pad and the outer margin) show a linear taper: the finger adjacent to a pad is shortest (inset ~6.7-6.8um), the finger adjacent to the outer margin is longest (inset ~5.7um) -- this taper produces the fanned/sloped silhouette visible in the raw image (a trapezoid-looking envelope funneling into the solid pad).",
+    "function": "This reads as a 3-lane parallel finger array (5 fingers per lane, 15 total transverse channels) bridged by two solid access/bus sections (pads), with the outer two finger-arrays apodized (linearly chirped end-position / effective length) approaching each pad -- consistent with a chirped/apodized grating-coupler-like or fan-in/fan-out transition structure. Recreation targets the geometry as drawn (primitives only), not a specific named device.",
+    "function_defining_knobs": [
+      "n_teeth (fingers per comb band)",
+      "tooth_width_um / tooth_gap_um (transverse pitch of the finger array -- grating/coupling pitch)",
+      "pad_length_um (solid access-waveguide length between comb arrays)",
+      "taper_inset_near_pad_um / taper_inset_near_margin_um (defines the chirp/apodization slope of the outer comb arrays)",
+      "comb_outer_width_band_um / pad_width_band_um / comb_mid_width_band_um (transverse space allocated to each band)"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7284,
+      "dice": 0.8429,
+      "sse": 2107697.0,
+      "change_made": "First pass: formulaic model -- margin band left empty, each comb band's 5 teeth placed via a fixed period (tooth_width+gap) with a linear length-taper interpolated across the 5 tooth indices between two flat endpoint insets. Pads and comb bands sized from averaged measured band heights."
+    },
+    {
+      "iter": 2,
+      "iou": 0.5259,
+      "dice": 0.6893,
+      "sse": 5789562.0,
+      "change_made": "Tried extending the outermost finger of each outer comb array all the way to the width edge (y=0 / y=total_width) as a SOLID stacked-rectangle taper, to capture the faint curved silhouette visible there. Regressed badly: pixel fill-fraction check at y=0..650px showed only ~5% black (a thin hollow outline, not solid material), so filling it solid added large false-positive area. Reverted."
+    },
+    {
+      "iter": 3,
+      "iou": 0.8657,
+      "dice": 0.9280,
+      "sse": 965383.0,
+      "change_made": "Reverted iter-2's solid extension. Replaced the formulaic period/taper model with the exact measured per-tooth and per-pad transverse (y) boundaries and length insets read directly off the binary image (segment boundaries + main_extent per row), keeping the margin bands empty as in iter 1. This closed most of the remaining precision gap -- stopped here, IoU exceeds the 0.85 target."
+    }
+  ]
+}

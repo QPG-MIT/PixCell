@@ -1,0 +1,46 @@
+{
+  "tunables": {
+    "delta_length": 18.0,
+    "length_y": 0.0,
+    "length_x": 0.1
+  },
+  "evaluator_report": {
+    "passes": false,
+    "verdicts": [
+      {
+        "metric": "fsr_nm",
+        "tier": 0,
+        "verdict": "fail",
+        "target": {
+          "metric": "fsr_nm",
+          "value": 59.21,
+          "tolerance_rel": 0.02,
+          "tier": 0
+        },
+        "measured": 66.03318963495704,
+        "rel_error": 0.11523711594252727,
+        "source": "local"
+      }
+    ],
+    "unmeasured": [],
+    "reason": "failed targets: fsr_nm",
+    "n_eff": 1.6415010690689087,
+    "n_g": 2.0212899446487427,
+    "delta_length_um": 18.0,
+    "wavelength_um": 1.55,
+    "stack_label": "400 nm SiN strip",
+    "from_cache": true,
+    "bbox_um": [
+      91.1,
+      50.75
+    ],
+    "max_footprint_um": [
+      91.1,
+      50.75
+    ],
+    "footprint_ok": true
+  },
+  "calls_used": 1,
+  "infeasible_within_representation": true,
+  "reasoning": "Target FSR 59.21 nm requires delta_length=20.07 um at n_g=2.0213 (single_mode_width=1.0 um). The MZI's delta_length only lengthens the vertical arms, so ysize=46.75+2*length_y+(delta_length-10)/2 must stay <=50.75 um. Even at length_y=0 (its floor), max feasible delta_length=18.0 um (ysize=50.75, at the limit). Only delta_length sets FSR (length_y/length_x are symmetric across arms and do not change path imbalance). At the footprint-max delta_length=18.0, FSR=66.03 nm = 11.52% over target, far outside the 2% tolerance. No combination of the three exposed tunables can reach 59.21 nm within max_footprint_um=[91.1,50.75]. Honest failure."
+}

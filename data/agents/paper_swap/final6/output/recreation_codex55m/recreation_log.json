@@ -1,0 +1,39 @@
+{
+  "topology_reasoning": {
+    "device": "four-port waveguide crossing / compact star-coupler-like intersection",
+    "evidence": [
+      "The black material is one connected component inside a 4.7 um by 4.7 um square footprint.",
+      "There are four equal-width access waveguides entering from north, south, east, and west.",
+      "Each access guide broadens into a lens-shaped taper before overlapping at a central multimode intersection.",
+      "The layout is mirror-symmetric horizontally and vertically."
+    ],
+    "working_principle": "Single-mode access guides adiabatically expand into a wider central multimode aperture. The central overlap supports the crossing/scattering region, and matched flares on all four sides preserve symmetry so the intended ports see the same impedance transition.",
+    "function_defining_knobs": [
+      "guide_width_um controls the single-mode port width.",
+      "flare_width_um controls the multimode aperture at the crossing.",
+      "flare_length_um controls taper adiabaticity and the footprint occupied by each lobe.",
+      "delta_length is a symmetry/phase trim exposed for evaluator knob-response verification by extending one guide length."
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.855213822782853,
+      "dice": 0.9219571483140605,
+      "sse": 11237.0,
+      "change_made": "Initial primitive model: four elliptical flare primitives plus four rectangular access guides; stopped because IoU >= 0.85."
+    }
+  ],
+  "implementation_note": "Initial GDSFactory import repeatedly stalled in this pane before writing GDS; final script uses gdstk primitive rectangle/ellipse constructors with the same top-level parametric knobs and no external hints.",
+  "knob_verification": {
+    "param": "delta_length",
+    "width_um": 0.22,
+    "delta_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "area_growth_um2": 1.0999999999999996,
+    "expected_area_growth_um2": 1.1,
+    "area_ok": true,
+    "passes": true
+  }
+}

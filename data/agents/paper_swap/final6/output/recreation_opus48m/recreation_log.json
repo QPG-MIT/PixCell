@@ -1,0 +1,39 @@
+{
+  "device_identification": {
+    "type": "waveguide crossing (4-port intersection, low-loss tapered/lens crossing)",
+    "footprint_um": [4.7, 4.7],
+    "reasoning": "Silhouette is a 4-fold symmetric flower: four convex petals arranged N/E/S/W with a narrow straight waveguide stub emerging from each petal's outer tip. This is the canonical low-loss waveguide crossing: two perpendicular single-mode waveguides, each locally widened into a biconvex lens/elliptical taper so the mode expands (reducing diffraction/crosstalk) as it passes through the intersection, then re-narrows. The union of the two orthogonal lens tapers produces the 4-petal star with concave notches between adjacent petals. Function: route two waveguides across each other with low insertion loss and low crosstalk.",
+    "how_it_works": "A single-mode guide (width wg_width) adiabatically widens through a symmetric taper to a maximum width (lens_width) at the crossing center, so the field is broad and quasi-collimated where the two guides overlap; this suppresses scattering into the orthogonal port. The taper is roughly elliptical (convex petal edges), re-narrowing to wg_width on the far side. The two orthogonal tapers share the central region."
+  },
+  "measurements_from_pixels": {
+    "px_per_um": 118.51,
+    "guide_stub_width_um": 0.235,
+    "lens_half_length_along_axis_um": 1.84,
+    "lens_max_full_width_um": 1.0,
+    "full_span_edge_to_edge_um": 4.7,
+    "notes": "thick_y(x) for the horizontal arm: constant 0.236um stub out to |x|~1.84, then grows 0.37->0.54->0.67->0.76->0.84->0.88->0.91 approaching center (ellipse minor half-axis ~0.5um, extrapolated 2b~1.0um at center). Vertical arm identical by 4-fold symmetry."
+  },
+  "function_knobs": {
+    "wg_width": "single-mode guide / port-stub width and lens tip width (the guide width)",
+    "lens_len": "half-length of the elliptical taper along its axis (how far the expansion reaches from center) — the taper length",
+    "lens_width": "maximum full width of the lens at the crossing center (mode-expansion width)",
+    "arm_length_h": "through-guide span of the horizontal waveguide (insertion length / footprint)",
+    "arm_length_v": "through-guide span of the vertical waveguide"
+  },
+  "verified_knob": "arm_length_h (crossing arm through-length); width_um=wg_width; a pure straight so area growth = wg_width*delta is linear and delta_length_um tracks it exactly",
+  "iterations": [
+    {"iter": 1, "iou": 0.9372, "dice": 0.9676, "sse": 4921.0, "change_made": "initial model: two orthogonal through-guides (wg_width straight, full 4.7um span) + two orthogonal elliptical lenses peaking at the crossing CENTER; taper-chain approx of ellipse (rx=1.84, full width 1.0)"},
+    {"iter": 2, "iou": 0.8990, "dice": 0.9468, "sse": 8573.0, "change_made": "remodeled each petal to peak at its MID-radius (lens_len/2) and re-narrow toward both center (lens_center_width) and outer tip (wg_width), producing the concave cusps; recall->1.0 but became a superset (too fat)"},
+    {"iter": 3, "iou": 0.9733, "dice": 0.9865, "sse": 2095.0, "change_made": "shrank uniform oversize halo: lens_len 1.84->1.80, lens_width 1.0->0.92, lens_center_width 0.30->0.22"},
+    {"iter": 4, "iou": 0.9794, "dice": 0.9896, "sse": 1607.0, "change_made": "shifted petal peak inward via lens_peak_frac=0.45 (asymmetric inner/outer semi-lengths) to match measured peak ~0.82um; trimmed outer-flank red + inner-shoulder blue"},
+    {"iter": 5, "iou": 0.9817, "dice": 0.9907, "sse": 1415.0, "change_made": "final width trim lens_width 0.92->0.90; balanced precision 0.989 / recall 0.992. Also set write_gds(with_metadata=False) so the device cell is top-level (measurement-layer gotcha: kfactory $$$CONTEXT_INFO$$$ nesting made _layer_area read 0)."}
+  ],
+  "knob_verification": {
+    "param": "arm_length_h", "width_um": 0.236, "delta_response_um": 1.0,
+    "delta_length_ok": true, "area_growth_um2": 0.236, "expected_area_growth_um2": 0.236,
+    "area_ok": true, "passes": true
+  },
+  "primitives_audit": "gf.components.taper (allowed primitive), gf.Path + extrude (through-guides), @gf.cell assembly with add_ref. No gf.components device stencils, no raw polygons.",
+  "final": {"iou": 0.9817, "dice": 0.9907, "iterations": 5,
+    "tunables": ["wg_width", "lens_len", "lens_width", "lens_center_width", "lens_peak_frac", "arm_length_h", "arm_length_v", "n_seg"]}
+}

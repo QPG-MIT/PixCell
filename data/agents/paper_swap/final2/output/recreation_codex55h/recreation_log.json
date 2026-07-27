@@ -1,0 +1,44 @@
+{
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_identification": "The black material is a compact slab/MMI-style fanout or star-coupler primitive: one broad rectangular multimode body, four single-mode access guides entering from the top through linear adiabatic tapers, and one lower centered access guide through a reverse taper.",
+    "operation": "The large slab supports multimode propagation and interference/mixing. The four upper ports sample or inject the multimode field at set lateral positions, while the centered lower port couples through a wider taper into the slab. The image defines geometry only; no external paper or neighboring experiment outputs were used.",
+    "function_defining_knobs": [
+      "body_length_um: lateral multimode/slab extent and port spacing envelope",
+      "body_width_um: vertical multimode interaction length",
+      "top_port_pitch_um/top_port_offsets_um: relative phase/sample positions of the four upper ports",
+      "top_taper_length_um: adiabatic transition length into the slab",
+      "guide_width_um: single-mode access guide width",
+      "top_taper_wide_um and bottom_taper_wide_um: aperture widths at the slab interfaces",
+      "bottom_taper_length_um: lower access transition length, exposed as delta_length for evaluator knob-response verification"
+    ],
+    "primitive_plan": "Assemble layer-(1,0) rectangles for the slab and straight access sections, and gf.components.taper references for the top and bottom linear tapers. No raw polygons or higher-level device stencils are used."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9757549549158744,
+      "dice": 0.9877287185722088,
+      "sse": 35770.0,
+      "change_made": "Initial primitives-only reconstruction from calibrated raster measurements. The diff review showed mostly blue edge underfill from antialiasing/edge softness and negligible red false-positive area, so this iteration met the stop criterion and was kept as best."
+    }
+  ],
+  "final": {
+    "best_iter": 1,
+    "gds": "device.gds",
+    "metrics": "metrics_final.json",
+    "knob_response": "knob_response.json",
+    "verify_knob_response": {
+      "param": "delta_length",
+      "width_um": 1.16,
+      "delta_response_um": 5.0,
+      "area_growth_um2": 5.799999999999969,
+      "expected_area_growth_um2": 5.8,
+      "passes": true
+    }
+  }
+}

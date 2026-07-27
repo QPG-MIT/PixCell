@@ -1,0 +1,85 @@
+{
+  "device_dir": "experiments/paper_swap/final8",
+  "footprint_um": [120.0, 4.0],
+  "calibration": {
+    "note": "image bbox x:319-4464 (W=4145 px), y:0-3584 (H=3584 px) maps to footprint 120 x 4 um. scale_x~34.54 px/um, scale_y~896 px/um => y-axis is ~26x compressed relative to x. compare_absolute renders GDS left-aligned in x, centered in y, with these INDEPENDENT scales, so the recreation must match the image PROPORTIONS in [0..120]x[0..4] um, not real-space aspect."
+  },
+  "topology_reasoning": {
+    "what_is_it": "A symmetric multi-rail (supermode) coupler / waveguide-array coupler. Reading the transverse cross-section (a vertical cut at mid-length, image x=2400) top->bottom there are, symmetric about the mid-line y=2.0um: [array A: 5 thin waveguides] | [slab/rail B: one wide guide] | [array C: 5 thin waveguides, centered] | [slab/rail D] | [array E: 5 thin waveguides]. So 3 identical 5-wire arrays separated by 2 wide rails.",
+    "how_it_works": "The CENTER array C (5 wires) runs straight the full 120um (verified present from image x=319 to x=4460). The two OUTER bundles (rail B + array A above; rail D + array E below) run straight and parallel to C over a central coupling region, then at BOTH ends adiabatically bend AWAY (S-bend) toward the top/bottom chip edge and exit off-frame. Light launched in an outer bundle couples into the central array over the parallel-run (transfer/coupling) length; the flared ends are the access routing. It is mirror-symmetric top<->bottom about y=2.0um.",
+    "measured_features_um": {
+      "symmetry_center_y": 2.0,
+      "wire_width": 0.068,
+      "wire_pitch": 0.10,
+      "wires_per_array": 5,
+      "array_A_center": 1.0,
+      "array_C_center": 2.0,
+      "array_E_center": 3.0,
+      "slab_B_center": 1.5,
+      "slab_D_center": 2.5,
+      "slab_width": 0.468,
+      "uniform_gap": 0.031,
+      "center_array_length": 120.0,
+      "outer_bundle_straight_run_um": "~99 (image x 680..4040 => GDS x 10.5..109.5)",
+      "flare_length_each_end_um": "~6-8 (bundle bends to the y=0/y=4 edge and exits)"
+    },
+    "function_knobs": [
+      "wire_width (transverse guide width; sets coupling)",
+      "wire_pitch (array period; sets supermode splitting)",
+      "slab_width (rail width)",
+      "gap (edge-to-edge spacing between rails/arrays; the coupling gap)",
+      "coupling_length (straight parallel-run length = power-transfer length)",
+      "flare_length (adiabatic access-bend length)",
+      "delta_length (arm path-length imbalance between the two outer coupled bundles; 0 in the figure => balanced; this is the Phase-B FSR/phase knob)"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9004803942844006,
+      "dice": 0.9476345001953719,
+      "sse": 725959.0,
+      "change_made": "Initial parametric multi-rail coupler: 3 arrays of n_wires=5 thin guides (A@1.0, C@2.0 full-length, E@3.0) + 2 wide rails (B@1.5, D@2.5), wire_width=0.068, pitch=0.10, slab_width=0.468. Outer bundles run straight over coupling_length=99 then cosine-S-bend flares (flare_length=8.0, overshoot=0.45) to the top/bottom edge. Already exceeds 0.85 target."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8988780347843004,
+      "dice": 0.9467464664063133,
+      "sse": 742233.0,
+      "change_made": "Widened guides (wire_width 0.068->0.070, slab 0.468->0.470) and tightened flares (8.0/0.45 -> 7.4/0.40). Regressed vs iter1 -> discarded."
+    },
+    {
+      "iter": 3,
+      "iou": 0.8989415240598588,
+      "dice": 0.9467816809208098,
+      "sse": 736259.0,
+      "change_made": "Reverted guide widths to 0.068/0.468, kept flare 7.4/0.40 to isolate the flare tweak. Still below iter1 -> flare tweak also discarded."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9004803942844006,
+      "dice": 0.9476345001953719,
+      "sse": 725959.0,
+      "change_made": "Restored iter-1 best flare params (8.0/0.45). Also set write_gds(with_metadata=False): kfactory's $$$CONTEXT_INFO$$$ cell was referencing the device cell and demoting it below top-level, so the measurement contract (_layer_area, which skips $$$ cells) read 0 area. HONEST BEST kept."
+    }
+  ],
+  "final": {
+    "iou": 0.9004803942844006,
+    "dice": 0.9476345001953719,
+    "sse": 725959.0,
+    "gds": "device.gds",
+    "script": "device.py",
+    "tunables": ["footprint_length_um", "footprint_width_um", "n_wires", "wire_width", "wire_pitch", "slab_width", "gap", "array_offset", "slab_offset", "coupling_length", "flare_length", "flare_overshoot", "delta_length"],
+    "primitives_only": true,
+    "layer": [1, 0],
+    "knob_verification": {
+      "param": "delta_length",
+      "note": "delta_length = outer-arm path-length imbalance (the Phase-B FSR knob). width_um passed = 5*wire_width + slab_width = 0.808 (the outer bundle's transverse material width that extends per unit delta_length: array E's 5 wires + rail D).",
+      "delta_length_ok": true,
+      "area_ok": true,
+      "area_growth_um2": 4.04,
+      "expected_area_growth_um2": 4.04,
+      "passes": true
+    }
+  }
+}

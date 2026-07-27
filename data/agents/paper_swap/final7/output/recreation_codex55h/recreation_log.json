@@ -1,0 +1,93 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device": "Symmetric compact interferometric/coupled structure drawn as one material layer: an outer closed racetrack/oval guide surrounds two mirrored inner rails. The inner rails have widened slotted interaction blocks with two rectangular windows per rail and angled access tapers from the outer side regions.",
+    "how_it_works": "The outer loop and mirrored upper/lower rails define a compact two-arm path/coupler-like topology. Optical behavior is controlled by the guide width, the rail separation, the central slotted interaction length, the slot dimensions, the taper/access length, and any differential arm length. The baseline image is symmetric, so the differential length knob starts at zero.",
+    "function_defining_knobs": [
+      "guide_width_um",
+      "outer_loop_width_um",
+      "arm_y_um",
+      "transfer_length_um",
+      "slot_length_um",
+      "slot_height_um",
+      "slot_gap_um",
+      "access_x_um",
+      "delta_length"
+    ],
+    "primitive_plan": "Use gf.Path + extrude for the outer oval loop and access guides, rectangles for the widened slotted interaction bodies and rectangular windows, and boolean union/subtraction to create the final layer-(1,0) material. No raw polygons or device stencil components."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.5914481513952511,
+      "dice": 0.7432829663683582,
+      "sse": 302435.0,
+      "change_made": "Initial primitive model: constant-width gf.Path ellipse for outer loop, path access guides, rectangular slotted interaction bodies."
+    },
+    {
+      "iter": 2,
+      "iou": 0.6872477076145181,
+      "dice": 0.8146375953133399,
+      "sse": 216550.0,
+      "change_made": "Replaced constant-width ellipse with a rectangle-primitive superellipse annulus so outer and inner loop boundaries can be tuned independently."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7852948247352558,
+      "dice": 0.8797368522610358,
+      "sse": 146465.0,
+      "change_made": "Flattened the annulus exterior, enlarged the inner annulus cutout, and slightly enlarged the rectangular slots."
+    },
+    {
+      "iter": 4,
+      "iou": 0.8085238709440229,
+      "dice": 0.8941257386024828,
+      "sse": 124996.0,
+      "change_made": "Reduced the annulus side overshoot and raised the access guide entry points to restore the central gap."
+    },
+    {
+      "iter": 5,
+      "iou": 0.8025276337731168,
+      "dice": 0.8904469687305004,
+      "sse": 126235.0,
+      "change_made": "Lifted access guides further, shrank the annulus side profile, and enlarged the slots; this improved precision but lost too much connector recall."
+    },
+    {
+      "iter": 6,
+      "iou": 0.8054024196248517,
+      "dice": 0.892213736804682,
+      "sse": 126122.0,
+      "change_made": "Tried midpoint access-guide placement with restored annulus strength and enlarged windows; did not beat iteration 4."
+    }
+  ],
+  "best_iteration": 4,
+  "best_iou": 0.8085238709440229,
+  "final_outputs": {
+    "script": "device.py",
+    "gds": "recreation.gds",
+    "best_raster": "raster_iter4.png",
+    "best_diff": "diff_iter4.png",
+    "best_metrics": "metrics_iter4.json"
+  },
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.42,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 8.369144000000006,
+    "perturbed_area_um2": 10.06190650000001,
+    "area_growth_um2": 1.6927625000000042,
+    "expected_area_growth_um2": 2.1,
+    "area_ok": true,
+    "passes": true
+  }
+}

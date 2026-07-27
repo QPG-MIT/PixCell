@@ -1,0 +1,70 @@
+{
+  "topology_analysis": {
+    "device_type": "Multimode interference (MMI) coupler - 1x2 splitter configuration",
+    "function": "Split optical signal from one input waveguide into two output waveguides with equal power distribution",
+    "key_features": [
+      "Single input waveguide at bottom",
+      "Wide MMI region in center (multimode interference region)",
+      "Two output waveguides at top",
+      "Tapered transitions between waveguides and MMI region",
+      "Horizontal stripes visible in MMI region (likely interference pattern visualization or cladding layers)"
+    ],
+    "function_defining_parameters": {
+      "mmi_width": "Width of the central MMI region (critical for interference pattern)",
+      "mmi_length": "Length of MMI region (determines self-imaging length)",
+      "input_taper_length": "Length of taper from input waveguide to MMI",
+      "output_taper_length": "Length of taper from MMI to output waveguides",
+      "input_taper_width": "Width at MMI end of input taper",
+      "output_taper_width": "Width at MMI end of output tapers",
+      "waveguide_width": "Width of input/output waveguides",
+      "output_separation": "Vertical spacing between two output waveguides"
+    },
+    "construction_approach": "Use straights for waveguides, tapers for transitions, and a wide rectangle for the MMI region. The horizontal stripes appear to be interior features (possibly cladding) - will need to create multiple parallel rectangles with gaps to match this pattern."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.322,
+      "dice": 0.487,
+      "sse": 6947519,
+      "change_made": "Initial attempt - vertical MMI with solid blocks. WRONG: device is horizontal (120\u00d74 \u03bcm), stripes are gaps not material overlays"
+    },
+    {
+      "iter": 2,
+      "iou": 0.337,
+      "dice": 0.504,
+      "sse": 6185027,
+      "change_made": "Horizontal orientation but missing bundled regions. Need 3 vertically-stacked groups, each with: left bundle \u2192 fan \u2192 parallel wg \u2192 fan \u2192 right bundle. Total 120 \u03bcm wide."
+    },
+    {
+      "iter": 3,
+      "iou": 0.44,
+      "dice": 0.611,
+      "sse": 6887131,
+      "change_made": "Three-group structure with correct size (120\u00d74). Issues: bundle_width too large, fan transitions overlap, center waveguides misaligned. Need thinner bundles, better fan geometry."
+    },
+    {
+      "iter": 4,
+      "iou": 0.559,
+      "dice": 0.717,
+      "sse": 4467391,
+      "change_made": "Thinner bundles (0.65), no taper width change. Good middle group. Issues: too short (3.24 vs 4.0), missing bundle material on edges, excess in center. Need larger group_gap, wider bundles."
+    },
+    {
+      "iter": 5,
+      "iou": 0.442,
+      "dice": 0.613,
+      "sse": 6731543,
+      "change_made": "Increased bundle_width to 0.85, group_gap to 0.35. Good vertical size (3.94) but too much bundle material (red). Worse than iter 4. Try middle ground."
+    },
+    {
+      "iter": 6,
+      "iou": 0.432,
+      "dice": 0.603,
+      "sse": 6220065,
+      "change_made": "Middle ground: bundle_width=0.73, group_gap=0.28. Still worse than iter 4. BEST: iter 4 with IoU=0.559."
+    }
+  ],
+  "best_iteration": 4,
+  "final_iou": 0.559
+}

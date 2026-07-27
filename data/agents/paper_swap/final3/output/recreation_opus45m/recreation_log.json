@@ -1,0 +1,28 @@
+{
+  "device_type": "directional_coupler_2x2",
+  "topology_reasoning": "Two parallel waveguides with S-bend transitions. Each waveguide: input straight -> S-bend down/up to coupling region -> straight coupling section -> S-bend up/down to output -> output straight. The S-bends bring the waveguides close together in the center for evanescent coupling. Total footprint 120µm x 4µm.",
+  "function_defining_knobs": [
+    "coupling_length - length of straight section where guides are close (controls power transfer)",
+    "coupling_gap - edge-to-edge gap between guides in coupling region (controls coupling strength)",
+    "sbend_length - horizontal extent of each S-bend (controls adiabaticity)",
+    "port_separation - vertical separation at input/output ports",
+    "waveguide_width - width of waveguides"
+  ],
+  "iterations": [
+    {"iter": 1, "iou": 0.035, "dice": 0.068, "sse": 567052, "change_made": "Initial attempt with port_separation=1.75, wrong height"},
+    {"iter": 2, "iou": 0.414, "dice": 0.585, "sse": 251871, "change_made": "Fixed port_separation=3.5, coupling_length=45, coupling_gap=0.2"},
+    {"iter": 3, "iou": 0.412, "dice": 0.583, "sse": 252957, "change_made": "Adjusted coupling_length=55, coupling_gap=0.15, sbend_length=25"},
+    {"iter": 4, "iou": 0.456, "dice": 0.627, "sse": 227077, "change_made": "coupling_length=35, coupling_gap=0.1, sbend_length=35"},
+    {"iter": 5, "iou": 0.389, "dice": 0.561, "sse": 266787, "change_made": "Longer sbend_length=42, worse - curves too gradual"},
+    {"iter": 6, "iou": 0.464, "dice": 0.634, "sse": 222491, "change_made": "coupling_length=38, coupling_gap=0.12, sbend_length=33 - best result"}
+  ],
+  "best_iteration": 6,
+  "best_iou": 0.464,
+  "limitation_note": "GDSFactory bend_s curve shape (Euler/Bezier) does not match target S-curve profile well. The target curves bulge less than bend_s generates.",
+  "knob_verification": {
+    "knob": "coupling_length",
+    "tested_values": [30.0, 38.0, 50.0],
+    "iou_results": [0.4356, 0.4638, 0.3822],
+    "responsive": true
+  }
+}

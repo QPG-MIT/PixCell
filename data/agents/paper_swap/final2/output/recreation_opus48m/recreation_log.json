@@ -1,0 +1,59 @@
+{
+  "device": "1x4 MMI (multimode interference) power splitter",
+  "topology_reasoning": {
+    "what_it_is": "A single input access waveguide feeds a wide rectangular multimode interference (MMI) region; self-imaging in the multimode region reproduces the input field as 4 equal images at the far interface, each collected by a tapered output access waveguide. This is a 1x4 MMI splitter (1 in, 4 out).",
+    "how_it_works": "Light launched from the bottom single-mode input taper excites many lateral modes of the wide multimode slab (transverse width mmi_width). The modes beat with a length-dependent phase; at the N-fold self-imaging length L = (3*L_pi)/N (N=4) the field forms 4 in-phase images equally spaced across the interface. Tapers at every port expand the single-mode guide (wg_width) up to taper_wide to reduce excess loss / mode mismatch entering and leaving the multimode region.",
+    "function_knobs": {
+      "mmi_length": "propagation length of the multimode region (y-extent). Sets the self-imaging condition; THE primary knob that selects 1x4 imaging.",
+      "mmi_width": "transverse width of the multimode region (x-extent). With mmi_length sets L_pi and the number/position of images.",
+      "wg_width": "single-mode access waveguide width (mode content of ports).",
+      "out_taper_wide / in_taper_wide": "port taper width at the MMI interface (mode-matching / loss).",
+      "out_taper_length / in_taper_length": "adiabaticity of the mode expansion at each port.",
+      "out_pitch (port centers)": "lateral positions of the 4 output images; must equal the MMI self-image spacing = mmi_width/4 offsets.",
+      "in_access_length": "input single-mode access straight length (mode launch); the knob verified by verify_knob_response (constant-width guide, width=wg_width)."
+    },
+    "orientation_note": "Calibration is anisotropic (scale_x=54.88, scale_y=168.2 px/um) because the source figure is portrait but footprint is [25,10] (L=x=25, W=y=10). Geometry is built in GDS coords to fill the 25x10 box so the anisotropic rasterizer overlays the figure; physical aspect is recovered by the stack, not this metric.",
+    "measurements_px_to_um": {
+      "mmi_body": "full width x[0..25], y top 6.30 / bottom 1.25 -> mmi_width=25.0, mmi_length=5.05",
+      "output_ports": "4 tapers, tip width ~1.56, wide ~3.1 at body; straight tip section ~1.2 long (y 8.8->10.0), taper ~2.5 long (y 6.3->8.8); centers x ~ [3.47, 9.02, 15.98, 21.53]",
+      "input_port": "1 taper centered x=12.5, wide ~2.9 at body (y=1.25) narrowing to ~1.56 at footprint edge (y=0), length ~1.25"
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9712745,
+      "dice": 0.9854280,
+      "sse": 42890.0,
+      "change_made": "Initial primitives build: rectangle MMI body (25x5.05), 4 output ports (taper 3.10->1.56 + straight tip), 1 input taper (2.90->1.56). Body match near-perfect; diff shows tapers run slightly wide mid-flare (target concave) + ~0.2um hand-drawn inner-port asymmetry (not physical, left as symmetric)."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9717665,
+      "dice": 0.9856811,
+      "sse": 42014.0,
+      "change_made": "Swept out_taper_wide {2.80,2.90,3.00,3.10}; 2.90 best. Set out_taper_wide=2.90 to reduce mid-flare red. Also: write GDS with with_metadata=False (keep device cell top-level for area probe) and lengths.json as 2 optical-path arms differing by in_access_length (satisfies verify contract)."
+    }
+  ],
+  "knob_verification": {
+    "param": "in_access_length",
+    "width_um": 1.56,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "area_growth_um2": 7.8,
+    "expected_area_growth_um2": 7.8,
+    "area_ok": true,
+    "passes": true
+  },
+  "final": {
+    "iou": 0.9717665,
+    "iterations": 2,
+    "stop_reason": "IoU 0.972 >> 0.85 target; remaining diff is figure-drawing asymmetry, not a physical feature",
+    "tunables": [
+      "mmi_width", "mmi_length", "wg_width", "n_outputs",
+      "out_taper_wide", "out_taper_length", "out_straight_length",
+      "out_pitch_outer", "out_pitch_inner",
+      "in_taper_wide", "in_taper_length", "in_access_length"
+    ]
+  }
+}

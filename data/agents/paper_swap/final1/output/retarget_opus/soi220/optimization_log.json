@@ -1,0 +1,112 @@
+{
+  "stack": "soi220",
+  "derivation": {
+    "device": "adiabatic 1x2 mode-evolution power splitter (from Phase-A classification)",
+    "spec": "transmission_total >= 0.95 (adiabatic/low-loss) AND split_balance = 0.5 +/- 0.02",
+    "how_the_FoM_is_governed": {
+      "split_balance": "Structural: the geometry is mirror-symmetric about the axis, so the input fundamental excites only the SYMMETRIC supermode, which by symmetry deposits equal power in the two outer guides. 50/50 is guaranteed by construction, independent of platform. Predict 0.500.",
+      "transmission_total": "Adiabaticity + bend loss. Power stays in the fundamental supermode iff the taper evolves slowly vs the local supermode beat length L_beat = lambda/(2*dn); the bottleneck is the phase-match point (minimum dn). Radiation at the fan-out adds loss unless the S-bend radius >= min_bend_radius."
+    },
+    "what_must_change_with_platform_and_why": [
+      "1) Guide widths -> single_mode_width_um (rule-based): center_input = arm_width = wg; all tips = min_feature. Wider, less-confined platforms need wider single-mode guides.",
+      "2) Coupling gap -> min_feature (strongest fab-allowed coupling => shortest adiabatic length). arm_offset = wg/2 + coupling_gap. With COMPLEMENTARY linear tapers (center wg->tip, outer tip->wg) the two widths sum to ~const, so center-outer edge gap stays ~= coupling_gap through the whole transfer and phase-match sits at w = wg/2.",
+      "3) Transfer (taper) length -> set from the LOCAL supermode coupling length at phase-match L_c = lambda/(2*dn) at (w=wg/2, gap=min_feature). Adiabaticity needs L_taper >~ a few x L_c. This is the platform-dependent scaling and is COMPUTED from mode solves, not guessed.",
+      "4) Fan-out S-bend -> sized so effective radius R_eff = 2*L^2/(pi^2*dy) >= min_bend_radius (bend radiation also cuts T).",
+      "5) Footprint kept within the per-stack budget (which scales with confinement)."
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "params": {
+        "wg": 0.5,
+        "min_feature": 0.18,
+        "arm_offset": 0.43,
+        "taper_length": 38.0,
+        "sbend_length": 12.0,
+        "output_offset": 3.0,
+        "device_bbox_um": [
+          57.0,
+          6.5
+        ],
+        "budget_um": [
+          60,
+          8
+        ]
+      },
+      "tier0_numbers": {
+        "n_eff_wg(w=0.5)": 2.4497,
+        "n_g": 4.0574,
+        "phase_match_Lc(w=0.25,gap=0.18)_um": 7.96,
+        "full_width_Lc(w=0.5,gap=0.18)_um": 20.31,
+        "source": "python -m homi.spec_optimization solve/supermodes, cache-dir mode_cache"
+      },
+      "predicted_T": 0.98,
+      "predicted_balance": 0.5,
+      "measured_T": null,
+      "measured_balance": null,
+      "reasoning": "Strong confinement: phase-match L_c=7.96um. taper=38um = 4.8x L_c => deeply adiabatic. Fan-out R_eff=2*12^2/(pi^2*2.57)=11.4um >= min_bend_radius 5um. Balance structural. Predict T~0.98."
+    },
+    {
+      "iter": 2,
+      "params": {
+        "arm_offset": 0.52,
+        "gap_um": 0.18,
+        "taper": 40.0,
+        "sbend": 14.0,
+        "fanout": "sine C1",
+        "bbox": [
+          59.0,
+          6.5
+        ]
+      },
+      "tier0_numbers": {
+        "phase_match_Lc(w0.34,gap0.18)_um": 4.97,
+        "taper_over_Lc": 8.0
+      },
+      "predicted_T": 0.97,
+      "predicted_balance": 0.5,
+      "measured_T": "INVALID (fixture conservation violation T~1.19)",
+      "measured_balance": null,
+      "reasoning": "Round-1 diagnosis: my complementary tapers with both tips=mf make widths sum to (wg+mf), so the TRUE phase-match gap was mf/2 (0.09um) -> MERGED Y-junction regime; transfer was already 13x adiabatic, so the 7% loss was the center pinch-off tip radiating, not transfer. Fix: arm_offset=wg/2+1.5mf makes the gap a constant mf=0.18um (unmerged evanescent coupler), still 8x adiabatic (Lc=4.97um). Sine (C1-continuous) fan-out removes the raised-cosine curvature jump. Predict T~0.97.",
+      "fixture_issue": "Round-2 shortened input_straight 2->1um; the FDTD source at x=0.5um sat ~0.5um from both the left PML and the taper start (x=1) -> corrupt input normalization (T>1). Device geometry is valid; fixture needs a clean input-access stub."
+    },
+    {
+      "iter": 3,
+      "params": {
+        "arm_offset": 0.52,
+        "gap_um": 0.18,
+        "taper": 40.0,
+        "sbend": 14.0,
+        "fanout": "sine C1",
+        "bbox": [
+          59.0,
+          6.5
+        ]
+      },
+      "change": "DEVICE unchanged from round 2 (its geometry is valid). FIXTURE fixed: 8um input-access straight so the source sits 5um from the taper and 4um from the PML; input port [-4,0]; output ports [64,+/-3.0] on 8um isolated stubs, 9um past the S-bend end (x=56).",
+      "tier0_numbers": {
+        "phase_match_Lc(w0.34,gap0.18)_um": 4.97,
+        "taper_over_Lc": 8.0
+      },
+      "predicted_T": 0.97,
+      "predicted_balance": 0.5,
+      "measured_T": 0.88,
+      "measured_balance": 0.4638,
+      "reasoning": "Round-2 device is an 8x-adiabatic unmerged (gap=mf) evanescent coupler with a C1 fan-out; the invalid reading was purely the fixture source placement. With a clean input access, predict T~0.97.",
+      "result": "REGRESSION vs round-1 on BOTH axes (T 0.928->0.880, balance 0.500->0.4638)."
+    }
+  ],
+  "final": {
+    "status": "BEST-EFFORT MISS (cap reached)",
+    "best_iter": 1,
+    "best_device": "round-1 geometry (restored as the committed device_soi220.py/gds)",
+    "measured_T": 0.928,
+    "measured_balance": 0.5,
+    "balance_pass": true,
+    "T_pass": false,
+    "T_miss": 0.022,
+    "fits_budget": true,
+    "note": "soi220's honest best is round 1: T=0.928 (miss by 0.022), balance 0.500 exact PASS. Physics lesson: the unmerge fix (gap mf/2 -> mf) that CLOSED sin400 REGRESSED soi220 (round-3 T=0.880, balance 0.4638). On strong-confinement SOI the tighter merged-regime coupling is cleaner; opening the gap both lowered T and (via the wider, sine-fanned outputs) broke the exact 50/50 balance. Retargeting is not one-size-fits-all across confinement regimes. Committed device = round-1 best."
+  }
+}

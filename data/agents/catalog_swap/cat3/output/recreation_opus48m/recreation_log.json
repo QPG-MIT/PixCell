@@ -1,0 +1,61 @@
+{
+  "topology_reasoning": {
+    "device_class": "1x2 MMI (multimode interference) power splitter with tapered access waveguides",
+    "how_it_works": "A single-mode input waveguide is adiabatically tapered up in width and butt-coupled to a wide multimode region. In the multimode section the input field excites several lateral modes whose beating (self-imaging) reproduces N copies of the input at a characteristic length. Terminating the multimode region at the length that forms two images and placing two tapered output waveguides at those image positions splits the input power 50/50 into the two outputs. Tapers on the access waveguides reduce the abrupt-junction insertion loss and mode mismatch at the wide/narrow interface.",
+    "evidence_from_image": {
+      "footprint_um": [25.5, 2.5],
+      "px_per_um": [62.82, 63.6],
+      "input_region_x_um": [0.0, 10.0],
+      "input_taper_widths_um": {"port": 0.52, "at_mmi": 0.98},
+      "input_centered": true,
+      "mmi_body_x_um": [10.0, 15.49],
+      "mmi_width_um": 2.5,
+      "mmi_length_um": 5.49,
+      "output_region_x_um": [15.5, 25.5],
+      "output_taper_widths_um": {"at_mmi": 0.98, "port": 0.5},
+      "output_arm_centers_um_from_axis": [0.62, -0.62],
+      "output_arm_centers_fixed": "arm centers do not move along x; the inter-arm gap grows only because both arms taper narrower (0.98->0.5um) while their centers stay at +/-0.62um",
+      "symmetry": "geometrically symmetric splitter (two identical output arms), so nominal delta_length between arms = 0"
+    },
+    "function_knobs": {
+      "mmi_width": "sets the lateral mode spectrum of the multimode region -> self-imaging length and split ratio",
+      "mmi_length": "must equal the two-image self-imaging length for a clean 50/50 split; primary tuning knob for split ratio/phase",
+      "out_offset": "output arm position; must sit on the self-image spots (half the arm separation)",
+      "in_taper_len / out_taper_len": "adiabaticity of the access tapers -> insertion loss",
+      "port_width": "single-mode access waveguide width set by the layer stack",
+      "in_taper_wide / out_taper_wide": "width presented to the multimode region at the junctions",
+      "delta_length": "asymmetric extension of the top output arm (um); 0 recreates the symmetric splitter in the image. Exposed as the parametric spec knob so this splitter can be retargeted into an unbalanced two-arm interferometer downstream (writes lengths.json for delta_length measurement)."
+    },
+    "why_primitives": "buildable entirely from taper + rectangle + straight primitives assembled in a @gf.cell; no gf.components MMI/coupler stencil used."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9841700432662592,
+      "dice": 0.9920218749459183,
+      "sse": 2305.0,
+      "change_made": "Initial 1x2 MMI splitter from image measurement: input taper 0.5->1.0um over 10um centered; 2.5x5.5um multimode rectangle; two output tapers 1.0->0.5um over 10um with centers fixed at +/-0.62um. delta_length=0 (symmetric).",
+      "diff_note": "Residual is only sub-pixel edge offset along the taper boundaries (Precision 0.985, Recall 0.999). Stopping: IoU 0.984 >> 0.85 target; further nudging would overfit anti-aliased edges."
+    }
+  ],
+  "final": {
+    "iou": 0.9841700432662592,
+    "dice": 0.9920218749459183,
+    "iterations": 1,
+    "tunables": [
+      "port_width", "in_taper_wide", "in_taper_len", "mmi_width", "mmi_length",
+      "out_taper_wide", "out_taper_len", "out_offset", "delta_length"
+    ],
+    "primitives_only": "taper + rectangle assembled in a plain gf.Component (no gf.components device stencil, no raw polygons)",
+    "build_note": "Dropped @gf.cell and flatten() the component before write_gds so the geometry lands in a top-level cell (kfactory otherwise wraps a @gf.cell in a $$$CONTEXT_INFO$$$ parent that layer-area/DRC tools skip). Geometry/IoU unchanged.",
+    "knob_verification": {
+      "param": "delta_length",
+      "width_um": 0.5,
+      "delta_length_ok": true,
+      "area_ok": true,
+      "area_growth_um2": 2.5,
+      "expected_area_growth_um2": 2.5,
+      "passes": true
+    }
+  }
+}

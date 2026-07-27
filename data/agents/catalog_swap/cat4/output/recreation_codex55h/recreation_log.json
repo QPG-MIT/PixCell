@@ -1,0 +1,81 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [
+      25.5,
+      2.5
+    ]
+  },
+  "topology_reasoning": {
+    "device_type": "compact 2x2 multimode-interference style coupler",
+    "evidence": "The binary silhouette has two separated access guides on both left and right, each guide widening linearly toward the center. From x about 10.0 um to 15.5 um the material spans the full 2.5 um footprint height, forming a short multimode body. The shape is mirror symmetric about both x and y axes.",
+    "operation": "Two input/output single-mode guides expand into the shared multimode slab where modal beating/coupling occurs, then taper back out to two separated output guides.",
+    "function_defining_knobs": [
+      "mmi_length",
+      "mmi_width",
+      "taper_length",
+      "access_width",
+      "access_pitch",
+      "inner_gap",
+      "body_split_width"
+    ],
+    "initial_geometry_um": {
+      "footprint_length": 25.5,
+      "footprint_width": 2.5,
+      "mmi_length": 5.5,
+      "taper_length": 10.0,
+      "access_width": 0.52,
+      "access_pitch": 1.25,
+      "mmi_width": 2.5
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8800540452679914,
+      "dice": 0.9362007943155107,
+      "sse": 23614.0,
+      "change_made": "Initial primitive MMI model: full-height rectangle body, four linear access tapers ending at 1.25 um. Diff/metrics showed all target material covered but excess material in access taper gaps."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9837642745727591,
+      "dice": 0.9918156982483528,
+      "sse": 2852.0,
+      "change_made": "Reduced taper terminal widths from 1.25 um to 0.98 um to match measured access taper width immediately before the abrupt full-height MMI body."
+    }
+  ],
+  "knob_verification": {
+    "param": "mmi_length",
+    "delta_um": 5.0,
+    "width_um": 2.5,
+    "base_value": 5.5,
+    "base_delta_length_um": 5.5,
+    "perturbed_delta_length_um": 10.5,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 43.75000000000001,
+    "perturbed_area_um2": 56.24999999999999,
+    "area_growth_um2": 12.499999999999986,
+    "expected_area_growth_um2": 12.5,
+    "area_ok": true,
+    "passes": true
+  },
+  "best_iteration": 2,
+  "best_metrics": {
+    "iou": 0.9837642745727591,
+    "dice": 0.9918156982483528,
+    "sse": 2852.0
+  },
+  "final": {
+    "iou": 0.9837642745727591,
+    "dice": 0.9918156982483528,
+    "sse": 2852.0,
+    "iterations": 2,
+    "gds": "device.gds",
+    "script": "device.py",
+    "notes": "with_metadata=False was used so spec_optimization layer-area checks see the actual top cell; this does not change geometry."
+  }
+}

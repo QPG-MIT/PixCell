@@ -1,0 +1,51 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_identification": "Symmetric two-waveguide directional coupler. The black material consists of two parallel input/output buses whose centerlines adiabatically move toward each other, run through a central close-gap interaction region, and separate again.",
+    "working_principle": "Optical power transfer is set by the supermode splitting of the two close waveguides and by the physical interaction length. The S-bend access sections set adiabatic approach/separation and port pitch while the central gap and coupling length define the transfer ratio.",
+    "image_measurements_um": {
+      "footprint_length": 18.0,
+      "footprint_width": 3.0,
+      "waveguide_width_median": 0.651,
+      "port_center_separation": 2.342,
+      "coupled_center_separation": 0.953,
+      "coupled_gap": 0.302
+    },
+    "function_defining_knobs": [
+      "wg_width_um",
+      "port_sep_um",
+      "coupling_gap_um",
+      "coupling_length_um",
+      "transition_length_um",
+      "lead_length_um"
+    ],
+    "implementation_plan": "Use gf.Path centerlines extruded on layer (1,0). The two guides are mirrored about the footprint midline; each centerline uses straight leads, smoothstep S-bend transitions, and a straight coupled section. No component stencils or raw polygons are used."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9773043947629388,
+      "dice": 0.9885219466981552,
+      "sse": 7232.0,
+      "change_made": "Initial fitted primitives-only directional coupler: two gf.Path centerlines extruded on layer (1,0), using calibrated median guide width, fitted port/coupled separations, smoothstep S-bend transitions, and central coupling length. Diff showed only thin edge residuals, so this was kept as best."
+    }
+  ],
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "delta_length_um",
+    "rationale": "One-guide interaction/phase-length trim compatible with the verifier's one-guide area-growth contract; image-defining coupler knobs remain top-level tunables.",
+    "delta_um": 5.0,
+    "width_um": 0.6544,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 3.2749999999999986,
+    "expected_area_growth_um2": 3.272,
+    "passes": true
+  }
+}

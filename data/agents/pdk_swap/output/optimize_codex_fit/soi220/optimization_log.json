@@ -1,0 +1,29 @@
+{
+  "stack": "soi220",
+  "constraint": {
+    "max_footprint_um": [
+      91.1,
+      50.75
+    ]
+  },
+  "strategy": "Refit the longer lower arm as a compact smooth serpentine built from gf.Path waypoints and extruded on layer (1,0); keep the Phase-3 physics delta and stack-specific single-mode width.",
+  "iterations": [
+    {
+      "iter": 1,
+      "delta_length_requested_um": 74.01522586537922,
+      "delta_length_measured_um": 74.00899999999999,
+      "n_eff": 2.449714183807373,
+      "n_g": 4.0574421882629395,
+      "fsr_nm": 8.000672984678,
+      "rel_error": 8.41230847499208e-05,
+      "bbox_um": [
+        91.1,
+        41.125
+      ],
+      "footprint_ok": true,
+      "passes": true,
+      "reasoning": "The Phase-3 SOI design needed delta_L about 74.015 um, but the straight downward stretch made the bbox too tall. Because the target length is moderate, I folded the lower arm into three smooth lanes below the splitter axis. The meander bottom is shallow (-15.5 um centerline), leaving footprint margin while preserving the longer lower-arm path. The pre-build path lengths predicted delta_L=74.009 um, so FSR should be 1.55^2*1000/(4.0574421882629395*74.009)=about 8.0007 nm.",
+      "predicted_fsr_nm_next": 8.000672984678
+    }
+  ]
+}

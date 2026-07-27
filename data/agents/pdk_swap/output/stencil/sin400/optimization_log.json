@@ -1,0 +1,27 @@
+[
+  {
+    "iter": 1,
+    "params_changed": {"delta_length": 148.574, "length_y": 2.0, "length_x": 0.1, "bend_radius": 10.0, "waveguide_width": 1.0, "splitter": "mmi1x2 width-matched to 1.0 um via cross_section"},
+    "delta_length_um": 148.574,
+    "fsr_nm": 8.0000,
+    "rel_error": 0.0,
+    "bbox_um": [91.1, 120.54],
+    "footprint_ok": false,
+    "reasoning": "n_g=2.0213 (local mode solve, 1.0 um SiN strip) is far below SOI, so the 8 nm FSR needs dL = 1.55^2/(n_g*8.0)*1000 = 148.574 um — twice the SOI imbalance. The 1.0 um guide also mismatches the stock mmi1x2 (default 0.5 um port): width-match the splitter with the same strip cross-section (a stock factory config; the mmi taper collapses to the guide width, which the factory warns about — an accepted stencil-interface artifact). Baseline at stock radius/length_y.",
+    "prediction": "FSR=8.00 nm exactly. delta term alone = (dL-10)*0.5 = 69.3 um, already larger than the entire 50.75 um Y budget; with the base, ysize ~= 120.5 um. Predict footprint EXCEEDS massively -> footprint_ok=false."
+  },
+  {
+    "iter": 2,
+    "params_changed": {"length_y": 0.0, "bend_radius": 5.0},
+    "delta_length_um": 148.574,
+    "fsr_nm": 8.0000,
+    "rel_error": 0.0,
+    "bbox_um": [71.1, 96.54],
+    "footprint_ok": false,
+    "reasoning": "Push to the compact stencil floor (radius=5 um, length_y=0) to prove the constraint is unreachable even at best effort, not just at defaults. FSR untouched (dL fixed).",
+    "prediction": "Y floor = base(r=5,ly=0)=~27.2 + delta term 69.3 = 96.5 um. Because the delta term (69.3 um) alone exceeds the whole 50.75 um Y budget, NO setting of radius/length_y/length_x can fit. Predict footprint_ok=false with a ~46 um overflow."
+  },
+  {
+    "verdict": "FSR-ok/footprint-EXCEEDS-96.5um (IMPOSSIBLE). FSR=8.00 nm is reachable; the footprint is not, and provably so: the required dL=148.6 um forces a delta term of 69.3 um of pure vertical extent, which alone exceeds the entire 50.75 um Y budget before any splitter or base is added. Missing geometric DOF is the same as soi220 — no exposed knob folds the delay into a horizontal serpentine — but here it is not merely tight, it is unconditional: the low SiN index (n_g=2.02) demands the largest imbalance of the three, so sin400 is the WORST case. Compact floor Y=96.5 um."
+  }
+]

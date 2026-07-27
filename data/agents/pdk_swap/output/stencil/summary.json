@@ -1,0 +1,41 @@
+{
+  "control": "LIBRARY STENCIL — gf.components.mzi (stock parametric MZI), single call, stock knobs only",
+  "spec": {"metric": "fsr_nm", "target": 8.0, "tolerance_rel": 0.02, "wavelength_um": 1.55, "max_footprint_um": [91.1, 50.75]},
+  "finding": "The footprint budget [91.1, 50.75] um IS the stock mzi at its dL=10 um default. Any delta_length large enough to hit the 8 nm FSR (74-149 um across stacks) is realized by the stencil ONLY as a vertical straight extension of the long arm (ysize grows ~0.5 um per um of dL; nbends does not fold it). The stencil exposes no parameter to route the delay as a horizontal serpentine/folded delay line, so the FSR is trivially reachable but the footprint constraint is UNREACHABLE on all three stacks. Best-effort compaction (bend radius at the fabricable floor of 5 um, length_y collapsed to 0) was applied and still exceeds. This is the honest limit of 'just use the PDK cell'.",
+  "missing_degree_of_freedom": "A folded/serpentine delay line in the long arm. gf.components.mzi lays the delta as pure vertical straight with no exposed fold, so delta_length trades directly into Y-extent and cannot be absorbed into the floorplan.",
+  "stack": {
+    "soi220": {
+      "fsr_nm": 7.9998,
+      "rel_error": 0.00003,
+      "bbox_um": [71.1, 58.76],
+      "footprint_ok": false,
+      "passes": false,
+      "delta_length_um": 74.017,
+      "n_g": 4.0574,
+      "verdict": "FSR-ok/footprint-EXCEEDS-58.8um. Closest of the three (highest n_g -> smallest required dL=74 um). Even at the stencil floor Y=58.8 um overflows the 50.75 um budget by ~8 um; the 32 um delta term cannot be folded away."
+    },
+    "sin400": {
+      "fsr_nm": 8.0000,
+      "rel_error": 0.0,
+      "bbox_um": [71.1, 96.54],
+      "footprint_ok": false,
+      "passes": false,
+      "delta_length_um": 148.574,
+      "n_g": 2.0213,
+      "verdict": "FSR-ok/footprint-EXCEEDS-96.5um (IMPOSSIBLE). Worst case: lowest n_g -> largest dL=149 um. The delta term alone (69.3 um) exceeds the entire 50.75 um Y budget, so no radius/length setting can fit."
+    },
+    "tfln400": {
+      "fsr_nm": 7.9999,
+      "rel_error": 0.00001,
+      "bbox_um": [71.1, 89.85],
+      "footprint_ok": false,
+      "passes": false,
+      "delta_length_um": 134.807,
+      "n_g": 2.2277,
+      "verdict": "FSR-ok/footprint-EXCEEDS-89.9um (IMPOSSIBLE). Intermediate n_g -> dL=135 um. Delta term alone (62.4 um) exceeds the 50.75 um Y budget."
+    }
+  },
+  "eval_calls_used": {"soi220": 2, "sin400": 2, "tfln400": 2},
+  "representation_rule_respected": true,
+  "notes": "All geometry from a single gf.components.mzi(...) call per stack. Width adapted to each platform via the stock strip cross-section (standard PDK practice); for SiN/TFLN the stock mmi1x2 splitter was width-matched through the same cross-section (a stock-factory config, not a new cell). GDS written with with_metadata=False so the mzi cell is top-level for the evaluator. Knob response verified (delta 1:1, area growth = width*delta) on every stack before optimizing. No stack passes both conditions inside the stencil interface."
+}

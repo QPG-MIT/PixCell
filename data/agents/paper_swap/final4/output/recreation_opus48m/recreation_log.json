@@ -1,0 +1,45 @@
+{
+  "device": "symmetric 2x2 directional coupler (evanescent coupler)",
+  "how_it_works": "Two single-mode waveguides run apart at the four ports, are brought together by S-bend access sections to a small edge-to-edge gap, run near-parallel over a short coupling region where their evanescent fields overlap, then S-bend back apart. Power transfers between the two guides at a rate set by the supermode beat length; the fraction transferred is governed by the gap (sets coupling strength kappa) and the coupling length (sets accumulated phase kappa*L).",
+  "measurements_from_image_um": {
+    "total_length": 18.0,
+    "total_height": 3.0,
+    "waveguide_width": 0.65,
+    "center_separation_at_ports": 2.35,
+    "min_edge_gap_at_center": 0.30,
+    "center_separation_at_coupling": 0.95,
+    "straight_lead_length": 1.5,
+    "sbend_transition_length": 6.5,
+    "coupling_region_length": 2.0
+  },
+  "topology_reasoning": "From dense pixel profiling: waveguide thickness ~0.65um constant along both arms. Top-arm centerline offset from device center is flat at 1.175um for x in [0,1.5] (straight lead), sweeps monotonically to 0.475um by x~8 (raised-cosine S-bend), stays flat at ~0.475um over x in [8,10] (coupling region, sep 0.95um => gap 0.30um), sweeps back to 1.175um, then flat lead again. Bottom arm is the mirror image. Symmetric about x=9 and about the horizontal midline => a balanced directional coupler, not an MZI (no arm-length imbalance, no ring).",
+  "function_knobs": [
+    "wg_width  - single-mode guide width (kappa, phase velocity)",
+    "coupling_gap - edge-to-edge gap in the coupling region (sets kappa; the dominant coupler knob)",
+    "coupling_length - straight parallel length over which power transfers (sets total kappa*L / split ratio)",
+    "bend_length - S-bend access length (adiabaticity / parasitic coupling in the bends)",
+    "port_separation - center-to-center guide separation at the ports"
+  ],
+  "iterations": [
+    {"iter": 1, "iou": 0.8964, "dice": 0.9454, "sse": 34294.0, "change_made": "initial build: port_sep=2.35, gap=0.30, coupling_length=2.0, bend=6.5, straight=1.5; raised-cosine S-bends + straight coupling flat"},
+    {"iter": 2, "iou": 0.8999, "dice": 0.9473, "sse": null, "change_made": "port_sep 2.35->2.18, gap 0.30->0.26 (arms in) -- overshot: ports+coupling now too far inward"},
+    {"iter": 3, "iou": 0.9108, "dice": null, "sse": null, "change_made": "port_sep 2.18->2.30, gap 0.26->0.32 (split the difference); remaining error = S-bend descends too slowly (red-outer/blue-inner through bends)"},
+    {"iter": 4, "iou": 0.9448, "dice": null, "sse": null, "change_made": "steeper bend: bend_length 6.5->5.5, coupling_length 2.0->4.0 -- matched measured descent; but coupling flat now too long"},
+    {"iter": 5, "iou": 0.9537, "dice": null, "sse": null, "change_made": "start bend earlier + shorten flat: straight 1.5->1.0, bend 5.5->6.5, coupling 4.0->3.0 -- bend curvature + flat length both fit"},
+    {"iter": 6, "iou": 0.9651, "dice": 0.9822, "sse": 11142.0, "change_made": "final: port_sep 2.30->2.34, gap 0.32->0.37 -- lift ports and coupling flat to target separations; precision 0.991, recall 0.974"}
+  ],
+  "final": {
+    "iou": 0.9651,
+    "dice": 0.9822,
+    "sse": 11142.0,
+    "iterations_used": 6,
+    "tunables": ["total_length", "wg_width", "port_separation", "coupling_gap", "coupling_length", "bend_length", "straight_length"],
+    "final_values": {"total_length": 18.0, "wg_width": 0.65, "port_separation": 2.34, "coupling_gap": 0.37, "coupling_length": 3.0, "bend_length": 6.5, "straight_length": 1.0},
+    "knob_response": {
+      "param": "coupling_length",
+      "area_growth_um2": 2.6,
+      "expected_area_growth_um2": 2.6,
+      "note": "coupling_length lengthens BOTH coupled arms, so layer-(1,0) area grows by 2*wg_width*delta = 2*0.65*2.0 = 2.6 um^2 (checked with width_um=2*wg_width=1.30). area_ok=True proves the knob moves real geometry. delta_length_ok=False is EXPECTED: this is a balanced coupler (two equal arms, delta_length identically 0 by symmetry); the delta_length sub-check is the MZI-imbalance contract and does not apply to a symmetric directional coupler."
+    }
+  }
+}

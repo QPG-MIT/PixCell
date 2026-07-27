@@ -1,0 +1,39 @@
+{
+  "stack": "tfln400",
+  "width_rule": "wg_width set to single_mode_width_um=1.2 and io_width raised to 0.5 so all feature widths respect min_feature_um=0.5.",
+  "physics_rule": "FSR_nm = wavelength_um^2 * 1000 / (n_g * delta_length_um); at 1.55 um and 8.0 nm target, delta_length_target_um = 300.3125 / n_g.",
+  "iterations": [
+    {
+      "iter": 1,
+      "delta_length_requested_um": 10.5,
+      "delta_length_measured_um": 10.5,
+      "n_eff": 1.8065834045410156,
+      "n_g": 2.2277374267578125,
+      "fsr_nm": 102.70937726378592,
+      "rel_error": 11.83867215797324,
+      "reasoning": "Initial TFLN evaluation with wg_width=1.2 and min-feature-safe io_width=0.5 shows the recreated 10.5 um imbalance is too short. From FSR=lambda^2/(n_g*delta_L), the target imbalance is delta_L=300.3125/2.2277374267578125=134.80605765871903 um. I will set the top-level delta_length to that value so the longer lower gf.Path arm physically realizes the needed optical-path imbalance.",
+      "predicted_fsr_nm_next": 8.0
+    },
+    {
+      "iter": 2,
+      "delta_length_requested_um": 134.80605765871903,
+      "delta_length_measured_um": 134.806,
+      "n_eff": 1.8065590858459473,
+      "n_g": 2.2277374267578125,
+      "fsr_nm": 8.000003421730131,
+      "rel_error": 0.0000004277162664045875,
+      "reasoning": "The TFLN imbalance converged. The measured lower-arm excess is 134.806 um, and the FSR predicted by 1.55^2*1000/(2.2277374267578125*134.806) is 8.000003421730131 nm, inside tolerance. No further geometry move is needed.",
+      "predicted_fsr_nm_next": 8.000003421730131
+    }
+  ],
+  "final_raster": {
+    "iou": 0.13494992092778071,
+    "dice": 0.23780771017185323,
+    "sse": 14769.0,
+    "gds_size_um": [
+      91.10000000000001,
+      112.893
+    ],
+    "note": "Rasterized optimized GDS against the original image calibration after spec convergence; IoU drop is expected because the lower arm was lengthened to meet FSR."
+  }
+}

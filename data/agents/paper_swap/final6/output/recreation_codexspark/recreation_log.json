@@ -1,0 +1,53 @@
+{
+  "topology_notes": [
+    "Device is a single connected symmetric cruciform with four outer endpoints and a central intersection: one endpoint near the top edge, one near the bottom edge, one near the left edge, and one near the right edge of a ~4.7×4.7 µm footprint.",
+    "Skeletonization of raster mask shows exactly 4 endpoints and a 1-pixel center junction cluster, indicating a plus/4-port style topology where two opposite arms taper and widen toward a central overlap region.",
+    "Width grows rapidly toward center: top row segments are ~0.22µm wide at endpoints and expand continuously toward mid-height, while rows near center reach near full-span occupancy.",
+    "Primary geometric knobs inferred for reconstruction: tip-to-shoulder taper geometry, multi-segment arm widths, taper transition lengths, and central-core/bridge thickness that controls full-width center region.",
+    "A separate arm-length knob will be included for spec-validation bookkeeping (length-delta proof) without altering baseline reconstruction (default zero)."
+  ],
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.24516642900271066,
+      "dice": 0.39378901212277534,
+      "sse": 235028.0,
+      "change_made": "Added strict clipping to footprint and reduced arm widths to narrower profile; center bars set to 0.6 in width/height."
+    },
+    {
+      "iter": 2,
+      "iou": 0.24516642900271066,
+      "dice": 0.39378901212277534,
+      "sse": 235028.0,
+      "change_made": "Tried narrower taper widths while keeping clipping path; no measurable metric change in this branch."
+    },
+    {
+      "iter": 3,
+      "iou": 0.24516642900271066,
+      "dice": 0.39378901212277534,
+      "sse": 235028.0,
+      "change_made": "Further reduced widths and kept same clip strategy; metrics remained unchanged due dominant overlay behavior."
+    },
+    {
+      "iter": 4,
+      "iou": 0.322789239062824,
+      "dice": 0.4880433398316957,
+      "sse": 52259.0,
+      "change_made": "Fixed clipping implementation to avoid clipping rectangle being part of source geometry; reduced widths plus 0.12 center bars, which raised IoU and stopped full-frame contamination."
+    },
+    {
+      "iter": 5,
+      "iou": 0.6689285348331493,
+      "dice": 0.8016263379426553,
+      "sse": 29079.0,
+      "change_made": "Expanded taper widths to 0.35/0.65/1.10/1.65, increased center bar widths to 0.35 and center pad to 0.15; best IoU prior to final pass."
+    },
+    {
+      "iter": 6,
+      "iou": 0.6407884005437245,
+      "dice": 0.7810737817641569,
+      "sse": 39639.0,
+      "change_made": "Further expanded widths and bars aggressively (0.60/1.10/1.90/2.70, bar 0.52); recall improved but precision dropped and IoU decreased."
+    }
+  ]
+}

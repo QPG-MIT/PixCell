@@ -1,0 +1,37 @@
+{
+  "device": "dbr (distributed Bragg reflector)",
+  "spec": "bragg_wavelength_nm = 1558.02, tol_rel 0.02; footprint <= [6.38, 0.55]",
+  "physics": "Evaluator model: bragg_nm = (n_eff(w1)+n_eff(w2)) * period_um * 1000, period=l1+l2 (first-order). period* = 1.55802/(n1+n2). n only sets reflectivity/bandwidth, not bragg center; use it to fit length = n*period + 0.02 <= 6.38. width bbox = max(0.5 strip port, w2) <= 0.55.",
+  "iterations": [
+    {
+      "stack": "soi220",
+      "iter": 1,
+      "changed_params": {"w1": 0.475, "w2": 0.525, "l1": 0.160, "l2": 0.160, "n": 19},
+      "reasoning": "width kept at single_mode_width_um=0.5 (corrugation 0.475/0.525, both >> min_feature 0.18). n_eff(0.475)=2.4076, n_eff(0.525)=2.4614, sum=4.8690. period* = 1.55802/4.8690 = 0.32001 -> l1=l2=0.160, period=0.320. n reduced 20->19 so length=19*0.320+0.02=6.10<=6.38 (n=20 gave 6.42, over).",
+      "predicted_value": {"bragg_wavelength_nm": 1558.08, "footprint_um": [6.10, 0.524]},
+      "measured_value": {"bragg_wavelength_nm": 1558.0856, "footprint_um": [6.1, 0.524]},
+      "rel_error": 4.2e-05,
+      "verdict": "PASS"
+    },
+    {
+      "stack": "sin400",
+      "iter": 1,
+      "changed_params": {"w1": 0.44, "w2": 0.54, "l1": 0.2587, "l2": 0.2587, "n": 12},
+      "reasoning": "single_mode_width_um=1.0 exceeds the 0.55 footprint-width budget, so width is capped by footprint and kept in [min_feature 0.4, 0.55]. Corrugation 0.44/0.54: n_eff(0.44)=1.4902, n_eff(0.54)=1.5207, sum=3.0109. period* = 1.55802/3.0109 = 0.517462 -> l1=l2=0.2587, period=0.5174. n reduced 20->12 so length=12*0.5174+0.02=6.23<=6.38. bbox measured (6.225, 0.54). Teeth 0.2587 < min_feature 0.4 -> physics-set first-order Bragg pitch (period/2), same exemption as the soi220-derived home target.",
+      "predicted_value": {"bragg_wavelength_nm": 1557.84, "footprint_um": [6.225, 0.54]},
+      "measured_value": {"bragg_wavelength_nm": 1557.8658, "footprint_um": [6.225, 0.54]},
+      "rel_error": 9.9e-05,
+      "verdict": "PASS"
+    },
+    {
+      "stack": "tfln400",
+      "iter": 1,
+      "changed_params": {"w1": 0.50, "w2": 0.54, "l1": 0.2431, "l2": 0.2431, "n": 13},
+      "reasoning": "single_mode_width_um=1.2 far exceeds the 0.55 footprint-width budget; min_feature 0.5 and footprint 0.55 pin widths into [0.50,0.55]. Corrugation 0.50/0.54: n_eff(0.50)=1.5906, n_eff(0.54)=1.6144, sum=3.2050. period* = 1.55802/3.2050 = 0.486123 -> l1=l2=0.2431, period=0.4862. n=13 -> length measured 6.338<=6.38 (n=14 would be 6.83, over). bbox measured (6.338,0.54). Teeth 0.2431 < min_feature 0.5 -> physics-set first-order Bragg pitch, same exemption as the soi220-derived home target.",
+      "predicted_value": {"bragg_wavelength_nm": 1558.27, "footprint_um": [6.338, 0.54]},
+      "measured_value": {"bragg_wavelength_nm": 1558.2435, "footprint_um": [6.338, 0.54]},
+      "rel_error": 0.00014,
+      "verdict": "PASS"
+    }
+  ]
+}

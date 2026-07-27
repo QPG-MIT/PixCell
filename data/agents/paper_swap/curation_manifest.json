@@ -1,0 +1,184 @@
+{
+  "note": "Sweep curation manifest \u2014 device -> paper -> home stack -> paper-derived Phase-B specs. Extracted 2026-07-03 by two independent agents (claude subagent PDF-read + codex pdfminer), cross-corroborated; page refs in papers_fom_codex.md and the subagent report. Provenance 'paper' throughout unless noted.",
+  "devices": {
+    "final1_trident_1x2": {
+      "fixture": "experiments/paper_swap/final1/ (exists; pilot complete)",
+      "paper": {
+        "pdf": "papers/1.pdf",
+        "serial": 1,
+        "doi": "10.3390/app10134507",
+        "title": "Low-Loss and Broadband Silicon Photonic 3-dB Power Splitter (shallow-etched rib)",
+        "attribution": "RESOLVED HIGH-CONFIDENCE: footprint [40,1.7] matches taper L=40um x (2*0.7+0.3)um exactly; paper 3 ruled out"
+      },
+      "home_stack": {
+        "platform": "SOI rib",
+        "si_thickness_nm": 220,
+        "etch_nm": 60,
+        "slab_nm": 160,
+        "box_um": 2,
+        "tip_nm": 200,
+        "width_nm": 700,
+        "gap_nm": 300,
+        "NOTE": "RIB \u2014 solve_waveguide currently strips-only; home-stack cells need partial-etch support"
+      },
+      "phase_b_spec_paper": {
+        "transmission_total": {
+          "min": 0.986,
+          "source": "0.06 dB excess loss @1550, measured, p4"
+        },
+        "split_balance": {
+          "value": 0.5,
+          "tolerance_abs": 0.02,
+          "source": "symmetric 3-dB; imbalance not separately reported \u2014 tolerance stays conductor-default"
+        },
+        "bandwidth_nm": {
+          "min": 100,
+          "range": [
+            1470,
+            1570
+          ],
+          "source": "measured, Fig 6b"
+        },
+        "max_footprint_um": [
+          40.0,
+          1.7
+        ],
+        "fab_robustness": {
+          "width_gap_tol_nm": 50,
+          "excess_loss_bound_db": 0.07,
+          "source": "Fig 7 p5"
+        }
+      },
+      "pilot_note": "pilot used conductor-default T>=0.95 \u2014 LOOSER than paper's 0.986; re-verdict optional"
+    },
+    "mmi_1x4_slot": {
+      "fixture": "ABSENT \u2014 extract figure from papers/2.pdf (legacy projects/1x4PowerSplitter existed in main checkout)",
+      "paper": {
+        "pdf": "papers/2.pdf",
+        "serial": 2,
+        "doi": "10.3390/ma9070516",
+        "title": "1x4 MMI Power Splitter in Si-GaN Slot Waveguides (Malka et al.)"
+      },
+      "home_stack": {
+        "platform": "Si-GaN horizontal slot",
+        "h_si_nm": 300,
+        "h_gan_nm": 100,
+        "width_nm": 400,
+        "n_si": 3.48,
+        "n_gan": 2.305,
+        "clad": "SiO2",
+        "NOTE": "slot cross-section \u2014 needs multi-layer core support in solver; simulation-only paper"
+      },
+      "phase_b_spec_paper": {
+        "transmission_total": {
+          "min": 0.984,
+          "source": "IL 0.07 dB all ports / 24.6% x4, p5 (SIMULATED)"
+        },
+        "split_balance": {
+          "value": "1xN uniform 0.25 x4",
+          "NOTE": "schema needs 1xN balance slot"
+        },
+        "bandwidth_nm": {
+          "min": 81,
+          "range": [
+            1510,
+            1591
+          ],
+          "criterion": "FWHM",
+          "source": "Fig 7 p6"
+        },
+        "max_footprint_um": [
+          19.3,
+          5.0
+        ]
+      }
+    },
+    "adiabatic_coupler_design_ratio": {
+      "fixture": "ABSENT \u2014 extract from papers/3.pdf",
+      "paper": {
+        "pdf": "papers/3.pdf",
+        "serial": 5,
+        "doi": "10.1109/JLT.2019.2946948",
+        "title": "Adiabatic Coupler With Design-Intended Splitting Ratio (Mao et al., JLT 2019)"
+      },
+      "home_stack": {
+        "platform": "SOI strip",
+        "si_thickness_nm": 220,
+        "width_nm": 350,
+        "band": "O-band 1260-1360",
+        "NOTE": "O-band! wavelength_um=1.31 not 1.55"
+      },
+      "phase_b_spec_paper": {
+        "split_balance": {
+          "value": "DESIGN-INTENDED (7/93 .. 50/50)",
+          "fit_deviation_pct": 6.5,
+          "NOTE": "the ratio IS the spec knob \u2014 richest retarget target of the set"
+        },
+        "transmission_total": {
+          "note": "~1 dB measured, grating-limited; per-region <0.1 dB design target"
+        },
+        "bandwidth_nm": {
+          "min": 100,
+          "range": [
+            1260,
+            1360
+          ]
+        },
+        "max_footprint_um": [
+          240.0,
+          null
+        ],
+        "thermal": {
+          "sr_variation_pct": 1.3,
+          "range_c": [
+            20,
+            50
+          ]
+        }
+      }
+    },
+    "tfln_directional_coupler": {
+      "fixture": "ABSENT \u2014 extract from papers/4.pdf",
+      "paper": {
+        "pdf": "papers/4.pdf",
+        "serial": 6,
+        "doi": "10.1364/OL.480131",
+        "title": "Fabrication-tolerant directional couplers on TFLN (Huang/Chen/Liu, Opt. Lett. 2023)"
+      },
+      "home_stack": {
+        "platform": "x-cut TFLN ridge",
+        "ln_thickness_nm": 250,
+        "etch_nm": 110,
+        "sidewall_deg": 60,
+        "clad": "SiO2 PECVD",
+        "NOTE": "ridge + 60-deg sidewalls + anisotropy \u2014 connects to the parked sidewall-angle work"
+      },
+      "phase_b_spec_paper": {
+        "split_balance": {
+          "value": 0.5,
+          "deviation_db": {
+            "sim": 0.18,
+            "measured": 0.5
+          },
+          "source": "3-dB variant p3"
+        },
+        "fab_robustness": {
+          "tolerance_nm": 100,
+          "criterion": "L_pi constant over +/-100nm width error",
+          "NOTE": "the paper's HEADLINE metric \u2014 first real target for the schema's fab_robustness slot"
+        },
+        "max_footprint_um": [
+          100.0,
+          null
+        ]
+      }
+    }
+  },
+  "schema_gaps_discovered": [
+    "1xN split_balance (paper 2 is a 4-way split)",
+    "rib / partial-etch cross-sections in solve_waveguide (papers 1, 4 home stacks)",
+    "slot / multi-layer cores (paper 2)",
+    "per-device wavelength_um (paper 3 is O-band)",
+    "fab_robustness evaluator (perturbed re-solves \u2014 schema slot exists, evaluator does not)"
+  ]
+}

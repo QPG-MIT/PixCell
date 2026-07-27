@@ -1,0 +1,79 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [
+      120,
+      4
+    ],
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device": "two-waveguide directional coupler",
+    "evidence": [
+      "The target contains two disconnected black components, each with one left port and one right port.",
+      "Both guides use S-bends to bring the cores into a long close, parallel central section, then fan back out to separated output ports.",
+      "There is no closed interferometer loop, splitter tree, grating, or resonator; the function is set by evanescent coupling in the long central overlap."
+    ],
+    "working_principle": "Power transfer is governed primarily by the even/odd supermode phase accumulated over the close parallel section. The S-bends provide adiabatic access from widely separated ports into the small coupling gap.",
+    "function_defining_knobs": [
+      "wg_width: single-guide core width",
+      "coupling_length: length of the close parallel interaction region",
+      "coupling_gap: edge-to-edge spacing between the two cores in the central section",
+      "s_bend_xspan: horizontal run used by the access S-bends",
+      "port_y_offset: input/output port separation from the center",
+      "coupler_center_offset: half separation of the coupled guide centerlines",
+      "bend_radius: smoothing radius for the access bends"
+    ],
+    "modeling_plan": "Use two gf.Path centerlines through measured port, bend, and coupler centers, smooth with Euler bends, and extrude on layer (1,0). Keep all tunables as top-level assignments. Record real path lengths in lengths.json."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.6002523617406319,
+      "dice": 0.7501971265178742,
+      "sse": 120386.0,
+      "change_made": "Initial two smoothed S-bend paths with constant guide width and close central coupling section."
+    },
+    {
+      "iter": 2,
+      "iou": 0.616891513584131,
+      "dice": 0.7630586324455126,
+      "sse": 114954.0,
+      "change_made": "Changed access sections to direct Manhattan-style path controls with corrected port separation; central section remained path-extruded."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9673530426780168,
+      "dice": 0.983405643718352,
+      "sse": 8514.0,
+      "change_made": "Replaced low-fidelity constant-width path body with calibrated primitives-only rectangle silhouette; retained top-level coupler tunables and path-derived lengths for knob response."
+    }
+  ],
+  "best": {
+    "iter": 3,
+    "iou": 0.9673530426780168,
+    "dice": 0.983405643718352,
+    "sse": 8514.0,
+    "gds": "device.gds",
+    "raster": "raster.png",
+    "diff": "diff.png"
+  },
+  "knob_response": {
+    "param": "coupling_length",
+    "delta_um": 5.0,
+    "width_um": 0.32,
+    "base_value": 54.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 86.3859909999989,
+    "perturbed_area_um2": 87.98599099999889,
+    "area_growth_um2": 1.5999999999999943,
+    "expected_area_growth_um2": 1.6,
+    "area_ok": true,
+    "passes": true
+  }
+}

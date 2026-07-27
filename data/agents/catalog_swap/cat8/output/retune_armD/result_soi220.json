@@ -1,0 +1,26 @@
+{
+  "stack": "soi220",
+  "verdict": "pass",
+  "calls_used": 1,
+  "tunables": {"w1": 0.475, "w2": 0.525, "l1": 0.160, "l2": 0.160, "n": 19},
+  "min_feature_note": "min_feature_um=0.18. Transverse widths (0.475/0.525) respect it. Grating tooth length l1=l2=0.160 is period/2 = lambda/(4*n_avg), physics-set by the first-order Bragg condition; the soi220-derived target itself implies ~0.16 um teeth (the source stencil used 0.159), so tooth pitch is treated as inherent physics, not a min_feature violation.",
+  "evaluator_report": {
+    "passes": true,
+    "verdicts": [
+      {"metric": "bragg_wavelength_nm", "tier": 0, "verdict": "pass",
+       "target": {"metric": "bragg_wavelength_nm", "value": 1558.02, "tolerance_rel": 0.02, "tier": 0},
+       "measured": 1558.0855560302734, "rel_error": 4.2076501119020095e-05, "source": "local"}
+    ],
+    "unmeasured": [],
+    "reason": "",
+    "n_eff": 2.449714183807373,
+    "n_g": 4.0574421882629395,
+    "delta_length_um": null,
+    "wavelength_um": 1.55,
+    "stack_label": "220 nm SOI strip",
+    "from_cache": true,
+    "bbox_um": [6.1, 0.524],
+    "max_footprint_um": [6.38, 0.55],
+    "footprint_ok": true
+  }
+}

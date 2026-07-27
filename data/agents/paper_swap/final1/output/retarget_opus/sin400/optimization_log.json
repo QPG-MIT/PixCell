@@ -1,0 +1,83 @@
+{
+  "stack": "sin400",
+  "derivation": {
+    "device": "adiabatic 1x2 mode-evolution power splitter (from Phase-A classification)",
+    "spec": "transmission_total >= 0.95 (adiabatic/low-loss) AND split_balance = 0.5 +/- 0.02",
+    "how_the_FoM_is_governed": {
+      "split_balance": "Structural: the geometry is mirror-symmetric about the axis, so the input fundamental excites only the SYMMETRIC supermode, which by symmetry deposits equal power in the two outer guides. 50/50 is guaranteed by construction, independent of platform. Predict 0.500.",
+      "transmission_total": "Adiabaticity + bend loss. Power stays in the fundamental supermode iff the taper evolves slowly vs the local supermode beat length L_beat = lambda/(2*dn); the bottleneck is the phase-match point (minimum dn). Radiation at the fan-out adds loss unless the S-bend radius >= min_bend_radius."
+    },
+    "what_must_change_with_platform_and_why": [
+      "1) Guide widths -> single_mode_width_um (rule-based): center_input = arm_width = wg; all tips = min_feature. Wider, less-confined platforms need wider single-mode guides.",
+      "2) Coupling gap -> min_feature (strongest fab-allowed coupling => shortest adiabatic length). arm_offset = wg/2 + coupling_gap. With COMPLEMENTARY linear tapers (center wg->tip, outer tip->wg) the two widths sum to ~const, so center-outer edge gap stays ~= coupling_gap through the whole transfer and phase-match sits at w = wg/2.",
+      "3) Transfer (taper) length -> set from the LOCAL supermode coupling length at phase-match L_c = lambda/(2*dn) at (w=wg/2, gap=min_feature). Adiabaticity needs L_taper >~ a few x L_c. This is the platform-dependent scaling and is COMPUTED from mode solves, not guessed.",
+      "4) Fan-out S-bend -> sized so effective radius R_eff = 2*L^2/(pi^2*dy) >= min_bend_radius (bend radiation also cuts T).",
+      "5) Footprint kept within the per-stack budget (which scales with confinement)."
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "params": {
+        "wg": 1.0,
+        "min_feature": 0.4,
+        "arm_offset": 0.9,
+        "taper_length": 120.0,
+        "sbend_length": 20.0,
+        "output_offset": 3.0,
+        "device_bbox_um": [
+          147.0,
+          7.0
+        ],
+        "budget_um": [
+          150,
+          18
+        ]
+      },
+      "tier0_numbers": {
+        "n_eff_wg(w=1.0)": 1.6415,
+        "n_g": 2.0213,
+        "phase_match_Lc(w=0.5,gap=0.4)_um": 61.47,
+        "nearby_Lc(w=0.6,gap=0.4)_um": 27.0,
+        "nearby_Lc(w=0.7,gap=0.4)_um": 19.58,
+        "source": "python -m homi.spec_optimization solve/supermodes"
+      },
+      "predicted_T": 0.95,
+      "predicted_balance": 0.5,
+      "measured_T": null,
+      "measured_balance": null,
+      "reasoning": "Weak (near-cutoff) confinement: phase-match at w=0.5 has the WEAKEST coupling of the sweep (L_c=61.5um; coupling is stronger at w=0.6-0.7). taper=120um = 1.95x raw L_c. The real bottleneck mode is the next SYMMETRIC 3-guide supermode, whose splitting from the fundamental at the anticrossing is ~sqrt(2)x the 2-guide dn, giving ~2.76x effective => should be adiabatic. Fan-out R_eff=2*20^2/(pi^2*2.1)=38.6um >= 20um. This stack is the risk (near-cutoff phase-match); 120um is the most that fits the 150um budget with the fan-out. Predict T~0.95 (borderline)."
+    },
+    {
+      "iter": 2,
+      "params": {
+        "arm_offset": 1.1,
+        "gap_um": 0.4,
+        "taper": 122.0,
+        "sbend": 22.0,
+        "fanout": "sine C1",
+        "bbox": [
+          149.0,
+          7.0
+        ]
+      },
+      "tier0_numbers": {
+        "phase_match_Lc(w0.7,gap0.4)_um": 19.58,
+        "taper_over_Lc": 6.2
+      },
+      "predicted_T": 0.97,
+      "predicted_balance": 0.5,
+      "measured_T": 0.967,
+      "measured_balance": 0.5,
+      "reasoning": "Same merged-regime diagnosis (true gap was mf/2=0.2um). Open to constant gap mf=0.4um: phase-match now at w=0.7 where Lc=19.58um, giving 6.2x adiabatic AND out of the merged regime -> the pinch tip is isolated. Sine fan-out. Predict T~0.97 (round-1 was already 0.938 at 0.012 short; unmerging should clear it)."
+    }
+  ],
+  "final": {
+    "status": "PASS",
+    "measured_T": 0.967,
+    "measured_balance": 0.5,
+    "fits_budget": true,
+    "iterations_used": 2,
+    "note": "Full spec pass (T>=0.95 and |balance-0.5|<=0.02). Flagged-risk stack closed on round 2: unmerging (gap mf/2 -> mf) removed the pinch-tip radiation."
+  }
+}

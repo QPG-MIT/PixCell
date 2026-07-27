@@ -1,0 +1,65 @@
+{
+  "passes": false,
+  "verdicts": [
+    {
+      "metric": "fsr_nm",
+      "tier": 0,
+      "verdict": "pass",
+      "target": {
+        "metric": "fsr_nm",
+        "value": 8.0,
+        "tolerance_rel": 0.02,
+        "tier": 0
+      },
+      "measured": 8.019744652432296,
+      "rel_error": 0.002468081554036994,
+      "source": "local"
+    },
+    {
+      "metric": "extinction_ratio_db",
+      "tier": 1,
+      "verdict": "unmeasured",
+      "target": {
+        "metric": "extinction_ratio_db",
+        "min": 20.0,
+        "tier": 1
+      },
+      "measured": null,
+      "rel_error": null,
+      "source": null
+    },
+    {
+      "metric": "insertion_loss_db",
+      "tier": 1,
+      "verdict": "unmeasured",
+      "target": {
+        "metric": "insertion_loss_db",
+        "max": 1.0,
+        "tier": 1
+      },
+      "measured": null,
+      "rel_error": null,
+      "source": null
+    }
+  ],
+  "unmeasured": [
+    "extinction_ratio_db",
+    "insertion_loss_db"
+  ],
+  "reason": "unmeasured targets: extinction_ratio_db, insertion_loss_db",
+  "n_eff": 2.449714183807373,
+  "n_g": 4.0574421882629395,
+  "delta_length_um": 73.83300000000001,
+  "wavelength_um": 1.55,
+  "stack_label": "220 nm SOI strip",
+  "from_cache": true,
+  "bbox_um": [
+    91.1,
+    41.125
+  ],
+  "max_footprint_um": [
+    91.1,
+    50.75
+  ],
+  "footprint_ok": true
+}

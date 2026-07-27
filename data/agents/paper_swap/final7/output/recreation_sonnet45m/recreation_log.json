@@ -1,0 +1,62 @@
+{
+  "topology_analysis": {
+    "device_type": "dual_bus_ring_resonator",
+    "description": "Two parallel bus waveguides (top and bottom) with a central ring resonator structure coupling between them. The ring appears to have two coupling regions - one to each bus.",
+    "key_features": [
+      "Two straight bus waveguides running horizontally",
+      "Central ring resonator positioned between the buses",
+      "Two coupling gaps - ring to upper bus, ring to lower bus",
+      "The ring has rectangular coupling sections that extend toward each bus"
+    ],
+    "function_defining_knobs": [
+      "ring_radius: Controls the FSR and resonance wavelength",
+      "coupling_gap_top: Gap between ring and upper bus (affects coupling strength)",
+      "coupling_gap_bottom: Gap between ring and lower bus (affects coupling strength)",
+      "coupling_length: Length of parallel coupling region",
+      "bus_separation: Vertical distance between the two buses",
+      "waveguide_width: Width of all waveguides (buses and ring)"
+    ],
+    "topology_reasoning": "This is a dual-bus ring resonator (also called add-drop ring filter). Light enters through one bus, couples to the ring at resonant wavelengths, and can either drop to the other bus or pass through. The ring radius determines FSR, coupling gaps determine Q-factor and extinction ratio, coupling length affects power transfer efficiency.",
+    "footprint": {
+      "length_um": 3.0,
+      "width_um": 5.5
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.192,
+      "dice": 0.322,
+      "sse": 517010.0,
+      "change_made": "Initial attempt - ring too small, buses way too short (1.4 vs 3.0 um), device only 2.72 um tall vs 5.5 um. Need bus_length=3.0, bus_separation=5.0+ to fill vertical footprint."
+    },
+    {
+      "iter": 2,
+      "iou": 0.190,
+      "dice": 0.319,
+      "sse": 592420.0,
+      "change_made": "Fixed size (3.0x5.0 um) but topology wrong - making racetrack but target shows elliptical oval ring. Buses need tapered ends (missing blue at edges). Will redesign as ellipse with tapered buses."
+    },
+    {
+      "iter": 3,
+      "iou": 0.226,
+      "dice": 0.369,
+      "sse": 633013.0,
+      "change_made": "Ellipse topology + tapered buses. Size correct (3.0x5.44). Issues: ring too thick (waveguide_width too large), ring_radius_x too small (missing blue at sides), tapers wrong shape (target shows flare-out at coupling regions not gradual tapers). Reduce wg width, increase rx, remove tapers."
+    },
+    {
+      "iter": 4,
+      "iou": 0.200,
+      "dice": 0.334,
+      "sse": 615877.0,
+      "change_made": "Reduced waveguide_width to 0.30, increased ring_radius_x to 1.20 - IoU regressed. Looking at target: buses have WIDE SECTIONS in coupling regions (not tapers). Need buses with wide rectangular pads where they couple to ring."
+    },
+    {
+      "iter": 5,
+      "iou": 0.197,
+      "dice": 0.329,
+      "sse": 666385.0,
+      "change_made": "Added wide coupling pads - device 6.0 um tall, still low IoU. FUNDAMENTAL TOPOLOGY ERROR: This is NOT a ring + buses. It's a stadium-shaped solid region with rectangular HOLES/gaps in it. The white areas are gaps, black is material. Redesign as boolean subtraction."
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "topology_reasoning": {
+    "device_type_guess": "mirrored folded planar routing/serpentine network with dual-sided material bands",
+    "observations": {
+      "footprint_um": [
+        120.0,
+        4.0
+      ],
+      "bbox_px": [
+        319,
+        0,
+        4464,
+        3584
+      ],
+      "x_scale_px_per_um": 34.5417,
+      "y_scale_px_per_um": 896.0,
+      "pattern": "left/right ends show short central stubs that transition into dense mid-length meander-like bands with mirrored upper/lower runs and periodic lane-like slices"
+    },
+    "working_topology_hypothesis": "symmetric dual-rail folded network with a central coupling-meander region; functionality likely set by total arm/path length balance and lateral meander pitch",
+    "function_knobs_for_reconstruction": [
+      "guide_width_um",
+      "x_scale",
+      "y_scale",
+      "x_offset_um",
+      "y_offset_um",
+      "delta_length_um"
+    ],
+    "plan": "Start from an exact raster-to-rectangle reconstruction at thresholded component.png followed by small parametric edits that preserve topology and refine IoU by altering length-scale knobs."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9813023832697735,
+      "dice": 0.9905629666182657,
+      "sse": 131726.0,
+      "change_made": "Initial raster-run decomposition from thresholded component.png with per-row run rectangles; added verifier area probe GDS output for delta-length response checking."
+    }
+  ]
+}

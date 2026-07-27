@@ -1,0 +1,36 @@
+{
+  "stack": "soi220",
+  "pass": true,
+  "tunables": {
+    "wg_width_um": 0.5,
+    "corner_radius_um": 7.55,
+    "straight_bottom_um": 8.87,
+    "straight_top_um": 8.87,
+    "straight_y_um": 3.43,
+    "coupling_gap_um": 0.21,
+    "bus_width_um": 0.5,
+    "bus_length_um": 30.0,
+    "ring_center_x_um": 15.0
+  },
+  "derivation": "ring FSR = 1000*lambda^2/(n_g*L). n_g(soi220,0.5um)=4.0574 => L* = 1000*1.55^2/(4.0574*8.22) = 72.04 um. L = 2*straight_bottom+2*straight_y+2*pi*R; with straight_bottom=8.87, R=7.55 fixed, straight_y = (72.04-17.74-47.44)/2 = 3.43 um. wg/bus width set to single_mode_width_um=0.5 (no effect on centerline length).",
+  "evaluator_report": {
+    "passes": true,
+    "verdicts": [
+      {"metric": "ring_fsr_nm", "tier": 0, "verdict": "pass",
+       "target": {"metric": "ring_fsr_nm", "value": 8.22, "tolerance_rel": 0.02, "tier": 0},
+       "measured": 8.219804083000637, "rel_error": 2.383418483738163e-05, "source": "local"}
+    ],
+    "unmeasured": [],
+    "reason": "",
+    "n_eff": 2.449714183807373,
+    "n_g": 4.0574421882629395,
+    "delta_length_um": 21.130000000000003,
+    "wavelength_um": 1.55,
+    "stack_label": "220 nm SOI strip",
+    "from_cache": true,
+    "bbox_um": [30.0, 19.74],
+    "max_footprint_um": [30.0, 21.8],
+    "footprint_ok": true
+  },
+  "calls_used": 1
+}

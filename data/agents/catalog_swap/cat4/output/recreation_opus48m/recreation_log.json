@@ -1,0 +1,48 @@
+{
+  "device_type": "2x2 MMI coupler (multimode interference) with linear access tapers",
+  "footprint_um": [25.5, 2.5],
+  "topology_reasoning": {
+    "what_it_is": "A symmetric 2x2 coupler. Two access waveguides enter from the left and two exit on the right; in the center they fuse into a single full-height multimode rectangle. Column analysis of component.png (1602x159 px, 62.78 px/um) shows: at the ports each guide is ~0.52 um wide; each guide widens linearly to ~0.98 um over ~10 um while its CENTERLINE stays straight (top guide center y~0.63 um, bottom y~1.87 um, axis at 1.25 um); the inter-guide gap therefore closes from 0.74 um at the port to 0.28 um just before the merge purely by widening. From x~10.0 to x~15.5 um the two guides are a single solid block spanning the full 2.5 um height (the multimode region). The right half mirrors the left about x=12.75 um. Perfect 2-fold symmetry about both axes.",
+    "how_it_works": "Light injected into one input port excites the multiple lateral modes of the wide central MMI section. Self-imaging reproduces the input as one or two images at the output plane; the MMI length sets whether the device acts as a 50/50 splitter (bar+cross) or a specific coupling ratio. The tapered access waveguides adiabatically expand the single-mode port field so it launches cleanly into the multimode section (lower loss, better balance) and fix the transverse launch position that selects which self-image ports light up.",
+    "function_knobs": {
+      "mmi_length": "PRIMARY. Length of the multimode rectangle (~5.5 um). Sets the beat length / splitting ratio (self-imaging condition). This is the coupler's defining tunable.",
+      "mmi_width": "Transverse width of the MMI (~2.5 um, = full device height). Sets the number of guided modes and the imaging period.",
+      "port_offset": "Center-to-axis offset of each access waveguide (~0.62 um). Sets the input/output positions on the MMI face, which selects the self-image ports and the balance.",
+      "taper_length": "Length of each linear access taper (~10 um). Adiabaticity of the port-to-MMI transition.",
+      "w_tip": "Waveguide width at the ports (~0.52 um). Single-mode access width.",
+      "w_wide": "Waveguide width where the taper meets the MMI (~0.98 um)."
+    },
+    "measurements_from_image": {
+      "port_width_um": 0.52,
+      "wide_width_at_mmi_um": 0.98,
+      "guide_center_offset_um": 0.625,
+      "port_gap_um": 0.72,
+      "taper_length_um": 10.0,
+      "mmi_length_um": 5.5,
+      "mmi_width_um": 2.5,
+      "merge_region_x_um": [10.0, 15.5]
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9837642745727591,
+      "dice": 0.9918156982483528,
+      "sse": 2852.0,
+      "change_made": "Initial build from image analysis: central MMI rectangle (5.5x2.5 um) + four linear access tapers (w_tip 0.52 -> w_wide 0.98 over 10 um, centers +/-0.625 um). Matched port width, gap, taper slope, and merge region directly from column-profile measurements. Diff shows only sub-pixel antialiasing along the diagonal taper edges (no structural error); IoU 0.984 >> 0.85 stop threshold, kept as honest best (iter 1)."
+    }
+  ],
+  "knob_verification": {
+    "knob": "mmi_length",
+    "method": "Direct gdstk area-growth check, identical to verify_knob_response part (b). verify_knob_response itself was NOT usable: it hard-requires a 2-arm MZI-shaped lengths.json (measured_delta_length raises unless 'arms' has exactly 2 entries whose difference equals delta_length_um). A symmetric 2x2 MMI coupler has no interferometer arms with a length imbalance, so fabricating two fake 'arms' would be dishonest. Instead I ran the meaningful geometry-response test the verifier performs: perturb the top-level mmi_length by delta and confirm layer-(1,0) polygon area grows by ~ guide_width * delta.",
+    "width_um_used": 2.5,
+    "delta_um": 5.0,
+    "area_base_um2": 43.75,
+    "area_perturbed_um2": 56.25,
+    "area_growth_um2": 12.5,
+    "expected_um2": 12.5,
+    "rel_error": 0.0,
+    "pass": true,
+    "note": "guide width used = mmi_width (2.5 um): the primary knob mmi_length lengthens the full-height multimode section, so area grows by mmi_width*delta exactly (rel_error 0.0). Confirms the coupler's defining knob moves real geometry, not just a reported number."
+  }
+}

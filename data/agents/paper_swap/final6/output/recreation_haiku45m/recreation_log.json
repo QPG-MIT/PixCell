@@ -1,0 +1,102 @@
+{
+  "device_analysis": {
+    "name": "Adiabatic Four-Port Splitter / MMI Variant",
+    "description": "Symmetric cross-shaped device with four rounded petal-like lobes extending orthogonally, connected by tapered stems to a central junction.",
+    "footprint_um": [
+      4.7,
+      4.7
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.39,
+      "dice": 0.467,
+      "sse": 74138.0,
+      "change_made": "Initial geometry (elliptical petals too small, ports too short)"
+    },
+    {
+      "iter": 2,
+      "iou": 0.334,
+      "dice": 0.501,
+      "sse": 106607.0,
+      "change_made": "Increased petal dimensions, but oversized beyond footprint"
+    },
+    {
+      "iter": 3,
+      "iou": 0.558,
+      "dice": 0.716,
+      "sse": 44807.0,
+      "change_made": "Scaled down: petal_width\u21921.05, petal_length\u21921.3, better fit to 4.7\u00d74.7 target"
+    },
+    {
+      "iter": 4,
+      "iou": 0.598,
+      "dice": 0.749,
+      "sse": 42943.0,
+      "change_made": "Increased width & length slightly, improved recall to 0.84"
+    },
+    {
+      "iter": 5,
+      "iou": 0.599,
+      "dice": 0.749,
+      "sse": 44817.0,
+      "change_made": "Fine-tuned petal and stem dimensions, recall\u21920.877"
+    },
+    {
+      "iter": 6,
+      "iou": 0.589,
+      "dice": 0.741,
+      "sse": 48095.0,
+      "change_made": "Pushed too far, overshooting on petal bulges (red overhang)"
+    },
+    {
+      "iter": 7,
+      "iou": 0.604,
+      "dice": 0.753,
+      "sse": 44421.0,
+      "change_made": "Backed off, reduced taper_smoothness to 0.62 for sharper petal tips; final best"
+    }
+  ],
+  "final_parameters": {
+    "petal_width_um": 1.2,
+    "petal_length_um": 1.38,
+    "junction_width_um": 0.42,
+    "stem_width_um": 0.52,
+    "stem_length_um": 0.58,
+    "port_length_um": 0.33,
+    "taper_smoothness": 0.62
+  },
+  "final_metrics": {
+    "IoU": 0.604,
+    "Dice": 0.753,
+    "Accuracy": 0.9585,
+    "Precision": 0.6542,
+    "Recall": 0.8868,
+    "SSE": 44421.0,
+    "gds_size_um": [
+      4.2,
+      4.2
+    ],
+    "target_size_um": [
+      4.7,
+      4.7
+    ]
+  },
+  "knob_verification": {
+    "parameter": "petal_width_um",
+    "base_value": 1.2,
+    "perturbed_value": 1.4,
+    "delta_um": 0.2,
+    "result": "PASS - Component name changed, GDS reflects parametric response"
+  },
+  "tunables": [
+    "petal_width_um (controls mode confinement in petal lobes)",
+    "petal_length_um (controls interaction length in petals)",
+    "junction_width_um (controls central junction coupling efficiency)",
+    "stem_width_um (controls stem width / taper rate)",
+    "stem_length_um (controls stem region length)",
+    "port_length_um (controls port stub extension)",
+    "taper_smoothness (controls petal bulge shape; lower = sharper tips)"
+  ]
+}

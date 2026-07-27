@@ -1,0 +1,76 @@
+{
+  "device": "final5",
+  "topology_reasoning": {
+    "what_it_is": "Two mirror-symmetric 'grating arms' flanking a single independent straight bus waveguide. Each arm: a pointed input taper curving from a narrow single-mode tip into a wide rail+comb envelope, a long straight rail with a periodic array of rectangular teeth hanging toward the device centerline (toward the bus), then a 180-degree U-turn ending in a flush (non-tapered) facet.",
+    "how_it_works": "Reads as a folded/compact grating-assisted coupler: the periodic teeth on the inner edge of each rail are a coupling grating (asymmetric perturbation) facing the straight bus waveguide that runs between the two arms. Folding each arm with a 180-degree bend lets a long grating (needed for narrow-band phase-matched coupling) fit in a compact footprint. The independent straight bus (no taper, flat ends) suggests it is the through/drop port that couples to both grating arms.",
+    "function_defining_knobs": [
+      "rail_width - grating rail (spine) thickness, sets the arm waveguide's effective width",
+      "tooth_width - grating tooth width along the propagation direction",
+      "tooth_height - grating tooth protrusion depth, i.e. how far the perturbation reaches toward the bus (coupling strength knob)",
+      "grating_period - grating pitch, the primary knob for the coupler's phase-matched wavelength",
+      "tooth_gap_from_rail - vertical offset from the rail to the tooth row, i.e. the nominal coupling gap to the bus",
+      "n_periods - number of grating periods, sets total grating/interaction length",
+      "bus_width - independent bus waveguide width"
+    ],
+    "measurement_method": "Pixel-level analysis of device_bw.png: row-band segmentation isolated three horizontal strands (top arm, bus, bottom arm). Column run-length analysis at fixed rows/columns within the top arm distinguished a continuous top rail (rows 22-132) from a disconnected periodic tooth row (rows 444-526) with 56 periods of pitch ~31.5px, tooth width ~25px. The bottom arm was confirmed to be the point-reflection of the top arm through the image center (tip bottom-right vs top-left, U-turn left vs right, teeth pointing up vs down)."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.2843,
+      "dice": 0.4428,
+      "sse": 1289098.0,
+      "change_made": "Initial build: lead-in modeled as a solid symmetric flare taper from tip to full rail+teeth envelope width; rail/teeth offsets used wrong sign (teeth placed above the tip instead of below toward the bus)."
+    },
+    {
+      "iter": 2,
+      "iou": 0.46876,
+      "dice": 0.6383,
+      "sse": 943502.0,
+      "change_made": "Fixed sign bug: rail_center_offset and teeth offsets now point down toward the bus (matching image convention) instead of up off-canvas."
+    },
+    {
+      "iter": 3,
+      "iou": 0.53992,
+      "dice": 0.7012,
+      "sse": 642097.0,
+      "change_made": "Replaced the solid flare taper with a thin constant-width curved lead-in (lead_width=65px) targeting the first tooth row directly -- the diff image showed a large false-positive wedge + missing thin crescent, indicating the real lead-in is a thin curve, not a flare."
+    },
+    {
+      "iter": 4,
+      "iou": 0.56313,
+      "dice": 0.7205,
+      "sse": 612999.0,
+      "change_made": "Discovered (via a tight crop of the source image) a SEPARATE pointed taper feature at rail level -- the rail has its own arrowhead-shaped input taper (apex x=441 local, full width by x=746 local), distinct from the curved lead-in. Added rail_taper() cell. Best result so far."
+    },
+    {
+      "iter": 5,
+      "iou": 0.54563,
+      "dice": 0.7060,
+      "sse": 645373.0,
+      "change_made": "Replaced the analytic ease-out lead-in curve with a digitized centerline (measured every 10px directly off the image). Shape fidelity of the curve region improved, but IoU regressed: the curve's slightly different y-extent shifted the whole device's GDS bbox vertical center (compare_absolute centers the GDS by its own bbox), misaligning the much-larger rail/grating region against the target. Diagnosed via bbox inspection (gdstk)."
+    },
+    {
+      "iter": 6,
+      "iou": 0.56313,
+      "dice": 0.7205,
+      "sse": 612999.0,
+      "change_made": "Reverted to the iteration-4 analytic ease-out lead-in curve (best empirical result). Stopped at the 6-iteration budget; kept as the honest best (target 0.85 not reached)."
+    }
+  ],
+  "final": {
+    "iou": 0.56313,
+    "dice": 0.7205,
+    "note": "Stopped at 6-iteration budget below the 0.85 target. Remaining gap is concentrated in: (a) grating tooth phase/period drift accumulating over 56 periods (thin red/blue striping across the whole comb in diff.png), (b) U-turn bend shape/radius not exactly matching the source curvature, (c) a residual ~1% GDS/footprint size mismatch in x (17.95um vs 18.24um target) from not modeling the very last few teeth + bend transition length precisely."
+  },
+  "knob_verification": {
+    "method": "homi.spec_optimization.verify_knob_response is hard-wired to the MZI delta_length/lengths.json spec-optimization contract and does not apply to this non-MZI recreation (device.py never writes lengths.json). Ran an equivalent manual area-growth check instead: perturbed rail_width (primary function knob) by +20px (=0.01235um at scale_y=1620px/um) and rebuilt.",
+    "rail_width_base_um": 0.0679,
+    "delta_um": 0.01235,
+    "base_area_um2": 3.2300,
+    "perturbed_area_um2": 3.5808,
+    "area_growth_um2": 0.3508,
+    "expected_area_growth_um2_approx": 0.3054,
+    "note": "Expected growth = (total rail length across both arms, ~24.7um) * delta_width_um. Measured growth (0.351) is within ~15% of the naive rail-only prediction (0.305); the extra comes from the taper/bend sections whose width is also tied to rail_width. Confirms rail_width moves real, proportional geometry -- not a decorative parameter."
+  }
+}

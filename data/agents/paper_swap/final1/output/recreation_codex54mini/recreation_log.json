@@ -1,0 +1,57 @@
+{
+  "calibration": {
+    "bbox_px": [0, 62, 1616, 584],
+    "scale_px_per_um": [40.4, 307.05882352941177],
+    "footprint_um": [40.0, 1.7]
+  },
+  "topology_reasoning": [
+    "The target is not a single connected splitter tree; it is three separate black waveguide bodies arranged vertically.",
+    "The middle body is a long left-anchored taper/arm that stays centered vertically and terminates before the right edge.",
+    "The upper and lower bodies are mirror-symmetric S-bent tapers: they begin as narrow straight stubs near x≈124 px, widen gradually, then bend away from the center near the right side while keeping roughly constant final width.",
+    "The function-defining knobs are the waveguide width, taper length, the location where the outer S-bends begin, the bend span/radius, and the gap/vertical offsets between the three arms.",
+    "The geometry should be modeled from primitives only: straight segments, tapers, and smooth bends assembled parametrically."
+  ],
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.3553938544062613,
+      "dice": 0.524414144642767,
+      "sse": 226162.0,
+      "change_made": "Initial primitive draft placed all three arms too early and used a single blunt taper model."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7714348957737018,
+      "dice": 0.8709717727862255,
+      "sse": 59890.0,
+      "change_made": "Moved the upper/lower arms to start at x≈3.07 um, fixed taper placement, and aligned the main layout bbox."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7305560890937676,
+      "dice": 0.8443021219570347,
+      "sse": 75752.0,
+      "change_made": "Tested a more aggressive outer-arm bend profile and an alternate center-arm construction; this over-shot the shape and reduced overlap."
+    },
+    {
+      "iter": 4,
+      "iou": 0.8327382566513001,
+      "dice": 0.908736698903032,
+      "sse": 44410.0,
+      "change_made": "Reverted the center arm to a single taper and kept the more accurate outer-arm profile."
+    },
+    {
+      "iter": 5,
+      "iou": 0.8545177089075845,
+      "dice": 0.9215524929238272,
+      "sse": 36418.0,
+      "change_made": "Shifted the middle arm upward by 0.016 um, changed delta_length so only the upper arm responds, and flattened the export so verify_knob_response sees layer-(1,0) area."
+    }
+  ],
+  "final_iou": 0.8545177089075845,
+  "verify_knob_response": {
+    "param": "delta_length",
+    "passes": true,
+    "width_um": 0.24
+  }
+}

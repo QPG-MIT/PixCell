@@ -1,0 +1,44 @@
+[
+  {
+    "stack": "soi220",
+    "iter": 1,
+    "delta_length_requested_um": 10.0,
+    "delta_length_required_um": 10.000368297973887,
+    "delta_length_measured_um": 10.0,
+    "n_eff": 2.449714183807373,
+    "n_g": 4.0574421882629395,
+    "fsr_nm": 59.212180692303384,
+    "rel_error": 3.682979738867725e-05,
+    "footprint_ok": true,
+    "reasoning": "SOI nominal geometry already has dL=10 um, and the mode solve predicts the target FSR at that delta.",
+    "predicted_fsr_nm": 59.212180692303384
+  },
+  {
+    "stack": "sin400",
+    "iter": 1,
+    "delta_length_requested_um": 18.0,
+    "delta_length_required_um": 20.07426808696549,
+    "delta_length_measured_um": 18.0,
+    "n_eff": 1.6415010690689087,
+    "n_g": 2.0212899446487427,
+    "fsr_nm": 66.03318963495704,
+    "rel_error": 0.11523711594252727,
+    "footprint_ok": true,
+    "reasoning": "SiN mode solve requires dL\u224820.074 um for 59.21 nm FSR, but footprint scan of exposed length_y shows dL is limited to 18.0 um at length_y=0; measured best feasible point is therefore expected to fail FSR while fitting footprint.",
+    "predicted_fsr_nm": 66.03318963495704
+  },
+  {
+    "stack": "tfln400",
+    "iter": 1,
+    "delta_length_requested_um": 18.0,
+    "delta_length_required_um": 18.21395813662814,
+    "delta_length_measured_um": 18.0,
+    "n_eff": 1.8065590858459473,
+    "n_g": 2.2277374267578125,
+    "fsr_nm": 59.91380340387512,
+    "rel_error": 0.01188656314600778,
+    "footprint_ok": true,
+    "reasoning": "TFLN mode solve requires dL\u224818.214 um; footprint-limited dL=18.0 um predicts a 1.19% high FSR, inside the 2% tolerance.",
+    "predicted_fsr_nm": 59.91380340387512
+  }
+]

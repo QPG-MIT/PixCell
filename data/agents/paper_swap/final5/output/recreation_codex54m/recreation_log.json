@@ -1,0 +1,89 @@
+{
+  "topology_reasoning": {
+    "device_hypothesis": "A three-waveguide folded coupler/filter layout: a thin straight bus in the middle, with one long folded waveguide above and one below. Each outer guide has a long corrugated coupling section facing the bus and a single free-space taper at its unconstrained end.",
+    "operating_picture": "The middle guide is the through path. The upper and lower folded guides create long interaction lengths against the bus while keeping the total footprint compact. The periodic teeth facing the bus are function-defining and likely tune effective coupling/phase matching rather than serving as mere decoration.",
+    "geometry_evidence": {
+      "footprint_um": [
+        18.24,
+        0.7
+      ],
+      "raster_bbox_px": [
+        66,
+        23,
+        3607,
+        1122
+      ],
+      "topology_observations": [
+        "One continuous center bus with no corrugation.",
+        "One upper folded arm with a left taper and a broad right return bend.",
+        "One lower folded arm with a broad left return bend and a right taper.",
+        "Both coupling regions contain 56 narrow teeth each, aligned to a common x-window."
+      ],
+      "measured_features": {
+        "teeth_count_each_side": 56,
+        "tooth_width_um_est": 0.11,
+        "tooth_pitch_um_est": 0.16,
+        "bus_width_um_est": 0.025,
+        "outer_arm_width_um_est": 0.065,
+        "coupling_leg_width_um_est": 0.05
+      }
+    },
+    "function_defining_knobs": [
+      "bus_width_um",
+      "loop_width_um",
+      "bus_gap_um",
+      "tooth_depth_um",
+      "tooth_width_um",
+      "tooth_period_um",
+      "num_teeth",
+      "tip_length_um",
+      "tip_width_um",
+      "top_arm_extension_um"
+    ],
+    "implementation_plan": "Model the upper and lower folded arms as smooth gdsfactory Paths extruded on layer (1,0), add the bus as a straight primitive, add the periodic corrugations as repeated rectangles, and keep all meaningful geometry knobs as top-level numeric assignments so the script remains directly tunable and spec-verifiable."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.4817263684854992,
+      "dice": 0.6502231164015538,
+      "sse": 766521.0,
+      "change_made": "Initial primitives-only open-hairpin reconstruction with a central bus and two corrugated outer arms, but with the top and bottom tapers attached to the wrong ends and the lower/upper port topology still misread."
+    },
+    {
+      "iter": 2,
+      "iou": 0.42021708534919106,
+      "dice": 0.5917645825896702,
+      "sse": 1016705.0,
+      "change_made": "Corrected the endpoint orientations by reconnecting the tapers with ports and rewired the arms as open hairpins; this fixed the qualitative topology but overextended both returns."
+    },
+    {
+      "iter": 3,
+      "iou": 0.43655762864559655,
+      "dice": 0.6077829666425401,
+      "sse": 949388.0,
+      "change_made": "Recentered the broad returns: pushed the upper right return farther right, pulled the lower left U-turn inward, and aligned the overall footprint to the calibrated bounding box. This is the honest best fit."
+    },
+    {
+      "iter": 4,
+      "iou": 0.37185116096976817,
+      "dice": 0.5421158964605238,
+      "sse": 1091038.0,
+      "change_made": "Tried a more aggressive vertical recentering with shallower corrugations and a shorter bus; this regressed strongly, so the script was reverted to the iteration-3 parameter set."
+    }
+  ],
+  "best_iteration": 3,
+  "best_metrics": {
+    "iou": 0.43655762864559655,
+    "dice": 0.6077829666425401,
+    "sse": 949388.0
+  },
+  "knob_verification": {
+    "param": "top_arm_extension_um",
+    "delta_um": 0.2,
+    "width_um": 0.052,
+    "delta_length_ok": true,
+    "area_ok": true,
+    "passes": true
+  }
+}

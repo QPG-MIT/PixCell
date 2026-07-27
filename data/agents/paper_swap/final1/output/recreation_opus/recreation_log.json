@@ -1,0 +1,69 @@
+{
+  "device_type": "Adiabatic 1x2 mode-evolution power splitter (three-waveguide adiabatic coupler)",
+  "footprint_um": [40.0, 1.7],
+  "topology_reasoning": {
+    "what_it_is": "A broadband 1->2 splitter built on adiabatic mode evolution, not resonant coupling. Light enters a single wide central waveguide; two initially-vanishing outer waveguides run alongside it. As the central guide is tapered DOWN to a point and the two outer guides are simultaneously tapered UP from fine tips, the local supermode adiabatically hands the fundamental-mode power from the center into the symmetric combination of the two outer guides. Because the transfer is adiabatic (slow, sign-following) it is broadband and fabrication tolerant, unlike a fixed-length directional coupler.",
+    "how_it_works": "1) INPUT: central strip, widest at the left edge (x=0), carries the input fundamental mode. 2) COUPLING/TRANSFER REGION (x~3..25um): the central strip tapers to a point while the two outer strips grow from ~0.05um tips up to the full guide width, symmetric about the axis at +/-0.28um. Power leaves the center and populates the two outer guides equally. 3) FAN-OUT: past the center-taper tip the two outer guides S-bend apart from +/-0.28um to +/-0.73um and run straight to the right edge as two separated 50/50 outputs.",
+    "evidence_from_image": "Column trace (converted to um via calibration): center segment 0.267um wide at x=0 tapering to a point that vanishes at x~25.0um, centered on axis. Two outer segments first appear at x~3.07um as ~0.06um tips, widen monotonically to ~0.238um by x~26um at constant centers +/-0.28um. Beyond x~26.5um only the two outer guides remain (center gone); their centers S-bend from +/-0.28um to +/-0.731um over x~26.5..37um, then run straight at +/-0.731um, constant width 0.238um, to x=40um.",
+    "function_knobs": {
+      "middle_taper_length": "adiabaticity of the center->outer transfer; longer = broader band, lower loss",
+      "middle_input_width": "input guide width (single-mode condition at input)",
+      "arm_taper_length": "co-length over which outer tips grow to full width; the transfer length",
+      "arm_tip_width": "outer-guide starting tip width (how gently power is captured)",
+      "arm_width": "output guide width (single-mode outputs)",
+      "arm_offset": "half-separation (gap) of the two outer guides in the coupling region; sets coupling strength",
+      "sbend_length": "fan-out S-bend length; longer = lower bend/radiation loss",
+      "output_offset": "final half-separation of the two output ports",
+      "delta_length": "path-length imbalance added to the top output arm (phase/split bias); baseline 0 = balanced 50/50"
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8432,
+      "dice": 0.9149,
+      "sse": 38378.0,
+      "change_made": "Initial primitives build: central linear taper 0.27->0.04 over 25um on axis; two outer arm tapers 0.05->0.238 starting x=3 over 23um at symmetric +/-0.28um; raised-cosine fan-out S-bend length 11um to +/-0.731um; 3um output straights. Layer (1,0)."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8837,
+      "dice": 0.9382,
+      "sse": 28738.0,
+      "change_made": "Column trace showed middle taper ~0.03um too narrow along its length and outer tips ~0.013um too narrow; S-bend rose too slowly. Widened middle taper (0.286 in / 0.07 tip), raised arm tip (0.064) and guide width (0.244, +0.004 for raster undershoot), shortened S-bend to 8.5um, inserted 0.8um co-propagation straight, lengthened output straight to 4.5um so the bend starts later and is steeper."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9473,
+      "dice": 0.9729,
+      "sse": 12601.0,
+      "change_made": "Residual diff was a uniform ~3-4px downward shift of both coupling-region arms: the drawing is slightly off-axis (center +0.016um, arms +0.282/-0.258um). Made the coupling-region offsets asymmetric (top +0.282, bottom -0.258) and nudged the center guide up +0.016um to match. Also switched lengths.json to true per-arm arclength from the built S-bend paths. Remaining diff is thin 1px edges + a small raised-cosine-vs-drawing shape nuance in the fan-out (<0.01 IoU); stopped rather than overfit."
+    }
+  ],
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "delta_length",
+    "note": "delta_length is the measurement-contract knob: it adds path length to the top output arm (output phase/split bias of the splitter). It is the knob whose response is machine-checkable against lengths.json + layer area. The other function knobs (taper lengths, tip widths, offsets, transfer length) are symmetric and demonstrably move geometry across iterations 1->3 (IoU 0.843->0.947).",
+    "width_um": 0.244,
+    "delta_um": 5.0,
+    "delta_response_um": 4.9968,
+    "delta_length_ok": true,
+    "area_growth_um2": 1.22,
+    "expected_area_growth_um2": 1.22,
+    "area_ok": true,
+    "passes": true
+  },
+  "final": {
+    "iou": 0.9473,
+    "dice": 0.9729,
+    "sse": 12601.0,
+    "size_match": [true, true],
+    "iterations_used": 3,
+    "tunables": [
+      "middle_input_width", "middle_tip_width", "middle_taper_length", "middle_center_offset",
+      "arm_start_x", "arm_tip_width", "arm_width", "arm_taper_length",
+      "top_couple_offset", "bottom_couple_offset", "couple_straight_length",
+      "sbend_length", "output_offset", "output_straight_length", "delta_length"
+    ]
+  }
+}

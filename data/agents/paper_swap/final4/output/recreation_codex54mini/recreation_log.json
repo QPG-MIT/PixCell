@@ -1,0 +1,40 @@
+{
+  "topology_reasoning": "The target is a symmetric dual-arm interferometric/coupler-style device made from two long constant-width strip waveguides. Each arm is a smooth S-bend/cosine-like path that spans the full 18 um footprint and remains vertically mirrored about the 1.5 um midline. The arms are widest apart near the ends and closest together near the center. Function-defining knobs are the guide width, the edge-to-center gap profile, and a one-arm delta_length knob that changes real geometry for response verification.",
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9111952887218677,
+      "dice": 0.9535344651579162,
+      "sse": 29586.0,
+      "change_made": "Initial symmetric cosine-profile dual-arm path with wg_width_um=0.67, gap_edge_um=2.326, gap_mid_um=0.944, delta_length=0.0."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9062067054585757,
+      "dice": 0.9507958427211279,
+      "sse": 31142.0,
+      "change_made": "Reduced wg_width_um to 0.662 and temporarily lifted both gaps to 2.346/0.964; this moved the model away from the raster."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9113096100884186,
+      "dice": 0.9535970575131056,
+      "sse": 29370.0,
+      "change_made": "Kept wg_width_um=0.662 and restored the original symmetric gap profile at 2.326/0.944."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9150571439810458,
+      "dice": 0.9556447407922388,
+      "sse": 28072.0,
+      "change_made": "Raised only gap_edge_um to 2.339 to better match the edge separation while keeping the center gap fixed."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9155331989515803,
+      "dice": 0.9559042875922742,
+      "sse": 27908.0,
+      "change_made": "Split the edge gap per arm: upper_gap_edge_um=2.346, lower_gap_edge_um=2.339, preserving the midpoint fit and slightly improving the endpoints."
+    }
+  ]
+}

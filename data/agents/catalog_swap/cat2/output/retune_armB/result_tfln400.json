@@ -1,0 +1,54 @@
+{
+  "tunables": {
+    "radius": 5.0,
+    "gap": 0.5,
+    "length_x": 14.0,
+    "length_y": 10.3
+  },
+  "evaluator_report": {
+    "passes": false,
+    "verdicts": [
+      {
+        "metric": "ring_fsr_nm",
+        "tier": 0,
+        "verdict": "fail",
+        "target": {
+          "metric": "ring_fsr_nm",
+          "value": 8.22,
+          "tolerance_rel": 0.02,
+          "tier": 0
+        },
+        "measured": 13.172372255102506,
+        "rel_error": 0.6024783765331514,
+        "source": "local"
+      }
+    ],
+    "unmeasured": [],
+    "reason": "failed targets: ring_fsr_nm",
+    "n_eff": 1.8065590858459473,
+    "n_g": 2.2277374267578125,
+    "delta_length_um": null,
+    "wavelength_um": 1.55,
+    "stack_label": "400 nm TFLN strip (isotropic approx)",
+    "from_cache": true,
+    "bbox_um": [
+      30.0,
+      21.8
+    ],
+    "max_footprint_um": [
+      30.0,
+      21.8
+    ],
+    "footprint_ok": true
+  },
+  "calls_used": 1,
+  "outcome": "fail_impossible_with_exposed_tunables_and_footprint",
+  "evidence": {
+    "required_round_trip_um_for_8p22_nm": 131.19810964352217,
+    "measured_round_trip_um": 81.872,
+    "valid_geometry_limit_used": "radius=5.0 is the minimum bend radius accepted by the script cross-section; length_x and length_y fill the 30.0 x 21.8 um footprint with gap set to the stack min_feature_um=0.5.",
+    "even_unbuildable_zero_radius_upper_bound_um": 89.6,
+    "stack_min_bend_radius_um": 30.0,
+    "stack_min_bend_radius_note": "Respecting the stack min_bend_radius would be impossible inside the 21.8 um footprint before any FSR tuning."
+  }
+}

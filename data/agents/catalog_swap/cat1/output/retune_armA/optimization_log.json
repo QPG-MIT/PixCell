@@ -1,0 +1,38 @@
+[
+  {
+    "stack": "soi220",
+    "iter": 1,
+    "delta_length_requested_um": -0.19163170202612,
+    "delta_length_measured_um": 10.001000000000005,
+    "n_eff": 2.449714183807373,
+    "n_g": 4.0574421882629395,
+    "fsr_nm": 59.20626006629673,
+    "rel_error": 6.316388622314496e-05,
+    "reasoning": "Set wg_width to stack single_mode_width_um=0.5. Required measured imbalance is lambda^2/(n_g*FSR)=10.00037 um; geometry at this width has 10.192 um built-in imbalance, so delta_length=-0.191631702 um predicts about 10.001 um measured imbalance and 59.206 nm FSR.",
+    "predicted_fsr_nm_next": 59.20626006629673
+  },
+  {
+    "stack": "sin400",
+    "iter": 1,
+    "delta_length_requested_um": 9.908268086965478,
+    "delta_length_measured_um": 20.074000000000012,
+    "n_eff": 1.6415010690689087,
+    "n_g": 2.0212899446487427,
+    "fsr_nm": 59.21079074570219,
+    "rel_error": 1.3354935014187897e-05,
+    "reasoning": "Set wg_width to stack single_mode_width_um=1.0. Symmetrically reduced top_y/bottom_y to +/-24.875 so the wider guide stays within the 50.75 um footprint. Required measured imbalance is lambda^2/(n_g*FSR)=20.07427 um; this geometry has 10.166 um built-in imbalance, so delta_length=9.908268087 um predicts 20.074 um measured imbalance and 59.211 nm FSR.",
+    "predicted_fsr_nm_next": 59.21079074570219
+  },
+  {
+    "stack": "tfln400",
+    "iter": 1,
+    "delta_length_requested_um": 8.061958136628142,
+    "delta_length_measured_um": 18.214,
+    "n_eff": 1.8065590858459473,
+    "n_g": 2.2277374267578125,
+    "fsr_nm": 59.20986391071441,
+    "rel_error": 2.298417253672462e-06,
+    "reasoning": "Set wg_width to stack single_mode_width_um=1.2. Symmetrically reduced top_y/bottom_y to +/-24.75 so the wider guide stays within the 50.75 um footprint. Required measured imbalance is lambda^2/(n_g*FSR)=18.21396 um; this geometry has 10.152 um built-in imbalance, so delta_length=8.061958137 um predicts 18.214 um measured imbalance and 59.210 nm FSR.",
+    "predicted_fsr_nm_next": 59.20986391071441
+  }
+]

@@ -1,0 +1,35 @@
+{
+  "device_type": "1x4_MMI_splitter",
+  "topology_reasoning": "This is a 1×4 multimode interference (MMI) power splitter. Light enters from the single input taper at the bottom, expands into the wide MMI body where multimode interference creates 4 self-images at the top edge, which are then collected by 4 output tapers. Function-defining knobs: (1) MMI body width and length determine the imaging condition; (2) taper lengths and tip widths control mode matching and insertion loss; (3) output taper spacing determines port separation; (4) gap between output tapers affects crosstalk.",
+  "function_knobs": [
+    "mmi_length",
+    "mmi_width",
+    "taper_length",
+    "taper_tip_width",
+    "taper_base_width",
+    "output_pitch",
+    "input_taper_length",
+    "input_taper_tip_width",
+    "input_taper_base_width"
+  ],
+  "footprint_um": [25, 10],
+  "iterations": [
+    {"iter": 1, "iou": 0.18, "dice": 0.31, "sse": 1599215, "change_made": "Initial attempt with small dimensions"},
+    {"iter": 2, "iou": 0.45, "dice": 0.62, "sse": 1252211, "change_made": "Expanded MMI width to 17µm, increased taper dimensions"},
+    {"iter": 3, "iou": 0.43, "dice": 0.60, "sse": 1447639, "change_made": "Further expanded MMI to 19µm - worse"},
+    {"iter": 4, "iou": 0.45, "dice": 0.62, "sse": 1294078, "change_made": "Refactored positioning, back to 17.5µm"},
+    {"iter": 5, "iou": 0.45, "dice": 0.62, "sse": 1294183, "change_made": "Used add_polygon for precise taper placement"},
+    {"iter": 6, "iou": 0.42, "dice": 0.59, "sse": 1507470, "change_made": "Tried 20µm width - worse"},
+    {"iter": 7, "iou": 0.42, "dice": 0.59, "sse": 1449031, "change_made": "Tried 19.4µm from pixel analysis - worse"},
+    {"iter": "final", "iou": 0.45, "dice": 0.62, "sse": 1252211, "change_made": "Reverted to best params from iter 2"}
+  ],
+  "best_iou": 0.45,
+  "knob_verification": {
+    "tested_knob": "mmi_width",
+    "baseline": 17.0,
+    "modified": 19.0,
+    "width_change_um": 2.0,
+    "responsive": true
+  },
+  "notes": "IoU capped at ~0.45. The compare tool centers GDS within footprint but target image has device offset from center. The fundamental mismatch is that footprint (25µm) doesn't match actual device width (~17-19µm). Script refactored to make tunables explicit function parameters for proper caching behavior."
+}

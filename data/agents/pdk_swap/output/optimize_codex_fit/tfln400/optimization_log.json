@@ -1,0 +1,29 @@
+{
+  "stack": "tfln400",
+  "constraint": {
+    "max_footprint_um": [
+      91.1,
+      50.75
+    ]
+  },
+  "strategy": "Refit the longer lower arm as a compact smooth serpentine built from gf.Path waypoints and extruded on layer (1,0); keep the Phase-3 physics delta and stack-specific single-mode width.",
+  "iterations": [
+    {
+      "iter": 1,
+      "delta_length_requested_um": 134.80605765871903,
+      "delta_length_measured_um": 134.806,
+      "n_eff": 1.8065590858459473,
+      "n_g": 2.2277374267578125,
+      "fsr_nm": 8.000003421730131,
+      "rel_error": 4.277162664045875e-07,
+      "bbox_um": [
+        91.1,
+        49.95
+      ],
+      "footprint_ok": true,
+      "passes": true,
+      "reasoning": "The TFLN design needs delta_L near 134.806 um with a 1.2 um single-mode width and 0.5 um min feature. A three-lane smooth meander is enough when stretched laterally across the lower interior; lane spacing remains much larger than width plus min-feature spacing. The lowest centerline is -23.975 um, so the 1.2 um waveguide remains inside the original footprint height. The pre-build path lengths predicted delta_L=134.806 um, giving FSR essentially 8.0 nm.",
+      "predicted_fsr_nm_next": 8.000003421730131
+    }
+  ]
+}

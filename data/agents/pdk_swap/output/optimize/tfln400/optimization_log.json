@@ -1,0 +1,29 @@
+{
+  "stack": "tfln400",
+  "stack_label": "400 nm TFLN strip (isotropic approx)",
+  "spec": {"metric": "fsr_nm", "target": 8.0, "tolerance_rel": 0.02, "wavelength_um": 1.55},
+  "wg_width_um": 1.2,
+  "wg_width_rule": "= stack single_mode_width_um (rule-based, not searched); >= min_feature_um 0.5",
+  "geometry_note": "delta_length ~135 um folded into the 4-finger boustrophedon meander (primitives: straight + euler U-turns); delta_length stays the exact knob (bottom_len - top_len).",
+  "iterations": [
+    {
+      "iter": 1,
+      "delta_length_requested_um": 134.81,
+      "delta_length_measured_um": 134.81,
+      "n_eff": 1.8066,
+      "n_g": 2.2277,
+      "fsr_nm": 7.9998,
+      "rel_error": 0.0000239,
+      "reasoning": "FSR = lambda^2/(n_g*delta_L). Pre-solved n_g=2.2277 for the TFLN 400nm/1.2um strip (n_e isotropic approx), so required delta_L* = 2.4025/(2.2277*0.008) = 134.81 um. Set delta_length=134.81 and folded it into the meander (finger height ~19.6 um). Predicted FSR = 8.0 nm.",
+      "predicted_fsr_nm_next": null
+    }
+  ],
+  "converged": true,
+  "converged_iter": 1,
+  "final": {"fsr_nm": 7.9998, "rel_error": 0.0000239, "delta_length_um": 134.81, "n_g": 2.2277},
+  "fidelity_after_retune": {
+    "iou_vs_original_image": 0.019,
+    "iou_before_retune_refined": 0.6275,
+    "note": "Expected large drop: geometry morphs to a compact meander delay to meet the FSR spec while the MZI topology persists. Not tuned back."
+  }
+}

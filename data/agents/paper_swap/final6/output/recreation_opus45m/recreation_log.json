@@ -1,0 +1,42 @@
+{
+  "topology_reasoning": {
+    "device_type": "4-port symmetric star coupler / 4-way power splitter",
+    "description": "Four elliptical lobes emanating from a central junction in a cross pattern. Horizontal lobes have short port stubs, vertical lobes have longer tapered ports. The device has near 4-fold rotational symmetry with asymmetric port lengths.",
+    "how_it_works": "Light enters any port, expands into the central MMI region formed by the overlapping lobes, and splits to all four outputs. The elliptical tapers provide adiabatic mode matching between port waveguides and the multimode junction.",
+    "function_knobs": [
+      "lobe_major_um: controls the ellipse major axis (coupler size, determines splitting ratio)",
+      "lobe_minor_um: controls the ellipse minor axis (aperture width at junction)",
+      "lobe_overlap_um: how much lobes overlap at center (coupling strength)",
+      "h_port_length_um: horizontal port length (mode matching)",
+      "v_port_length_um: vertical port length (mode matching)",
+      "h_port_width_um/v_port_width_um: port waveguide widths"
+    ],
+    "construction_plan": "Create 4 elliptical lobes from polygon points, offset and rotate for cardinal directions, add rectangular ports for horizontal and trapezoidal tapered ports for vertical"
+  },
+  "iterations": [
+    {"iter": 1, "iou": 0.481, "dice": 0.650, "sse": 80767, "change_made": "Initial attempt with 4 identical ellipses + ports"},
+    {"iter": 2, "iou": 0.479, "dice": 0.648, "sse": 47388, "change_made": "Shrunk lobes (1.6->0.95, 1.2->0.65) - too small now"},
+    {"iter": 3, "iou": 0.404, "dice": 0.576, "sse": 97106, "change_made": "Tried asymmetric H/V lobes - wrong topology"},
+    {"iter": 4, "iou": 0.628, "dice": 0.772, "sse": 41371, "change_made": "Symmetric lobes, asymmetric port lengths (V longer)"},
+    {"iter": 5, "iou": 0.833, "dice": 0.909, "sse": 15162, "change_made": "Thinner lobes (minor 0.55), longer H ports (0.55)"},
+    {"iter": 6, "iou": 0.868, "dice": 0.929, "sse": 11074, "change_made": "Fine-tuned: smaller lobes (1.0, 0.5), longer H (0.68), shorter V (0.55)"}
+  ],
+  "final": {
+    "iou": 0.868,
+    "dice": 0.929,
+    "sse": 11074,
+    "gds_size_um": [4.82, 4.56],
+    "footprint_um": [4.7, 4.7]
+  },
+  "knob_verification": {
+    "param": "lobe_major_um",
+    "baseline_value": 1.0,
+    "perturbed_value": 1.2,
+    "delta": 0.2,
+    "baseline_area_um2": 6.7675,
+    "perturbed_area_um2": 8.0226,
+    "area_delta_um2": 1.255,
+    "relative_change_pct": 18.5,
+    "result": "PASS"
+  }
+}

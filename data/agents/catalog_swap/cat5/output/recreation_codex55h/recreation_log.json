@@ -1,0 +1,73 @@
+{
+  "phase": "A",
+  "input_files": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device": "symmetric two-waveguide directional coupler",
+    "visual_evidence": [
+      "The bitmap contains two disconnected black material regions, mirrored about the horizontal centerline.",
+      "Both guides span the full 40 um length and are approximately 0.52 um wide.",
+      "The guide centers start near +/-1.97 um, bend inward to coupled centers near +/-0.36 um, run parallel through a long central section, and bend back out at the right edge.",
+      "The coupled-section inner gap is approximately 0.20 um."
+    ],
+    "working_model": "Two mirrored centerline paths extruded on layer (1,0). Each path has a cosine S-bend from the input pitch to the central coupling pitch, a straight coupled transfer section, and a mirrored cosine S-bend to the output pitch.",
+    "how_it_works": "Optical power transfer is set primarily by the parallel interaction length and the small central gap between the two single-mode guides; the S-bend length and pitch set adiabatic access to the coupling region with low radiation and define the footprint.",
+    "function_defining_knobs": [
+      "wg_width",
+      "gap_um",
+      "coupling_length",
+      "sbend_length",
+      "input_pitch",
+      "delta_length"
+    ],
+    "calibrated_initial_estimates_um": {
+      "footprint_length": 40.0,
+      "footprint_width": 4.5,
+      "wg_width": 0.52,
+      "gap_um": 0.20,
+      "coupled_center_offset": 0.36,
+      "input_center_offset": 1.98,
+      "sbend_length": 9.6,
+      "coupling_length": 20.8
+    },
+    "verification_note": "homi.spec_optimization.verify_knob_response is a one-arm length-delta helper. A symmetric coupler transfer-length knob changes both guides and leaves arm delta at zero, so this recreation also exposes a baseline-zero delta_length trim knob that moves real layer-(1,0) geometry without altering the matched baseline image."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8905844464676387,
+      "dice": 0.9421260691439661,
+      "sse": 8052.0,
+      "change_made": "Initial primitives-only cosine-S directional-coupler model with wg_width=0.54, gap_um=0.18, input_pitch=3.96, sbend_length=9.6, coupling_length=20.8. Diff shows small systematic S-bend curvature mismatch but exact footprint and threshold-passing overlap."
+    }
+  ],
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.54,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 4.999999999999993,
+    "delta_response_um": 4.999999999999993,
+    "delta_length_ok": true,
+    "base_area_um2": 43.55850400000001,
+    "perturbed_area_um2": 46.25850400000001,
+    "area_growth_um2": 2.6999999999999957,
+    "expected_area_growth_um2": 2.7,
+    "area_ok": true,
+    "passes": true
+  },
+  "final": {
+    "selected_iteration": 1,
+    "iou": 0.8905844464676387,
+    "dice": 0.9421260691439661,
+    "sse": 8052.0,
+    "gds": "device.gds",
+    "raster": "raster_iter1.png",
+    "diff": "diff_iter1.png"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "tunables": {
+    "footprint_width": 30.0,
+    "footprint_height": 21.8,
+    "bus_width": 1.2,
+    "coupling_gap": 0.19,
+    "wg_width": 1.2,
+    "coupling_length": 8.95,
+    "delta_length": 8.374931225381303,
+    "center_x": 14.887745728919313,
+    "ring_y_shift": -0.36520500000000117,
+    "base_coupling_gap": 0.19,
+    "base_coupling_length": 8.95
+  },
+  "evaluator_report": {
+    "passes": false,
+    "verdicts": [
+      {
+        "metric": "ring_fsr_nm",
+        "tier": 0,
+        "verdict": "fail",
+        "target": {
+          "metric": "ring_fsr_nm",
+          "value": 8.22,
+          "tolerance_rel": 0.02,
+          "tier": 0
+        },
+        "measured": 12.822338940513301,
+        "rel_error": 0.5598952482376278,
+        "source": "local"
+      }
+    ],
+    "unmeasured": [],
+    "reason": "failed targets: ring_fsr_nm",
+    "n_eff": 1.8065590858459473,
+    "n_g": 2.2277374267578125,
+    "delta_length_um": 84.107,
+    "wavelength_um": 1.55,
+    "stack_label": "400 nm TFLN strip (isotropic approx)",
+    "from_cache": true,
+    "bbox_um": [
+      30.0,
+      21.782
+    ],
+    "max_footprint_um": [
+      30.0,
+      21.8
+    ],
+    "footprint_ok": true
+  },
+  "calls_used": 2
+}

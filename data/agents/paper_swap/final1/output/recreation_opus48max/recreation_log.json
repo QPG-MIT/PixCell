@@ -1,0 +1,113 @@
+{
+  "device_type": "Adiabatic 1x2 power splitter (three-waveguide mode-evolution coupler)",
+  "footprint_um": [40.0, 1.7],
+  "calibration": {
+    "scale_px_per_um": [40.4, 307.06],
+    "note": "Anisotropic: y stretched ~7.6x vs x. Visual taper angles / S-bend deflections are far gentler in real um than the image suggests. All reasoning below is from direct per-column pixel measurement, not visual impression."
+  },
+  "how_it_works": "Light enters the single wide CENTRAL waveguide on the left. Over the coupling region the central guide is adiabatically tapered DOWN to a narrow tip while two symmetric OUTER waveguides (born as narrow tips at the coupler entrance) are tapered UP to full width, at a constant sub-wavelength gap. As widths trade off continuously, the fundamental mode of the central guide evolves adiabatically into the symmetric supermode of the two outer guides, transferring power 50/50 without a sharp junction. Past the coupler the central guide has vanished and the two outer guides carry equal power; they are then routed apart by S-bends to two well-separated output ports. Run in reverse it is a 2x1 combiner. Being mode-evolution based it is broadband and fabrication tolerant.",
+  "topology_from_measurement": {
+    "central_waveguide": {
+      "role": "input; tapers to tip (power donor)",
+      "x_start_um": 0.0,
+      "input_straight_len_um": 3.1,
+      "input_width_um": 0.27,
+      "taper": "linear width 0.27 -> ~0.06 (near-tip) over ~22.4um, centered at device center",
+      "tip_x_um": 25.5,
+      "measured_widths": "x0:0.27 x6:0.244 x12:0.19 x18:0.14 x22:0.10 x25:0.075 -> vanishes ~25.5"
+    },
+    "outer_waveguides": {
+      "count": 2,
+      "role": "power acceptors -> the two outputs; symmetric about center",
+      "birth_x_um": 3.1,
+      "tip_width_um": 0.06,
+      "taper": "linear width 0.06 -> 0.244 over ~22.4um (up-taper), UP-tapers complementary to central DOWN-taper",
+      "coupler_center_offset_um": 0.264,
+      "measured_widths": "x4:0.078 x10:0.124 x18:0.19 x25:0.24 (grows monotonically)"
+    },
+    "coupling_gap": {
+      "edge_to_edge_um": 0.105,
+      "note": "measured 0.10-0.11 and ~constant along the coupler because w_central+w_outer stays ~0.31um (complementary tapers). This near-constant gap is the coupler's coupling-strength knob."
+    },
+    "s_bends": {
+      "x_range_um": [25.5, 35.5],
+      "length_um": 10.0,
+      "outer_center_offset_um": {"coupler": 0.264, "output": 0.728},
+      "vertical_travel_um": 0.464,
+      "width_um": 0.244
+    },
+    "output_straights": {
+      "x_range_um": [35.5, 40.0],
+      "length_um": 4.5,
+      "center_offset_um": 0.728,
+      "width_um": 0.244,
+      "note": "outer edges land at +/-0.85um = the footprint half-height, so outputs graze the top/bottom edges; output pitch = 1.456um = 1.7 - w_wg"
+    }
+  },
+  "function_knobs": {
+    "gap_um": "coupling gap (edge-to-edge) -> coupling strength; drives outer-arm placement",
+    "L_couple": "adiabatic coupling/taper length -> adiabaticity & bandwidth (the critical knob)",
+    "w_in": "central input width",
+    "w_center_tip": "central taper tip width (adiabatic mode donor endpoint)",
+    "w_outer_tip": "outer taper tip width (acceptor start)",
+    "w_wg": "single-mode outer/output guide width (0.244um)",
+    "out_offset": "output waveguide center offset -> output port pitch",
+    "L_sbend": "S-bend length (routing)",
+    "delta_length": "output-arm length imbalance (routing/phase knob, default 0 = symmetric). This is the knob keyed by the measurement contract (lengths.json delta_length_um = |arm_top - arm_bottom|); at 0 the silhouette is symmetric as drawn."
+  },
+  "why_not_alternatives": {
+    "Y_branch": "no wide multimode stem splitting at a hard junction; instead a central guide that tapers to a tip flanked by up-tapering guides => mode evolution, not a Y-split",
+    "directional_coupler_2wg": "three guides present in the coupling region (central + 2 outer), not two parallel identical guides",
+    "MMI": "no wide multimode slab; sub-wavelength guides throughout",
+    "conclusion": "central down-taper + symmetric outer up-tapers at constant gap + S-bend fan-out = textbook adiabatic (mode-evolution) 1x2 splitter"
+  },
+  "build_plan": {
+    "primitives": "gf.components.straight(cross_section) + gf.components.taper + gf.Path->extrude for S-bends + @gf.cell assembly; layer (1,0); no device stencils; no raw polygons",
+    "coordinate_frame": "build x in [0,40], symmetric about y=0 (compare_absolute left-aligns x, centers y). Target GDS bbox 40x1.7um for size_match.",
+    "arm_lengths_for_contract": "arm_top/arm_bottom = L_couple + sbend_path_len + (L_out[+delta_length]); delta_length_um computed as |arm_top-arm_bottom| from real objects"
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8680,
+      "dice": 0.9294,
+      "sse": 32958.0,
+      "change_made": "Initial build: central input straight + linear down-taper to tip; two symmetric outer up-tapers at fixed gap-derived offset; cosine S-bends fanning out to symmetric outputs; layer (1,0); bbox 40x1.7. Already >0.85."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9571,
+      "dice": 0.9781,
+      "sse": 10318.0,
+      "change_made": "Per-column diff fixes: (a) shift coupler section up ~0.0125um (target coupler symmetric about y~0.837, outputs about center); (b) S-bend start x=25.5->26 and run 26->36 to match measured cosine; (c) widen outer/central tips (w_outer_tip 0.06->0.07, w_center_tip 0.06->0.075). IoU 0.868->0.957."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9611,
+      "dice": 0.9802,
+      "sse": 9248.0,
+      "change_made": "Sharpen central donor tip with a second point-taper (0.076->0.02 over 0.5um) removing the ~757px blunt end-face; trim output guide width w_wg 0.244->0.242 (target outputs run ~0.24) and w_outer_tip->0.064; snap all widths to 0.002um grid (kfactory port rule). IoU 0.957->0.961."
+    }
+  ],
+  "stop_reason": "IoU 0.961 >> 0.85 target after 3/6 iterations. Remaining residual is a ~<=6px S-bend easing difference (target inflection slightly right-skewed vs symmetric cosine) and sub-pixel edge anti-aliasing -- rasterization-level, not device physics. Stopped to avoid overfitting the rendered PNG.",
+  "final": {"iou": 0.9611, "dice": 0.9802, "sse": 9248.0, "iterations": 3, "size_match": [true, true]},
+  "write_note": "device.gds written with with_metadata=False so the device cell stays top-level (no $$$CONTEXT_INFO$$$ wrapper); required for gdstk-based area/bbox measurement (verify_knob_response, _layer_area) to see the polygons. Geometry/IoU unaffected.",
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "delta_length",
+    "why_this_knob": "delta_length (output-arm length imbalance) is the routing/phase knob the measurement contract keys on: it is the only tunable that moves lengths.json delta_length_um, and it cleanly extends one straight output guide of width w_wg, so area grows by width_um*delta_um. The splitting-physics knobs (L_couple, gap_um) are also top-level tunables but do not map to an arm-length delta.",
+    "delta_um": 5.0,
+    "width_um": 0.242,
+    "base_delta_length_um": 0.002,
+    "perturbed_delta_length_um": 4.998,
+    "delta_response_um": 4.996,
+    "delta_length_ok": true,
+    "base_area_um2": 18.439,
+    "perturbed_area_um2": 19.649,
+    "area_growth_um2": 1.21,
+    "expected_area_growth_um2": 1.21,
+    "area_ok": true,
+    "passes": true
+  },
+  "tunables": ["w_in", "w_center_tip", "w_center_point", "w_outer_tip", "w_wg", "gap_um", "L_in", "L_couple", "L_center_taper", "L_center_point", "L_sbend", "L_out", "out_offset", "y_offset_coupler", "delta_length"]
+}

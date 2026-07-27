@@ -1,0 +1,29 @@
+{
+  "stack": "soi220",
+  "stack_label": "220 nm SOI strip",
+  "spec": {"metric": "fsr_nm", "target": 8.0, "tolerance_rel": 0.02, "wavelength_um": 1.55},
+  "wg_width_um": 0.5,
+  "wg_width_rule": "= stack single_mode_width_um (rule-based, not searched); >= min_feature_um 0.18",
+  "geometry_note": "delta_length ~74 um cannot fit as one vertical excursion in a compact device, so the long arm is a 4-finger boustrophedon meander (primitives: straight + euler U-turns); delta_length stays the exact knob (bottom_len - top_len).",
+  "iterations": [
+    {
+      "iter": 1,
+      "delta_length_requested_um": 74.02,
+      "delta_length_measured_um": 74.02,
+      "n_eff": 2.4497,
+      "n_g": 4.0574,
+      "fsr_nm": 7.9995,
+      "rel_error": 0.0000645,
+      "reasoning": "FSR = lambda^2/(n_g*delta_L). Pre-solved n_g=4.0574 for the SOI 220nm/0.5um strip, so required delta_L* = lambda^2/(n_g*FSR_target) = 2.4025/(4.0574*0.008) = 74.02 um. Set delta_length=74.02 and folded it into the meander. Predicted FSR = 8.0 nm.",
+      "predicted_fsr_nm_next": null
+    }
+  ],
+  "converged": true,
+  "converged_iter": 1,
+  "final": {"fsr_nm": 7.9995, "rel_error": 0.0000645, "delta_length_um": 74.02, "n_g": 4.0574},
+  "fidelity_after_retune": {
+    "iou_vs_original_image": 0.0143,
+    "iou_before_retune_refined": 0.6275,
+    "note": "Expected large drop: geometry morphs (racetrack -> compact meander delay, ~57x45 um vs 91x50 um) to meet the FSR spec while the MZI topology persists. Not tuned back."
+  }
+}

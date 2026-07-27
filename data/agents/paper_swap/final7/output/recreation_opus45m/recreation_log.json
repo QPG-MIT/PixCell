@@ -1,0 +1,71 @@
+{
+  "device_analysis": {
+    "device_type": "Vertical racetrack resonator with dual internal segmented bus waveguides",
+    "how_it_works": "The outer racetrack ring provides optical resonance. Two horizontal bus waveguides run through the center interior, each with 2 rectangular slot cutouts. Light couples between the bus waveguides and the ring at the curved sections.",
+    "topology": {
+      "outer_ring": "Vertical racetrack shape - two semicircular bends (top/bottom) connected by vertical straight sections",
+      "inner_buses": "Two horizontal waveguides inside the ring, vertically separated, each with 2 rectangular slots",
+      "symmetry": "Symmetric about both horizontal and vertical centerlines"
+    },
+    "function_defining_knobs": [
+      "ring_width - width of the racetrack ring waveguide",
+      "ring_radius - bend radius of semicircular ends",
+      "straight_length - length of straight sections of racetrack",
+      "bus_width - width of internal bus waveguides",
+      "bus_length - horizontal extent of each bus",
+      "bus_vert_offset - vertical separation of buses from center",
+      "slot_width - width of rectangular slot cutouts",
+      "slot_length - height of each slot",
+      "slot_spacing - center-to-center spacing between slots"
+    ]
+  },
+  "footprint_um": [3.0, 5.5],
+  "iterations": [
+    {"iter": 1, "iou": 0.248, "dice": 0.397, "sse": 510138, "change_made": "Initial horizontal racetrack - wrong orientation"},
+    {"iter": 2, "iou": 0.265, "dice": 0.419, "sse": 504176, "change_made": "Adjusted dimensions but still horizontal"},
+    {"iter": 3, "iou": 0.257, "dice": 0.409, "sse": 517881, "change_made": "Fixed footprint calculation, still horizontal"},
+    {"iter": 4, "iou": 0.249, "dice": 0.399, "sse": 522857, "change_made": "Adjusted bus parameters"},
+    {"iter": 5, "iou": 0.252, "dice": 0.403, "sse": 517089, "change_made": "Simplified bus structure"},
+    {"iter": 6, "iou": 0.551, "dice": 0.711, "sse": 317605, "change_made": "Rotated ring 90 degrees to vertical orientation - major improvement"},
+    {"iter": 7, "iou": 0.588, "dice": 0.740, "sse": 303535, "change_made": "Tuned ring_width=0.58, ring_radius=1.21, straight_length=2.56, bus params adjusted"},
+    {"iter": 8, "iou": 0.572, "dice": 0.728, "sse": 309289, "change_made": "Simplified bus (no tapers), slightly worse"},
+    {"iter": 9, "iou": 0.560, "dice": 0.718, "sse": 311279, "change_made": "Adjusted ring/bus params - worse"},
+    {"iter": 10, "iou": 0.588, "dice": 0.740, "sse": 303535, "change_made": "Restored iteration 7 parameters - best result"}
+  ],
+  "knob_verification": {
+    "bus_length": {
+      "base_value": 1.9,
+      "delta": 0.2,
+      "base_area_um2": 24.378176,
+      "perturbed_area_um2": 24.698176,
+      "area_change_um2": 0.32,
+      "responsive": true
+    },
+    "ring_width": {
+      "base_value": 0.58,
+      "delta": 0.05,
+      "base_area_um2": 24.378176,
+      "perturbed_area_um2": 26.287802,
+      "area_change_um2": 1.909626,
+      "responsive": true
+    }
+  },
+  "final_result": {
+    "iou": 0.588,
+    "dice": 0.740,
+    "sse": 303535,
+    "gds_size_um": [3.0, 5.564],
+    "size_match": [true, true]
+  },
+  "tunables": [
+    "ring_width",
+    "ring_radius",
+    "straight_length",
+    "bus_width",
+    "bus_length",
+    "bus_vert_offset",
+    "slot_width",
+    "slot_length",
+    "slot_spacing"
+  ]
+}

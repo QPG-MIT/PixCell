@@ -1,0 +1,52 @@
+{
+  "topology_reasoning": {
+    "device_hypothesis": "A four-port symmetric clover/cross made from a central multimode body with four identical lobes and four narrow access stems on the cardinal axes.",
+    "working_principle": "The image is mirror-symmetric in x and y, with identical narrow stems feeding a broader central interaction region. Function is likely defined by lobe size, lobe placement, and stem width/length rather than by fine internal substructure, because the bitmap contains one connected filled region with no etched holes or gaps.",
+    "function_defining_knobs": [
+      "stem_width_um",
+      "stem_length_um",
+      "lobe_major_um",
+      "lobe_minor_um",
+      "lobe_offset_um",
+      "delta_length"
+    ],
+    "measured_observations": {
+      "footprint_um": [
+        4.7,
+        4.7
+      ],
+      "bbox_px": [
+        524,
+        173,
+        1081,
+        730
+      ],
+      "px_per_um": 118.51063829787233,
+      "outer_stem_width_px": 27,
+      "outer_stem_width_um": 0.2278,
+      "full_span_px": 557,
+      "full_span_um": 4.7
+    },
+    "coding_plan": "Model the shape as the boolean union of four ellipses and four rectangles. Keep all tunables as top-level assignments. Use delta_length to add equal extra straight length to the north and south stems so the knob changes real geometry by width*delta while preserving the baseline symmetric target at delta_length = 0."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9430034982508746,
+      "dice": 0.9706657750228269,
+      "sse": 4562.0,
+      "change_made": "Initial measured model using four ellipses plus four rectangles. Removed the @gf.cell wrapper so the written GDS exposes the real device cell at top level for evaluator area measurement without changing geometry."
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.228,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 1.1399999999999935,
+    "expected_area_growth_um2": 1.1400000000000001,
+    "passes": true
+  }
+}

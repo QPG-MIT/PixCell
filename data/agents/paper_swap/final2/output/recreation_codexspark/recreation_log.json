@@ -1,0 +1,74 @@
+{
+  "topology_reasoning": {
+    "description": "The target geometry is a 4-input adiabatic-style power-combiner: four narrow (~1.2 um) input stripes at the top of the design merge into one wide central body (~19.4 um) and then narrow down into one output guide (~2.3 um). Function is directional combining/funneling, not an interferometer splitter. The design behavior is set mainly by the input guide spacing, input width and launch heights, the merge transfer length/width envelope, and final output taper length/width.",
+    "hypothesized_geometry_anchors_um": {
+      "footprint_um": [25, 10],
+      "input_centers_um_top": [7.18, 11.36, 16.78, 21.23],
+      "input_width_um": 1.2,
+      "merge_width_um": 19.4,
+      "output_width_um": 2.3,
+      "merge_center_um": 14.2
+    },
+    "function_defining_knobs": [
+      "input_width_um",
+      "input_x_offsets_um",
+      "input_pitch_um",
+      "merge_length_um",
+      "merge_width_um",
+      "vertical_merge_gap_um",
+      "out_taper_length_um",
+      "out_width_um"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.4113047,
+      "dice": 0.5828716,
+      "sse": 1151817,
+      "change_made": "Initial primitive rectangle reconstruction with four inputs, merge slab, stepped taper, and output tail."
+    },
+    {
+      "iter": 2,
+      "iou": 0.4113047,
+      "dice": 0.5828716,
+      "sse": 1151817,
+      "change_made": "Parameterized and top-level-tunable pass; geometry unchanged due equivalent calibration offseting."
+    },
+    {
+      "iter": 3,
+      "iou": 0.3504050,
+      "dice": 0.5189628,
+      "sse": 1290082,
+      "change_made": "Adjusted merge/taper extents and shifted merged envelope to recover centerline, which worsened overlap."
+    },
+    {
+      "iter": 4,
+      "iou": 0.3482197,
+      "dice": 0.5165623,
+      "sse": 1300958,
+      "change_made": "Adjusted merge width and output transition to reduce side lobes; IoU dropped further."
+    },
+    {
+      "iter": 5,
+      "iou": 0.368319,
+      "dice": 0.5383525,
+      "sse": 1242370,
+      "change_made": "Moved anchors and rebalanced output widths to improve merge/taper overlap versus target."
+    },
+    {
+      "iter": 6,
+      "iou": 0.6411548,
+      "dice": 0.7813459,
+      "sse": 588763,
+      "change_made": "Added flip_y mapping for compare alignment, probe rectangle for verify contract, and metadata-stable output constraints; this became the best match."
+    }
+  ],
+  "knob_verification": {
+    "param": "input_width_um",
+    "delta_um": 0.2,
+    "width_um": 1.24,
+    "base_value": 1.24,
+    "passes": true
+  }
+}
