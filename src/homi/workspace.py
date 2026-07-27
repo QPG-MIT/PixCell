@@ -45,7 +45,7 @@ RUN_PREFIX = "homi-"
 # inherits ~/.codex/config.toml (whatever the human last set it to), so an
 # unpinned alias silently drifts to the wrong model. MCP is disabled per the
 # RUNBOOK: a hanging personal MCP server blocks codex's first turn.
-DEFAULT_WORKER_CLI = "cdxx"
+DEFAULT_WORKER_CLI = "auto"
 
 _CODEX_PIN = (
     "codex --yolo -m gpt-5.5 -c model_reasoning_effort=medium"
@@ -99,16 +99,30 @@ class WorkerCLI:
 
 
 WORKER_CLIS: dict[str, WorkerCLI] = {
+    "codex": WorkerCLI("codex", "codex", _CODEX_PIN),
+    "claude": WorkerCLI("claude", "claude", "claude --dangerously-skip-permissions"),
+    # lab-era alias compat (recorded commands and campaign transcripts use these)
     "cdxx": WorkerCLI("cdxx", "codex", _CODEX_PIN),
     "cdxxs": WorkerCLI("cdxxs", "codex", "codex --full-auto"),
     "cxx": WorkerCLI("cxx", "claude", "claude --dangerously-skip-permissions"),
-    # boxes are retired for workers (2026-07-09): cxc maps to host claude
     "cxc": WorkerCLI("cxc", "claude", "claude --dangerously-skip-permissions"),
 }
 
 
 def worker_cli(alias: str | None) -> WorkerCLI:
     alias = alias or DEFAULT_WORKER_CLI
+    if alias == "auto":
+        # codex-first preserves the recorded default; if neither CLI is
+        # installed, return the codex spec so dispatch raises its usual
+        # "no agent backend" error at launch time.
+        import shutil as _shutil
+
+        if _shutil.which("codex"):
+            alias = "codex"
+        elif _shutil.which("claude"):
+            alias = "claude"
+        else:
+            alias = "codex"
     if alias in WORKER_CLIS:
         return WORKER_CLIS[alias]
     # escape hatch: an unknown alias passes through verbatim (the run

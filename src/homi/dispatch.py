@@ -33,8 +33,8 @@ from homi.workspace import (  # noqa: F401 — stable public surface (re-exports
     worker_cli,
 )
 
-_CLAUDE_ALIASES = ("cxc", "cxx")
-_CODEX_ALIASES = ("cdxx", "cdxxs")
+_CLAUDE_ALIASES = ("claude", "cxc", "cxx")
+_CODEX_ALIASES = ("codex", "cdxx", "cdxxs")
 
 
 @dataclass(frozen=True)
@@ -99,9 +99,9 @@ def _headless_cli(cli: str | None) -> str | None:
     if _shutil.which(spec.pane_launch.split()[0]):
         return cli
     if spec.kind == "codex" and _shutil.which("claude"):
-        return "cxx"
+        return "claude"
     if spec.kind == "claude" and _shutil.which("codex"):
-        return "cdxx"
+        return "codex"
     raise RuntimeError(
         "no agent backend available: need `pane`+tmux, or `claude`/`codex` on PATH"
     )

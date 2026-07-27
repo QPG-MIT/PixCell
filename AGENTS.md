@@ -120,7 +120,8 @@ was fixed by the src/ package layout + absolute imports (`from jee.core import`,
 
 ### Model name format
 Pipeline VLM configs use `"provider/model-name"` (e.g. `"gemini/gemini-3-flash-preview"`).
-Worker CLI configs are aliases + model ids (the shipped default is `--cli cdxx`, a full-auto Codex worker)
+Worker CLI configs are `--cli claude | codex | auto` (default auto: codex if
+installed, else claude — both launch pinned full-auto; lab-era aliases remain accepted)
 — and launch flags can silently remap models: trust only the status-line readback
 (`homi.conductor.verify_readback`).
 

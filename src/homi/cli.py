@@ -173,7 +173,7 @@ Examples:
     p_extract.add_argument("--device", type=str, default=None, help="Device description (e.g. 'ring resonator in Figure 3')")
     p_extract.add_argument("--num-variants", type=int, default=5, help="Number of B&W variants to generate")
     p_extract.add_argument("--cli", type=str, default=None,
-                           help="Worker CLI alias (default cdxx, host codex pinned gpt-5.5 medium fast; NO boxes)")
+                           help="Worker backend: claude | codex | auto (default: auto — codex if installed, else claude)")
     p_extract.add_argument("--detach", action="store_true",
                            help="Run in a new session and return immediately; progress in <output>/extract.log")
 
@@ -182,8 +182,8 @@ Examples:
     p_generate.add_argument("project_dir", type=Path, help="Project directory with device_bw.png and footprint.json")
     p_generate.add_argument("--baseline", action="store_true",
                             help="Run the legacy Michaelangelo multi-seed sweep instead of the agent loop")
-    p_generate.add_argument("--cli", type=str, default="cdxx",
-                            help="Worker CLI alias for the agent loop (default cdxx, host codex pinned gpt-5.5 medium fast; NO boxes)")
+    p_generate.add_argument("--cli", type=str, default=None,
+                            help="Worker backend: claude | codex | auto (default: auto — codex if installed, else claude)")
     p_generate.add_argument("--worker-model", type=str, default=None, help="Worker model override")
     p_generate.add_argument("--worker-effort", type=str, default=None, help="Worker reasoning effort")
     p_generate.add_argument("--preset", choices=["quick", "balanced", "thorough", "maximum"], default="balanced",
@@ -211,8 +211,8 @@ Examples:
     p_retarget.add_argument("--spec", type=Path, required=True, help="Function spec JSON (WHAT, never WHY)")
     p_retarget.add_argument("--tier1-cap", type=int, default=3, help="Tier-1 FDTD calls per stack")
     p_retarget.add_argument("--ceiling", type=float, default=0.45, help="Tier-1 FlexCredit ceiling per call")
-    p_retarget.add_argument("--cli", type=str, default="cdxx",
-                            help="Worker CLI alias (default cdxx, host codex pinned gpt-5.5 medium fast; NO boxes)")
+    p_retarget.add_argument("--cli", type=str, default=None,
+                            help="Worker backend: claude | codex | auto (default: auto — codex if installed, else claude)")
     p_retarget.add_argument("--workdir", type=Path, default=None, help="Worker workdir (default: <script dir>/retarget)")
     p_retarget.add_argument("--detach", action="store_true",
                             help="Run in a new session and return immediately; progress in <workdir>/retarget.log")
