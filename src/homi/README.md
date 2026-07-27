@@ -10,25 +10,13 @@ and they are code, not convention:
 
 ## How a run flows
 
-```
-   paper.pdf / drawing
-         │
-         ▼
-   PERCEPTION            paper_processing.py · footprint_extraction.py
-   figure → silhouette   → device_bw.png + footprint.json
-         │
-         ▼
-   DISPATCH              dispatch.py · workspace.py · briefs/
-   brief → coding agent  the agent writes device.py (primitives only)
-         │                and iterates against the visual metric
-         ▼
-   VERIFICATION          conductor/ — gate.py re-executes the program,
-   the gate decides      re-rasterizes, recomputes IoU, checks purity;
-         │               only then → output/best.py + best.gds
-         ▼
-   RETARGET / PHYSICS    jee_integration · spec_optimization ·
-   agent turns knobs,    sweep_evaluation · flex_integration
-   python measures       (tier-0 free/local; cloud FDTD is human-gated)
+```mermaid
+flowchart TD
+    A["paper.pdf / drawing"] --> B["PERCEPTION<br/>paper_processing · footprint_extraction<br/><i>figure → device_bw.png + footprint.json</i>"]
+    B --> C["DISPATCH<br/>dispatch · workspace · briefs/<br/><i>a coding agent writes device.py, primitives only,<br/>iterating against the visual metric</i>"]
+    C --> D["VERIFICATION<br/>conductor/gate.py — verify_cell<br/><i>re-execute · re-rasterize · recompute IoU · purity</i>"]
+    D --> E["output/best.py + best.gds<br/><i>gate-verified</i>"]
+    E --> F["RETARGET / PHYSICS<br/>jee_integration · spec_optimization · sweep_evaluation · flex_integration<br/><i>the agent turns knobs; python measures<br/>(tier-0 local and free; cloud FDTD human-gated)</i>"]
 ```
 
 ## Map
