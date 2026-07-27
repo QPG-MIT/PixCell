@@ -20,8 +20,8 @@ import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data" / "agents" / "paper_swap" / "final1" / "output" / "sidewall_sweep"
-FIGS = ROOT / "paper" / "figures"
-ARXIV = ROOT / "paper" / "figures"
+FIGS = ROOT / "arxiv" / "figures"
+ARXIV = ROOT / "arxiv" / "figures"
 FIGS.mkdir(parents=True, exist_ok=True)
 
 plt.rcParams.update({

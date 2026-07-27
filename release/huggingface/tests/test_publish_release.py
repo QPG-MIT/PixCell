@@ -90,7 +90,7 @@ class FakeApi:
         self.merge_calls: list[dict[str, Any]] = []
 
     def whoami(self) -> dict[str, Any]:
-        return {"name": "aadarwal", "orgs": [{"name": "qpaig-mit"}]}
+        return {"name": "release-operator", "orgs": [{"name": "qpaig-mit"}]}
 
     def list_repo_refs(self, **_: Any) -> Any:
         return SimpleNamespace(

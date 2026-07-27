@@ -228,9 +228,10 @@ class BenchmarkRunner:
 
         project_dir = self.config.projects_dir / paper
 
-        # Create model-specific component directory
+        # Model-specific scratch lives under the (gitignored) run directory —
+        # the fixtures dir is read-only input and may be the frozen record.
         model_key_safe = model.model_key.replace("/", "_")
-        component_dir = project_dir / f"benchmark_{model_key_safe}"
+        component_dir = self.run_dir / paper / f"benchmark_{model_key_safe}"
 
         if component_dir.exists() and (component_dir / "calibration.json").exists():
             self.logger.info(f"  Using existing component dir: {component_dir}")

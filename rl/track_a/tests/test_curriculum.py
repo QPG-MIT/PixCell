@@ -14,6 +14,9 @@ from rl.track_a.curriculum import (
     hierarchical_sft_weights,
     stratified_physical_pass,
 )
+pytest.importorskip("tinker", reason="Tinker SDK env (rl/requirements-lock.txt) not installed")
+pytest.importorskip("chz", reason="chz env (rl/requirements-lock.txt) not installed")
+
 from rl.track_a.tinker_data import TrackARLDataset
 
 

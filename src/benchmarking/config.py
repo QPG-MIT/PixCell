@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from homi.paths import projects_dir
+from homi.paths import michaelangelo_dir, workspace_root
 
 
 @dataclass
@@ -149,8 +149,9 @@ class BenchmarkConfig:
         default_factory=lambda: DEFAULT_PROVIDER_LIMITS.copy()
     )
     output_dir: Path = field(default_factory=lambda: Path("benchmark_results"))
-    projects_dir: Path = field(default_factory=projects_dir)
-    michaelangelo_dir: Path = field(default_factory=lambda: Path("michaelangelo"))
+    # The eight shipped input fixtures (silhouette + footprint + calibration)
+    projects_dir: Path = field(default_factory=lambda: workspace_root() / "data" / "benchmark")
+    michaelangelo_dir: Path = field(default_factory=michaelangelo_dir)
 
     def get_limits_for_model(self, model: "BenchmarkModel") -> ProviderLimits:
         """Get parallelism limits for a specific model based on its provider."""
@@ -159,9 +160,9 @@ class BenchmarkConfig:
 
     @classmethod
     def default(cls) -> "BenchmarkConfig":
-        """Create default benchmark configuration for papers 1 and 2."""
+        """Create default benchmark configuration over the shipped fixtures."""
         return cls(
-            papers=["1x2_coupler", "2_004629"],
+            papers=[f"final_{i}" for i in range(1, 9)],
             models=BENCHMARK_MODELS.copy(),
             phase1=Phase1Config(),
             phase2=Phase2Config(),

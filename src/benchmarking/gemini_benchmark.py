@@ -16,7 +16,7 @@ import shutil
 from pathlib import Path
 from typing import List
 
-from homi.paths import projects_dir
+from homi.paths import michaelangelo_dir, projects_dir
 
 from benchmarking.config import (
     BenchmarkConfig,
@@ -102,7 +102,7 @@ def create_gemini_config(
     phase2_turns: int = 3,
     output_dir: Path = Path("benchmark_results"),
     projects_dir: Path = projects_dir(),
-    michaelangelo_dir: Path = Path("michaelangelo"),
+    michaelangelo_dir: Path = michaelangelo_dir(),
 ) -> BenchmarkConfig:
     """Create optimized benchmark config for Gemini models.
 
@@ -295,7 +295,7 @@ Examples:
     parser.add_argument(
         "--michaelangelo-dir",
         type=Path,
-        default=Path("michaelangelo"),
+        default=michaelangelo_dir(),
         help="Michaelangelo directory (default: michaelangelo)"
     )
 

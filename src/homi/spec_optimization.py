@@ -45,7 +45,24 @@ import gdstk
 
 from homi.paths import workspace_root
 
-DEFAULT_CACHE_DIR = workspace_root() / "data" / "agents" / "pdk_swap" / "output" / "mode_cache"
+# Writable solver cache lives OUTSIDE the frozen record; the solve results
+# recorded during the retargeting campaign stay readable as a seed.  data/ is
+# a frozen record — nothing may write into it at runtime.
+DEFAULT_CACHE_DIR = workspace_root() / ".cache" / "mode_cache"
+SEED_CACHE_DIR = workspace_root() / "data" / "agents" / "pdk_swap" / "output" / "mode_cache"
+
+
+def _cache_hit(cache_file: Path, include_seed: bool = True) -> Path | None:
+    """The readable copy of a cache entry: the writable cache first, then —
+    only for the default cache — the frozen campaign seed.  An explicit
+    cache_dir means exactly that cache: no global fallthrough."""
+    if cache_file.exists():
+        return cache_file
+    if include_seed:
+        seed = SEED_CACHE_DIR / cache_file.name
+        if seed.exists():
+            return seed
+    return None
 
 # Mode-plane cross-section (um): large enough for weakly-confined SiN/TFLN modes.
 PLANE_SIZE_UM = 5.0
@@ -244,8 +261,9 @@ def solve_waveguide(
     cache_root.mkdir(parents=True, exist_ok=True)
     cache_file = cache_root / _cache_filename(core_n, clad_n, thickness_um, width, wavelength_um)
 
-    if cache_file.exists():
-        payload = json.loads(cache_file.read_text())
+    cache_hit = _cache_hit(cache_file, include_seed=cache_dir is None)
+    if cache_hit is not None:
+        payload = json.loads(cache_hit.read_text())
         n_eff, n_g = float(payload["n_eff"]), float(payload["n_g"])
         # The cache is a writable file: re-apply the sanity guard so a corrupt
         # or planted entry cannot smuggle absurd physics past the evaluator.
@@ -302,8 +320,9 @@ def solve_supermodes(
     )
     cache_file = cache_root / f"supermodes_{hashlib.sha256(key.encode()).hexdigest()[:16]}.json"
 
-    if cache_file.exists():
-        payload = json.loads(cache_file.read_text())
+    cache_hit = _cache_hit(cache_file, include_seed=cache_dir is None)
+    if cache_hit is not None:
+        payload = json.loads(cache_hit.read_text())
         n_even, n_odd = float(payload["n_even"]), float(payload["n_odd"])
         coupling = _coupling_length(n_even, n_odd, core_n, clad_n, wavelength_um)
         return SupermodeResult(
@@ -365,8 +384,9 @@ def solve_multimode(
     )
     cache_file = cache_root / f"multimode_{hashlib.sha256(key.encode()).hexdigest()[:16]}.json"
 
-    if cache_file.exists():
-        payload = json.loads(cache_file.read_text())
+    cache_hit = _cache_hit(cache_file, include_seed=cache_dir is None)
+    if cache_hit is not None:
+        payload = json.loads(cache_hit.read_text())
         n_effs = tuple(float(n) for n in payload["n_effs"])
         beat = _beat_length(n_effs, core_n, clad_n, wavelength_um)
         return MultimodeResult(n_effs=n_effs, beat_length_um=beat, from_cache=True)
@@ -433,8 +453,9 @@ def solve_cross_section(
     )
     cache_file = cache_root / f"xsection_{hashlib.sha256(key.encode()).hexdigest()[:16]}.json"
 
-    if cache_file.exists():
-        payload = json.loads(cache_file.read_text())
+    cache_hit = _cache_hit(cache_file, include_seed=cache_dir is None)
+    if cache_hit is not None:
+        payload = json.loads(cache_hit.read_text())
         n_effs = tuple(float(n) for n in payload["n_effs"])
         _check_mode_ladder(n_effs, core_n=core_n, clad_n=clad_n)
         return CrossSectionModes(n_effs=n_effs, from_cache=True)

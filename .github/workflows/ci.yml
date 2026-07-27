@@ -31,7 +31,9 @@ jobs:
       - name: Sync environment
         run: uv sync --locked --extra all
 
-      # Lab-coupled tests (RL Tinker deps, untracked fixtures, chromium)
-      # skip with visible reasons on a fresh clone — the suite must be green.
+      # The full surface: engine suite + the RL recipe and HF release tests.
+      # Pieces needing what a fresh clone lacks skip with visible reasons
+      # (Tinker-stack tests importorskip — torch-weight deps stay out of CI;
+      # chromium-bound studio E2E skips) — the run must be green.
       - name: Run tests
-        run: uv run pytest tests/ -q -rs
+        run: uv run pytest tests/ rl/ release/ -q -rs

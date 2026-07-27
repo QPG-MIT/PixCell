@@ -3,7 +3,7 @@
 Command-line interface for the HOMI multi-model benchmark.
 
 Usage:
-    python -m benchmarking.cli --papers 1x2_coupler 2_004629
+    python -m benchmarking.cli --papers final_1 final_2
     python -m benchmarking.cli --models gemini claude --phase1-seeds 10
     python -m benchmarking.cli --aggregate benchmark_results/2026-01-23_143052
 """
@@ -12,7 +12,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from homi.paths import projects_dir
+from homi.paths import michaelangelo_dir, workspace_root
 
 from benchmarking.config import (
     BenchmarkConfig,
@@ -36,7 +36,7 @@ Examples:
   python -m benchmarking.cli
 
   # Run with specific papers
-  python -m benchmarking.cli --papers 1x2_coupler 2_004629
+  python -m benchmarking.cli --papers final_1 final_2
 
   # Run with specific model families
   python -m benchmarking.cli --families gemini claude openai
@@ -61,7 +61,7 @@ Examples:
     parser.add_argument(
         "--papers",
         nargs="+",
-        default=["1x2_coupler", "2_004629"],
+        default=[f"final_{i}" for i in range(1, 9)],
         help="Papers to benchmark (project directory names)"
     )
 
@@ -132,13 +132,13 @@ Examples:
     parser.add_argument(
         "--projects-dir",
         type=Path,
-        default=projects_dir(),
+        default=workspace_root() / "data" / "benchmark",
         help="Projects directory (default: projects)"
     )
     parser.add_argument(
         "--michaelangelo-dir",
         type=Path,
-        default=Path("michaelangelo"),
+        default=michaelangelo_dir(),
         help="Michaelangelo directory (default: michaelangelo)"
     )
 

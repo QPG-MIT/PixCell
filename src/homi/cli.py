@@ -9,7 +9,7 @@ Usage:
     homi optimize projects/mydevice/output/best.py
     homi explore projects/mydevice/output/best.py
     homi simulate projects/mydevice/output/best.gds
-    homi benchmark --papers 1x2_coupler --families gemini claude
+    homi benchmark --papers final_1 final_2 --families gemini claude
     homi serve                    # Start all MCP servers
     homi serve mj michaelangelo   # Start specific servers
 """
@@ -159,7 +159,7 @@ Examples:
   homi generate projects/ring_resonator
   homi studio
   homi optimize projects/ring_resonator --method nelder-mead
-  homi benchmark --papers 1x2_coupler --families gemini
+  homi benchmark --papers final_1 final_2 --families gemini
   homi serve
         """,
     )
@@ -258,7 +258,7 @@ Examples:
 
     # --- benchmark ---
     p_bench = subparsers.add_parser("benchmark", help="Run multi-model benchmark")
-    p_bench.add_argument("--papers", nargs="+", default=["1x2_coupler", "2_004629"])
+    p_bench.add_argument("--papers", nargs="+", default=["final_1", "final_2", "final_3", "final_4", "final_5", "final_6", "final_7", "final_8"])
     p_bench.add_argument("--families", nargs="+", default=None, choices=["gemini", "claude", "openai", "kimi", "qwen", "grok"])
     p_bench.add_argument("--phase1-seeds", type=int, default=15)
     p_bench.add_argument("--phase1-parallel", type=int, default=8)

@@ -10,6 +10,7 @@ safe restrictions without changing the frozen release.
 from __future__ import annotations
 
 import ast
+import re
 
 
 ALLOWED_COMPONENTS = frozenset(
@@ -41,6 +42,11 @@ IMAGE_IMPORT_PREFIXES = (
     "matplotlib.image",
 )
 FORBIDDEN_DYNAMIC_CALLS = frozenset({"compile", "eval", "exec", "__import__"})
+
+
+def _is_image_module(name: str) -> bool:
+    """Segment-aware prefix match: ``PIL.Image`` yes, ``PILLOW`` no."""
+    return any(name == p or name.startswith(p + ".") for p in IMAGE_IMPORT_PREFIXES)
 COORDINATE_TUPLE_LIMIT = 256
 NUMERIC_LITERAL_LIMIT = 1024
 
@@ -87,11 +93,11 @@ def purity_violations(source: str) -> list[str]:
                     gf_aliases.add(bound)
                 elif alias.name == "gdsfactory.components":
                     component_aliases.add(alias.asname or "components")
-                if alias.name.startswith(IMAGE_IMPORT_PREFIXES):
+                if _is_image_module(alias.name):
                     hits.append(f"image-read import: {alias.name}")
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
-            if module.startswith(IMAGE_IMPORT_PREFIXES):
+            if _is_image_module(module):
                 hits.append(f"image-read import: {module}")
             if module == "gdsfactory":
                 for alias in node.names:
@@ -216,4 +222,10 @@ def purity_violations(source: str) -> list[str]:
         hits.append(f"coordinate-dump: {tuple_count} literal coordinate tuples")
     if numeric_count >= NUMERIC_LITERAL_LIMIT:
         hits.append(f"numeric-dump: {numeric_count} numeric literals")
+    # Textual belt (parity with the pre-extraction gate): a raw-polygon token
+    # anywhere in the source rejects, closing the getattr(obj, "add_polygon")
+    # string-literal escape the AST walk cannot see.
+    for name in sorted(RAW_POLYGON_CALLS):
+        if re.search(rf"\b{name}\b", source):
+            hits.append(name)
     return list(dict.fromkeys(hits))

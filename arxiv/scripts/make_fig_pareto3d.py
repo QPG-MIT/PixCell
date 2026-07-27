@@ -39,7 +39,7 @@ plt.rcParams.update({
 C_ANTH, C_OAI, C_JUNE = "#c15f3c", "#3c7ec1", "#8a8a8a"
 C_FRONTIER = "#327162"
 
-AGENTS = json.loads((FIG / "agent_table.json").read_text())
+AGENTS = json.loads((Path(__file__).resolve().with_name("agent_table.json")).read_text())
 
 JUNE_CAP = {m["model"]: m["expected_usable_iou"]
             for m in json.loads((REPO / "data/chatbots/aggregates/real_success_data.json").read_text())}

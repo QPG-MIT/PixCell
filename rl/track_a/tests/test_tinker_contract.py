@@ -4,6 +4,9 @@ import pytest
 
 from rl.common.contracts import task_from_row
 from rl.track_a.prompt import build_prompt_text
+pytest.importorskip("tinker", reason="Tinker SDK env (rl/requirements-lock.txt) not installed")
+pytest.importorskip("chz", reason="chz env (rl/requirements-lock.txt) not installed")
+
 from rl.track_a.tinker_data import (
     TrackASupervisedDataset,
     _message,
