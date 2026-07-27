@@ -29,7 +29,7 @@ Calibration maps between **physical coordinates** (micrometers) and **pixel coor
 **Output:**
 - `calibration.json` - Scale factors and offset for coordinate transformation
 
-**The system is auto-generated** - you provide the inputs, calibration happens automatically before Phase 1.
+**The system is auto-generated** - you provide the inputs, calibration happens automatically before generation begins (in either mode).
 
 ---
 
@@ -98,9 +98,17 @@ def calculate_calibration(reference_image, footprint_length_um, footprint_width_
 
 ### The HOMI Workflow
 
+Calibration happens the same way in both generation modes. The **default**
+is the agent recreation loop (`homi generate`): a dispatched coding agent
+writes a primitives-only parametric script and iterates against
+`compare_absolute`, with the conductor gate re-verifying every claim. The
+diagram below shows the `--baseline` mode — the June-era multi-seed
+pipeline, kept as the paper's measured baseline. Calibration is generated
+at the same point in either mode.
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  HOMI GENERATION WORKFLOW                                               │
+│  HOMI --baseline WORKFLOW                                               │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  Step 1: Upload paper.pdf                                               │
@@ -135,7 +143,6 @@ def calculate_calibration(reference_image, footprint_length_um, footprint_width_
 
 | Location | When |
 |----------|------|
-| `app.py` | After Step 4 (footprint setup) in Streamlit UI |
 | `michaelangelo/core/multiturn_seed_exploration.py` | Before Phase 1 if missing |
 | `homi/gds_generation.py` | `run_calibration()` function |
 | `homi/jee_integration.py` | `prepare_calibration()` function |
@@ -263,7 +270,7 @@ When we render:
 The rendered GDS MUST equal the bbox size (mathematically guaranteed).
 ```
 
-### Validation Results (January 2025)
+### Validation Results (January 2026)
 
 Tested across multiple projects with different footprints:
 
@@ -371,20 +378,23 @@ The system uses asymmetric verification:
 projects/{name}/
 ├── device_bw.png          # Target B&W image
 ├── footprint.json         # Device dimensions {"footprint_um": [length, width]}
-├── component/
-│   ├── component.png      # Copy of device_bw.png
-│   ├── calibration.json   # AUTO-GENERATED
-│   ├── multiturn_seeds/   # Phase 1 results
-│   │   └── seed_XXXX/
-│   │       └── turnN/
-│   │           ├── component.gds
-│   │           ├── raster.png
-│   │           ├── diff.png
-│   │           └── metrics.json
-│   └── extended_iteration/ # Phase 2 results
-└── output/
-    ├── best.gds           # Final GDS file
-    └── best.py            # Final GDSFactory script
+├── output/
+│   ├── recreation_<worker>/   # DEFAULT agent mode: device.py, component.png,
+│   │                          #   calibration.json, raster.png, diff.png,
+│   │                          #   metrics_abs.json, recreation_log.json
+│   ├── best.gds           # Final GDS file (gate-verified in agent mode)
+│   └── best.py            # Final GDSFactory script
+└── component/             # --baseline mode only
+    ├── component.png      # Copy of device_bw.png
+    ├── calibration.json   # AUTO-GENERATED
+    ├── multiturn_seeds/   # Phase 1 results
+    │   └── seed_XXXX/
+    │       └── turnN/
+    │           ├── component.gds
+    │           ├── raster.png
+    │           ├── diff.png
+    │           └── metrics.json
+    └── extended_iteration/ # Phase 2 results
 ```
 
 ---
