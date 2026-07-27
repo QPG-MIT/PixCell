@@ -94,7 +94,7 @@ commands.
 ```text
 .
 ├── arxiv/                        Paper source, as seen on arXiv
-│   ├── figures/                  The 15 figure PDFs the manuscript includes
+│   ├── figures/                  The figure PDFs (14 in the manuscript, one retired panel)
 │   └── scripts/                  Figure generators and FIGURES.md
 ├── assets/                       README branding, the method film, and the rendered paper PDF
 ├── data/                         The measured record behind the paper (data/README.md = the card)
@@ -111,6 +111,8 @@ commands.
 ├── docs/                         Deep documentation: the campaign protocol and the system architecture
 │   ├── agent_integration.md      How the Phase-A/B campaigns ran, and where every number lives
 │   └── HOMI_SYSTEM_DIAGRAM.md    The full architecture: pipeline, engines, 7 servers × 65 tools
+├── plugins/
+│   └── pixcell/                  The installable plugin: the 8 skills + the MCP-server bootstrap
 ├── projects/                     The tool's workspace (ships with the worked example)
 ├── release/
 │   └── huggingface/              Build, validate, and safely publish core/depth/references
@@ -127,10 +129,14 @@ commands.
 │   ├── michaelangelo/            Visual verifier: IoU and Dice at calibrated absolute scale
 │   └── weber/                    Parameter analysis for the workbench and optimizer
 ├── tests/                        The engine's test suite (studio E2E under tests/studio/)
+├── .claude/                      In-repo binder: symlinks the plugin's skills + agents for a clone
+├── .claude-plugin/               Marketplace manifest (claude plugin marketplace add QPG-MIT/PixCell)
 ├── .env.example                  Optional API-key template; the core loop needs none
 ├── .github/                      CI: locked fresh-install sync + the full suite on push
 ├── .mcp.json                     Binds the 7 MCP servers when an agent opens the clone
+├── AGENTS.md                     The coding-agent briefing — one source for both vendors' CLIs
 ├── CITATION.cff                  How to cite (arXiv id pending)
+├── CLAUDE.md                     Imports AGENTS.md, so Claude Code reads the same briefing
 ├── LICENSE                       Repository-wide MIT license
 ├── README.md                     Project overview, installation, and entry points
 ├── pyproject.toml                Package definition: pixcell 1.0.0 (the engine imports as homi)
