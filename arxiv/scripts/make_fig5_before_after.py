@@ -227,8 +227,8 @@ def _card(
         model,
         ha="left",
         va="center",
-        fontsize=7.9,
-        fontweight="bold",
+        fontsize=7.7,
+        fontweight="normal",
         color=INK,
     )
     card.text(
@@ -237,7 +237,8 @@ def _card(
         rf"$\mathrm{{IoU}}={iou:.3f}$",
         ha="right",
         va="center",
-        fontsize=7.5,
+        fontsize=7.7,
+        fontweight="normal",
         color=INK,
     )
     image_axes = card.inset_axes((0.025, 0.030, 0.950, 0.665))
@@ -255,8 +256,8 @@ def _row_label(figure: plt.Figure, text: str, *, y: float) -> None:
         text,
         ha="right",
         va="center",
-        fontsize=7.9,
-        fontweight="bold",
+        fontsize=7.8,
+        fontweight="normal",
         linespacing=1.12,
         color=INK,
     )
@@ -284,8 +285,8 @@ def main() -> None:
             f"{target['id']}  {target['title']}",
             ha="center",
             va="center",
-            fontsize=8.6,
-            fontweight="bold",
+            fontsize=8.4,
+            fontweight="normal",
             color=INK,
         )
 
@@ -321,7 +322,12 @@ def main() -> None:
             linewidth=0.72,
         )
     )
-    _section_title(figure, "B", "Current-gate coding-agent outputs", y=0.315)
+    _section_title(
+        figure,
+        "B",
+        "Current-gate outputs from multimodal agents",
+        y=0.315,
+    )
     _row_label(figure, "Single retained\nrun", y=0.170)
 
     for column, target in enumerate(targets):

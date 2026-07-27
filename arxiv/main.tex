@@ -509,7 +509,7 @@ candidates continue for up to three further diff-guided turns with early
 stopping. An external pipeline controls execution, selection, and the
 feedback shown to the model.
 (b)~A component silhouette and physical
-footprint enter a coding agent that constructs a parametric program over
+footprint enter a multimodal agent that constructs a parametric program over
 geometric primitives. The program is executed and compared with the target
 by the geometric verifier. Its named parameters then provide the interface
 to stack-specific evaluation through a local mode solver, small-domain
@@ -610,7 +610,7 @@ that has not been evaluated at its required tier is recorded as
 \caption{\textbf{Selected reconstructions from the two harnesses.}
 (a)~Selected lower- and higher-scoring outputs from the iterative API
 record illustrate its range and are not distributional summaries.
-(b)~One current-gate coding-agent run is shown for each target, with
+(b)~One current-gate run by a multimodal agent is shown for each target, with
 independently recomputed IoU. Each cell overlays an archived raster with
 its target: maroon is overlap, pink is candidate-only material, and black
 is target-only material.}
@@ -683,19 +683,19 @@ supports the quantitative claims below.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig1_emergence.pdf}
-\caption{\textbf{Two evaluation records.} (a)~The nine
-configurations in the legacy API summary, which pools archived turn-level
-programs under a broader source audit and has uneven target coverage.
-(b)~One default or medium-effort coding-agent configuration is shown
-per model under the current source gate, with one retained result on each of the
-eight targets. Accent color identifies model-version names present in both
-records. Because the audit, aggregation unit, target coverage, prompt, and
-tool interface differ, the panels give historical context and do not
-constitute a controlled harness ablation.}
+\caption{\textbf{Two evaluation records on a shared scale.} Filled circles
+form the upper group of multimodal agents: one default or medium-effort
+configuration per model under the current source gate, with one retained
+result on each of the eight targets. Open diamonds form the lower iterative
+API group: nine configurations pooling archived turn-level programs under a
+broader source audit and uneven target coverage. Because the audit,
+aggregation unit, target coverage, prompt, and tool interface differ, the
+groups provide historical context and do not constitute a controlled harness
+ablation.}
 \label{fig:emergence}
 \end{figure*}
 
-Figure~\ref{fig:emergence} places the balanced matrix beside the earlier
+Figure~\ref{fig:emergence} places the balanced matrix on a shared scale with the earlier
 record without treating their difference as causal. For the two model
 version names present in both records, the reported values change from
 $0.070$ to $0.341$ for Opus-4.5 and from $0.031$ to $0.148$ for Sonnet-4.5.
@@ -707,7 +707,7 @@ mismatched audits and aggregation rules preclude a causal attribution.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.62\linewidth]{fig3_heatmap.pdf}
-\caption{\textbf{The complete coding-agent matrix.} Each entry is the
+\caption{\textbf{The complete benchmark matrix for multimodal agents.} Each entry is the
 independently recomputed raw IoU for one retained blind result; cell
 shading is proportional to IoU (0 dark to 1 light). An asterisk marks a program
 that contains prohibited source constructs; its geometric score is shown,
