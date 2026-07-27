@@ -1,41 +1,36 @@
 % fig_phases_standalone.tex — iterative API harness (Fig. 6, fig:phases)
 % Build from the repository root:
 %   tectonic arxiv/scripts/fig_phases_standalone.tex --outdir <output-dir>
-% Style: serif black/gray line work with the single muted-blue accent used by
-% Figure 7.
+% Style: the Iowan Old Style / STIX publication system established by
+% Figures 1, 2, and 5, with neutral process arrows throughout.
 \documentclass[border=5pt]{standalone}
-\usepackage[T1]{fontenc}
-\usepackage{stix2}
 \usepackage{amsmath}
+\usepackage{fontspec}
+\setmainfont{Iowan Old Style}
+\usepackage{unicode-math}
+\setmathfont{STIX Two Math}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,calc,positioning}
 
 \definecolor{ink}{HTML}{17191C}
 \definecolor{inksoft}{HTML}{555A60}
 \definecolor{rulegray}{HTML}{A9ADB2}
-\definecolor{accent}{RGB}{60,126,193}
 
 \begin{document}
 \begin{tikzpicture}[
   x=1cm,
   y=1cm,
-  every node/.style={font=\small, text=ink},
-  stageletter/.style={font=\normalsize},
-  stagetitle/.style={font=\normalsize\bfseries, anchor=west},
-  groupfield/.style={
-    draw=ink,
-    line width=0.72pt,
-    rounded corners=1.5pt,
-    fill=gray!8
-  },
+  every node/.style={font=\normalsize, text=ink},
+  stageletter/.style={font=\large},
+  stagetitle/.style={font=\large, anchor=west},
   process/.style={
     draw=ink,
     line width=0.72pt,
     rounded corners=1.4pt,
     fill=white,
-    minimum width=1.38cm,
-    minimum height=0.72cm,
-    inner sep=3.5pt,
+    minimum width=1.48cm,
+    minimum height=0.76cm,
+    inner sep=3.2pt,
     align=center
   },
   model/.style={process},
@@ -49,105 +44,108 @@
     minimum height=0.48cm,
     inner sep=2pt,
     align=center,
-    font=\footnotesize
+    font=\small
   },
   flow/.style={
-    -{Stealth[length=2.15mm,width=1.55mm]},
+    -{Stealth[length=1.80mm,width=1.22mm]},
     draw=ink,
-    line width=0.78pt
+    line width=0.74pt,
+    shorten <=1.15pt,
+    shorten >=1.15pt
   },
   dataflow/.style={
-    -{Stealth[length=2.15mm,width=1.55mm]},
+    -{Stealth[length=1.80mm,width=1.22mm]},
     draw=ink,
-    line width=0.78pt
+    line width=0.74pt,
+    shorten <=1.15pt,
+    shorten >=1.15pt
   },
   selectedflow/.style={
-    -{Stealth[length=2.15mm,width=1.55mm]},
+    -{Stealth[length=1.80mm,width=1.22mm]},
     draw=ink,
-    line width=0.78pt
+    line width=0.74pt,
+    shorten <=1.15pt,
+    shorten >=1.15pt
   },
   feedback/.style={
-    -{Stealth[length=2.05mm,width=1.45mm]},
-    draw=accent,
-    line width=0.78pt,
-    densely dashed
+    -{Stealth[length=1.80mm,width=1.22mm]},
+    draw=ink,
+    line width=0.74pt,
+    densely dashed,
+    shorten <=1.0pt,
+    shorten >=1.0pt
   },
-  note/.style={font=\footnotesize, text=inksoft, align=center},
-  smalllabel/.style={font=\footnotesize, align=center},
+  note/.style={font=\small, text=ink, align=center},
+  smalllabel/.style={font=\small, align=center},
 ]
 
-% Figure 7's restrained group treatment: a pale gray field, black border,
-% and a single header rule. The three boxes replace the old colored phases.
-\draw[groupfield] (0.05,0.70) rectangle (4.28,5.30);
-\draw[groupfield] (4.40,0.70) rectangle (13.25,5.30);
-\draw[groupfield] (13.38,0.70) rectangle (21.20,5.30);
+\node[stageletter, anchor=west] at (0.20,5.04) {A};
+\node[stagetitle] at (0.58,5.04) {Frozen reference};
+\draw[ink, line width=0.58pt] (0.18,4.62) -- (4.82,4.62);
 
-\node[stageletter, anchor=west] at (0.20,4.96) {A};
-\node[stagetitle] at (0.58,4.96) {Frozen reference};
-\draw[ink, line width=0.58pt] (0.18,4.57) -- (4.15,4.57);
+\node[stageletter, anchor=west] at (5.22,5.04) {B};
+\node[stagetitle] at (5.60,5.04) {Parallel proposal round};
+\draw[ink, line width=0.58pt] (5.20,4.62) -- (13.75,4.62);
 
-\node[stageletter, anchor=west] at (4.55,4.96) {B};
-\node[stagetitle] at (4.93,4.96) {Parallel proposal round};
-\draw[ink, line width=0.58pt] (4.53,4.57) -- (13.12,4.57);
-
-\node[stageletter, anchor=west] at (13.53,4.96) {C};
-\node[stagetitle] at (13.91,4.96) {Survivor refinement};
-\draw[ink, line width=0.58pt] (13.51,4.57) -- (21.07,4.57);
+\node[stageletter, anchor=west] at (14.15,5.04) {C};
+\node[stagetitle] at (14.53,5.04) {Survivor refinement};
+\draw[ink, line width=0.58pt] (14.13,4.62) -- (22.27,4.62);
 
 % ---------------------------------------------------------------------------
 % A — prepare the immutable target and physical calibration once per device.
 % Source-paper panel icon.
 \draw[ink, line width=0.62pt, fill=white]
-  (0.22,2.22) rectangle (1.52,3.79);
+  (0.22,2.39) rectangle (1.45,3.96);
 \draw[rulegray, line width=0.46pt]
-  (0.22,3.51) -- (1.52,3.51);
+  (0.22,3.68) -- (1.45,3.68);
 \draw[inksoft, line width=0.45pt]
-  (0.39,3.64) -- (0.73,3.64)
-  (0.39,3.38) -- (1.25,3.38)
-  (0.39,3.23) -- (1.14,3.23);
+  (0.39,3.81) -- (0.73,3.81)
+  (0.39,3.55) -- (1.21,3.55)
+  (0.39,3.40) -- (1.10,3.40);
 \draw[ink, line width=0.78pt]
-  (0.42,2.76) .. controls (0.68,3.02) and (0.98,2.50) .. (1.31,2.78);
+  (0.42,2.93) .. controls (0.66,3.19) and (0.95,2.67) .. (1.25,2.95);
 \draw[ink, line width=0.78pt]
-  (0.42,2.58) .. controls (0.69,2.84) and (0.99,2.32) .. (1.31,2.60);
+  (0.42,2.75) .. controls (0.67,3.01) and (0.96,2.49) .. (1.25,2.77);
 \draw[inksoft, line width=0.48pt, densely dashed]
-  (0.33,2.43) rectangle (1.41,3.09);
-\node[smalllabel] at (0.87,1.91) {source figure};
+  (0.33,2.60) rectangle (1.34,3.26);
+\node[font=\footnotesize, align=center] at (0.84,2.10)
+  {source\\[-2pt]panel};
 
 % Standardization/calibration arrow.
-\draw[dataflow] (1.59,3.00) -- (2.43,3.00);
-\node[font=\scriptsize]
-  at (2.01,4.30) {standardize $+$ calibrate};
+\draw[dataflow] (1.52,3.18) -- (2.31,3.18);
+\node[font=\footnotesize, align=center] at (1.68,4.27)
+  {standardize\\[-2pt]$+$ calibrate};
 
 % Frozen benchmark bundle.
 \draw[ink, line width=0.72pt, rounded corners=1.4pt, fill=white]
-  (2.50,1.90) rectangle (4.16,4.08);
+  (2.38,1.98) rectangle (4.80,4.25);
 \draw[ink, line width=1.32pt]
-  (2.69,3.53) .. controls (3.00,3.75) and (3.29,3.31) .. (3.97,3.54);
+  (2.62,3.69) .. controls (3.04,3.91) and (3.46,3.47) .. (4.56,3.70);
 \draw[ink, line width=1.32pt]
-  (2.69,3.27) .. controls (3.00,3.49) and (3.29,3.05) .. (3.97,3.28);
-\node[font=\footnotesize] at (3.33,2.91) {target $y$};
-\draw[rulegray, line width=0.42pt] (2.63,2.72) -- (4.03,2.72);
-\node[font=\scriptsize] at (3.33,2.43)
-  {footprint $W{\times}H$};
-\node[font=\scriptsize] at (3.33,2.14)
-  {calibration $\kappa_x,\kappa_y$};
-\node[note] at (2.16,1.24) {prepared once per device};
+  (2.62,3.41) .. controls (3.04,3.63) and (3.46,3.19) .. (4.56,3.42);
+\node[smalllabel] at (3.59,3.03) {target $y$};
+\draw[rulegray, line width=0.42pt] (2.56,2.82) -- (4.62,2.82);
+\node[font=\footnotesize] at (3.59,2.53)
+  {footprint: $W{\times}H$};
+\node[font=\footnotesize] at (3.59,2.22)
+  {scale: $\kappa_x,\kappa_y$};
+\node[note] at (2.49,1.29) {prepared once per device};
 
 % The same frozen reference is supplied to every independent seed.
-\draw[dataflow] (4.16,3.00) -- (4.95,3.00);
+\draw[dataflow] (4.80,3.18) -- (5.78,3.18);
 
 % ---------------------------------------------------------------------------
 % B — N independent seeds, each receiving two measured revision turns.
-\node[smalllabel] at (5.58,4.13) {$N$ parallel seeds};
-\node[stack] (seedback) at (5.42,3.36) {$s_N$};
-\node[stack] (seedmid)  at (5.54,3.18) {$\vdots$};
-\node[stack] (seedfront) at (5.66,3.00) {$s_1$};
+\node[smalllabel, anchor=west] at (5.31,4.28) {$N$ parallel seeds};
+\node[stack] (seedback) at (6.01,3.54) {$s_N$};
+\node[stack] (seedmid)  at (6.13,3.36) {$\vdots$};
+\node[stack] (seedfront) at (6.25,3.18) {$s_1$};
 
-\node[model]    (propose1) at (7.03,3.00) {propose};
-\node[process]  (execute1) at (8.79,3.00) {execute};
-\node[verifier] (verify1)  at (10.55,3.00) {verify};
-\node[verifier, minimum width=1.65cm] (rank) at (12.28,3.00)
-  {rank\\[-1.5pt]{\footnotesize IoU / SSE}};
+\node[model]    (propose1) at (7.55,3.18) {propose};
+\node[process]  (execute1) at (9.31,3.18) {execute};
+\node[verifier] (verify1)  at (11.07,3.18) {verify};
+\node[verifier, minimum width=1.58cm] (rank) at (12.88,3.18)
+  {rank\\[-1.5pt]{\small IoU / SSE}};
 
 \draw[flow] (seedfront.east) -- (propose1.west);
 \draw[flow] (propose1.east) -- (execute1.west);
@@ -157,26 +155,26 @@
 \draw[feedback]
   (verify1.south) -- ++(0,-0.72) -| (propose1.south);
 \node[smalllabel, fill=white, inner xsep=3pt]
-  at (8.79,2.28) {signed difference $\Delta$};
-\node[font=\small\bfseries] at (8.79,1.60) {two turns per seed};
-\node[note] at (8.79,1.25)
-  {model output is executed and measured before the next turn};
+  at (9.31,2.42) {signed difference $\Delta$};
+\node[font=\normalsize] at (9.31,1.67) {two turns per seed};
+\node[note] at (9.31,1.27)
+  {each output is measured before revision};
 
 % ---------------------------------------------------------------------------
 % C — only survivors receive up to three additional diff-guided turns.
-\node[stack] (survback) at (13.97,3.36) {$s_{(k)}$};
-\node[stack] (survmid)  at (14.09,3.18) {$\vdots$};
-\node[stack] (survfront) at (14.21,3.00) {$s_{(1)}$};
+\node[smalllabel, anchor=west] at (14.22,4.28) {top-$k$ survivors};
+\node[stack] (survback) at (14.56,3.54) {$s_{(k)}$};
+\node[stack] (survmid)  at (14.68,3.36) {$\vdots$};
+\node[stack] (survfront) at (14.80,3.18) {$s_{(1)}$};
 
 % Rank all seed candidates, then retain the high-scoring subset.
-\draw[selectedflow] (rank.east) -- (survfront.west)
-  node[pos=0.15, below=9pt, font=\footnotesize] {top-$k$};
+\draw[selectedflow] (rank.east) -- (survfront.west);
 
-\node[model, minimum width=1.30cm] (revise) at (15.72,3.00) {revise};
-\node[process, minimum width=1.30cm] (execute2) at (17.22,3.00) {execute};
-\node[verifier, minimum width=1.30cm] (verify2) at (18.72,3.00) {verify};
-\node[process, minimum width=1.46cm, font=\footnotesize\ttfamily]
-  (best) at (20.18,3.00) {best.py\\best.gds};
+\node[model] (revise) at (15.99,3.18) {revise};
+\node[process] (execute2) at (17.75,3.18) {execute};
+\node[verifier] (verify2) at (19.51,3.18) {verify};
+\node[process, font=\small] (best) at (21.27,3.18)
+  {best.py\\best.gds};
 
 \draw[flow] (survfront.east) -- (revise.west);
 \draw[flow] (revise.east) -- (execute2.west);
@@ -186,10 +184,10 @@
 \draw[feedback]
   (verify2.south) -- ++(0,-0.72) -| (revise.south);
 \node[smalllabel, fill=white, inner xsep=3pt]
-  at (17.22,2.28) {signed difference $\Delta$};
-\node[font=\small\bfseries] at (17.22,1.60)
+  at (17.75,2.42) {signed difference $\Delta$};
+\node[font=\normalsize] at (17.75,1.67)
   {$\leq 3$ additional turns};
-\node[note] at (17.22,1.25)
+\node[note] at (17.75,1.27)
   {early stop after repeated degradation};
 
 \end{tikzpicture}
