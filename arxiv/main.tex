@@ -422,15 +422,15 @@ iterative runs.
 \includegraphics[width=\linewidth]{fig_verification.pdf}
 \caption{\textbf{Geometric verification for one benchmark cell.} The
 example is F4 ($18\times3\,\mu$m), reconstructed by a GPT-5.5 worker.
-(a)~The target bounding box and stated footprint define a fixed scale for
-each axis: $1584\,\mathrm{px}/18\,\mu\mathrm{m}=88$ and
-$447\,\mathrm{px}/3\,\mu\mathrm{m}=149\,\mathrm{px}/\mu$m. (b)~The
-candidate is rendered at this scale without size normalization. (c)~An
-overlay shows candidate-only and target-only regions. (d)~The signed
-difference image marks spurious material in red and missing material in
-blue; the initial score is $\iou=0.708$. (e)~One feedback-guided revision
-increases the score to $\iou=0.921$. The values are reproduced by rescoring
-the archived artifacts with the grading code.}
+(a)~The target bounding box and stated footprint define a fixed
+calibration for each axis: $1584\,\mathrm{px}/18\,\mu\mathrm{m}=88$ and
+$447\,\mathrm{px}/3\,\mu\mathrm{m}=149\,\mathrm{px}/\mu$m. The first
+candidate is rendered at this calibration without fit-to-target rescaling.
+(b)~Pixelwise comparison separates overlap (black), spurious material
+(candidate only, red), and missing material (target only, blue). The initial
+score is $\iou=0.708$; one feedback-guided revision reduces the signed
+residual and increases the score to $\iou=0.921$. The values are reproduced
+by rescoring the archived artifacts with the grading code.}
 \label{fig:verification}
 \end{figure*}
 
@@ -447,7 +447,7 @@ translation in the source GDS but remains sensitive to physical width,
 height, and shape.
 
 The verifier returns the candidate raster, an overlay, the signed
-difference image, IoU, Dice, and SSE (Fig.~\ref{fig:verification}c--e).
+difference image, IoU, Dice, and SSE (Fig.~\ref{fig:verification}).
 These artifacts provide spatial feedback for revision. In the example of
 Fig.~\ref{fig:verification}, one revision increases IoU from $0.708$ to
 $0.921$.
@@ -508,6 +508,20 @@ feedback shown to the model.}
 \label{fig:phases}
 \end{figure*}
 
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.94\linewidth]{fig_system.pdf}
+\caption{\textbf{The PixCell pipeline.} A component silhouette and physical
+footprint enter a coding agent that constructs a parametric program over
+geometric primitives. The program is executed and compared with the target
+by the geometric verifier. Its named parameters then provide the interface
+to stack-specific evaluation through a local mode solver, capped
+small-domain FDTD, and gated broadband FDTD. In the agent experiments of
+Sec.~\ref{sec:agents}, a conductor briefs workers, monitors completion, and
+recomputes record-grade scores.}
+\label{fig:system}
+\end{figure*}
+
 \subsubsection{The iterative setup}\label{sec:iterative}
 
 In the iterative API harness, the model acts as a stochastic program
@@ -524,20 +538,6 @@ additional difference-guided turns, with early stopping after repeated
 degradation. Some presets apply a final numerical optimization of SSE over
 declared tunables. Scores from this harness are therefore
 selection-assisted rather than single-attempt measurements.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.94\linewidth]{fig_system.pdf}
-\caption{\textbf{The PixCell pipeline.} A component silhouette and physical
-footprint enter a coding agent that constructs a parametric program over
-geometric primitives. The program is executed and compared with the target
-by the geometric verifier. Its named parameters then provide the interface
-to stack-specific evaluation through a local mode solver, capped
-small-domain FDTD, and gated broadband FDTD. In the agent experiments of
-Sec.~\ref{sec:agents}, a conductor briefs workers, monitors completion, and
-recomputes record-grade scores.}
-\label{fig:system}
-\end{figure*}
 
 \FloatBarrier
 
