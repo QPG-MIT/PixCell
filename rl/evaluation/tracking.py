@@ -223,6 +223,10 @@ class WandbMetricsMirror:
             "name": (
                 f"{run_key.study_id}/{run_key.hypothesis_id}/{run_key.arm_id}"
             ),
+            # The baseline runner keeps one session per arm open while arms
+            # execute concurrently. W&B otherwise returns the process-global
+            # active run, silently collapsing every arm into the first run.
+            "reinit": "create_new",
             "resume": "allow",
             "dir": str(self.wandb_dir),
             "settings": self._settings(module),
