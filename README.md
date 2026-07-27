@@ -98,9 +98,9 @@ commands.
 │   └── scripts/                  Figure generators and FIGURES.md
 ├── assets/                       README branding, the method film, and the rendered paper PDF
 ├── data/                         The measured record behind the paper (data/README.md = the card)
-│   ├── agents/                   July era: the 104-cell matrix + catalog + PDK campaigns
+│   ├── agents/                   Models as blind coding agents: the 104-cell matrix + campaigns
 │   ├── benchmark/                The 8 device input fixtures and their source panels
-│   └── chatbots/                 June era: analysis, aggregates, trajectories, curated runs
+│   └── chatbots/                 Models as API chatbots: analysis, aggregates, trajectories
 ├── dataset/                      Accepted-only L0-L4 image-to-code curriculum
 │   ├── data/{l0,...,l4}/         One Parquet training shard per curriculum level
 │   ├── factory/
