@@ -11,7 +11,7 @@ where the generator or its data is local-only.
 | fig_primitives.pdf, fig_composition.pdf | `build_fig_vocabulary_wolfram.py` (`export_fig_vocabulary_geometry.py` + `compose_fig_vocabulary.wls`) | final canonical opening figures; exact gate-whitelisted GDSFactory 9.20.7 x-y geometry, composed and typeset as vector artwork in Wolfram with shallow illustrative relief; the PixCell publication/front-door palette and type system are carried through the PDF, editable SVG, and PNG preview outputs |
 | fig_targets.pdf | `make_fig_targets.py` | `fig_target_assets/manifest.json` + F1–F8 one-bit render assets derived at the archived threshold; source and asset hashes are recorded in the manifest |
 | fig_extraction.pdf | `make_fig_extraction.py` | `fig_extraction_assets/manifest.json` + audited F5 panel-(c) crop and F2 schematic; frozen masks are reused directly from `fig_target_assets/` |
-| fig_verification.pdf | `make_fig_verification.py` | `data/agents/paper_swap/final4/` archived run (GPT-5.5 cell) |
+| fig_verification.pdf | `make_fig_verification.py` | `fig_verification_assets/manifest.json`: hash-locked F4 GPT-5.5 iteration rasters, metrics, and calibration; target shared with `fig_target_assets/F4.png` |
 | fig_phases.pdf | `fig_phases_standalone.tex` | standalone TikZ |
 | fig_system.pdf | `fig_system_standalone.tex` | standalone TikZ |
 | fig_channel.pdf | `fig_channel_standalone.tex` + `fig_channel_assets/` | standalone TikZ (from user sketch) |
