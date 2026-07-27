@@ -113,8 +113,12 @@ commands.
 │   ├── michaelangelo/            Visual verifier: IoU and Dice at calibrated absolute scale
 │   └── weber/                    Parameter analysis for the workbench and optimizer
 ├── .env.example                  Optional API-key template; the core loop needs none
+├── .mcp.json                     Binds the 7 MCP servers when an agent opens the clone
 ├── LICENSE                       Repository-wide MIT license
-└── README.md                     Project overview, installation, and entry points
+├── README.md                     Project overview, installation, and entry points
+├── pyproject.toml                Package definition: pixcell 1.0.0 (the engine imports as homi)
+├── setup.sh                      No-uv fallback installer (macOS + Linux)
+└── uv.lock                       Frozen dependency versions for reproducible installs
 ```
 
 ## License
