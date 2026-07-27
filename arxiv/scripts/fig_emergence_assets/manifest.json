@@ -1,5 +1,5 @@
 {
-  "description": "Frozen inputs for Figure 9. The iterative API record reports compliance-weighted values under its legacy audit and uneven target coverage. The coding-agent sweep contains one retained run per target and configuration under the current source gate. The two records are contextual, not a controlled ablation.",
+  "description": "Frozen inputs for Figure 9. The cell-level sweep supplies target IoU and source-compliance state for every current configuration; the economics record supplies the corresponding median API-equivalent cost. The iterative API record is retained here as provenance for the historical comparison in the surrounding prose but is no longer rendered in Figure 9.",
   "iterative_api_record": {
     "asset": "iterative_api_record.json",
     "sha256": "5af69ca2672999fbb8fc14ec432bb90908840302397a92a3f35dade01f65a409"
@@ -8,5 +8,9 @@
     "asset": "coding_agent_sweep.json",
     "sha256": "2f33300d1ce677dfb9b40b52f9ba2fc437499b804af9903d370f1820f757b2bb",
     "expected_targets_per_configuration": 8
+  },
+  "configuration_economics": {
+    "asset": "../agent_table.json",
+    "sha256": "5c82ec34319ff8887706c80e8f5b586bfe38ad80b8738f72f349cd21469a05a1"
   }
 }

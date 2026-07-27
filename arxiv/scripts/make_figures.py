@@ -315,10 +315,10 @@ def table():
 
 
 if __name__ == "__main__":
-    # fig1 is now LaTeX-native pgfplots: tools/make_fig1_tikz.py (do not call
-    # fig1() here or it will overwrite figures/fig1_emergence.pdf).
+    # The combined model-evaluation and benchmark-matrix figure is generated
+    # by make_fig_emergence.py. Do not call fig1() or fig3() here: they are
+    # retained only as provenance for the superseded standalone plots.
     fig2()
-    fig3()
     fig4()
     table()
     print(f"figures -> {FIG}")

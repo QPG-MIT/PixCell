@@ -1,0 +1,35 @@
+\begin{table}[!b]
+\caption{\textbf{Fixed-representation retargeting outcomes.} R: reconstructed primitives program; L: library PCell. Columns are 220-nm SOI, 400-nm SiN, and 400-nm TFLN. Filled/open markers denote pass/observed miss for the tier-0 figure-of-merit plus footprint gate.}
+\label{tab:twoarm}
+\begingroup
+\newcommand{\retargetpass}{\textcolor[HTML]{246B5A}{\raisebox{0.08ex}{\scalebox{1.05}{$\bullet$}}}}
+\newcommand{\retargetmiss}{\textcolor[HTML]{7E858A}{\raisebox{0.08ex}{\scalebox{1.05}{$\circ$}}}}
+\footnotesize
+\setlength{\tabcolsep}{3.35pt}
+\renewcommand{\arraystretch}{1.06}
+\begin{ruledtabular}
+\begin{tabular}{@{}llccc@{\hspace{3.5pt}}ccc@{}}
+& & \multicolumn{3}{c}{GPT-5.5 high} & \multicolumn{3}{c}{Opus-4.8 medium} \\
+Device & Rep. & SOI & SiN & TFLN & SOI & SiN & TFLN \\
+\colrule
+MZI     & R & \retargetpass & \retargetpass & \retargetpass & \retargetpass & \retargetpass & \retargetpass \\
+        & L & \retargetpass & \retargetmiss & \retargetpass & \retargetpass & \retargetmiss & \retargetpass \\
+\addlinespace[0.12em]
+Coupler & R & \retargetpass & \retargetpass & \retargetpass & \retargetpass & \retargetpass & \retargetmiss \\
+        & L & \retargetpass & \retargetmiss & \retargetpass & \retargetpass & \retargetpass & \retargetmiss \\
+\addlinespace[0.12em]
+DBR     & R & \retargetpass & \retargetpass & \retargetpass & \retargetpass & \retargetmiss & \retargetmiss \\
+        & L & \retargetpass & \retargetpass & \retargetpass & \retargetpass & \retargetpass & \retargetpass \\
+\addlinespace[0.12em]
+Spiral  & R & \retargetpass & \retargetmiss & \retargetmiss & \retargetpass & \retargetpass & \retargetpass \\
+        & L & \retargetpass & \retargetpass & \retargetpass & \retargetpass & \retargetpass & \retargetpass \\
+\addlinespace[0.12em]
+Ring    & R & \retargetpass & \retargetmiss & \retargetmiss & \retargetpass & \retargetmiss & \retargetmiss \\
+        & L & \retargetpass & \retargetmiss & \retargetmiss & \retargetpass & \retargetmiss & \retargetmiss \\
+\colrule
+Total passes & R & \multicolumn{3}{c}{11/15} & \multicolumn{3}{c}{10/15} \\
+             & L & \multicolumn{3}{c}{11/15} & \multicolumn{3}{c}{11/15} \\
+\end{tabular}
+\end{ruledtabular}
+\endgroup
+\end{table}

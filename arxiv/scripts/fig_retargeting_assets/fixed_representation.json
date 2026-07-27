@@ -1,0 +1,194 @@
+{
+  "stack_order": [
+    "soi220",
+    "sin400",
+    "tfln400"
+  ],
+  "stack_labels": {
+    "soi220": "SOI",
+    "sin400": "SiN",
+    "tfln400": "TFLN"
+  },
+  "representations": {
+    "R": "reconstructed primitives program",
+    "L": "library PCell"
+  },
+  "models": [
+    {
+      "id": "gpt55h",
+      "label": "GPT-5.5 high",
+      "source_arms": {
+        "R": "A",
+        "L": "B"
+      },
+      "devices": [
+        {
+          "name": "MZI",
+          "source_id": "cat1",
+          "R": [
+            true,
+            true,
+            true
+          ],
+          "L": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "name": "Coupler",
+          "source_id": "cat5",
+          "R": [
+            true,
+            true,
+            true
+          ],
+          "L": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "name": "DBR",
+          "source_id": "cat8",
+          "R": [
+            true,
+            true,
+            true
+          ],
+          "L": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "name": "Spiral",
+          "source_id": "cat7",
+          "R": [
+            true,
+            false,
+            false
+          ],
+          "L": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "name": "Ring",
+          "source_id": "cat2",
+          "R": [
+            true,
+            false,
+            false
+          ],
+          "L": [
+            true,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "id": "opus48m",
+      "label": "Opus-4.8 medium",
+      "source_arms": {
+        "R": "C",
+        "L": "D"
+      },
+      "devices": [
+        {
+          "name": "MZI",
+          "source_id": "cat1",
+          "R": [
+            true,
+            true,
+            true
+          ],
+          "L": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "name": "Coupler",
+          "source_id": "cat5",
+          "R": [
+            true,
+            true,
+            false
+          ],
+          "L": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "name": "DBR",
+          "source_id": "cat8",
+          "R": [
+            true,
+            false,
+            false
+          ],
+          "L": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "name": "Spiral",
+          "source_id": "cat7",
+          "R": [
+            true,
+            true,
+            true
+          ],
+          "L": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "name": "Ring",
+          "source_id": "cat2",
+          "R": [
+            true,
+            false,
+            false
+          ],
+          "L": [
+            true,
+            false,
+            false
+          ]
+        }
+      ]
+    }
+  ],
+  "expected_summary": {
+    "R_passes": 21,
+    "L_passes": 22,
+    "paired_agreements": 23,
+    "R_only_passes": 3,
+    "L_only_passes": 4
+  },
+  "source": {
+    "repository": "QPG-MIT/PixCell-running",
+    "commit": "b2c07631d2225ddd82247c413b0f45cac4bb2978",
+    "path_pattern": "data/agents/catalog_swap/{source_id}/output/retune_arm{source_arm}/result_{stack}.json",
+    "source_file_count": 60,
+    "aggregate_source_sha256": "8d23ff3224d8fc69b2f65d98fd2b7cacdb218776e418fb11a4fec8db05e31196",
+    "conductor_summary_path": "data/agents/catalog_swap/catalog_verdicts.txt",
+    "conductor_summary_sha256": "1996379a2615e6c57639301a100fef0376484b13a9f566e50d7a565852d6e135"
+  }
+}

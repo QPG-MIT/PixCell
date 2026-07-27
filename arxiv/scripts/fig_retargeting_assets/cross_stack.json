@@ -1,0 +1,62 @@
+{
+  "stack_order": [
+    {
+      "id": "soi220",
+      "label": "220 nm SOI"
+    },
+    {
+      "id": "sin400",
+      "label": "400 nm SiN"
+    },
+    {
+      "id": "tfln400",
+      "label": "400 nm TFLN"
+    }
+  ],
+  "target_nm": 8.0,
+  "tolerance_rel": 0.02,
+  "opus48m": {
+    "label": "Opus-4.8 medium",
+    "source_path": "data/agents/pdk_swap/output/optimize/cross_matrix.json",
+    "source_sha256": "c866bf42db4f39ef82a029835ad59cdc3670fe9409bd1ee2611e52588d10935d",
+    "design_stack": {
+      "soi220": {
+        "soi220": 7.9995,
+        "sin400": 16.0578,
+        "tfln400": 14.5697
+      },
+      "sin400": {
+        "soi220": 3.9855,
+        "sin400": 8.0003,
+        "tfln400": 7.2589
+      },
+      "tfln400": {
+        "soi220": 4.3923,
+        "sin400": 8.8168,
+        "tfln400": 7.9998
+      }
+    }
+  },
+  "gpt55x": {
+    "label": "GPT-5.5 xhigh",
+    "source_path": "data/agents/pdk_swap/output/optimize_codex/cross_matrix.json",
+    "source_sha256": "4dc4b46ae5459146807b4dd07c9f6b601eb3d133a74804c7a2534934375cc814",
+    "design_stack": {
+      "soi220": {
+        "soi220": 8.00002441293027,
+        "sin400": 16.058872031739877,
+        "tfln400": 14.57067433992775
+      },
+      "sin400": {
+        "soi220": 3.985366261412049,
+        "sin400": 8.00003643591225,
+        "tfln400": 7.258662089394862
+      },
+      "tfln400": {
+        "soi220": 4.392399499451314,
+        "sin400": 8.817095777852813,
+        "tfln400": 8.000003421730131
+      }
+    }
+  }
+}
