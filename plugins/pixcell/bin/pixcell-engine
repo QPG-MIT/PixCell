@@ -1,0 +1,188 @@
+#!/bin/sh
+# pixcell-engine — resolve (or bootstrap) the PixCell Python engine, then exec
+# a command from it.
+#
+# Usage:
+#   pixcell-engine <console-script> [args...]   # e.g. pixcell-engine homi-mj
+#   pixcell-engine python [args...]             # exec the engine's python itself
+#
+# Resolution order (first hit wins):
+#   1. $PIXCELL_PYTHON               — explicit interpreter (power users, lab)
+#   2. walk up from $PWD             — nearest .venv/bin/python that imports homi
+#                                      (the repo-checkout case)
+#   3. ${CLAUDE_PLUGIN_DATA:-$HOME/.pixcell}/venv — the cached plugin engine
+#   4. bootstrap (3) with uv (preferred) or python3.13 -m venv + pip, then exec.
+#
+# Every MCP server entry in the plugin's .mcp.json runs through this script, so
+# STDOUT BELONGS TO THE MCP PROTOCOL: this script writes only to stderr, and
+# all bootstrap child output is redirected to stderr.
+#
+# Env knobs:
+#   PIXCELL_PYTHON       — path to a python whose environment has PixCell installed
+#   CLAUDE_PLUGIN_DATA   — plugin data dir (default: $HOME/.pixcell)
+#   PIXCELL_INSTALL_SPEC — pip requirement spec used by the bootstrap
+#                          (default: 'pixcell[workbench] @ git+https://github.com/QPG-MIT/PixCell')
+
+set -eu
+
+log() { printf '%s\n' "pixcell-engine: $*" >&2; }
+
+if [ "$#" -lt 1 ]; then
+    log "usage: pixcell-engine <command> [args...]   (e.g. 'pixcell-engine homi-mj', 'pixcell-engine python -m homi.spec_optimization')"
+    exit 2
+fi
+
+CMD="$1"
+shift
+
+PLUGIN_DATA="${CLAUDE_PLUGIN_DATA:-$HOME/.pixcell}"
+CACHE_VENV="$PLUGIN_DATA/venv"
+# [workbench] so the marimo explorer the skills advertise actually runs from
+# a plugin-only install
+# Pinned to an immutable commit at the release cut — bump deliberately, never float.
+INSTALL_SPEC="${PIXCELL_INSTALL_SPEC:-pixcell[workbench] @ git+https://github.com/QPG-MIT/PixCell@00580b9325e1f095f3599f0fd1b2738fb3cd61bc}"
+
+# Map known console scripts to modules, for interpreters whose bindir lacks the
+# entry point (e.g. PIXCELL_PYTHON pointing at a bare interpreter). Sets $MODULE.
+MODULE=""
+set_module() {
+    case "$CMD" in
+        homi|pixcell)      MODULE="homi.cli" ;;
+        homi-mj)           MODULE="gg.servers.mj_server" ;;
+        homi-michaelangelo) MODULE="gg.servers.michaelangelo_server" ;;
+        homi-raphael)      MODULE="gg.servers.raphael_server" ;;
+        homi-jee)          MODULE="gg.servers.jee_server" ;;
+        homi-weber)        MODULE="gg.servers.weber_server" ;;
+        homi-flex)         MODULE="gg.servers.flex_server" ;;
+        homi-pdk)          MODULE="gg.servers.pdk_server" ;;
+        homi-benchmark)    MODULE="benchmarking.cli" ;;
+        *)                 MODULE="" ;;
+    esac
+}
+
+# exec_from <python> [args...] — exec $CMD out of that python's environment.
+# Never returns on success.
+exec_from() {
+    py="$1"
+    shift
+    bindir=$(dirname -- "$py")
+    if [ "$CMD" = "python" ]; then
+        exec "$py" "$@"
+    fi
+    if [ -x "$bindir/$CMD" ]; then
+        exec "$bindir/$CMD" "$@"
+    fi
+    set_module
+    if [ -n "$MODULE" ]; then
+        exec "$py" -m "$MODULE" "$@"
+    fi
+    log "error: '$CMD' not found in $bindir and no module mapping exists for it"
+    exit 127
+}
+
+# 1. Explicit interpreter.
+if [ -n "${PIXCELL_PYTHON:-}" ]; then
+    if [ ! -x "$PIXCELL_PYTHON" ]; then
+        log "error: PIXCELL_PYTHON='$PIXCELL_PYTHON' is not an executable"
+        exit 1
+    fi
+    exec_from "$PIXCELL_PYTHON" "$@"
+fi
+
+# 2. Project-local engine: walk up from $PWD for a .venv that can import homi.
+dir="$PWD"
+while :; do
+    cand="$dir/.venv/bin/python"
+    if [ -x "$cand" ] && "$cand" -c "import homi" >/dev/null 2>&1; then
+        exec_from "$cand" "$@"
+    fi
+    parent=$(dirname -- "$dir")
+    if [ "$parent" = "$dir" ]; then
+        break
+    fi
+    dir="$parent"
+done
+
+# cache_valid — a half-created venv (crashed or concurrent bootstrap) must
+# never be treated as ready: an executable python is not enough. marimo is
+# checked too so a legacy bare-install cache (pre-[workbench]) self-heals
+# instead of shipping a workbench-less engine forever.
+cache_valid() {
+    [ -x "$CACHE_VENV/bin/python" ] \
+        && "$CACHE_VENV/bin/python" -c "import homi, marimo" >/dev/null 2>&1
+}
+
+# 3. Cached plugin engine.
+if cache_valid; then
+    exec_from "$CACHE_VENV/bin/python" "$@"
+fi
+
+# 4. Bootstrap the cached engine, then exec. First run installs the full
+#    gdsfactory stack — expect minutes; later starts are instant.
+#    The plugin declares SEVEN MCP servers, all of which start at once on a
+#    fresh install — a mkdir lock serializes them so only one bootstraps.
+mkdir -p "$PLUGIN_DATA"
+LOCK="$PLUGIN_DATA/.bootstrap.lock"
+until mkdir "$LOCK" 2>/dev/null; do
+    # stale-lock recovery: a killed bootstrap must not wedge every future
+    # server start. A healthy bootstrap takes minutes; a lock older than
+    # 30 minutes is a corpse — steal it.
+    if [ -n "$(find "$LOCK" -maxdepth 0 -mmin +30 2>/dev/null)" ]; then
+        log "bootstrap lock is stale (>30m) — reclaiming it"
+        rmdir "$LOCK" 2>/dev/null || rm -rf "$LOCK" 2>/dev/null || true
+        continue
+    fi
+    log "another pixcell-engine is bootstrapping — waiting..."
+    sleep 5
+    if cache_valid; then
+        exec_from "$CACHE_VENV/bin/python" "$@"
+    fi
+done
+# NOTE: exec replaces the process, so the EXIT trap does NOT fire on the
+# exec_from paths below — release the lock explicitly before each exec.
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT INT TERM
+
+# re-check under the lock (the winner may have just finished)
+if cache_valid; then
+    rmdir "$LOCK" 2>/dev/null || true
+    exec_from "$CACHE_VENV/bin/python" "$@"
+fi
+
+log "no PixCell engine found — bootstrapping one at $CACHE_VENV"
+log "first run installs the full gdsfactory stack; this can take several minutes"
+rm -rf "$CACHE_VENV"   # clear any half-created venv from an earlier crash
+
+if command -v uv >/dev/null 2>&1; then
+    uv venv --python 3.13 "$CACHE_VENV" 1>&2
+    uv pip install --python "$CACHE_VENV/bin/python" "$INSTALL_SPEC" 1>&2
+else
+    # pixcell needs Python >=3.11; a bare `python3` is often the OS's 3.9
+    # (macOS ships 3.9.6) and would fail mid-pip after minutes of work
+    BOOT_PY=""
+    for p in python3.13 python3.12 python3.11 python3; do
+        if command -v "$p" >/dev/null 2>&1 \
+                && "$p" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)" >/dev/null 2>&1; then
+            BOOT_PY="$p"
+            break
+        fi
+    done
+    if [ -z "$BOOT_PY" ]; then
+        log "error: bootstrap needs 'uv' (recommended:"
+        log "         curl -LsSf https://astral.sh/uv/install.sh | sh"
+        log "       uv downloads its own Python) or a Python >= 3.11 on PATH"
+        exit 1
+    fi
+    "$BOOT_PY" -m venv "$CACHE_VENV" 1>&2
+    "$CACHE_VENV/bin/python" -m pip install --upgrade pip 1>&2
+    "$CACHE_VENV/bin/python" -m pip install "$INSTALL_SPEC" 1>&2
+fi
+
+if ! cache_valid; then
+    log "error: bootstrap finished but the engine does not import — removing the broken venv"
+    rm -rf "$CACHE_VENV"
+    exit 1
+fi
+
+log "engine ready at $CACHE_VENV"
+rmdir "$LOCK" 2>/dev/null || true
+exec_from "$CACHE_VENV/bin/python" "$@"

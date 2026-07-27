@@ -848,6 +848,7 @@ def cmd_retarget(args):
         TIER1_CAP=str(args.tier1_cap),
         WORKDIR=str(workdir),
         GIT_RULE="Do NOT run any git commands.",
+        PYTHON=sys.executable,
     )
 
     stack = _json.loads(stack_path.read_text())

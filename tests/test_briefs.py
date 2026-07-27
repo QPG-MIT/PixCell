@@ -12,7 +12,8 @@ def test_list_briefs_has_core_set():
 
 def test_render_substitutes_and_rejects_unresolved():
     text = briefs.render(
-        "phase_a_recreation", INPUT_DIR="/x", WORKDIR="/y", GIT_RULE="No git."
+        "phase_a_recreation", INPUT_DIR="/x", WORKDIR="/y", GIT_RULE="No git.",
+        PYTHON="/env/bin/python"
     )
     assert "/x/device_bw.png" in text
     assert "{{" not in text
@@ -26,10 +27,12 @@ def test_unknown_brief_raises():
 
 
 def test_extract_brief_is_harness_neutral():
-    """The extract brief must serve tool-less workers (codex) too: venv-python
-    fallback for every tool it names, and a digit-anchored completion marker."""
+    """The extract brief must serve tool-less workers (codex) too: an
+    interpreter-anchored fallback for every tool it names, and a
+    digit-anchored completion marker."""
     text = briefs.render(
-        "extract", INPUT="/p.pdf", OUTPUT_DIR="/out", HINT_LINE="", INPUT_NOTE=""
+        "extract", INPUT="/p.pdf", OUTPUT_DIR="/out", HINT_LINE="", INPUT_NOTE="",
+        PYTHON="/env/bin/python"
     )
     assert "homi.paper_processing" in text
     assert "get_gemini_client" in text
@@ -45,6 +48,7 @@ def test_phase_b_renders():
         TIER1_CAP="3",
         WORKDIR="/w",
         GIT_RULE="No git.",
+        PYTHON="/env/bin/python",
     )
     assert "MEASURE <stack>:" in text
     assert "PHASE_B DONE" in text

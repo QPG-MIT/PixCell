@@ -1,0 +1,1 @@
+../../plugins/pixcell/agents/extractor.md

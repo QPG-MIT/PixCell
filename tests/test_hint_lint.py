@@ -25,7 +25,8 @@ def test_packaged_phase_briefs_are_hint_clean():
     user-supplied device hint by design.)
     """
     phase_a = briefs.render(
-        "phase_a_recreation", INPUT_DIR="/in", WORKDIR="/w", GIT_RULE="No git."
+        "phase_a_recreation", INPUT_DIR="/in", WORKDIR="/w", GIT_RULE="No git.",
+        PYTHON="/env/bin/python"
     )
     phase_b = briefs.render(
         "phase_b_retarget",
@@ -34,6 +35,7 @@ def test_packaged_phase_briefs_are_hint_clean():
         TIER1_CAP="3",
         WORKDIR="/w",
         GIT_RULE="No git.",
+        PYTHON="/env/bin/python",
     )
     assert hint_lint.lint(phase_a) == []
     assert hint_lint.lint(phase_b) == []
