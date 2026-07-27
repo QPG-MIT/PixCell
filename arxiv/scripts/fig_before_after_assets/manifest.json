@@ -1,0 +1,105 @@
+{
+  "description": "Archived candidate rasters displayed in Figure 8. Target masks are the hash-locked publication assets shared with Figure 3. Candidate pixels and reported IoUs are both evaluated at the archived white threshold of 245.",
+  "white_threshold": 245,
+  "targets": [
+    {
+      "id": "F1",
+      "title": "Adiabatic coupler",
+      "target_asset": "../fig_target_assets/F1.png",
+      "target_sha256": "4c1efcdff5199ab4c259d88d3e428caf359a07beb1aa7e5bfdfddc994653da2d",
+      "image_size_px": [
+        1616,
+        656
+      ],
+      "cases": [
+        {
+          "row": "lower",
+          "model": "Gemini 2.0 Flash",
+          "raster_asset": "F1_lower.png",
+          "raster_sha256": "42244c434c81d7e5ceaaed0e3d20f0a8b449ed3053faabf4d341b6e2f1539767",
+          "iou": 0.06647165835983228
+        },
+        {
+          "row": "higher",
+          "model": "Gemini 3.1 Pro",
+          "raster_asset": "F1_higher.png",
+          "raster_sha256": "c2659f21bdaf18eadc3e176cb328004b081b70e279416002def974e9f40f1e94",
+          "iou": 0.682441443822331
+        },
+        {
+          "row": "agent",
+          "model": "GPT-5.5",
+          "raster_asset": "F1_agent.png",
+          "raster_sha256": "70ea7fe03b5755f2e219633654599dc202521af2ba65b8fe192fe694cf180609",
+          "iou": 0.9867100186339886
+        }
+      ]
+    },
+    {
+      "id": "F7",
+      "title": "Ring/MZI hybrid",
+      "target_asset": "../fig_target_assets/F7.png",
+      "target_sha256": "292cb26b99bc76091b78fc7fe92f7d3f5cd886e478fdc08fb272e9e894c79c05",
+      "image_size_px": [
+        1612,
+        809
+      ],
+      "cases": [
+        {
+          "row": "lower",
+          "model": "Qwen3-VL",
+          "raster_asset": "F7_lower.png",
+          "raster_sha256": "a84e3e29884f701bf11de59b68b801b7f399d25f9fefde1e2b29ddcca11dd1bd",
+          "iou": 0.22940872946401422
+        },
+        {
+          "row": "higher",
+          "model": "Gemini 3 Pro",
+          "raster_asset": "F7_higher.png",
+          "raster_sha256": "94f77627ea41d8f80a68ba08b28fd1ae35ce1a69b75e2c999f9005ada927793a",
+          "iou": 0.5370548714773795
+        },
+        {
+          "row": "agent",
+          "model": "GPT-5.5",
+          "raster_asset": "F7_agent.png",
+          "raster_sha256": "fa338ca19e96349a74648afd3fbfb40237251bed789f08edeb700268302b8a47",
+          "iou": 0.9579253716540873
+        }
+      ]
+    },
+    {
+      "id": "F8",
+      "title": "Sub-wavelength grating",
+      "target_asset": "../fig_target_assets/F8.png",
+      "target_sha256": "3e12767cbfef2fb678debbc29f90fe9f3c3b969b698008e0914fd0fca077701c",
+      "image_size_px": [
+        4800,
+        3584
+      ],
+      "cases": [
+        {
+          "row": "lower",
+          "model": "Gemini 2.0 Flash",
+          "raster_asset": "F8_lower.png",
+          "raster_sha256": "024bef0aad200006c5ef913dade2f3c708d630bb924b9dfdf24099e0e247fb77",
+          "iou": 0.278093767738781
+        },
+        {
+          "row": "higher",
+          "model": "Gemini 3 Flash",
+          "raster_asset": "F8_higher.png",
+          "raster_sha256": "6252f9e7606de5ec66f4b3a6c185077696dac564fd73e75fc3d442631afeabab",
+          "iou": 0.5066049587330812
+        },
+        {
+          "row": "agent",
+          "model": "Opus 4.8",
+          "raster_asset": "F8_agent.png",
+          "raster_sha256": "356fe9adc68d5b9262b52f67b47b9c986abfeed1ae89e57d0e81a1cf9ce401c8",
+          "iou": 0.9004803942844006
+        }
+      ]
+    }
+  ]
+}
