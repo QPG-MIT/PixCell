@@ -1,0 +1,83 @@
+\begingroup
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.08}
+
+\begin{minipage}[t]{0.485\textwidth}
+\vspace{0pt}
+\textbf{Components and regions}\par\vspace{2pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.37\linewidth}>{\raggedright\arraybackslash}p{0.58\linewidth}@{}}
+\toprule
+\textbf{Operation} & \textbf{Principal live arguments} \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Geometric regions} (\texttt{gf.components.*})} \\
+\texttt{rectangle} & \texttt{size, layer, centered} \\
+\texttt{circle} & \texttt{radius, layer} \\
+\texttt{ring} & \texttt{radius, width, layer} \\
+\texttt{cross} & \texttt{length, width, layer} \\
+\texttt{triangle} & \texttt{x, y, layer} \\
+\texttt{ellipse} & \texttt{radii, layer} \\
+\texttt{regular\_polygon} & \texttt{sides, side\_length, layer} \\
+\texttt{L} & \texttt{width, size, layer} \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Port-bearing components} (\texttt{gf.components.*})} \\
+\texttt{straight} & \texttt{length, cross\_section} \\
+\texttt{bend\_euler} & \texttt{radius, angle, p, cross\_section} \\
+\texttt{bend\_circular} & \texttt{radius, angle, cross\_section} \\
+\texttt{bend\_s} & \texttt{size, cross\_section} \\
+\texttt{bezier} & \texttt{control\_points, cross\_section} \\
+\texttt{taper} & \texttt{length, width1, width2} \\
+\texttt{coupler\_straight} & \texttt{length, gap, cross\_section} \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Component container and instances}} \\
+\texttt{gf.Component} & \texttt{()} \\
+\texttt{c.add\_ref} & \texttt{component, columns, rows, column\_pitch, row\_pitch} \\
+\texttt{c.add\_port} & \texttt{name, port} \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\vspace{0pt}
+\textbf{Paths and operators}\par\vspace{2pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.37\linewidth}>{\raggedright\arraybackslash}p{0.58\linewidth}@{}}
+\toprule
+\textbf{Operation} & \textbf{Principal live arguments} \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Cross-section and paths}} \\
+\multicolumn{2}{@{}l}{\textit{API:} \texttt{gf.cross\_section.cross\_section}; \texttt{gf.Path}; \texttt{gf.path.*}} \\
+\texttt{cross\_section} & \texttt{width, layer} \\
+\texttt{Path} & \texttt{points} \\
+\texttt{straight} & \texttt{length} \\
+\texttt{arc} & \texttt{radius, angle} \\
+\texttt{euler} & \texttt{radius, angle, p} \\
+\texttt{smooth} & \texttt{points, radius} \\
+\texttt{spiral\_archimedean} & \texttt{min\_bend\_radius, separation, number\_of\_loops, npoints} \\
+\texttt{path.append} & \texttt{segment} \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Body and set operations} (\texttt{gf.path.*}; \texttt{gf.boolean})} \\
+\texttt{extrude} & \texttt{p=path, cross\_section=xs} \\
+\texttt{transition} & \texttt{cross\_section1, cross\_section2, width\_type} \\
+\texttt{extrude\_transition} & \texttt{p=path, transition} \\
+\texttt{boolean} & \texttt{A, B, operation, layer} \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Reference operations} (\texttt{ref.*})} \\
+\texttt{connect} & \texttt{port, destination} \\
+\texttt{move} & \texttt{origin, destination} \\
+\texttt{rotate} & \texttt{angle, center} \\
+\texttt{mirror} & \texttt{p1, p2} \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{Routing} (\texttt{gf.routing.*})} \\
+\texttt{route\_single} & \texttt{component, port1, port2, cross\_section} \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+
+\vspace{3pt}
+\parbox{\textwidth}{\raggedright\scriptsize
+\textit{Semantics.} \texttt{add\_ref} creates a single reference by default
+and an array when \texttt{columns} or \texttt{rows} exceed one.
+\texttt{route\_single} adds
+route geometry directly to its parent \texttt{Component} and returns a
+\texttt{ManhattanRoute}.}
+\endgroup
