@@ -1,4 +1,24 @@
-# arXiv tree build artifacts (main.bbl is tracked deliberately — arXiv needs it)
+# Secrets and environments — .env holds API keys and must never be committed
+.env
+.venv/
+venv/
+
+# Python build and runtime artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Tool caches and state
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+__marimo__/
+.studio/
+
+# arXiv tree build artifacts (main.bbl IS tracked — arXiv needs it)
 arxiv/main.pdf
 arxiv/*.aux
 arxiv/*.log
@@ -7,5 +27,5 @@ arxiv/*.blg
 arxiv/*.synctex.gz
 arxiv/mainNotes.bib
 
-__pycache__/
+# OS noise
 .DS_Store
