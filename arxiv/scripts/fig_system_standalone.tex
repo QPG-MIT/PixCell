@@ -20,8 +20,8 @@
   x=1cm,
   y=1cm,
   every node/.style={font=\normalsize, text=ink},
-  panelletter/.style={font=\large},
-  paneltitle/.style={font=\large, anchor=west},
+  panelletter/.style={font=\fontsize{13.2}{15}\selectfont},
+  paneltitle/.style={font=\fontsize{13.2}{15}\selectfont, anchor=west},
   sectiontitle/.style={font=\normalsize, anchor=west},
   process/.style={
     draw=ink,
@@ -63,9 +63,11 @@
   smalllabel/.style={font=\small, text=ink, align=center},
 ]
 
+\path[use as bounding box] (-0.25,0.62) rectangle (22.45,6.25);
+
 \node[panelletter, anchor=west] at (0.20,5.85) {B};
-\node[paneltitle] at (0.58,5.85) {PixCell pipeline};
-\draw[ink, line width=0.72pt] (0.20,5.47) -- (21.25,5.47);
+\node[paneltitle] at (0.82,5.85) {PixCell pipeline};
+\draw[ink, line width=0.72pt] (0.18,5.47) -- (22.27,5.47);
 
 % Stage headings carry hierarchy without enclosing the stages in panels.
 \node[sectiontitle] at (0.20,5.10) {Multimodal geometric reconstruction};
@@ -130,16 +132,7 @@
 \draw[flow] (tierone.south) -- (tiertwo.north);
 
 % The evaluator returns measurements; it does not search the geometry.
-\node[note] at (19.23,1.08) {measurement only; no geometry search};
-
-% ---------------------------------------------------------------------------
-% Cross-cutting conductor responsibilities, shown as an oversight rail rather
-% than a fourth enclosing panel.
-\draw[ink, line width=0.58pt] (0.20,0.58) -- (21.25,0.58);
-\node[font=\small] at (10.72,0.24)
-  {Conductor oversight: brief workers \,$\cdot$\, monitor runs
-   \,$\cdot$\, verify model and effort \,$\cdot$\, recompute scores
-   \,$\cdot$\, archive};
+\node[note] at (19.23,0.90) {measurement only; no geometry search};
 
 \end{tikzpicture}
 \end{document}

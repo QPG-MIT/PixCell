@@ -497,9 +497,9 @@ reported comparison.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.96\linewidth]{fig_phases.pdf}
+\includegraphics[width=\linewidth]{fig_phases.pdf}
 \par\vspace{0.4em}
-\includegraphics[width=0.96\linewidth]{fig_system.pdf}
+\includegraphics[width=\linewidth]{fig_system.pdf}
 \caption{\textbf{The iterative setup and PixCell pipeline.}
 (a)~The benchmark reference is prepared
 once per device by standardization and calibration. A round of
@@ -513,9 +513,7 @@ footprint enter a coding agent that constructs a parametric program over
 geometric primitives. The program is executed and compared with the target
 by the geometric verifier. Its named parameters then provide the interface
 to stack-specific evaluation through a local mode solver, small-domain
-FDTD, and broadband FDTD. In the agent experiments of
-Sec.~\ref{sec:agents}, a conductor briefs workers, monitors completion, and
-recomputes record-grade scores.}
+FDTD, and broadband FDTD.}
 \label{fig:phases}
 \end{figure*}
 
@@ -537,6 +535,21 @@ declared tunables. Scores from this harness are therefore
 selection-assisted rather than single-attempt measurements.
 
 \FloatBarrier
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\linewidth]{fig_june_seeds.pdf}
+\caption{\textbf{Sampling and revision in the iterative API harness.}
+(a)~Eleven seeds use the same Gemini-3-Pro configuration, prompt, and F4
+target; six of the ten archive-ranked seeds are shown, spanning
+$\iou=0.44$--$0.87$. Maroon denotes
+overlap, pink candidate-only material, and black target-only material.
+(b)~One F6 seed over five propose$\to$verify$\to$difference turns follows
+the non-monotone sequence
+$0.72\to0.63\to0.57\to0.80\to0.975$. The panels are artifact-level
+examples rather than aggregate estimates.}
+\label{fig:juneseeds}
+\end{figure*}
 
 \subsubsection{The multi-agent setup}\label{sec:agentsetup}
 
@@ -631,21 +644,6 @@ harness: identical prompts can produce materially different programs, and
 revision need not improve the score monotonically. The verifier identifies
 which seed and turn to retain.
 
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.94\linewidth]{fig_june_seeds.pdf}
-\caption{\textbf{Sampling and revision in the iterative API harness.}
-(a)~Eleven seeds use the same Gemini-3-Pro configuration, prompt, and F4
-target; six of the ten archive-ranked seeds are shown, spanning
-$\iou=0.44$--$0.87$. Maroon denotes
-overlap, pink candidate-only material, and black target-only material.
-(b)~One F6 seed over five propose$\to$verify$\to$difference turns follows
-the non-monotone sequence
-$0.72\to0.63\to0.57\to0.80\to0.975$. The panels are artifact-level
-examples rather than aggregate estimates.}
-\label{fig:juneseeds}
-\end{figure*}
-
 \subsection{Blind coding-agent benchmark}\label{sec:agents}
 
 The primary benchmark is the balanced coding-agent matrix specified in
@@ -736,7 +734,7 @@ only configuration averages would hide this target dependence.
 The clearest cross-generation contrast within one vendor is Sonnet-5 versus
 Opus-4.5. Sonnet-5 has mean IoU $0.797$, compared with $0.506$ for
 Opus-4.5, and is higher on seven of eight paired targets.
-\newpage
+
 The paired mean difference is $+0.292$ with a bootstrap interval of
 $[+0.147,+0.428]$; the two-sided exact sign test gives $p=0.070$ at
 $n=8$. This is a large observed difference on the selected targets, but it

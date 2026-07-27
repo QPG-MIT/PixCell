@@ -21,8 +21,8 @@
   x=1cm,
   y=1cm,
   every node/.style={font=\normalsize, text=ink},
-  panelletter/.style={font=\large},
-  paneltitle/.style={font=\large, anchor=west},
+  panelletter/.style={font=\fontsize{13.2}{15}\selectfont},
+  paneltitle/.style={font=\fontsize{13.2}{15}\selectfont, anchor=west},
   stageheading/.style={font=\normalsize, anchor=west},
   process/.style={
     draw=ink,
@@ -80,8 +80,10 @@
   smalllabel/.style={font=\small, align=center},
 ]
 
+\path[use as bounding box] (-0.25,1.00) rectangle (22.45,6.05);
+
 \node[panelletter, anchor=west] at (0.20,5.65) {A};
-\node[paneltitle] at (0.58,5.65) {Iterative setup};
+\node[paneltitle] at (0.82,5.65) {Iterative setup};
 \draw[ink, line width=0.72pt] (0.18,5.27) -- (22.27,5.27);
 
 \node[stageheading] at (0.20,4.94) {Frozen reference};
