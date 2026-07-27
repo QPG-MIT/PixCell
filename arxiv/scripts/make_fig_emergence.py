@@ -1,6 +1,6 @@
 """Render Figure 9: model evaluation and the complete benchmark matrix.
 
-The panels share one configuration order. Panel A shows usable score and
+The panels share one configuration order. Panel A shows visual score and
 median API-equivalent cost on aligned axes; panel B shows the target-level
 IoU matrix. The generator verifies its frozen inputs and recomputes both raw
 and source-compliant scores from the cell-level sweep before plotting.
@@ -21,6 +21,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.lines import Line2D
 
 
@@ -34,10 +35,24 @@ SOFT_INK = "#555a60"
 RULE = "#17191c"
 GRID = "#e2e4e6"
 GROUP_RULE = "#cfd2d5"
+CRIMSON = "#a31f34"
+VERIFIED = "#267c5a"
+DIFF_BLUE = "#315e9f"
 PROVIDER_COLORS = {
-    "openai": "#2f5f9e",
-    "anthropic": "#b4573d",
+    "openai": DIFF_BLUE,
+    "anthropic": CRIMSON,
 }
+MATRIX_CMAP = LinearSegmentedColormap.from_list(
+    "pixcell_rgb",
+    (
+        (0.00, "#f5dadd"),
+        (0.22, "#d78a99"),
+        (0.50, "#8ea9cc"),
+        (0.68, DIFF_BLUE),
+        (0.84, "#5e9a80"),
+        (1.00, "#174f3b"),
+    ),
+)
 
 plt.rcParams.update(
     {
@@ -252,7 +267,7 @@ def _provider_legend(figure: plt.Figure) -> None:
     figure.legend(
         handles=handles,
         loc="upper right",
-        bbox_to_anchor=(0.512, 0.988),
+        bbox_to_anchor=(0.592, 0.988),
         ncol=2,
         frameon=False,
         fontsize=5.9,
@@ -294,11 +309,11 @@ def _draw_model_labels(
     for model, start, end in _groups(benchmark):
         center = 0.5 * (start + end)
         axes.text(
-            -0.265,
+            -0.340,
             center,
             model,
             transform=axes.get_yaxis_transform(),
-            ha="right",
+            ha="left",
             va="center",
             fontsize=6.3,
             color=INK,
@@ -308,7 +323,7 @@ def _draw_model_labels(
             effort = benchmark[row_index]["effort"]
             if effort:
                 axes.text(
-                    -0.045,
+                    -0.034,
                     row_index,
                     effort,
                     transform=axes.get_yaxis_transform(),
@@ -355,7 +370,7 @@ def _draw_model_evaluation(
     score_axes.set_xticks([0, 0.5, 1.0])
     score_axes.set_xticklabels(["0", "0.5", "1.0"])
     score_axes.set_title(
-        r"Usable score $U$",
+        r"Visual score $U$",
         fontsize=7.25,
         color=INK,
         pad=5,
@@ -389,7 +404,7 @@ def _draw_benchmark_matrix(
     values = np.asarray([row["values"] for row in benchmark])
     image = axes.imshow(
         values,
-        cmap="viridis",
+        cmap=MATRIX_CMAP,
         vmin=0,
         vmax=1,
         aspect="auto",
@@ -410,6 +425,8 @@ def _draw_benchmark_matrix(
             if not is_violation:
                 continue
             value = row["values"][column_index]
+            red, green, blue, _ = image.cmap(image.norm(value))
+            luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
             axes.text(
                 column_index,
                 row_index,
@@ -417,7 +434,7 @@ def _draw_benchmark_matrix(
                 ha="center",
                 va="center",
                 fontsize=6.4,
-                color="white" if value < 0.55 else INK,
+                color="white" if luminance < 0.54 else INK,
             )
     for separator in separators:
         axes.axhline(separator, color="white", linewidth=1.15, zorder=3)
@@ -437,11 +454,14 @@ def _draw_benchmark_matrix(
 def main() -> None:
     benchmark = _load_benchmark()
 
-    figure = plt.figure(figsize=(7.40, 3.25), facecolor="white")
-    score_axes = figure.add_axes((0.205, 0.145, 0.175, 0.715))
-    cost_axes = figure.add_axes((0.405, 0.145, 0.095, 0.715))
-    matrix_axes = figure.add_axes((0.620, 0.145, 0.300, 0.715))
-    colorbar_axes = figure.add_axes((0.935, 0.145, 0.012, 0.715))
+    figure = plt.figure(figsize=(7.40, 3.30), facecolor="white")
+    # Model names begin on the same left anchor as panel A. The two
+    # quantitative axes then use the remaining panel width instead of being
+    # compressed behind a large invisible label gutter.
+    score_axes = figure.add_axes((0.120, 0.145, 0.295, 0.715))
+    cost_axes = figure.add_axes((0.438, 0.145, 0.142, 0.715))
+    matrix_axes = figure.add_axes((0.665, 0.145, 0.255, 0.715))
+    colorbar_axes = figure.add_axes((0.932, 0.145, 0.012, 0.715))
 
     separators = _draw_model_evaluation(
         score_axes,
@@ -460,11 +480,11 @@ def main() -> None:
         x=0.018,
         letter="A",
         title="Model evaluation",
-        rule_end=0.515,
+        rule_end=0.595,
     )
     _panel_heading(
         figure,
-        x=0.535,
+        x=0.615,
         letter="B",
         title="Benchmark matrix",
         rule_end=0.980,

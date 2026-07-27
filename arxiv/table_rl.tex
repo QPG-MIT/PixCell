@@ -1,0 +1,25 @@
+\begin{table}[t]
+\caption{\textbf{Fully re-scored final-checkpoint evaluation.} Eight attempts per target at temperature $1.0$. Executable counts attempts that produced a scored GDS; eval@1 is mean IoU and best@8 is the maximum over the eight attempts.}
+\label{tab:rl}
+\begingroup
+\footnotesize
+\setlength{\tabcolsep}{7.0pt}
+\renewcommand{\arraystretch}{1.06}
+\begin{ruledtabular}
+\begin{tabular}{@{}lccc@{}}
+Device & Executable & eval@1 & best@8 \\
+\colrule
+F1 & 7/8 & 0.248 & 0.440 \\
+F2 & 7/8 & 0.396 & 0.599 \\
+F3 & 8/8 & 0.193 & 0.451 \\
+F4 & 5/8 & 0.347 & 0.637 \\
+F5 & 1/8 & 0.031 & 0.246 \\
+F6 & 5/8 & 0.215 & 0.557 \\
+F7 & 7/8 & 0.209 & 0.303 \\
+F8 & 8/8 & 0.393 & 0.497 \\
+\colrule
+All / mean & 48/64 & 0.254 & 0.466 \\
+\end{tabular}
+\end{ruledtabular}
+\endgroup
+\end{table}
