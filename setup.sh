@@ -46,9 +46,9 @@ source .venv/bin/activate
 echo "Upgrading pip..."
 pip install --upgrade pip
 
-# Install locked requirements generated from pyproject.toml
-echo "Installing locked requirements (this may take a few minutes)..."
-pip install -r requirements-lock.txt
+# Install the package and its dependencies (this may take a few minutes)
+echo "Installing PixCell (this may take a few minutes)..."
+pip install -e ".[workbench,dev]"
 
 # Install the package itself (editable) so the pixcell/homi CLI and MCP
 # servers resolve (distribution: pixcell; import packages stay homi, gg, ...)

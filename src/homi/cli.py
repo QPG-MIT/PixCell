@@ -202,18 +202,6 @@ Examples:
     p_studio.add_argument("--port", type=int, default=2718)
     p_studio.add_argument("--edit", action="store_true", help="Open in marimo edit mode")
 
-    # --- web (the public front door) ---
-    p_web = subparsers.add_parser(
-        "web", help="Launch the web front door — per-session conductor panes + live light table"
-    )
-    p_web.add_argument("--port", type=int, default=2719)
-    p_web.add_argument("--host", type=str, default="127.0.0.1",
-                       help="Bind address (non-loopback requires HOMI_WEB_ALLOW_LAN=1)")
-    p_web.add_argument("--capacity", type=int, default=2,
-                       help="Max concurrent live conductor panes")
-    p_web.add_argument("--cli", type=str, default="cxx",
-                       help="Conductor CLI alias (default cxx: host claude full-auto)")
-
     # --- retarget (Phase B) ---
     p_retarget = subparsers.add_parser(
         "retarget", help="Retarget a device to a layer stack against a function spec (Phase B)"
@@ -336,7 +324,6 @@ Examples:
         "generate": cmd_generate,
         "retarget": cmd_retarget,
         "studio": cmd_studio,
-        "web": cmd_web,
         "optimize": cmd_optimize,
         "explore": cmd_explore,
         "simulate": cmd_simulate,
@@ -642,16 +629,6 @@ def cmd_studio(args):
     subprocess.run([str(marimo), mode, str(app_path), "--port", str(args.port)],
                    check=False)
 
-
-def cmd_web(args):
-    """Launch the web front door (per-session conductor panes + SSE)."""
-    from homi.paths import repo_root, workspace_root
-    from homi.web.daemon import serve
-
-    root = repo_root() or workspace_root()
-    serve(root, host=args.host, port=args.port,
-          capacity=args.capacity, cli=args.cli)
-    return 0
 
 
 def cmd_runs(args):
@@ -1399,7 +1376,7 @@ def cmd_api(args):
     try:
         import uvicorn
     except ImportError:
-        print("Error: uvicorn not installed. Run: pip install 'homi[api]'")
+        print("Error: uvicorn not installed. Run: pip install 'pixcell[api]'")
         sys.exit(1)
 
     print(f"Starting HOMI API on {args.host}:{args.port}")

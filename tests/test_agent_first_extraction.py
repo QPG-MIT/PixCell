@@ -1,6 +1,6 @@
 """Tests for the agent-first extraction primitives (keyless: no VLM API calls).
 
-See docs/superpowers/specs/2026-07-05-agent-first-extraction-design.md
+See the design notes (kept with the lab record)
 """
 import io
 from pathlib import Path

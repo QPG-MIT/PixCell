@@ -407,7 +407,7 @@ GLOBAL_PARAMETERS = []
                 errors.append(f"Syntax error at line {e.lineno}: {e.msg}")
 
             # Check imports (basic)
-            required_imports = ["streamlit", "gdsfactory"]
+            required_imports = ["gdsfactory"]
             for imp in required_imports:
                 if imp not in source:
                     errors.append(f"Missing import: {imp}")

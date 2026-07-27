@@ -1,4 +1,4 @@
-# data/agents/ — the July 2026 agent campaigns
+# data/agents/ — the campaigns run with models as blind coding agents
 
 Three campaigns, one protocol: blind workers recreate a device from a silhouette +
 footprint; a deterministic conductor gate re-executes and re-scores everything; specs
