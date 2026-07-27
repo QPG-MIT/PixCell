@@ -48,7 +48,7 @@ homi/
 ├── flex_integration.py    Tidy3D bridge (cloud spend is human-gated)
 │
 ├── gds_generation.py      The --baseline multi-seed driver (the paper's
-├── exploration_tree.py      measured chatbot-era comparison, kept reproducible)
+├── exploration_tree.py      measured chatbot-style baseline, kept reproducible)
 ├── benchmark/             Chatbot-benchmark statistics library — recomputes
 │                          the paper's baseline numbers from the raw record
 ├── model_client/          Unified "provider/model" VLM client, lazy backends
