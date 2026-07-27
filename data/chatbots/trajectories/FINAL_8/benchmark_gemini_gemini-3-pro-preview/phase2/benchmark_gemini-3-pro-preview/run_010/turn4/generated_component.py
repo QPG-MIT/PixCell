@@ -1,0 +1,153 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_dense_coupler_array(
+    length: float = 120.0,
+    height: float = 4.0,
+    w_wg: float = 0.08,
+    g_wg: float = 0.08,
+    w_thick: float = 0.38,
+    bend_length: float = 20.0,
+    n_center: int = 5,
+    n_outer_thin: int = 3,
+) -> gf.Component:
+    """
+    Creates a dense coupler array matching the visual reference.
+    
+    Structure:
+    - Center: 5 straight parallel waveguides.
+    - Outer Bundles: A composite stack of [Thick, Thin...Thin, Thick] waveguides.
+    - Topology: The outer bundles flare outwards at the ends to fill the vertical height.
+    """
+    c = gf.Component()
+    
+    # ---------------------------------------------------------
+    # 1. Parameter Setup
+    # ---------------------------------------------------------
+    # Define cross sections
+    xs_thin = gf.cross_section.cross_section(width=w_wg, layer=(1, 0))
+    xs_thick = gf.cross_section.cross_section(width=w_thick, layer=(1, 0))
+    
+    # Define gaps
+    g_center = g_wg            # Gap within the center bundle
+    g_inter_bundle = 0.12      # Slightly larger gap between center and outer bundles
+    g_outer = 0.08             # Gap within the outer bundle stack
+    
+    # ---------------------------------------------------------
+    # 2. Center Bundle Construction (Straight)
+    # ---------------------------------------------------------
+    # The center bundle consists of straight waveguides centered at Y=0
+    
+    # Calculate total height of the center bundle to center it properly
+    center_stack_height = n_center * w_wg + (n_center - 1) * g_center
+    y_center_start = -center_stack_height / 2.0 + w_wg / 2.0
+    
+    # Create center waveguides
+    for i in range(n_center):
+        y = y_center_start + i * (w_wg + g_center)
+        wg = c << gf.components.straight(length=length, cross_section=xs_thin)
+        wg.center = (0, y)
+        
+    # Track the Y-coordinate of the top edge of the center bundle
+    y_center_max_edge = center_stack_height / 2.0
+
+    # ---------------------------------------------------------
+    # 3. Outer Bundle Geometry Definition
+    # ---------------------------------------------------------
+    # The outer bundle has a specific layer stack: Inner Thick -> Thins -> Outer Thick
+    # We define this stack as a list of (width, cross_section) tuples
+    
+    outer_defs = []
+    outer_defs.append((w_thick, xs_thick))      # Inner thick bar
+    for _ in range(n_outer_thin):
+        outer_defs.append((w_wg, xs_thin))      # Array of thin lines
+    outer_defs.append((w_thick, xs_thick))      # Outer thick cap
+    
+    # Calculate the Y-offset of the CENTER of each line in the outer bundle
+    # relative to the bundle's "inner edge" (the edge facing the center of the device)
+    outer_offsets = []
+    current_offset_from_edge = 0.0
+    
+    for i, (w, xs) in enumerate(outer_defs):
+        # Determine center position of current line
+        # If it's the first line, center is w/2 from edge.
+        # Otherwise, it is prev_edge + gap + w/2.
+        
+        if i == 0:
+            pos = w / 2.0
+            current_offset_from_edge = w # Move tracking pointer to top edge of this line
+        else:
+            pos = current_offset_from_edge + g_outer + w / 2.0
+            current_offset_from_edge += g_outer + w
+            
+        outer_offsets.append(pos)
+        
+    bundle_total_height = current_offset_from_edge
+    
+    # ---------------------------------------------------------
+    # 4. Flare Calculation
+    # ---------------------------------------------------------
+    # Calculate the Y positions at the "Waist" (straight middle section)
+    # The inner edge of the top bundle starts after the inter-bundle gap
+    y_waist_inner_edge = y_center_max_edge + g_inter_bundle
+    
+    # The absolute top edge of the entire structure at the waist
+    y_waist_top_abs = y_waist_inner_edge + bundle_total_height
+    
+    # Calculate how much vertical space we have to flare out to reach `height`
+    y_target_abs = height / 2.0
+    dy_flare = y_target_abs - y_waist_top_abs
+    
+    # Safety check
+    if dy_flare < 0:
+        dy_flare = 0.0
+    
+    # ---------------------------------------------------------
+    # 5. Construct Top and Bottom Outer Bundles
+    # ---------------------------------------------------------
+    straight_section_len = length - 2 * bend_length
+    
+    for is_top in [True, False]:
+        # Direction multipliers
+        # Top: Y is positive, flares UP (+dy)
+        # Bottom: Y is negative, flares DOWN (-dy relative to waist, i.e., more negative)
+        sign = 1.0 if is_top else -1.0
+        
+        # Base Y for the inner edge of this bundle at the waist
+        y_inner_base = y_waist_inner_edge * sign
+        
+        # The flare displacement for this side
+        # Top moves +dy_flare at ends, Bottom moves -dy_flare at ends
+        flare_displacement = dy_flare * sign
+        
+        for i, offset in enumerate(outer_offsets):
+            w, xs = outer_defs[i]
+            
+            # Y position of this line at the waist (straight section)
+            # For top: Base + offset
+            # For bottom: Base - offset
+            y_waist_center = y_inner_base + (offset * sign)
+            
+            # --- Middle Straight Section ---
+            s = c << gf.components.straight(length=straight_section_len, cross_section=xs)
+            s.center = (0, y_waist_center)
+            
+            # --- Left S-Bend (Input Flare) ---
+            # Moves from Flared Y -> Waist Y.
+            # Delta Y = Waist - Flared = -flare_displacement
+            b_left = c << gf.components.bend_s(size=(bend_length, -flare_displacement), cross_section=xs)
+            b_left.connect("o2", s.ports["o1"])
+            
+            # --- Right S-Bend (Output Flare) ---
+            # Moves from Waist Y -> Flared Y.
+            # Delta Y = Flared - Waist = +flare_displacement
+            b_right = c << gf.components.bend_s(size=(bend_length, flare_displacement), cross_section=xs)
+            b_right.connect("o1", s.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = device_dense_coupler_array()
+    device.write_gds("dense_coupler_array.gds")
+    device.show()

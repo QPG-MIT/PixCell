@@ -1,0 +1,86 @@
+import gdsfactory as gf
+
+@gf.cell
+def mzi_racetrack_v5():
+    c = gf.Component("mzi_racetrack_final")
+    layer = (1, 0)
+    
+    # 1. DIMENSIONS (Footprint: 5.5um width x 3.0um height)
+    total_w = 5.5
+    total_h = 3.0
+    rw = 0.7  # Waveguide width for the frame
+    
+    # Math:
+    # Height = 2*r + rw  => 3.0 = 2*r + 0.7 => r = 1.15
+    # Width = l + 2*r + rw => 5.5 = l + 2.3 + 0.7 => l = 2.5
+    r = 1.15
+    l = 2.5
+
+    # 2. OUTER RACETRACK FRAME
+    # Using a Path creates a single continuous geometric object
+    p = gf.Path()
+    p.append(gf.path.straight(length=l))
+    p.append(gf.path.arc(radius=r, angle=180))
+    p.append(gf.path.straight(length=l))
+    p.append(gf.path.arc(radius=r, angle=180))
+    
+    # Extrude the path and center it
+    rt_ref = c << gf.path.extrude(p, width=rw, layer=layer)
+    rt_ref.move((-l/2, -r))
+
+    # 3. INTERNAL MZI STRUCTURE
+    # Splitter/Combiner side blocks
+    sw, sh = 0.6, 1.1
+    # X-position for the inner vertical blocks
+    sx_pos = l/2 + 0.1
+    
+    lb = c << gf.components.rectangle(size=(sw, sh), layer=layer, centered=True)
+    lb.movex(-sx_pos)
+    
+    rb = c << gf.components.rectangle(size=(sw, sh), layer=layer, centered=True)
+    rb.movex(sx_pos)
+
+    # 4. ARMS AND MODULATOR BLOCKS
+    arm_w = 0.32
+    arm_y_offset = 0.55
+    mod_w, mod_h = 0.85, 0.55
+    mod_gap = 0.1  # Gap between the two blocks on one arm
+    shoulder_dx = 0.45 # Length of the diagonal transition
+
+    # Function to create and place an arm (top or bottom)
+    def create_arm(y_sign):
+        y = y_sign * arm_y_offset
+        
+        # Start/End points at the inner edge of side blocks
+        x_start = -sx_pos + sw/2
+        x_end = sx_pos - sw/2
+        
+        # Define the MZI arm path with diagonal shoulders
+        pts = [
+            (x_start, 0),
+            (x_start + shoulder_dx, y),
+            (x_end - shoulder_dx, y),
+            (x_end, 0)
+        ]
+        c << gf.path.extrude(gf.Path(pts), width=arm_w, layer=layer)
+        
+        # Add the two modulator rectangles per arm
+        # Centralizing them around x=0
+        m1 = c << gf.components.rectangle(size=(mod_w, mod_h), layer=layer, centered=True)
+        m1.move((-mod_w/2 - mod_gap/2, y))
+        
+        m2 = c << gf.components.rectangle(size=(mod_w, mod_h), layer=layer, centered=True)
+        m2.move((mod_w/2 + mod_gap/2, y))
+
+    create_arm(1)  # Top
+    create_arm(-1) # Bottom
+
+    return c
+
+if __name__ == "__main__":
+    # Create the component - it is now locked upon return
+    device = mzi_racetrack_v5()
+    
+    # We can write and show without modification
+    device.show()
+    device.write_gds("mzi_racetrack_v5.gds")

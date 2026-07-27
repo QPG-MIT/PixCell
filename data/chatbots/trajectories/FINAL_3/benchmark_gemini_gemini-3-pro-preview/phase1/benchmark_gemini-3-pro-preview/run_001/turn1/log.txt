@@ -1,0 +1,121 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_s_bend():
+    """
+    A parametric directional coupler using S-bends, matching the provided
+    image geometry and footprint constraints.
+    
+    Footprint: 120 um x 4 um
+    """
+    c = gf.Component()
+    
+    # --- Parameters ---
+    # Overall dimensions from constraint
+    total_length = 120.0
+    total_height = 4.0 # Outer-edge to outer-edge
+    
+    # Waveguide parameters
+    wg_width = 0.5
+    
+    # Design parameters (derived to fit constraints and image proportions)
+    # The image shows a central coupling region, two S-bends, and straight leads.
+    # We apportion the 120um length:
+    length_coupler = 40.0
+    length_lead = 10.0
+    # Remaining length is split between two S-bends
+    length_bend = (total_length - length_coupler - 2 * length_lead) / 2 # 30.0
+    
+    # Vertical geometry
+    # Gap in the central coupling region (narrow)
+    gap_coupling = 0.2
+    
+    # Calculate Y-center positions
+    # Outer boundaries are at y = +/- 2.0 (total height 4.0)
+    # Center of input/output waveguides:
+    y_io_offset = (total_height / 2) - (wg_width / 2) # 2.0 - 0.25 = 1.75
+    
+    # Center of coupling waveguides:
+    y_coup_offset = (gap_coupling / 2) + (wg_width / 2) # 0.1 + 0.25 = 0.35
+    
+    # Vertical displacement for S-bends
+    dy = y_io_offset - y_coup_offset # 1.75 - 0.35 = 1.4
+    
+    # Create Cross Section
+    xs = gf.cross_section.cross_section(width=wg_width)
+
+    # --- Component Definition ---
+    
+    # 1. Straight Lead
+    comp_lead = gf.components.straight(length=length_lead, cross_section=xs)
+    
+    # 2. Straight Coupler Section
+    comp_coupler = gf.components.straight(length=length_coupler, cross_section=xs)
+    
+    # 3. S-Bends
+    # Bend for Top-Left (Down) and Bottom-Right (Down)
+    # size is (length, height_change). Negative height for downward bend.
+    bend_down = gf.components.bend_s(size=(length_bend, -dy), cross_section=xs)
+    
+    # Bend for Top-Right (Up) and Bottom-Left (Up)
+    bend_up = gf.components.bend_s(size=(length_bend, dy), cross_section=xs)
+    
+    # --- Assembly: Top Arm ---
+    # Input Lead
+    top_in = c << comp_lead
+    top_in.move((0, y_io_offset))
+    
+    # S-Bend In (Down)
+    top_bend_in = c << bend_down
+    top_bend_in.connect("o1", top_in.ports["o2"])
+    
+    # Coupler Straight
+    top_c = c << comp_coupler
+    top_c.connect("o1", top_bend_in.ports["o2"])
+    
+    # S-Bend Out (Up)
+    top_bend_out = c << bend_up
+    top_bend_out.connect("o1", top_c.ports["o2"])
+    
+    # Output Lead
+    top_out = c << comp_lead
+    top_out.connect("o1", top_bend_out.ports["o2"])
+    
+    # --- Assembly: Bottom Arm ---
+    # Input Lead
+    bot_in = c << comp_lead
+    bot_in.move((0, -y_io_offset))
+    
+    # S-Bend In (Up)
+    bot_bend_in = c << bend_up
+    bot_bend_in.connect("o1", bot_in.ports["o2"])
+    
+    # Coupler Straight
+    bot_c = c << comp_coupler
+    bot_c.connect("o1", bot_bend_in.ports["o2"])
+    
+    # S-Bend Out (Down)
+    bot_bend_out = c << bend_down
+    bot_bend_out.connect("o1", bot_c.ports["o2"])
+    
+    # Output Lead
+    bot_out = c << comp_lead
+    bot_out.connect("o1", bot_bend_out.ports["o2"])
+    
+    # --- Ports ---
+    c.add_port("o1", port=top_in.ports["o1"])
+    c.add_port("o2", port=bot_in.ports["o1"])
+    c.add_port("o3", port=top_out.ports["o2"])
+    c.add_port("o4", port=bot_out.ports["o2"])
+    
+    return c
+
+# Generate and save
+if __name__ == "__main__":
+    device = directional_coupler_s_bend()
+    device.write_gds("directional_coupler_s_bend.gds")
+    device.show()
+```

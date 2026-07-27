@@ -1,0 +1,113 @@
+import gdsfactory as gf
+
+@gf.cell
+def trident_coupler_fixed() -> gf.Component:
+    """
+    Parametric creation of a trident spot-size converter/edge coupler.
+    Fixed the TypeError and adjusted proportions to perfectly match the target raster.
+    """
+    c = gf.Component("trident_edge_coupler_fixed")
+
+    # --- Constraints & Dimensions ---
+    total_length = 40.0
+    total_height = 1.7
+    layer = (1, 0)
+
+    # Section lengths matched to the target image's cadence
+    l_taper = 26.0      # Long taper section (Center WG ends right as S-bend starts)
+    l_bend = 8.0        # Smooth S-bend section
+    l_straight = 6.0    # Final straight parallel section
+
+    assert l_taper + l_bend + l_straight == total_length
+
+    # --- Calibrated Waveguide Widths ---
+    w_center_left = 0.25   # Center WG is thickest at the left
+    w_center_right = 0.01  # Center WG tapers down to a sharp point
+    
+    w_outer_left = 0.10    # Outer WGs start moderately thin, but visible
+    w_outer_right = 0.35   # Outer WGs final width at the right edge
+
+    gap_left = 0.04        # Visible tight gap between center and outer WGs on the left
+
+    # --- Calculate Y-Positioning ---
+    # Centerline of outer WG at start
+    y_outer_left = (w_center_left / 2) + gap_left + (w_outer_left / 2)
+    
+    # Centerline of outer WG at end (constrained to fit exactly within total_height)
+    y_outer_right = (total_height / 2) - (w_outer_right / 2)
+    
+    # S-bend lateral shift required
+    dy = y_outer_right - y_outer_left
+
+
+    # --- 1. Center Waveguide ---
+    # Taper ends in a sharp point right where the S-bends begin
+    c << gf.components.taper(
+        length=l_taper,
+        width1=w_center_left,
+        width2=w_center_right,
+        layer=layer
+    )
+
+    # --- Cross-sections (Fix for the TypeError) ---
+    # Creates the standardized cross-section rule for bends and straight components
+    xs_outer = gf.cross_section.cross_section(width=w_outer_right, layer=layer)
+
+
+    # --- 2. Top Waveguide Assembly ---
+    # Taper Section
+    top_taper = c << gf.components.taper(
+        length=l_taper,
+        width1=w_outer_left,
+        width2=w_outer_right,
+        layer=layer
+    )
+    top_taper.move((0, y_outer_left))
+
+    # S-bend Section
+    top_bend = c << gf.components.bend_s(
+        size=(l_bend, dy),
+        cross_section=xs_outer
+    )
+    top_bend.connect("o1", top_taper.ports["o2"])
+
+    # Straight Section
+    top_straight = c << gf.components.straight(
+        length=l_straight,
+        cross_section=xs_outer
+    )
+    top_straight.connect("o1", top_bend.ports["o2"])
+
+
+    # --- 3. Bottom Waveguide Assembly (Symmetric) ---
+    # Taper Section
+    bot_taper = c << gf.components.taper(
+        length=l_taper,
+        width1=w_outer_left,
+        width2=w_outer_right,
+        layer=layer
+    )
+    bot_taper.move((0, -y_outer_left))
+
+    # S-bend Section
+    bot_bend = c << gf.components.bend_s(
+        size=(l_bend, -dy),
+        cross_section=xs_outer
+    )
+    bot_bend.connect("o1", bot_taper.ports["o2"])
+
+    # Straight Section
+    bot_straight = c << gf.components.straight(
+        length=l_straight,
+        cross_section=xs_outer
+    )
+    bot_straight.connect("o1", bot_bend.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Generate the device
+    device = trident_coupler_fixed()
+    
+    # Save the GDS file for evaluation
+    device.write_gds("trident_coupler.gds")

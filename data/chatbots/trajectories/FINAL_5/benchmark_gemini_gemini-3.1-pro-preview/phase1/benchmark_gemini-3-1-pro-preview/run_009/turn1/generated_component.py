@@ -1,0 +1,122 @@
+import gdsfactory as gf
+
+@gf.cell
+def curved_taper(length=1.92, dy=-0.05, w1=0.08, w2=0.002):
+    """
+    Creates a smooth curved taper using a Bezier path that flares outwards.
+    """
+    # Quadratic Bezier control points for an outward flaring tip
+    pts = [(0, 0), (length * 0.6, 0), (length, dy)]
+    p = gf.path.bezier(control_points=pts)
+    
+    # Define cross sections with radius_min=0.0 to avoid bend validation errors
+    xs1 = gf.cross_section.cross_section(width=w1, layer=(1, 0), radius_min=0.0)
+    xs2 = gf.cross_section.cross_section(width=w2, layer=(1, 0), radius_min=0.0)
+    
+    trans = gf.path.transition(xs1, xs2)
+    return gf.path.extrude_transition(p, trans)
+
+@gf.cell
+def grating_assisted_coupler():
+    """
+    Parametric recreation of the folded 3-waveguide contra-directional 
+    coupler fitting precisely within an 18.24 x 0.7 footprint.
+    """
+    c = gf.Component("cdc_device")
+    
+    # ---------------------------------------------------------
+    # Geometric Parameters (Designed to hit 18.24 x 0.7 um footprint)
+    # ---------------------------------------------------------
+    w = 0.08                           # Core waveguide width
+    tip_w = 0.002                      # Taper tip width (must be even multiple of 2nm DBU)
+    L_core = 14.4                      # Length of the central straight sections
+    taper_len = 1.92                   # Length of tapers (14.4 + 1.92*2 = 18.24)
+    
+    y_cen = 0.0                        # Center WG Y-coordinate
+    y_top_in = 0.12                    # Top inner arm Y-coordinate
+    y_top_out = 0.30                   # Top outer arm Y-coordinate
+    y_bot_in = -0.12                   # Bottom inner arm Y-coordinate
+    
+    R_bend = (y_top_out - y_top_in) / 2.0  # U-turn bend radius (0.09 um)
+    
+    # Base cross section with radius checks disabled for tight bends
+    xs = gf.cross_section.cross_section(width=w, layer=(1, 0), radius_min=0.0)
+    
+    # ---------------------------------------------------------
+    # 1. Core Waveguides
+    # ---------------------------------------------------------
+    # Center Straight Waveguide
+    cen = c << gf.components.straight(length=L_core, cross_section=xs)
+    cen.move((-L_core / 2, y_cen))
+    
+    # --- Top Arm Path (U-turn on RIGHT) ---
+    p_top = gf.Path()
+    p_top.append(gf.path.straight(length=L_core))
+    p_top.append(gf.path.arc(radius=R_bend, angle=180))
+    p_top.append(gf.path.straight(length=L_core))
+    arm_top = c << gf.path.extrude(p_top, cross_section=xs)
+    arm_top.move((-L_core / 2, y_top_in))
+    
+    # --- Bottom Arm Path (U-turn on LEFT) ---
+    # We can reuse the top path and rotate it 180 degrees
+    arm_bot = c << gf.path.extrude(p_top, cross_section=xs)
+    arm_bot.rotate(180)
+    arm_bot.move((L_core / 2, y_bot_in))
+    
+    # ---------------------------------------------------------
+    # 2. Corrugations / Grating Teeth
+    # ---------------------------------------------------------
+    period = 0.12
+    w_tooth = 0.06
+    h_tooth = 0.06      # Overlaps center WG and inner arm slightly to bridge gap completely
+    N_teeth = int(L_core / period)
+    
+    tooth = gf.components.rectangle(size=(w_tooth, h_tooth), centered=True, layer=(1, 0))
+    start_x = -L_core / 2 + period / 2
+    
+    for i in range(N_teeth):
+        x = start_x + i * period
+        # Upper gap grating
+        t1 = c << tooth
+        t1.move((x, 0.06))
+        # Lower gap grating
+        t2 = c << tooth
+        t2.move((x, -0.06))
+        
+    # ---------------------------------------------------------
+    # 3. Straight Pointy Tapers (Inner connections)
+    # ---------------------------------------------------------
+    pt_straight = gf.components.taper(length=taper_len, width1=w, width2=tip_w)
+    
+    # Center WG tapers
+    t_cen_l = c << pt_straight
+    t_cen_l.connect("o1", cen.ports["o1"])
+    
+    t_cen_r = c << pt_straight
+    t_cen_r.connect("o1", cen.ports["o2"])
+    
+    # Inner Folded Arms tapers
+    t_top_in_comp = c << pt_straight
+    t_top_in_comp.connect("o1", arm_top.ports["o1"])
+    
+    t_bot_in_comp = c << pt_straight
+    t_bot_in_comp.connect("o1", arm_bot.ports["o1"])
+    
+    # ---------------------------------------------------------
+    # 4. Curved Horn Tapers (Outer Connections)
+    # ---------------------------------------------------------
+    # Flaring out to reach exactly y = +/- 0.35 (total footprint height 0.70)
+    
+    # Top Outer curved taper (Connect auto-rotates to match ant-parallel ports, pointing it left)
+    t_flare_up = c << curved_taper(length=taper_len, dy=-0.05, w1=w, w2=tip_w)
+    t_flare_up.connect("o1", arm_top.ports["o2"])
+    
+    # Bottom Outer curved taper (Maintains orientation pointing it right)
+    t_flare_down = c << curved_taper(length=taper_len, dy=-0.05, w1=w, w2=tip_w)
+    t_flare_down.connect("o1", arm_bot.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = grating_assisted_coupler()
+    device.show()

@@ -1,0 +1,76 @@
+import gdsfactory as gf
+
+@gf.cell
+def mode_converter_parametric() -> gf.Component:
+    """
+    Recreates the 3-to-2 waveguide transition/coupler geometry.
+    Strictly uses parametric primitives and boolean operations.
+    Footprint constraint: [40.0, 1.7]
+    """
+    c = gf.Component()
+    layer = (1, 0)
+
+    # --- Section 1: Tapering Region ---
+    L1 = 25.0
+    W_center_start = 0.6
+    W_center_end = 0.0
+    gap = 0.1
+    W_outer_start = 0.3
+
+    # Calculate max height (Y_max) of the left section bounding box
+    # Center half-width + gap + outer arm width
+    Y_max = (W_center_start / 2.0) + gap + W_outer_start  # 0.3 + 0.1 + 0.3 = 0.7
+    box_height = 2.0 * Y_max  # 1.4
+
+    # 1. Create solid bounding block for outer arms using a straight waveguide
+    # This ensures a clean rectangular polygon from X=0 to X=25
+    xs_box = gf.cross_section.cross_section(width=box_height, layer=layer)
+    comp_A = gf.components.straight(length=L1, cross_section=xs_box)
+
+    # 2. Create the 'negative space' taper to carve out the central gap region
+    # This single wide taper spans the space of (Bottom Gap + Center Arm + Top Gap)
+    W_neg_start = W_center_start + 2.0 * gap  # 0.6 + 0.2 = 0.8
+    W_neg_end = W_center_end + 2.0 * gap      # 0.0 + 0.2 = 0.2
+    comp_B = gf.components.taper(length=L1, width1=W_neg_start, width2=W_neg_end)
+
+    # 3. Boolean difference to shape the top and bottom outer arms perfectly
+    outer_arms = gf.boolean(A=comp_A, B=comp_B, operation="not", layer=layer)
+    c << outer_arms
+
+    # 4. Insert the actual central tapering arm
+    center_arm = gf.components.taper(length=L1, width1=W_center_start, width2=W_center_end)
+    c << center_arm
+
+    # --- Section 2: S-Bend Routing Region ---
+    L2 = 15.0  # Remaining length: 40.0 - 25.0 = 15.0
+    
+    # Calculate geometric interface parameters at X=25
+    # The outer arm's inner edge is at y=0.1, outer edge is at y=0.7
+    W_sbend = Y_max - gap - (W_center_end / 2.0)  # Width = 0.7 - 0.1 = 0.6
+    Y_start_center = (Y_max + gap) / 2.0          # Center Y = (0.7 + 0.1)/2 = 0.40
+
+    # Target final total footprint height is 1.7. Final outer max Y = 0.85.
+    Y_final_outer = 1.7 / 2.0
+    Y_final_center = Y_final_outer - (W_sbend / 2.0)  # 0.85 - 0.30 = 0.55
+    
+    # Required S-bend shift
+    dy = Y_final_center - Y_start_center  # 0.55 - 0.40 = 0.15
+
+    xs_sbend = gf.cross_section.cross_section(width=W_sbend, layer=layer)
+
+    # Top S-bend
+    top_sbend = gf.components.bend_s(size=(L2, dy), cross_section=xs_sbend)
+    top_sbend_ref = c << top_sbend
+    top_sbend_ref.move((L1, Y_start_center))
+
+    # Bottom S-bend (symmetric)
+    bot_sbend = gf.components.bend_s(size=(L2, -dy), cross_section=xs_sbend)
+    bot_sbend_ref = c << bot_sbend
+    bot_sbend_ref.move((L1, -Y_start_center))
+
+    return c
+
+if __name__ == "__main__":
+    # Generate the component and write it to GDS
+    device = mode_converter_parametric()
+    device.write_gds("mode_converter.gds")

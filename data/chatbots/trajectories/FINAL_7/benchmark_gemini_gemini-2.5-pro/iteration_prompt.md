@@ -1,0 +1,1 @@
+The attached image shows how your current code rasters. Think deeply about how we can change the script to move towards the original image I gave you.

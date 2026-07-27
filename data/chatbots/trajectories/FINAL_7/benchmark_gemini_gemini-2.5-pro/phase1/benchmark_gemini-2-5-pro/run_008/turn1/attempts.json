@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.938483",
+      "api_duration_seconds": 111.91962599754333,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 1495,
+        "total_tokens": 17036
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: taper() got an unexpected keyword argument 'centered'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:03.950216",
+      "api_duration_seconds": 29.38973331451416,
+      "usage": {
+        "input_tokens": 3868,
+        "output_tokens": 1441,
+        "total_tokens": 7735
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortTypeMismatchError: Type mismatch between the ports taper_gdsfactorypcomponentsptapersptaper_L0p6_W0p6_W1p7_b8faf4c8_0_0[\"o1\"] and Port \"e3\" (optical/electrical)",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:34.676673",
+      "api_duration_seconds": 25.177266359329224,
+      "usage": {
+        "input_tokens": 5390,
+        "output_tokens": 1484,
+        "total_tokens": 8356
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: GeometricObject.move() got an unexpected keyword argument 'x'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11605,
+    "output_tokens": 4420,
+    "total_tokens": 33127
+  }
+}

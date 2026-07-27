@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.852311",
+      "api_duration_seconds": 56.34177899360657,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 1021,
+        "total_tokens": 9336
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:07.536458",
+      "api_duration_seconds": 12.343784093856812,
+      "usage": {
+        "input_tokens": 3387,
+        "output_tokens": 1000,
+        "total_tokens": 4455
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S0p3_0_86467604' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:22.063333",
+      "api_duration_seconds": 33.11829113960266,
+      "usage": {
+        "input_tokens": 4447,
+        "output_tokens": 998,
+        "total_tokens": 8580
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: boolean() missing 1 required positional argument: 'layer'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10181,
+    "output_tokens": 3019,
+    "total_tokens": 22371
+  }
+}

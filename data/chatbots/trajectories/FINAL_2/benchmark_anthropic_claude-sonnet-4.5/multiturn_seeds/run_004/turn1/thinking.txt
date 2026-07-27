@@ -1,0 +1,112 @@
+Looking at the image, I can see a device that appears to be:
+- A rectangular base structure at the bottom
+- Four tapered pillars/columns extending upward from the top of the base
+- The pillars are evenly spaced across the width
+- Each pillar is wider at the base and narrower at the top (tapered)
+- There's a small triangular protrusion at the bottom center of the base
+
+This looks like it could be some kind of resonator array or filter structure. Let me analyze the dimensions:
+
+The footprint constraint is [25, 10] microns.
+
+From the image:
+- The base appears to take up most of the horizontal space (~25 μm wide)
+- The total height appears to be around 10 μm
+- The base appears to be about 4-5 μm tall
+- Each pillar extends upward from the base
+- The pillars appear to taper from a wider bottom to narrower top
+- There are 4 pillars evenly spaced
+
+Let me estimate the proportions:
+- Base width: ~25 μm
+- Base height: ~4.5 μm (roughly 45% of total height)
+- Pillar height: ~5.5 μm (remaining height from base to top)
+- Pillar spacing: roughly evenly distributed across the width
+- Each pillar bottom width: ~2 μm
+- Each pillar top width: ~0.5 μm
+- Triangle at bottom: small, maybe 1 μm tall and 1.5 μm wide
+
+Let me write the code to recreate this:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device():
+    c = gf.Component()
+    
+    # Parameters
+    total_width = 25.0
+    total_height = 10.0
+    base_height = 4.5
+    pillar_height = 5.5
+    
+    num_pillars = 4
+    pillar_bottom_width = 2.0
+    pillar_top_width = 0.5
+    
+    # Create base rectangle
+    base = c << gf.components.rectangle(
+        size=(total_width, base_height),
+        layer=(1, 0),
+        centered=False
+    )
+    base.move((0, 0))
+    
+    # Create triangle at bottom center
+    triangle_height = 1.0
+    triangle_width = 1.5
+    triangle_points = [
+        (total_width/2 - triangle_width/2, 0),
+        (total_width/2 + triangle_width/2, 0),
+        (total_width/2, -triangle_height)
+    ]
+
+Now I need to add the four tapered pillars positioned evenly across the base width, with each pillar narrowing from bottom to top. The spacing should distribute them uniformly, and I'll use polygon shapes to create the tapered effect. /2, base_height),
+            (x_center + pillar_top_width/2, base_height + pillar_height),
+            (x_center - pillar_top_width/2, base_height + pillar_height)
+        ]
+        
+        pillar = c.add_polygon(pillar_points, layer=(1, 0))
+    
+    return c
+
+# Create and save
+device_component = device()
+device_component.write_gds("device.gds")
+```
+
+Looking at the proportions in the image again, I notice the pillars rise significantly above the base structure. The base occupies roughly the lower 40% of the total height, and the pillars extend well above that point. They appear to be tapered, narrowing as they go up.
+
+The structure has 4 pillars distributed evenly across the width. Examining the spacing and dimensions more closely, if I assume a total height of 10 μm, the base would be around 4.5 μm tall with the pillars extending another 5.5 μm above it. The base spans nearly the full 25 μm width, while each pillar at its base is roughly 2-2.5 μm wide, tapering to a much narrower width at the top. pillar_height = 5.5
+    pillar_bottom_width = 2.0
+    pillar_top_width = 0.5
+    
+    # Triangle at bottom
+    triangle_height = 1.0
+    triangle_base_width = 1.5
+    
+    # Create base rectangle
+    base = c << gf.components.rectangle(
+        size=(base_width, base_height),
+        layer=(1, 0),
+        centered=False
+    )
+    
+    # Create triangle protrusion at bottom center
+    triangle_points = [
+        (base_width/2 - triangle_base_width/2, 0),
+        (base_width/2 + triangle_base_width/2, 0),
+        (base_width/2, -triangle_height)
+    ]
+    c.add_polygon(triangle_points
+
+Now I'm setting up the pillar dimensions with a taper from 2.0 μm at the base to 0.5 μm at the top, and adding a small triangular feature extending downward from the center. The base rectangle is positioned and then the polygon for the triangle is being defined with coordinates centered on the footprint width.
+
+For the pillars themselves, I need to space them evenly across the base using the formula base_width / (num_pillars + 1), then iterate through each position to create tapered trapezoid shapes that sit on top of the base rectangle. Each pillar gets narrower as it rises, with the bottom corners at the base height and the top corners offset inward by the difference in widths.
+
+After adding all the pillars, the function returns the component and writes it to a GDS file. The overall structure fits within the 25×10 μm footprint—the base takes up 4.5 μm vertically, the pillars add another 5.5 μm, and the small triangular protrusion at the bottom extends 1 μm downward.
+
+However, I need to reconsider the coordinate system. The bounding box spans from y=-1 to y=10, totaling 11 μm in height, which exceeds the 10 μm constraint. I should either reduce the triangle size or adjust the base and pillar proportions. Looking at the image, the triangle appears to be roughly 10% of the base height, so I'll scale it down accordingly to keep everything within bounds. from the base rather than including the triangular protrusion. Let me reconsider the layout to ensure everything fits within the 10 μm constraint.
+
+I'll adjust the positioning: base spans from y=0.5 to y=5, with the downward-pointing triangle extending below that, and pillars rising above. This keeps the total vertical span at exactly 10 μm while maintaining the geometric relationships shown in the reference image.

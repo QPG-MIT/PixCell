@@ -1,0 +1,148 @@
+Turn 1 Response:
+
+The error `AttributeError: module 'gdsfactory.path' has no attribute 'bezier'` indicates that despite being in the reference catalog, this function is not available in your GDSFactory environment, likely due to a version difference.
+
+To resolve this, I will implement a more robust solution that does not rely on potentially version-specific, high-level path-generation functions like `bezier`. Instead, I will programmatically generate the points for a smooth S-curve and then construct the path using the fundamental `gf.Path(points)` constructor, which is a core part of the library.
+
+This approach involves:
+1.  Importing the `numpy` library to generate an array of coordinates.
+2.  Using a "raised cosine" mathematical function to define a perfect S-curve with the required horizontal start and end tangents. The points are calculated based on the parametric inputs `length_bend` and `dy_bend`.
+3.  Passing this list of generated points to `gf.Path()` to create the S-bend path.
+
+This method is fully parametric, avoids hardcoding coordinates, and uses only the most basic, guaranteed-to-exist functions from the GDSFactory catalog.
+
+Here is the corrected and more robust script:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def y_splitter_arm(
+    length_prongs: float,
+    length_bend: float,
+    width_tip: float,
+    width_out: float,
+    dy_bend: float,
+) -> gf.Component:
+    """Creates one arm of the Y-splitter.
+
+    The arm consists of a straight section (the prong) followed by a tapered
+    S-bend that routes it to the final output position.
+    """
+    c = gf.Component()
+
+    # Create the straight "prong" part of the arm
+    xs_tip = gf.cross_section.cross_section(width=width_tip)
+    straight_prong = c << gf.components.straight(
+        length=length_prongs, cross_section=xs_tip
+    )
+
+    # FIX: The functions gf.path.bend_s and gf.path.bezier were invalid.
+    # We now programmatically generate the points for a smooth S-curve path
+    # and create the path using the fundamental gf.Path(points) function.
+    
+    # Generate points for a smooth "raised cosine" S-bend.
+    # This shape has zero-derivative (horizontal) tangents at the start and end.
+    num_points = 101
+    x_coords = np.linspace(0, length_bend, num_points)
+    y_coords = dy_bend * (1 - np.cos(np.pi * x_coords / length_bend)) / 2
+
+    # Combine x and y coordinates into a list of (x, y) tuples
+    s_bend_points = list(zip(x_coords, y_coords))
+
+    # Create the path from the generated points
+    bend_path = gf.Path(points=s_bend_points)
+
+    # Define the width transition for the bend
+    xs_in = gf.cross_section.cross_section(width=width_tip)
+    xs_out = gf.cross_section.cross_section(width=width_out)
+    width_transition = gf.path.transition(
+        cross_section1=xs_in, cross_section2=xs_out, width_type="linear"
+    )
+
+    # Create the tapered bend component by extruding the path with the transition
+    tapered_bend = c << gf.path.extrude_transition(
+        p=bend_path, transition=width_transition
+    )
+
+    # Connect the tapered bend to the end of the straight prong
+    tapered_bend.connect("o1", straight_prong.ports["o2"])
+
+    # Add external ports to the arm component
+    c.add_port("o1", port=straight_prong.ports["o1"])
+    c.add_port("o2", port=tapered_bend.ports["o2"])
+
+    return c
+
+
+@gf.cell
+def create_device_from_image() -> gf.Component:
+    """
+    Recreates the Y-junction geometry from the provided image using
+    parametric GDSFactory components.
+    """
+    # --- 1. Define Device Parameters based on footprint [40.0, 1.7] ---
+    footprint_length = 40.0
+    footprint_height = 1.7
+
+    # Overall geometry based on visual inspection and footprint
+    length_prongs = 25.0
+    length_bend = footprint_length - length_prongs
+
+    # Waveguide cross-sections based on visual inspection
+    width_out = 0.5  # Width of the output waveguides
+    width_tip = 0.2  # Width of the prongs at the junction point
+    width_in_center = 0.8 # Width of the central prong at the input
+
+    # Spacing and positioning
+    gap_tip = 0.2  # Gap between prongs at the junction point
+    
+    # --- 2. Calculate Derived Parameters ---
+    # Total center-to-center vertical distance of the two outputs
+    dy_out_centers = footprint_height - width_out
+    
+    # The central taper is centered at y=0. Its top edge is at y = +width_tip/2.
+    # The top arm prong is placed above it with a gap. Its bottom edge is at
+    # y = width_tip/2 + gap_tip.
+    # The center of the top arm prong is therefore at:
+    # y = (width_tip/2 + gap_tip) + width_tip/2 = width_tip + gap_tip
+    y_pos_top_arm_center = width_tip + gap_tip
+
+    # The S-bend in the arm must lift the waveguide from its initial y-position
+    # to its final output y-position.
+    # Final y = dy_out_centers / 2
+    # Initial y = y_pos_top_arm_center
+    dy_bend = (dy_out_centers / 2) - y_pos_top_arm_center
+    
+    # --- 3. Assemble the Component ---
+    c = gf.Component("Y_splitter")
+
+    # Add the central tapered prong, which is centered at y=0 by default
+    central_taper = c << gf.components.taper(
+        length=length_prongs, width1=width_in_center, width2=width_tip
+    )
+
+    # Create a single instance of the arm component with calculated parameters
+    arm = y_splitter_arm(
+        length_prongs=length_prongs,
+        length_bend=length_bend,
+        width_tip=width_tip,
+        width_out=width_out,
+        dy_bend=dy_bend,
+    )
+
+    # Add the top arm and position it vertically
+    arm_top_ref = c << arm
+    arm_top_ref.movey(y_pos_top_arm_center)
+
+    # Add the bottom arm by creating a mirrored reference of the same arm component
+    arm_bottom_ref = c << arm
+    arm_bottom_ref.mirror()
+    arm_bottom_ref.movey(-y_pos_top_arm_center)
+
+    return c
+
+# Create an instance of the final component for verification or export.
+final_device = create_device_from_image()
+```

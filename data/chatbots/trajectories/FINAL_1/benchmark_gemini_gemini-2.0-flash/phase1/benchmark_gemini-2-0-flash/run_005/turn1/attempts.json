@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:08.678330",
+      "api_duration_seconds": 10.454797983169556,
+      "usage": {
+        "input_tokens": 4411,
+        "output_tokens": 1283,
+        "total_tokens": 5694
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 5.0 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:20.774539",
+      "api_duration_seconds": 9.176140069961548,
+      "usage": {
+        "input_tokens": 5737,
+        "output_tokens": 1041,
+        "total_tokens": 6778
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports bend_euler_gdsfactorypcomponentspbendspbend_euler_R10_A_47341919_0_750[\"o1\"] and Port \"o2\" (\"500\"/\"1000\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:31.349313",
+      "api_duration_seconds": 9.56959581375122,
+      "usage": {
+        "input_tokens": 6861,
+        "output_tokens": 1252,
+        "total_tokens": 8113
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports bend_euler_gdsfactorypcomponentspbendspbend_euler_R10_A_47341919_0_750[\"o1\"] and Port \"o2\" (\"500\"/\"1000\")",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 17009,
+    "output_tokens": 3576,
+    "total_tokens": 20585
+  }
+}

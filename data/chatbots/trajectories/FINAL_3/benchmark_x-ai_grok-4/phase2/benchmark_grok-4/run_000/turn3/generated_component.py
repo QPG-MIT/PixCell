@@ -1,0 +1,79 @@
+import gdsfactory as gf
+
+@gf.cell
+def coupler_with_sbends():
+    c = gf.Component()
+
+    # Define parameters
+    w = 0.5
+    gap = 0.2
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=w, layer=layer)
+
+    coupler_length = 40
+    s_dx = 35
+    port_length = 5
+    separation = 3.5
+    cc_coupler = gap + w
+    dy = separation / 2 - cc_coupler / 2  # 1.75 - 0.35 = 1.4
+
+    # Central coupler
+    coupler = gf.components.coupler_straight(
+        length=coupler_length,
+        gap=gap,
+        cross_section=xs,
+    )
+    coup = c << coupler
+    coup.move((port_length + s_dx, 0))
+
+    # Left lower S-bend
+    bend_ll = gf.components.bend_s(size=(s_dx, dy), cross_section=xs)
+    ll = c << bend_ll
+    ll.connect("o2", coup.ports["o1"])
+
+    # Left upper S-bend
+    bend_ul = gf.components.bend_s(size=(s_dx, -dy), cross_section=xs)
+    ul = c << bend_ul
+    ul.connect("o2", coup.ports["o3"])
+
+    # Right lower S-bend
+    bend_lr = gf.components.bend_s(size=(s_dx, -dy), cross_section=xs)
+    lr = c << bend_lr
+    lr.connect("o1", coup.ports["o2"])
+
+    # Right upper S-bend
+    bend_ur = gf.components.bend_s(size=(s_dx, dy), cross_section=xs)
+    ur = c << bend_ur
+    ur.connect("o1", coup.ports["o4"])
+
+    # Left lower straight
+    str_ll = gf.components.straight(length=port_length, cross_section=xs)
+    sll = c << str_ll
+    sll.connect("o2", ll.ports["o1"])
+
+    # Left upper straight
+    str_ul = gf.components.straight(length=port_length, cross_section=xs)
+    sul = c << str_ul
+    sul.connect("o2", ul.ports["o1"])
+
+    # Right lower straight
+    str_lr = gf.components.straight(length=port_length, cross_section=xs)
+    slr = c << str_lr
+    slr.connect("o1", lr.ports["o2"])
+
+    # Right upper straight
+    str_ur = gf.components.straight(length=port_length, cross_section=xs)
+    sur = c << str_ur
+    sur.connect("o1", ur.ports["o2"])
+
+    # Expose ports
+    c.add_port("o1", port=sll.ports["o1"])  # left lower
+    c.add_port("o2", port=sul.ports["o1"])  # left upper
+    c.add_port("o3", port=slr.ports["o2"])  # right lower
+    c.add_port("o4", port=sur.ports["o2"])  # right upper
+
+    return c
+
+# Create and save
+device = coupler_with_sbends()
+device.write_gds("my_device.gds")

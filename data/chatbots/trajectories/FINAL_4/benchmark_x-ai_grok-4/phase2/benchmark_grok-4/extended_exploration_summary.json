@@ -1,0 +1,160 @@
+{
+  "model": "x-ai/grok-4",
+  "model_id": "x-ai/grok-4",
+  "provider": "openrouter",
+  "supports_seed": true,
+  "supports_thinking": true,
+  "sse_threshold": Infinity,
+  "additional_turns": 3,
+  "runs_processed": 4,
+  "runs_completed": 3,
+  "elapsed_time": "0:42:16.923133",
+  "best_run_by_sse": 3,
+  "best_seed_by_sse": 1334,
+  "best_final_sse": 128678.0,
+  "best_final_iou": 0.6255953818445271,
+  "results": [
+    {
+      "run_id": 0,
+      "seed": 1331,
+      "phase1_sse": 259008.0,
+      "phase1_iou": 0.35937789847813667,
+      "phase1_dice": 0.5287387692274101,
+      "trajectory": [
+        {
+          "turn": 3,
+          "SSE": 134011.0,
+          "IoU": 0.6093292675816552,
+          "Dice": 0.7572462389841408
+        },
+        {
+          "turn": 4,
+          "SSE": 163340.0,
+          "IoU": 0.543401205371619,
+          "Dice": 0.7041606595619825
+        },
+        {
+          "turn": 5,
+          "SSE": 134011.0,
+          "IoU": 0.6093292675816552,
+          "Dice": 0.7572462389841408
+        }
+      ],
+      "final_turn": 5,
+      "final_sse": 134011.0,
+      "final_iou": 0.6093292675816552,
+      "final_dice": 0.7572462389841408,
+      "best_sse": 134011.0,
+      "best_sse_turn": 3,
+      "best_iou": 0.6093292675816552,
+      "best_iou_turn": 3,
+      "early_stopped": false,
+      "stop_reason": null
+    },
+    {
+      "run_id": 2,
+      "seed": 1333,
+      "phase1_sse": 134932.0,
+      "phase1_iou": 0.6101673369389359,
+      "phase1_dice": 0.7578930747644099,
+      "trajectory": [
+        {
+          "turn": 3,
+          "SSE": 295562.0,
+          "IoU": 0.30684171398150556,
+          "Dice": 0.4695927757718453
+        },
+        {
+          "turn": 4,
+          "SSE": 349894.0,
+          "IoU": 0.2310866937699154,
+          "Dice": 0.37541904228087525
+        }
+      ],
+      "final_turn": 4,
+      "final_sse": 349894.0,
+      "final_iou": 0.2310866937699154,
+      "final_dice": 0.37541904228087525,
+      "best_sse": 134932.0,
+      "best_sse_turn": 2,
+      "best_iou": 0.6101673369389359,
+      "best_iou_turn": 2,
+      "early_stopped": true,
+      "stop_reason": "SSE increased for 2 consecutive turns"
+    },
+    {
+      "run_id": 3,
+      "seed": 1334,
+      "phase1_sse": 224602.0,
+      "phase1_iou": 0.4253542892084748,
+      "phase1_dice": 0.5968400873086533,
+      "trajectory": [
+        {
+          "turn": 3,
+          "SSE": 128678.0,
+          "IoU": 0.6255953818445271,
+          "Dice": 0.7696815441671321
+        },
+        {
+          "turn": 4,
+          "SSE": 328348.0,
+          "IoU": 0.23836077818267853,
+          "Dice": 0.384961769432779
+        },
+        {
+          "turn": 5,
+          "SSE": 315846.0,
+          "IoU": 0.2707470867610694,
+          "Dice": 0.42612269519524976
+        }
+      ],
+      "final_turn": 5,
+      "final_sse": 315846.0,
+      "final_iou": 0.2707470867610694,
+      "final_dice": 0.42612269519524976,
+      "best_sse": 128678.0,
+      "best_sse_turn": 3,
+      "best_iou": 0.6255953818445271,
+      "best_iou_turn": 3,
+      "early_stopped": false,
+      "stop_reason": null
+    },
+    {
+      "run_id": 4,
+      "seed": 1335,
+      "phase1_sse": 344740.0,
+      "phase1_iou": 0.20447491513768348,
+      "phase1_dice": 0.3395254024270152,
+      "trajectory": [
+        {
+          "turn": 3,
+          "SSE": 313892.0,
+          "IoU": 0.26310550607325467,
+          "Dice": 0.41660099620846036
+        },
+        {
+          "turn": 4,
+          "SSE": 335746.0,
+          "IoU": 0.35744359981321144,
+          "Dice": 0.5266422853404692
+        },
+        {
+          "turn": 5,
+          "SSE": 335746.0,
+          "IoU": 0.35744359981321144,
+          "Dice": 0.5266422853404692
+        }
+      ],
+      "final_turn": 5,
+      "final_sse": 335746.0,
+      "final_iou": 0.35744359981321144,
+      "final_dice": 0.5266422853404692,
+      "best_sse": 313892.0,
+      "best_sse_turn": 3,
+      "best_iou": 0.35744359981321144,
+      "best_iou_turn": 4,
+      "early_stopped": false,
+      "stop_reason": null
+    }
+  ]
+}

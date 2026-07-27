@@ -1,0 +1,39 @@
+{
+  "turn": 2,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:11:37.128806",
+      "api_duration_seconds": 21.375020027160645,
+      "usage": {
+        "input_tokens": 7724,
+        "output_tokens": 1028,
+        "total_tokens": 11808
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports straight_gdsfactorypcomponentspwaveguidespstraight_L16p_8173b268_0_0[\"o1\"] and Port \"o2\" (\"100\"/\"500\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:11:59.865961",
+      "api_duration_seconds": 19.69498872756958,
+      "usage": {
+        "input_tokens": 8830,
+        "output_tokens": 1030,
+        "total_tokens": 12483
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16554,
+    "output_tokens": 2058,
+    "total_tokens": 24291
+  }
+}

@@ -1,0 +1,97 @@
+Turn 4 Response:
+
+This is Turn 4 of the design process.
+
+### Analysis of Current Progress
+The previous version used a single path with `gf.path.smooth`. While this achieved the correct global topology, it resulted in "kinks" and segmented transitions (as seen in the raster output) because simple path smoothing with circular arcs doesn't perfectly match the organic, adiabatic S-curves of a high-performance directional coupler.
+
+The target image shows perfectly smooth transitions and a long, straight coupling region. To achieve this in GDSFactory, the most robust method is to use the **Component Assembly Pattern** with the `bend_s` primitive, which uses a mathematically continuous sine-based curve to transition between horizontal offsets.
+
+### Improvements in this version:
+1.  **Switched to `bend_s`**: Replaced the waypoint path with dedicated S-bend components. This ensures a perfectly smooth, tangent-continuous transition that matches the "organic" look of the target image.
+2.  **Explicit Segmenting**: Clearly defined the five segments (End Straight -> S-bend -> Coupling Straight -> S-bend -> End Straight) to ensure the total length is exactly **120µm**.
+3.  **Visual Weighting**: Adjusted the waveguide width and gap slightly (0.6µm width, 0.2µm gap) to better match the visual proportions seen in your target image.
+4.  **Height Control**: Set the end-port vertical spacing to 3.2µm (center-to-center). With 0.6µm waveguides, the total footprint height is 3.8µm, staying safely within the **4µm limit**.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_refined() -> gf.Component:
+    """
+    Refined directional coupler using S-bend primitives for perfect smoothness.
+    Footprint: 120um x 4um
+    """
+    c = gf.Component("directional_coupler_v4")
+    
+    # 1. Design Constants
+    L_TOTAL = 120.0
+    W_WG = 0.6       # Thicker waveguide for better visual match
+    GAP = 0.2        # Interaction gap
+    
+    # Segment lengths (Total must be 120um)
+    L_STRAIGHT_END = 10.0
+    L_SBEND = 25.0
+    L_COUPLE = 50.0 
+    # Check: 10 + 25 + 50 + 25 + 10 = 120.0um
+    
+    # 2. Vertical geometry
+    # Centerline of waveguides in the coupling region
+    y_inner = (W_WG + GAP) / 2  # 0.4um
+    # Centerline of waveguides at the device ends
+    y_outer = 1.6               # Total span = 3.2um + 0.6um width = 3.8um (<4um)
+    # The vertical shift for the S-bend
+    dy = y_outer - y_inner      # 1.2um
+    
+    # 3. Define Cross Section
+    xs = gf.cross_section.cross_section(width=W_WG, layer=(1, 0))
+    
+    # 4. Construct the Top Branch
+    # We create a sub-component for one branch to ensure perfect symmetry
+    branch = gf.Component("branch_top")
+    
+    # a. Central coupling straight
+    mid = branch << gf.components.straight(length=L_COUPLE, cross_section=xs)
+    
+    # b. Left S-bend (transitions UP from center to end)
+    # bend_s size is (dx, dy). We connect o2 (the 'end') to the middle straight's o1.
+    sb_left = branch << gf.components.bend_s(size=(L_SBEND, dy), cross_section=xs)
+    sb_left.connect("o2", mid.ports["o1"])
+    
+    # c. Right S-bend (transitions UP from center to end)
+    sb_right = branch << gf.components.bend_s(size=(L_SBEND, -dy), cross_section=xs)
+    sb_right.connect("o1", mid.ports["o2"])
+    
+    # d. End Straights
+    st_left = branch << gf.components.straight(length=L_STRAIGHT_END, cross_section=xs)
+    st_left.connect("o2", sb_left.ports["o1"])
+    
+    st_right = branch << gf.components.straight(length=L_STRAIGHT_END, cross_section=xs)
+    st_right.connect("o1", sb_right.ports["o2"])
+    
+    # 5. Assemble the full device
+    # Add top branch
+    top = c << branch
+    top.movey(y_inner)
+    
+    # Add bottom branch (mirrored)
+    bot = c << branch
+    bot.mirror_y()
+    bot.movey(-y_inner)
+    
+    # 6. Final alignment
+    c.movex(-c.center[0])
+    c.movey(-c.center[1])
+    
+    return c
+
+if __name__ == "__main__":
+    # Generate the component
+    component = directional_coupler_refined()
+    
+    # Export GDS
+    component.write_gds("directional_coupler_v4.gds")
+    
+    # Show in layout viewer
+    component.show()
+```

@@ -1,0 +1,77 @@
+import gdsfactory as gf
+
+@gf.cell
+def create_device(
+    size: float = 4.7,
+    stem_length: float = 0.35,
+    stem_width: float = 0.25,
+    layer: tuple = (1, 0),
+) -> gf.Component:
+    """
+    Creates a four-petal flower shape with a specified footprint.
+
+    The shape is constructed by the boolean union of two orthogonal bars.
+    Each bar is composed of a central lens shape (the intersection of
+    two circles) and two rectangular stems.
+
+    Args:
+        size: The total width and height of the final component in um.
+        stem_length: The length of the small rectangular stems at the tips.
+        stem_width: The width of the small rectangular stems at the tips.
+        layer: The GDS layer for the component.
+    """
+    # 1. Define the geometry for the main body of a single bar (a lens shape).
+    lens_length = size - 2 * stem_length
+    lens_width = size
+
+    # 2. A lens is the intersection of two circles. Calculate the required
+    # circle radius (R) and the half-separation of their centers (d)
+    # to achieve the desired lens_length and lens_width.
+    R = ((lens_width / 2) ** 2 + (lens_length / 2) ** 2) / lens_length
+    d = R - lens_length / 2
+
+    # 3. Create the primitive shapes.
+    # We create one base component for each shape.
+    base_circle = gf.components.circle(radius=R, layer=layer)
+    base_stem = gf.components.rectangle(size=(stem_length, stem_width), layer=layer, centered=True)
+
+    # 4. Construct the horizontal bar using boolean operations.
+    # 4a. Create the lens by intersecting two circles.
+    #    Use .copy() before applying transformations like .movex()
+    #    to avoid modifying the locked, cached master cell.
+    circle1 = base_circle.copy().movex(d)
+    circle2 = base_circle.copy().movex(-d)
+    lens = gf.boolean(A=circle1, B=circle2, operation="and", layer=layer)
+
+    # 4b. Position copies of the stem at the ends of the lens.
+    stem_right = base_stem.copy().movex(lens_length / 2 + stem_length / 2)
+    stem_left = base_stem.copy().movex(-(lens_length / 2 + stem_length / 2))
+
+    # 4c. FIX: Union the lens and the two stems sequentially.
+    #    The gf.boolean function expects single components, not lists.
+    h_bar = gf.boolean(A=lens, B=stem_right, operation="or", layer=layer)
+    h_bar = gf.boolean(A=h_bar, B=stem_left, operation="or", layer=layer)
+
+    # 5. Create the vertical bar by rotating a copy of the horizontal bar.
+    v_bar = h_bar.copy().rotate(90)
+
+    # 6. Create the final shape by taking the boolean union of the two bars.
+    final_shape = gf.boolean(A=h_bar, B=v_bar, operation="or", layer=layer)
+
+    # 7. Create the final component and add the shape geometry as a reference.
+    c = gf.Component("four_petal_flower")
+    c.add_ref(final_shape)
+    
+    # Ensure the final component is centered at the origin
+    c.center()
+
+    return c
+
+# Instantiate the component with the specified footprint
+device = create_device(size=4.7)
+
+# The following lines can be used to visualize or save the GDS file.
+# if __name__ == "__main__":
+#     device.show()
+#     device.write_gds("four_petal_flower.gds")
+#     print(f"Device created with size: {device.xsize:.2f} x {device.ysize:.2f} um")

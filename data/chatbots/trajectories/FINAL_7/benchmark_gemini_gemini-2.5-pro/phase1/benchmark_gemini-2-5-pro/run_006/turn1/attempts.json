@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.940644",
+      "api_duration_seconds": 109.23624277114868,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 1321,
+        "total_tokens": 16417
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: rectangle() got an unexpected keyword argument 'radius'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:00.820761",
+      "api_duration_seconds": 11.197921991348267,
+      "usage": {
+        "input_tokens": 3694,
+        "output_tokens": 1192,
+        "total_tokens": 4987
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.components' has no attribute 'stadium'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:13.395029",
+      "api_duration_seconds": 18.201250076293945,
+      "usage": {
+        "input_tokens": 4918,
+        "output_tokens": 1372,
+        "total_tokens": 7217
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'circle_gdsfactorypcomponentspshapespcircle_R1p5_AR2p5_L1_0' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10959,
+    "output_tokens": 3885,
+    "total_tokens": 28621
+  }
+}

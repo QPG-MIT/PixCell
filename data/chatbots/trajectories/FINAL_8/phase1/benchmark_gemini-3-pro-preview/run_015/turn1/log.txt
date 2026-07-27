@@ -1,0 +1,106 @@
+Turn 1 Response:
+
+Based on the visual analysis of the device and the provided GDSFactory catalog, here is the Python script to recreate the directional coupler.
+
+### Design Logic
+1.  **Component Identification**: The device is a symmetric Directional Coupler. It consists of a central region where two straight waveguides run parallel (coupling region) and S-bend "fan-outs" at the input and output to separate the ports.
+2.  **Dimensions & Constraints**:
+    *   **Total Footprint**: $120 \mu m \times 4 \mu m$.
+    *   **Proportions**: Visually, the straight coupling region occupies about 50% of the total length. We will assign $60 \mu m$ to the coupler and $30 \mu m$ to the bends on either side.
+    *   **Vertical Spacing**: The constraint is $4 \mu m$ height. Assuming a waveguide width of $0.5 \mu m$, we position the input/output ports at $y = \pm 1.5 \mu m$. This creates a total span of $3.5 \mu m$ (center-to-center $3.0 \mu m$), fitting safely within the $4 \mu m$ box.
+3.  **Primitives Used**:
+    *   `gf.components.coupler_straight`: For the parallel center section.
+    *   `gf.components.bend_s`: For the inputs and outputs.
+    *   `mirror()` operations: To create symmetry for the four arms.
+
+### Python Script
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_120x4():
+    """
+    Recreates the directional coupler from the image using parametric primitives.
+    Constraint: 120um x 4um footprint.
+    """
+    c = gf.Component()
+    
+    # 1. Define Design Parameters
+    total_length = 120.0
+    total_height = 4.0
+    wg_width = 0.5
+    
+    # Visual estimates based on aspect ratio
+    coupler_length = 60.0
+    bend_length = (total_length - coupler_length) / 2  # 30.0um per side
+    coupler_gap = 0.2
+    
+    # Cross-section definition (standard strip waveguide)
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # 2. Create the Central Coupling Region
+    # Function: coupler_straight (Two parallel straight waveguides)
+    coupler = c << gf.components.coupler_straight(
+        length=coupler_length,
+        gap=coupler_gap,
+        cross_section=xs
+    )
+    
+    # 3. Create the S-Bends
+    # Calculate geometry for the bends to fit the height constraint
+    # Inner y-position (at coupler): +/- (gap/2 + width/2)
+    y_inner = (coupler_gap + wg_width) / 2
+    
+    # Outer y-position (at ports): Target +/- 1.5 to fit within 4.0 height
+    # (1.5 top + 0.25 half-width = 1.75 < 2.0 limit)
+    y_outer = 1.5
+    
+    dy = y_outer - y_inner
+    
+    # Create the S-bend geometry component once
+    bend_s = gf.components.bend_s(
+        size=(bend_length, dy), 
+        cross_section=xs
+    )
+
+    # 4. Assemble and Route (Connect bends to coupler)
+    
+    # --- Output Side (Right) ---
+    # Top Right Arm
+    bt_r = c << bend_s
+    bt_r.connect("o1", coupler.ports["o3"]) # Connect to Top-East port
+    
+    # Bottom Right Arm (Mirrored vertically)
+    bb_r = c << bend_s
+    bb_r.mirror_y()
+    bb_r.connect("o1", coupler.ports["o4"]) # Connect to Bottom-East port
+
+    # --- Input Side (Left) ---
+    # Top Left Arm (Mirrored horizontally)
+    bt_l = c << bend_s
+    bt_l.mirror_x()
+    bt_l.connect("o1", coupler.ports["o1"]) # Connect to Top-West port
+
+    # Bottom Left Arm (Mirrored horizontally and vertically)
+    bb_l = c << bend_s
+    bb_l.mirror_x()
+    bb_l.mirror_y()
+    bb_l.connect("o1", coupler.ports["o2"]) # Connect to Bottom-West port
+
+    # 5. Expose Ports (Optional, for good practice)
+    c.add_port("o1", port=bt_l.ports["o2"])
+    c.add_port("o2", port=bb_l.ports["o2"])
+    c.add_port("o3", port=bt_r.ports["o2"])
+    c.add_port("o4", port=bb_r.ports["o2"])
+
+    return c
+
+# Generate and Save
+device = directional_coupler_120x4()
+device.show() # View in KLayout/GDS viewer
+device.write_gds("directional_coupler_recreated.gds")
+
+# Verify constraints
+print(f"Device size: {device.size_info.width} x {device.size_info.height}")
+```

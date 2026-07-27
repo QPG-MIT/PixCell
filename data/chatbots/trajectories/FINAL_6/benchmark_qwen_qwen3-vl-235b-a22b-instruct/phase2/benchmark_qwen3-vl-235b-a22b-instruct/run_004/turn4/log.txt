@@ -1,0 +1,172 @@
+Turn 4 Response:
+
+Looking at the target image and my current output, I can see the fundamental issue: I'm creating a symmetrical cross pattern with 4 identical arms pointing outward, but the target is a swastika pattern with arms that turn in the same rotational direction (clockwise in this case).
+
+The key differences are:
+1. The arms should turn in the same direction (all clockwise or all counter-clockwise)
+2. The arms should be connected at the center to form a continuous pattern
+3. The arms should have a "hooked" shape rather than straight lines with 90-degree bends
+
+To fix this, I need to:
+1. Create a single continuous path that forms the entire swastika pattern
+2. Ensure each arm turns in the same rotational direction
+3. Adjust the path to create the characteristic hooked shape
+
+Here's my improved version:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_swastika_pattern():
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Define cross-section for the paths
+    xs = gf.cross_section.cross_section(width=0.5, layer=layer)
+    
+    # Create a continuous path for the swastika pattern
+    path = gf.Path()
+    
+    # Start at center, go right, then turn 90 degrees clockwise
+    path.append(gf.path.straight(length=1.5))  # Go right
+    path.append(gf.path.euler(radius=0.3, angle=90, p=0.5))  # Turn 90 degrees clockwise
+    
+    # Go up, then turn 90 degrees clockwise
+    path.append(gf.path.straight(length=1.5))  # Go up
+    path.append(gf.path.euler(radius=0.3, angle=90, p=0.5))  # Turn 90 degrees clockwise
+    
+    # Go left, then turn 90 degrees clockwise
+    path.append(gf.path.straight(length=1.5))  # Go left
+    path.append(gf.path.euler(radius=0.3, angle=90, p=0.5))  # Turn 90 degrees clockwise
+    
+    # Go down, then turn 90 degrees clockwise
+    path.append(gf.path.straight(length=1.5))  # Go down
+    path.append(gf.path.euler(radius=0.3, angle=90, p=0.5))  # Turn 90 degrees clockwise
+    
+    # Complete the pattern by going right again (to close the loop)
+    path.append(gf.path.straight(length=1.5))  # Go right
+    
+    # Extrude the path to create the component
+    swastika_component = gf.path.extrude(path, cross_section=xs)
+    
+    # Add to main component
+    c << swastika_component
+    
+    return c
+
+# Create the device
+device = create_swastika_pattern()
+
+# Write to GDS
+device.write_gds("swastika_pattern.gds")
+```
+
+Wait, I need to reconsider. Looking at the target image more carefully, I see that the swastika has arms that are perpendicular to each other, not connected in a continuous loop. Let me revise:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_swastika_pattern():
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Define cross-section for the paths
+    xs = gf.cross_section.cross_section(width=0.5, layer=layer)
+    
+    # Create a path for one complete arm of the swastika
+    def create_swastika_arm_path():
+        path = gf.Path()
+        # Start at center, go straight out, then make a 90-degree turn in the same direction for all arms
+        path.append(gf.path.straight(length=1.5))  # Go straight out
+        path.append(gf.path.euler(radius=0.3, angle=90, p=0.5))  # Make 90-degree turn (clockwise)
+        path.append(gf.path.straight(length=1.5))  # Continue in new direction
+        return path
+    
+    # Create the arm shape
+    arm_path = create_swastika_arm_path()
+    arm_component = gf.path.extrude(arm_path, cross_section=xs)
+    
+    # Create four instances of the arm, rotated to form the swastika pattern
+    # Top-right arm (0 degrees - goes right then down)
+    top_right_arm = c << arm_component
+    top_right_arm.move((0, 0))
+    
+    # Bottom-right arm (90 degrees - goes down then left)
+    bottom_right_arm = c << arm_component
+    bottom_right_arm.rotate(90)
+    bottom_right_arm.move((0, 0))
+    
+    # Bottom-left arm (180 degrees - goes left then up)
+    bottom_left_arm = c << arm_component
+    bottom_left_arm.rotate(180)
+    bottom_left_arm.move((0, 0))
+    
+    # Top-left arm (270 degrees - goes up then right)
+    top_left_arm = c << arm_component
+    top_left_arm.rotate(270)
+    top_left_arm.move((0, 0))
+    
+    return c
+
+# Create the device
+device = create_swastika_pattern()
+
+# Write to GDS
+device.write_gds("swastika_pattern.gds")
+```
+
+Actually, I need to think about this more carefully. The issue with my previous approach is that I'm creating arms that turn in different directions relative to the center. Let me create a more accurate version:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_swastika_pattern():
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Define cross-section for the paths
+    xs = gf.cross_section.cross_section(width=0.5, layer=layer)
+    
+    # Create a path for one complete arm of the swastika (going right then down)
+    def create_swastika_arm_path():
+        path = gf.Path()
+        path.append(gf.path.straight(length=1.5))  # Go right
+        path.append(gf.path.euler(radius=0.3, angle=90, p=0.5))  # Turn 90 degrees clockwise (down)
+        path.append(gf.path.straight(length=1.5))  # Go down
+        return path
+    
+    # Create the arm shape
+    arm_path = create_swastika_arm_path()
+    arm_component = gf.path.extrude(arm_path, cross_section=xs)
+    
+    # Create four instances of the arm, rotated to form the swastika pattern
+    # Top-right arm (0 degrees - goes right then down)
+    top_right_arm = c << arm_component
+    top_right_arm.move((0, 0))
+    
+    # Bottom-right arm (90 degrees - goes down then left)
+    bottom_right_arm = c << arm_component
+    bottom_right_arm.rotate(90)
+    bottom_right_arm.move((0, 0))
+    
+    # Bottom-left arm (180 degrees - goes left then up)
+    bottom_left_arm = c << arm_component
+    bottom_left_arm.rotate(180)
+    bottom_left_arm.move((0, 0))
+    
+    # Top-left arm (270 degrees - goes up then right)
+    top_left_arm = c << arm_component
+    top_left_arm.rotate(270)
+    top_left_arm.move((0, 0))
+    
+    return c
+
+# Create the device
+device = create_swastika_pattern()
+
+# Write to GDS
+device.write_gds("swastika_pattern.gds")
+```

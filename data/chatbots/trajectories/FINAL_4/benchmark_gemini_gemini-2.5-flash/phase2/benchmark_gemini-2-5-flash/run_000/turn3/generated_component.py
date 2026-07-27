@@ -1,0 +1,180 @@
+import gdsfactory as gf
+from gdsfactory.typings import LayerSpec
+import numpy as np # Import numpy for Bezier curve calculations
+
+# Helper function to generate points along a cubic Bezier curve
+def _generate_bezier_points(control_points: list[tuple[float, float]], num_points: int = 50) -> list[tuple[float, float]]:
+    """
+    Generates a list of points along a cubic Bezier curve.
+    
+    Args:
+        control_points: A list of 4 (x, y) coordinates defining the cubic Bezier curve: [P0, P1, P2, P3].
+        num_points: The number of discrete points to generate along the curve (including start and end).
+    
+    Returns:
+        A list of (x, y) tuples representing the points on the Bezier curve.
+    """
+    if len(control_points) != 4:
+        raise ValueError("A cubic Bezier curve requires exactly 4 control points.")
+    
+    # Convert control points to numpy array for vectorized calculation
+    # Each Px will have shape (2,)
+    P0, P1, P2, P3 = np.array(control_points)
+    
+    # Generate 't' values from 0 to 1
+    t = np.linspace(0, 1, num_points)
+    
+    # Apply the cubic Bezier formula: B(t) = (1-t)^3*P0 + 3*(1-t)^2*t*P1 + 3*(1-t)*t^2*P2 + t^3*P3
+    # Reshape the scalar coefficients (e.g., (1-t)**3) from (num_points,) to (num_points, 1)
+    # so they can correctly broadcast with Px (shape (2,)) to produce (num_points, 2) arrays.
+    points = (
+        ((1 - t)**3)[:, np.newaxis] * P0 +
+        (3 * (1 - t)**2 * t)[:, np.newaxis] * P1 +
+        (3 * (1 - t) * t**2)[:, np.newaxis] * P2 +
+        (t**3)[:, np.newaxis] * P3
+    )
+    
+    # Convert back to a list of tuples
+    return [tuple(point) for point in points]
+
+@gf.cell
+def create_single_wavy_band(
+    width: float = 0.8, 
+    bezier_control_points: list[tuple[float, float]] = None, 
+    layer: LayerSpec = (1, 0),
+    num_bezier_points: int = 50, # Number of intermediate points to generate for the Bezier curve
+    smooth_radius: float = 1.0 # Radius for gf.path.smooth to prevent sharp corners between generated points
+) -> gf.Component:
+    """
+    Creates a single wavy band by generating points along a cubic Bezier curve
+    and then using gf.path.smooth to create the path from these points.
+
+    Args:
+        width: The width of the band.
+        bezier_control_points: A list of 4 (x, y) coordinates defining the control points
+                               for the cubic Bezier curve: [P0, P1, P2, P3].
+        layer: GDS layer for the band.
+        num_bezier_points: The number of discrete points to generate along the Bezier curve
+                           before feeding them to gf.path.smooth. More points mean a finer approximation
+                           of the Bezier curve.
+        smooth_radius: The minimum bend radius used by gf.path.smooth to interpolate
+                       between the generated Bezier points.
+    
+    Returns:
+        A gdsfactory Component representing the wavy band.
+    """
+    if bezier_control_points is None or len(bezier_control_points) != 4:
+        raise ValueError("bezier_control_points list must be provided and contain exactly 4 points for a cubic Bezier curve.")
+    
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=width, layer=layer)
+    
+    # Generate a dense set of points along the intended Bezier curve
+    bezier_path_points = _generate_bezier_points(bezier_control_points, num_points=num_bezier_points)
+
+    # Use gf.path.smooth with the generated Bezier points to create the path
+    # A sufficiently high num_bezier_points combined with a reasonable smooth_radius
+    # will create the desired smooth, wavy shape.
+    path = gf.path.smooth(points=bezier_path_points, radius=smooth_radius)
+
+    # Extrude the path to create the component geometry
+    band = gf.path.extrude(path, cross_section=xs)
+    c.add_ref(band)
+    
+    # Add ports from the extruded path to the component
+    c.add_port("o1", port=band.ports["o1"]) 
+    c.add_port("o2", port=band.ports["o2"])
+    
+    return c
+
+@gf.cell
+def wavy_channel_device_v4() -> gf.Component:
+    """
+    Recreates the geometry from the provided image using Bezier-generated points
+    and gf.path.smooth for smooth curves.
+    The device is designed to fit a footprint of [18, 3] micrometers.
+
+    Returns:
+        A gdsfactory Component containing the two wavy bands.
+    """
+    c = gf.Component("wavy_channel_device_v4")
+    
+    # Device parameters derived from image analysis and footprint constraint
+    total_length = 18.0  # From footprint_um[0]
+    total_height = 3.0   # From footprint_um[1]
+    
+    band_width = 0.8     # Estimated width of the black bands from image
+    layer = (1, 0)
+
+    # H_wave (vertical excursion of the centerline from its start/end Y to its midpoint Y)
+    # This value ensures the desired middle gap of 0.2um.
+    # Calculation: total_height - 2*band_width - 2*H_wave = middle_gap
+    # 3.0 - 2*0.8 - 2*H_wave = 0.2
+    # 3.0 - 1.6 - 2*H_wave = 0.2
+    # 1.4 - 2*H_wave = 0.2
+    # 2*H_wave = 1.2 => H_wave = 0.6
+    H_wave = 0.6 
+
+    # Calculate the Y-coordinates for the centerlines at the start and end of the device.
+    # These ensure the overall footprint is respected.
+    Y_start_top_center = total_height - band_width / 2  # 3.0 - 0.4 = 2.6
+    Y_start_bottom_center = band_width / 2              # 0.4
+
+    # Define the 4 control points for the cubic Bezier curve for the top band (valley shape)
+    # P0 (start), P1 (control1), P2 (control2), P3 (end)
+    # P1 and P2 pull the curve towards the valley
+    top_band_bezier_control_points = [
+        (0, Y_start_top_center),
+        (total_length * 0.25, Y_start_top_center - H_wave), 
+        (total_length * 0.75, Y_start_top_center - H_wave), 
+        (total_length, Y_start_top_center)
+    ]
+    
+    # Define the 4 control points for the cubic Bezier curve for the bottom band (hill shape)
+    # P1 and P2 pull the curve towards the hill
+    bottom_band_bezier_control_points = [
+        (0, Y_start_bottom_center),
+        (total_length * 0.25, Y_start_bottom_center + H_wave), 
+        (total_length * 0.75, Y_start_bottom_center + H_wave), 
+        (total_length, Y_start_bottom_center)
+    ]
+    
+    # Create and add the top band component
+    top_band_ref = c << create_single_wavy_band(
+        width=band_width,
+        bezier_control_points=top_band_bezier_control_points,
+        layer=layer,
+        num_bezier_points=100, # Increased points for a very smooth approximation
+        smooth_radius=1.0 # Kept at 1.0, can be adjusted if corners are still too sharp
+    )
+    
+    # Create and add the bottom band component
+    bottom_band_ref = c << create_single_wavy_band(
+        width=band_width,
+        bezier_control_points=bottom_band_bezier_control_points,
+        layer=layer,
+        num_bezier_points=100, # Increased points for a very smooth approximation
+        smooth_radius=1.0 # Kept at 1.0
+    )
+    
+    # Add ports to the main component for potential connection in larger designs
+    c.add_port("o1_top", port=top_band_ref.ports["o1"])
+    c.add_port("o2_top", port=top_band_ref.ports["o2"])
+    c.add_port("o1_bot", port=bottom_band_ref.ports["o1"])
+    c.add_port("o2_bot", port=bottom_band_ref.ports["o2"])
+    
+    return c
+
+# Example usage to visualize and save the GDS
+if __name__ == "__main__":
+    device = wavy_channel_device_v4()
+    
+    # Print the bounding box to verify the footprint
+    print(f"Device bounds: x_min={device.xmin}, y_min={device.ymin}, x_max={device.xmax}, y_max={device.ymax}")
+    # Expected output: x_min=0.0, y_min=0.0, x_max=18.0, y_max=3.0
+
+    # Write the GDS file
+    device.write_gds("wavy_channel_device_bezier_smooth_fixed.gds")
+
+    # To visualize the GDS file (requires KLayout or similar GDS viewer installed for gf.show)
+    # gf.show(device)

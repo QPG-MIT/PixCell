@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.879312",
+      "api_duration_seconds": 9.506822109222412,
+      "usage": {
+        "input_tokens": 4407,
+        "output_tokens": 470,
+        "total_tokens": 4877
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: Path() the `path` argument must be either blank, a path Object, an array-like[N][2] list of points, or a list of these",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:21.100421",
+      "api_duration_seconds": 7.881940126419067,
+      "usage": {
+        "input_tokens": 4941,
+        "output_tokens": 963,
+        "total_tokens": 5904
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'np'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:30.454642",
+      "api_duration_seconds": 5.771461009979248,
+      "usage": {
+        "input_tokens": 5931,
+        "output_tokens": 704,
+        "total_tokens": 6635
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15279,
+    "output_tokens": 2137,
+    "total_tokens": 17416
+  }
+}

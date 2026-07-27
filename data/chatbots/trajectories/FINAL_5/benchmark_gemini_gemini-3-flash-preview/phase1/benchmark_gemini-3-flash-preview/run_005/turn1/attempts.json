@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.822906",
+      "api_duration_seconds": 105.10205674171448,
+      "usage": {
+        "input_tokens": 3171,
+        "output_tokens": 1260,
+        "total_tokens": 13108
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:56.317494",
+      "api_duration_seconds": 60.86562514305115,
+      "usage": {
+        "input_tokens": 4457,
+        "output_tokens": 1267,
+        "total_tokens": 13534
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.12 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:58.603454",
+      "api_duration_seconds": 29.073200225830078,
+      "usage": {
+        "input_tokens": 5770,
+        "output_tokens": 1238,
+        "total_tokens": 10289
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13398,
+    "output_tokens": 3765,
+    "total_tokens": 36931
+  }
+}

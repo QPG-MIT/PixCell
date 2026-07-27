@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:11:25.939590",
+      "api_duration_seconds": 25.61072301864624,
+      "usage": {
+        "input_tokens": 5977,
+        "output_tokens": 878,
+        "total_tokens": 10232
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: bend_euler_gdsfactorypcomponentspbendspbend_euler_R20_A_4ccccb6f_-10000_2680_A330, Cell name: bend_euler_gdsfactorypcomponentspbendspbend_euler_R20_A_4ccccb6f",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:11:53.998608",
+      "api_duration_seconds": 20.50488591194153,
+      "usage": {
+        "input_tokens": 7007,
+        "output_tokens": 882,
+        "total_tokens": 10609
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ZeroDivisionError: float division by zero",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:12:15.929669",
+      "api_duration_seconds": 24.283777952194214,
+      "usage": {
+        "input_tokens": 7911,
+        "output_tokens": 963,
+        "total_tokens": 11829
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: straight_gdsfactorypcomponentspwaveguidespstraight_L10__f2286423_40000_-7321_A29p999999999999993, Cell name: straight_gdsfactorypcomponentspwaveguidespstraight_L10__f2286423\nInstance name: straight_gdsfactorypcomponentspwaveguidespstraight_L10__f2286",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 20895,
+    "output_tokens": 2723,
+    "total_tokens": 32670
+  }
+}

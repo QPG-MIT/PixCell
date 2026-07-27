@@ -1,0 +1,42 @@
+import gdsfactory as gf
+
+@gf.cell
+def device():
+    c = gf.Component()
+
+    # Parameters
+    length = 18
+    height = 3
+    w = 0.5
+    layer = (1, 0)
+    gap_mid = 0.2
+    xs = gf.cross_section.cross_section(width=w, layer=layer)
+
+    y0 = (height - w) / 2  # 1.25
+    s_mid = gap_mid + w  # 0.7
+    d = y0 - s_mid / 2  # 0.9
+    dx = length / 2  # 9
+
+    # Top waveguide
+    bend1_top = c << gf.components.bend_s(size=(dx, -d), cross_section=xs)
+    bend1_top.move((0, y0))
+    bend2_top = c << gf.components.bend_s(size=(dx, d), cross_section=xs)
+    bend2_top.connect("o1", bend1_top.ports["o2"])
+
+    # Bottom waveguide
+    bend1_bottom = c << gf.components.bend_s(size=(dx, d), cross_section=xs)
+    bend1_bottom.move((0, -y0))
+    bend2_bottom = c << gf.components.bend_s(size=(dx, -d), cross_section=xs)
+    bend2_bottom.connect("o1", bend1_bottom.ports["o2"])
+
+    # Expose ports
+    c.add_port("o1", port=bend1_top.ports["o1"])
+    c.add_port("o2", port=bend2_top.ports["o2"])
+    c.add_port("o3", port=bend1_bottom.ports["o1"])
+    c.add_port("o4", port=bend2_bottom.ports["o2"])
+
+    return c
+
+# Create and save
+dev = device()
+dev.write_gds("device.gds")

@@ -1,0 +1,139 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreated_device_fixed():
+    """
+    Refined recreation of the directional coupler.
+    Features a clustered slot-waveguide geometry in the coupling region.
+    
+    Footprint target: 120um x 4um
+    """
+    c = gf.Component()
+
+    # --- 1. Dimensions & Constraints ---
+    total_length = 120.0
+    straight_length = 80.0
+    sbend_length = (total_length - straight_length) / 2  # 20.0 um
+    
+    # Y-axis vertical budget (Device height = 4.0um -> y in [-2.0, 2.0])
+    input_port_y_offset = 1.6  # Position of input/output ports
+    
+    # --- 2. Cross Sections ---
+    # Main wide waveguide (outer rails)
+    xs_main = gf.cross_section.cross_section(width=0.6, layer=(1, 0))
+    # Thin waveguide (inner stripes)
+    xs_stripe = gf.cross_section.cross_section(width=0.15, layer=(1, 0))
+
+    # --- 3. Build Central Coupling Region (Clustered) ---
+    
+    # Define the packing parameters for one cluster (building from inside -> out)
+    center_gap = 0.2          # Gap between Top and Bottom clusters
+    stripe_gap = 0.1          # Gap between stripes
+    
+    # --- Construct Top Cluster ---
+    # Start Y calculation from the center outwards
+    current_y = (center_gap / 2)
+    
+    # Stripe 1 (Inner-most)
+    w = 0.15
+    y_pos = current_y + w/2
+    ref_s1 = c << gf.components.straight(length=straight_length, cross_section=xs_stripe)
+    ref_s1.y = y_pos
+    current_y += w + stripe_gap
+    
+    # Stripe 2
+    w = 0.15
+    y_pos = current_y + w/2
+    ref_s2 = c << gf.components.straight(length=straight_length, cross_section=xs_stripe)
+    ref_s2.y = y_pos
+    current_y += w + stripe_gap
+    
+    # Stripe 3
+    w = 0.15
+    y_pos = current_y + w/2
+    ref_s3 = c << gf.components.straight(length=straight_length, cross_section=xs_stripe)
+    ref_s3.y = y_pos
+    current_y += w + stripe_gap
+    
+    # Main Bus (Outer-most)
+    w_main = 0.6
+    main_y_pos = current_y + w_main/2
+    top_main_ref = c << gf.components.straight(length=straight_length, cross_section=xs_main)
+    top_main_ref.y = main_y_pos
+    
+    # --- Construct Bottom Cluster (Mirror of Top) ---
+    
+    # Reset Y for bottom
+    current_y = -(center_gap / 2)
+    
+    # Stripe 1 (Inner-most)
+    w = 0.15
+    y_pos = current_y - w/2
+    ref_bs1 = c << gf.components.straight(length=straight_length, cross_section=xs_stripe)
+    ref_bs1.y = y_pos
+    current_y -= (w + stripe_gap)
+    
+    # Stripe 2
+    w = 0.15
+    y_pos = current_y - w/2
+    ref_bs2 = c << gf.components.straight(length=straight_length, cross_section=xs_stripe)
+    ref_bs2.y = y_pos
+    current_y -= (w + stripe_gap)
+    
+    # Stripe 3
+    w = 0.15
+    y_pos = current_y - w/2
+    ref_bs3 = c << gf.components.straight(length=straight_length, cross_section=xs_stripe)
+    ref_bs3.y = y_pos
+    current_y -= (w + stripe_gap)
+    
+    # Main Bus (Outer-most)
+    main_bot_y_pos = current_y - w_main/2
+    bot_main_ref = c << gf.components.straight(length=straight_length, cross_section=xs_main)
+    bot_main_ref.y = main_bot_y_pos
+
+
+    # --- 4. Construct S-Bends ---
+    # Connect input ports to the *Main Bus* waveguides only.
+    
+    # Calculate the vertical shift needed for the S-bend
+    # From Port Y to Main Bus Y
+    # Top: input_port_y_offset -> main_y_pos
+    dy_top = input_port_y_offset - main_y_pos
+    
+    bend_top = gf.components.bend_s(size=(sbend_length, dy_top), cross_section=xs_main)
+    # For bottom, symmetrical size
+    bend_bot = gf.components.bend_s(size=(sbend_length, dy_top), cross_section=xs_main)
+
+    # -- Top Left Input --
+    tl = c << bend_top
+    tl.mirror() # Flip horizontal to connect to left side
+    tl.connect("o1", top_main_ref.ports["o1"])
+    
+    # -- Bottom Left Input --
+    bl = c << bend_bot
+    bl.mirror() # Flip horizontal
+    bl.mirror_y() # Flip vertical to drop down
+    bl.connect("o1", bot_main_ref.ports["o1"])
+    
+    # -- Top Right Output --
+    tr = c << bend_top
+    tr.connect("o1", top_main_ref.ports["o2"])
+    
+    # -- Bottom Right Output --
+    br = c << bend_bot
+    br.mirror_y()
+    br.connect("o1", bot_main_ref.ports["o2"])
+
+    # --- 5. Expose Ports ---
+    c.add_port("o1", port=tl.ports["o2"])
+    c.add_port("o2", port=bl.ports["o2"])
+    c.add_port("o3", port=tr.ports["o2"])
+    c.add_port("o4", port=br.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = recreated_device_fixed()
+    device.show()
+    device.write_gds("recreated_device_fixed.gds")

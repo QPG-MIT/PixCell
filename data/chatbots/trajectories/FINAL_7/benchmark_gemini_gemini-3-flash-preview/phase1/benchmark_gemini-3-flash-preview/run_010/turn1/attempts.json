@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:20:20.773884",
+      "api_duration_seconds": 87.69967913627625,
+      "usage": {
+        "input_tokens": 3170,
+        "output_tokens": 1312,
+        "total_tokens": 16890
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S1p8_0_54556e09' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:50.042043",
+      "api_duration_seconds": 34.151095151901245,
+      "usage": {
+        "input_tokens": 4542,
+        "output_tokens": 1354,
+        "total_tokens": 9485
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.068 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:22:25.450178",
+      "api_duration_seconds": 16.37516498565674,
+      "usage": {
+        "input_tokens": 5943,
+        "output_tokens": 1204,
+        "total_tokens": 8354
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.068 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13655,
+    "output_tokens": 3870,
+    "total_tokens": 34729
+  }
+}

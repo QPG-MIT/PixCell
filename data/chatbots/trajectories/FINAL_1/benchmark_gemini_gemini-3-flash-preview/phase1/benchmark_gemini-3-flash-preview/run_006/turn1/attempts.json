@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:08.937250",
+      "api_duration_seconds": 58.1077139377594,
+      "usage": {
+        "input_tokens": 3182,
+        "output_tokens": 1306,
+        "total_tokens": 10617
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:08.638133",
+      "api_duration_seconds": 44.83890509605408,
+      "usage": {
+        "input_tokens": 4519,
+        "output_tokens": 1340,
+        "total_tokens": 10392
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:00.323469",
+      "api_duration_seconds": 40.73727226257324,
+      "usage": {
+        "input_tokens": 5878,
+        "output_tokens": 1453,
+        "total_tokens": 11931
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: Unnamed_5_8000_0_A359p981974075988, Cell name: Unnamed_5",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13579,
+    "output_tokens": 4099,
+    "total_tokens": 32940
+  }
+}

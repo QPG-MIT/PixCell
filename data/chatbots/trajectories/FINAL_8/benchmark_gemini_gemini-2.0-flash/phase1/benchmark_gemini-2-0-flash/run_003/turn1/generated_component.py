@@ -1,0 +1,68 @@
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+
+
+@gf.cell
+def waveguide_structure():
+    c = gf.Component("waveguide_structure")
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    # Define horizontal lines (waveguides)
+    line_width = 0.5
+    line_spacing = 0.5
+    num_lines_top = 5
+    num_lines_middle = 5
+    num_lines_bottom = 5
+    top_height = (num_lines_top * line_width) + ((num_lines_top - 1) * line_spacing)
+    middle_height = (num_lines_middle * line_width) + ((num_lines_middle - 1) * line_spacing)
+    bottom_height = (num_lines_bottom * line_width) + ((num_lines_bottom - 1) * line_spacing)
+    # Top Horizontal Lines
+    top_lines = []
+    for i in range(num_lines_top):
+        y = (i * (line_width + line_spacing))
+        rect = c << rectangle(size=(120, line_width), layer=(1, 0), centered=False)
+        rect.movey(top_height/2 - y - line_width/2)  # Center vertically
+        rect.movex(-120/2) #Center Horizontally
+        top_lines.append(rect)
+    # Middle Horizontal Lines
+    middle_lines = []
+    for i in range(num_lines_middle):
+        y = (i * (line_width + line_spacing))
+        rect = c << rectangle(size=(120, line_width), layer=(1, 0), centered=False)
+        rect.movey(-y + middle_height/2 - line_width/2)
+        rect.movex(-120/2)
+        middle_lines.append(rect)
+    # Bottom Horizontal Lines
+    bottom_lines = []
+    for i in range(num_lines_bottom):
+        y = (i * (line_width + line_spacing))
+        rect = c << rectangle(size=(120, line_width), layer=(1, 0), centered=False)
+        rect.movey(-bottom_height/2 + y + line_width/2)
+        rect.movex(-120/2)
+        bottom_lines.append(rect)
+
+    # Define vertical sections
+    vertical_width = 8
+    vertical_height = 10 # Adjust as needed
+    vertical_offset_x = 10 # Offset from edges
+
+    # Define Top Vertical Sections
+    top_vertical_left = c << rectangle(size=(vertical_width, vertical_height), layer=(1, 0), centered=False)
+    top_vertical_left.move((vertical_offset_x - 120/2, top_height/2))  # Position and offset
+
+    top_vertical_right = c << rectangle(size=(vertical_width, vertical_height), layer=(1, 0), centered=False)
+    top_vertical_right.move((-vertical_offset_x + 120/2 - vertical_width, top_height/2))  # Position and offset
+
+    # Bottom Vertical Sections
+    bottom_vertical_left = c << rectangle(size=(vertical_width, vertical_height), layer=(1, 0), centered=False)
+    bottom_vertical_left.move((vertical_offset_x - 120/2, -bottom_height/2 - vertical_height))  # Position and offset
+
+    bottom_vertical_right = c << rectangle(size=(vertical_width, vertical_height), layer=(1, 0), centered=False)
+    bottom_vertical_right.move((-vertical_offset_x + 120/2 - vertical_width, -bottom_height/2 - vertical_height))  # Position and offset
+
+    return c
+
+
+structure = waveguide_structure()
+structure.show()
+structure.write_gds("waveguide_structure.gds")

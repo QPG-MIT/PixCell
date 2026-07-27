@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.933409",
+      "api_duration_seconds": 138.1635138988495,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 1258,
+        "total_tokens": 20022
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'circle_gdsfactorypcomponentspshapespcircle_R1p5_AR2p5_L1_0' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:29.723315",
+      "api_duration_seconds": 28.071555137634277,
+      "usage": {
+        "input_tokens": 3663,
+        "output_tokens": 1353,
+        "total_tokens": 7183
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:59.278506",
+      "api_duration_seconds": 25.07939600944519,
+      "usage": {
+        "input_tokens": 5520,
+        "output_tokens": 1251,
+        "total_tokens": 8642
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'list' object has no attribute 'is_regular_array'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11530,
+    "output_tokens": 3862,
+    "total_tokens": 35847
+  }
+}

@@ -1,0 +1,108 @@
+import gdsfactory as gf
+
+@gf.cell
+def device():
+    # Main container
+    c = gf.Component()
+    layer = (1, 0)
+
+    # ---------------------------------------------------------
+    # 1. Create the Racetrack Ring (Outer solid minus Inner empty)
+    # ---------------------------------------------------------
+    
+    # Outer pill shape (Dimensions chosen to match 5.5 x 3.0 footprint)
+    # Total width = 2.5 + 2*1.5 = 5.5
+    # Total height = 2 * 1.5 = 3.0
+    c_out = gf.Component("outer_pill")
+    c_out << gf.components.rectangle(size=(2.5, 3.0), centered=True, layer=layer)
+    c_out_c1 = c_out << gf.components.circle(radius=1.5, layer=layer)
+    c_out_c1.move((-1.25, 0))
+    c_out_c2 = c_out << gf.components.circle(radius=1.5, layer=layer)
+    c_out_c2.move((1.25, 0))
+
+    # Inner pill shape (to subtract and make the ring hollow)
+    # Inner height = 1.5, Inner width = 2.5 + 2*0.75 = 4.0
+    c_in = gf.Component("inner_pill")
+    c_in << gf.components.rectangle(size=(2.5, 1.5), centered=True, layer=layer)
+    c_in_c1 = c_in << gf.components.circle(radius=0.75, layer=layer)
+    c_in_c1.move((-1.25, 0))
+    c_in_c2 = c_in << gf.components.circle(radius=0.75, layer=layer)
+    c_in_c2.move((1.25, 0))
+
+    # Subtract to get the racetrack ring
+    racetrack = gf.boolean(c_out, c_in, operation="not", layer=layer)
+
+    # ---------------------------------------------------------
+    # 2. Create the Central MZI Structures (Arms and solid boxes)
+    # ---------------------------------------------------------
+    
+    c_center = gf.Component("center_solid")
+
+    # The arms use a path extruded with a cross section
+    xs = gf.cross_section.cross_section(width=0.1, layer=layer)
+    
+    # Paths overlap slightly into the inner ring bounds (inner boundary is roughly at x=±1.99)
+    # Starting at x=±2.2 ensures a solid boolean union without gaps.
+    # The y=±0.1 creates the necessary gap between the two arms at the ends.
+    p_top = gf.Path([
+        (-2.2, 0.1), 
+        (-1.1, 0.1), 
+        (-0.7, 0.35), 
+        (0.7, 0.35), 
+        (1.1, 0.1), 
+        (2.2, 0.1)
+    ])
+    p_bot = gf.Path([
+        (-2.2, -0.1), 
+        (-1.1, -0.1), 
+        (-0.7, -0.35), 
+        (0.7, -0.35), 
+        (1.1, -0.1), 
+        (2.2, -0.1)
+    ])
+
+    c_center << gf.path.extrude(p_top, cross_section=xs)
+    c_center << gf.path.extrude(p_bot, cross_section=xs)
+
+    # Add the solid bounding boxes for the structures on the arms
+    box_t = c_center << gf.components.rectangle(size=(1.2, 0.3), centered=True, layer=layer)
+    box_t.move((0, 0.35))
+    
+    box_b = c_center << gf.components.rectangle(size=(1.2, 0.3), centered=True, layer=layer)
+    box_b.move((0, -0.35))
+
+    # Union the racetrack ring and central solid structures
+    c_solid = gf.boolean(racetrack, c_center, operation="or", layer=layer)
+
+    # ---------------------------------------------------------
+    # 3. Create the Holes for the Boxes
+    # ---------------------------------------------------------
+    
+    c_holes = gf.Component("holes")
+    
+    # Top arm box holes
+    h1 = c_holes << gf.components.rectangle(size=(0.45, 0.1), centered=True, layer=layer)
+    h1.move((-0.275, 0.35))
+    h2 = c_holes << gf.components.rectangle(size=(0.45, 0.1), centered=True, layer=layer)
+    h2.move((0.275, 0.35))
+    
+    # Bottom arm box holes
+    h3 = c_holes << gf.components.rectangle(size=(0.45, 0.1), centered=True, layer=layer)
+    h3.move((-0.275, -0.35))
+    h4 = c_holes << gf.components.rectangle(size=(0.45, 0.1), centered=True, layer=layer)
+    h4.move((0.275, -0.35))
+
+    # ---------------------------------------------------------
+    # 4. Final Composition
+    # ---------------------------------------------------------
+    
+    # Subtract the holes from the combined solid shape to create the "ladder" look
+    final_dev = gf.boolean(c_solid, c_holes, operation="not", layer=layer)
+    
+    c << final_dev
+    return c
+
+if __name__ == "__main__":
+    # Ensure the GDS file is correctly written out to resolve the generation error
+    c = device()
+    c.write_gds("device.gds")

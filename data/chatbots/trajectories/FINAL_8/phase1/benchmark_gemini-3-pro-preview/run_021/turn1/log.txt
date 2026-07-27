@@ -1,0 +1,108 @@
+Turn 1 Response:
+
+Usually, in GDSFactory, the `straight` component relies on a `cross_section` object to define layers and widths, rather than accepting a `layer` argument directly (which is often deprecated or not available in stricter parametric versions).
+
+Here is the corrected script. It defines a `cross_section` for the waveguides and ensures the "void" geometry is calculated such that it stays within the 4µm vertical footprint, leaving metal strips at the edges.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def parametric_heater_device():
+    """
+    Creates a 5-waveguide bus with adjacent tapered metal pads
+    fitting the 120um x 4um footprint constraint.
+    """
+    c = gf.Component()
+    
+    # =======================================================================
+    # Parameters
+    # =======================================================================
+    length = 120.0
+    total_height = 4.0
+    layer_device = (1, 0)
+    
+    # Waveguide Array configuration
+    wg_width = 0.35
+    wg_gap = 0.25
+    n_waveguides = 5
+    
+    # 1. Define Cross Section for Waveguides
+    # -----------------------------------------------------------------------
+    # We define the cross-section once and pass it to the straight component.
+    xs_wg = gf.cross_section.cross_section(width=wg_width, layer=layer_device)
+    
+    # Calculate geometry
+    array_height = n_waveguides * wg_width + (n_waveguides - 1) * wg_gap
+    y_start = -array_height / 2 + wg_width / 2
+    
+    # 2. Place Waveguides
+    # -----------------------------------------------------------------------
+    for i in range(n_waveguides):
+        # Pass the cross_section explicitly
+        wg = c << gf.components.straight(length=length, cross_section=xs_wg)
+        wg.movey(y_start + i * (wg_width + wg_gap))
+
+    # 3. Create Variable Gap (Void)
+    # -----------------------------------------------------------------------
+    # The "Void" is the empty space mask. It is narrow in the center (metal close to WG)
+    # and wide at the edges (metal far from WG).
+    
+    gap_center = 0.15
+    gap_edge = 0.55  # Large gap at edge results in thin metal strips remaining
+    
+    width_void_center = array_height + 2 * gap_center
+    width_void_edge = array_height + 2 * gap_edge
+    
+    # Define cross sections for the void path transition
+    xs_void_center = gf.cross_section.cross_section(width=width_void_center, layer=layer_device)
+    xs_void_edge = gf.cross_section.cross_section(width=width_void_edge, layer=layer_device)
+    
+    # Path is split in two halves to create symmetric taper
+    path_half = gf.path.straight(length=length/2)
+    
+    # Left: Edge -> Center
+    trans_in = gf.path.transition(xs_void_edge, xs_void_center, width_type='sine')
+    # Right: Center -> Edge
+    trans_out = gf.path.transition(xs_void_center, xs_void_edge, width_type='sine')
+    
+    # Extrude shapes
+    void_in = gf.path.extrude_transition(path_half, trans_in)
+    void_out = gf.path.extrude_transition(path_half, trans_out)
+    
+    # Combine into a single void component
+    void_temp = gf.Component()
+    v1 = void_temp << void_in
+    v2 = void_temp << void_out
+    # Connect v2 to the end of v1
+    v2.connect("o1", v1.ports["o2"])
+    
+    # 4. Generate Metal Pads via Boolean
+    # -----------------------------------------------------------------------
+    # Create the base rectangular metal block
+    rect = gf.components.rectangle(size=(length, total_height), layer=layer_device, centered=True)
+    
+    # Create a temporary container for the rectangle to align it
+    # rectangle(centered=True) is at (0,0). The waveguides span x=0 to x=120.
+    # We move the rectangle to x=60 to match.
+    rect_temp = gf.Component()
+    r_ref = rect_temp << rect
+    r_ref.movex(length/2)
+    
+    # Boolean Operation: Metal = Rectangle NOT Void
+    pads = gf.boolean(
+        A=rect_temp, 
+        B=void_temp, 
+        operation="not", 
+        layer=layer_device
+    )
+    
+    c << pads
+
+    return c
+
+if __name__ == "__main__":
+    device = parametric_heater_device()
+    device.show()
+    device.write_gds("parametric_heater.gds")
+```

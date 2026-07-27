@@ -1,0 +1,61 @@
+import gdsfactory as gf
+
+@gf.cell
+def coupled_waveguides_device():
+    """
+    Creates a symmetric coupled waveguide structure based on the provided footprint.
+    Device is 120um long with an input separation of 2.0um and a coupling gap of 0.5um.
+    """
+    c = gf.Component()
+    
+    # Define the waveguide cross-section
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    # Dimensions based on the 120um x 4um footprint
+    total_length = 120
+    coupling_length = 20
+    arm_length = 20
+    s_bend_length = (total_length - coupling_length - (2 * arm_length)) / 2 # (120 - 60) / 2 = 30
+    
+    # Y-offsets
+    input_separation = 2.0  # Y position for top/bottom waveguides at edges
+    center_separation = 0.5 # Y position for top/bottom waveguides in center
+    delta_y = (input_separation - center_separation) / 2 # 0.75um shift per S-bend
+
+    # Helper function to build one arm
+    def add_arm(y_start, direction_sign):
+        # 1. Start straight section
+        start_wg = c << gf.components.straight(length=arm_length, cross_section=xs)
+        start_wg.movey(y_start)
+
+        # 2. First S-bend (Move towards center)
+        # direction_sign is 1 for top (moves down), -1 for bottom (moves up)
+        sb1 = c << gf.components.bend_s(size=(s_bend_length, -direction_sign * delta_y), cross_section=xs)
+        sb1.connect("o1", start_wg.ports["o2"])
+
+        # 3. Center straight (Coupling region)
+        center_wg = c << gf.components.straight(length=coupling_length, cross_section=xs)
+        center_wg.connect("o1", sb1.ports["o2"])
+
+        # 4. Second S-bend (Move back to original Y)
+        sb2 = c << gf.components.bend_s(size=(s_bend_length, direction_sign * delta_y), cross_section=xs)
+        sb2.connect("o1", center_wg.ports["o2"])
+
+        # 5. Output straight
+        end_wg = c << gf.components.straight(length=arm_length, cross_section=xs)
+        end_wg.connect("o1", sb2.ports["o2"])
+
+    # Build Top Arm (y=1.0, starts moving down)
+    add_arm(y_start=1.0, direction_sign=1)
+    
+    # Build Bottom Arm (y=-1.0, starts moving up)
+    add_arm(y_start=-1.0, direction_sign=-1)
+
+    return c
+
+# Generate the device
+device = coupled_waveguides_device()
+device.write_gds("coupled_waveguides.gds")
+
+# View the result (Optional)
+# device.show()

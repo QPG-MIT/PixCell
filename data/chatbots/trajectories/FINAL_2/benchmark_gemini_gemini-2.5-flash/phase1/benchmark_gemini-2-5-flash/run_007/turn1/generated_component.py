@@ -1,0 +1,150 @@
+import gdsfactory as gf
+
+# Define the layer for the entire device
+LAYER = (1, 0)
+
+@gf.cell
+def single_tower_primitive(
+    W_top: float, 
+    H_top_straight: float, 
+    W_taper_base: float, 
+    H_taper: float, 
+    layer: tuple = LAYER
+) -> gf.Component:
+    """
+    Creates a single tower component with a tapered base and a straight top.
+    The component's base (bottom of the wider taper) is at y=0, and it's centered at x=0.
+    Ensures transformations are applied to ComponentReferences to avoid locking errors.
+    """
+    # Create a temporary Component to hold and transform references for the boolean operation
+    c_temp = gf.Component("temp_tower_parts_container")
+
+    # 1. Create the tapered part's Component definition
+    # Removed 'centered=True' as it's not a valid argument for gf.components.taper.
+    taper_comp_definition = gf.components.taper(
+        length=H_taper, width1=W_taper_base, width2=W_top, layer=layer
+    )
+    # Add an instance (reference) of the taper to our temporary component
+    taper_ref = c_temp << taper_comp_definition 
+    taper_ref.rotate(90) # Rotate this specific reference (instance), not the definition
+
+    # After rotate(90), the taper's base (width1) will be at y=0, and its top (width2) at y=H_taper.
+    # The x-axis will be centered around 0 (from -max(widths)/2 to max(widths)/2).
+    # Therefore, no additional movey is needed to place its base at y=0.
+    # taper_ref.movey(H_taper / 2) # This line is removed.
+
+    # 2. Create the straight rectangular top part's Component definition
+    rect_comp_definition = gf.components.rectangle(
+        size=(W_top, H_top_straight), layer=layer, centered=True
+    )
+    # Add an instance (reference) of the rectangle to our temporary component
+    rect_ref = c_temp << rect_comp_definition 
+    
+    # 3. Position the rectangle on top of the taper.
+    # taper_ref.ymax is now H_taper (the height of the taper).
+    # rect_ref's ymin is -H_top_straight/2 (due to centering).
+    # Move amount: target_ymin (taper_ref.ymax) - current_ymin (-H_top_straight/2)
+    # = H_taper + H_top_straight/2
+    rect_ref.movey(taper_ref.ymax + H_top_straight / 2)
+    
+    # 4. Combine the taper and rectangle references using a boolean OR operation.
+    tower_geometry = gf.boolean(taper_ref, rect_ref, operation="or", layer=layer)
+    tower_geometry.name = "single_tower_primitive_geometry"
+    return tower_geometry
+
+
+@gf.cell
+def device_from_image_recreated() -> gf.Component:
+    """
+    Recreates the geometry from the provided image using GDSFactory parametric functions.
+    The device is designed to fit within a 25um x 10um footprint.
+    Ensures transformations are applied to ComponentReferences and uses explicit boolean operations
+    to combine geometry.
+    """
+    # Parameters (adjusted for 25um x 10um footprint)
+    # Main rectangle body dimensions
+    W_body = 24.0
+    H_body_base = 5.0 # Height of the main horizontal block
+
+    # Notch dimensions (inverted triangle at the bottom)
+    W_notch_top = 1.6
+    H_notch = 1.2
+
+    # Tower dimensions (tapered base + straight top)
+    W_top_tower = 1.2         # Width of the straight top part of tower
+    H_top_straight_tower = 1.6 # Height of the straight top part of tower
+    W_taper_base_tower = 2.8  # Base width of the tapered part
+    H_taper_tower = 2.2       # Height of the tapered part
+
+    # Tower distribution
+    num_towers = 4
+    spacing_between_towers = 1.9 # Gap between bases of adjacent towers
+
+    # --- 1. Create the main rectangular body's Component definition ---
+    main_rect_component = gf.components.rectangle(size=(W_body, H_body_base), layer=LAYER, centered=True)
+
+    # --- 2. Create and position the notch (inverted triangle) ---
+    notch_container = gf.Component("notch_holder_for_transform")
+    raw_notch_ref = notch_container << gf.components.triangle(x=W_notch_top, y=H_notch, layer=LAYER)
+    raw_notch_ref.rotate(180) # Rotate this specific reference (instance)
+    
+    # Position the notch: move its base (original y=0 for the triangle) 
+    # to align with main_rect_component's bottom edge (ymin).
+    raw_notch_ref.movey(-H_body_base / 2)
+
+    # --- 3. Subtract the notch from the main rectangle ---
+    base_with_notch_component = gf.boolean(main_rect_component, raw_notch_ref, operation="not", layer=LAYER)
+
+    # --- 4. Create the base tower primitive Component (its definition) ---
+    tower_base_component_definition = single_tower_primitive(
+        W_top_tower, H_top_straight_tower, W_taper_base_tower, H_taper_tower, LAYER
+    )
+
+    # --- 5. Calculate positions for the four towers and combine them ---
+    current_combined_geometry = base_with_notch_component
+    
+    total_towers_assembly_width = (num_towers * W_taper_base_tower) + ((num_towers - 1) * spacing_between_towers)
+    start_x_offset = -total_towers_assembly_width / 2 + W_taper_base_tower / 2
+    
+    # Y-coordinate for the base of the towers.
+    # The main body's top edge (ymax of main_rect_component) is at y = H_body_base / 2.
+    tower_base_y_position = H_body_base / 2 
+    
+    for i in range(num_towers):
+        temp_tower_instance_holder = gf.Component(f"temp_tower_instance_{i}")
+        tower_instance_ref = temp_tower_instance_holder << tower_base_component_definition
+        
+        x_pos = start_x_offset + i * (W_taper_base_tower + spacing_between_towers)
+        
+        tower_instance_ref.move((x_pos, tower_base_y_position))
+        
+        current_combined_geometry = gf.boolean(
+            current_combined_geometry, 
+            tower_instance_ref, 
+            operation="or", 
+            layer=LAYER
+        )
+
+    final_device_component = current_combined_geometry
+    final_device_component.name = "recreated_image_device"
+    
+    # Verify the bounding box dimensions of the final component
+    bbox = final_device_component.bbox
+    width = bbox[1][0] - bbox[0][0]
+    height = bbox[1][1] - bbox[0][1]
+    
+    print(f"Final device width: {width:.3f} um")
+    print(f"Final device height: {height:.3f} um")
+    
+    # Center the entire device component for aesthetic consistency
+    final_device_component.center = (0,0)
+    
+    return final_device_component
+
+# Example usage and save GDS
+if __name__ == "__main__":
+    device = device_from_image_recreated()
+    device.write_gds("recreated_image_device.gds")
+
+    # To visualize the created GDS layout (requires KLayout or similar viewer)
+    # gf.show(device)

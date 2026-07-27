@@ -1,0 +1,52 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+
+    width = 0.5
+    gap = 0.0
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0), radius_min=5.0)
+
+    length = 18.0
+    height = 3.0
+    center_sep = (height - width) / 2  # 1.25
+    center_close = (width + gap) / 2  # 0.25
+    delta = center_sep - center_close  # 1.0
+    couple_length = 6.0
+    half_length = (length - couple_length) / 2  # 6.0
+
+    # Middle coupler with gap=0
+    coupler = gf.components.coupler_straight(length=couple_length, gap=gap, cross_section=xs)
+    coupler_ref = c << coupler
+    coupler_ref.move((half_length, 0))
+
+    # Top left: negative dy
+    b_neg = gf.components.bend_s(size=(half_length, -delta), cross_section=xs)
+    first_top = c << b_neg
+    first_top.connect("o2", coupler_ref.ports["o1"])
+
+    # Top right: positive dy
+    b = gf.components.bend_s(size=(half_length, delta), cross_section=xs)
+    second_top = c << b
+    second_top.connect("o1", coupler_ref.ports["o2"])
+
+    # Bottom left: positive dy
+    first_bottom = c << b
+    first_bottom.connect("o2", coupler_ref.ports["o3"])
+
+    # Bottom right: negative dy
+    second_bottom = c << b_neg
+    second_bottom.connect("o1", coupler_ref.ports["o4"])
+
+    # Add ports
+    c.add_port("o1", port=first_top.ports["o1"])
+    c.add_port("o2", port=second_top.ports["o2"])
+    c.add_port("o3", port=first_bottom.ports["o1"])
+    c.add_port("o4", port=second_bottom.ports["o2"])
+
+    return c
+
+# Create and save
+device = my_device()
+device.write_gds("my_device.gds")

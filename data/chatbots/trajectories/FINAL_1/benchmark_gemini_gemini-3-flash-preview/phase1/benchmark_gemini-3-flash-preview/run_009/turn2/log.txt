@@ -1,0 +1,90 @@
+Turn 2 Response:
+
+To match the original image more closely, we need to significantly increase the aspect ratio of the components. The previous render appeared "chunky" because the waveguides were too wide relative to their lengths, and the taper was too blunt.
+
+In this refined version:
+1.  **Slender Proportions:** I've adjusted the widths and lengths to ensure the device stretches across the full **40.0 µm** length while staying within the **1.7 µm** height.
+2.  **Long Gradual Taper:** The middle waveguide now has a much longer taper (12 µm) to create the sharp, needle-like point seen in the original.
+3.  **Extended Side Arms:** The side arms now have a long straight section before the S-bend, which is very shallow (only 0.2 µm shift over 10 µm length), matching the subtle curve of the original.
+4.  **Correct Offsets:** The middle arm protrudes from the left, while the side arms start with an offset, precisely as shown in the target image.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreate_device_refined():
+    """
+    Refined recreation of the device with a 40.0um x 1.7um footprint.
+    Matches the long, slender profile and sharp middle taper of the target image.
+    """
+    c = gf.Component("refined_device")
+    
+    # 1. Geometric Constants based on 40.0 x 1.7 footprint
+    L_TOTAL = 40.0
+    H_TOTAL = 1.7
+    
+    # Waveguide widths (Slender profiles)
+    W_SIDE = 0.42
+    W_MID = 0.28
+    LAYER = (1, 0)
+    
+    # X-coordinates for assembly
+    X_SIDE_START = 4.0   # Side arms are indented from the left
+    L_MID_STRAIGHT = 18.0
+    L_MID_TAPER = 12.0    # Long taper for a sharp point
+    
+    L_SIDE_STRAIGHT = 23.0
+    L_SIDE_SBEND = 11.0
+    L_SIDE_END = 2.0      # (4 + 23 + 11 + 2) = 40.0um total length
+    
+    # Vertical Positioning (Calculated for H=1.7 footprint)
+    # Final edge at 0.85 -> Center at 0.85 - (0.42/2) = 0.64
+    # Initial center with ~0.1um gap: (0.28/2) + 0.1 + (0.42/2) = 0.45
+    Y_INIT = 0.45
+    Y_FINAL = (H_TOTAL / 2.0) - (W_SIDE / 2.0)
+    DY = Y_FINAL - Y_INIT
+    
+    # 2. Construct Middle Arm
+    # Protrudes from the far left (x=0)
+    mid_xs = gf.cross_section.cross_section(width=W_MID, layer=LAYER)
+    m_straight = c << gf.components.straight(length=L_MID_STRAIGHT, cross_section=mid_xs)
+    m_taper = c << gf.components.taper(length=L_MID_TAPER, width1=W_MID, width2=0.01, layer=LAYER)
+    m_taper.connect("o1", m_straight.ports["o2"])
+    
+    # 3. Construct Side Arms (Top and Bottom)
+    side_xs = gf.cross_section.cross_section(width=W_SIDE, layer=LAYER)
+    
+    # Top Arm
+    ts1 = c << gf.components.straight(length=L_SIDE_STRAIGHT, cross_section=side_xs)
+    ts1.move((X_SIDE_START, Y_INIT))
+    
+    tsb = c << gf.components.bend_s(size=(L_SIDE_SBEND, DY), cross_section=side_xs)
+    tsb.connect("o1", ts1.ports["o2"])
+    
+    ts2 = c << gf.components.straight(length=L_SIDE_END, cross_section=side_xs)
+    ts2.connect("o1", tsb.ports["o2"])
+    
+    # Bottom Arm (Symmetrical)
+    bs1 = c << gf.components.straight(length=L_SIDE_STRAIGHT, cross_section=side_xs)
+    bs1.move((X_SIDE_START, -Y_INIT))
+    
+    bsb = c << gf.components.bend_s(size=(L_SIDE_SBEND, -DY), cross_section=side_xs)
+    bsb.connect("o1", bs1.ports["o2"])
+    
+    bs2 = c << gf.components.straight(length=L_SIDE_END, cross_section=side_xs)
+    bs2.connect("o1", bsb.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    # Generate and save
+    device = recreate_device_refined()
+    
+    # Verification
+    print(f"Footprint Check:")
+    print(f"Width: {device.dxsize:.2f} um (Target: 40.0)")
+    print(f"Height: {device.dysize:.2f} um (Target: 1.7)")
+    
+    device.write_gds("refined_device.gds")
+    # device.show() # Uncomment to view in KLayout
+```

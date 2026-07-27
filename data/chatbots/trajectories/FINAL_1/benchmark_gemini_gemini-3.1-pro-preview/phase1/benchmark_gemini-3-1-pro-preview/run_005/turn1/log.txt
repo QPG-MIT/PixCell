@@ -1,0 +1,110 @@
+Turn 1 Response:
+
+The error occurred because the previous script only attempted to display the geometry using `device.show()` but did not explicitly write it to a GDS file, which the automated environment requires. 
+
+By adding the standard `device.write_gds(...)` command from the catalog's assembly pattern, the script will now correctly generate the expected file.
+
+Here is the corrected and complete Python script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def adiabatic_mode_splitter() -> gf.Component:
+    """
+    Parametric recreation of the adiabatic mode splitter.
+    Total Footprint: 40.0 um x 1.7 um
+    """
+    c = gf.Component("adiabatic_mode_splitter")
+
+    # --- Geometric Parameters ---
+    total_length = 40.0
+    total_width = 1.7
+    
+    # Section Lengths
+    l_taper = 22.0
+    l_sbend = 10.0
+    l_straight = total_length - l_taper - l_sbend  # 8.0 um
+    
+    # Waveguide Widths
+    w_center_in = 0.4
+    w_center_out = 0.05       # Central taper narrows down to a point
+    w_outer_in = 0.15
+    w_outer_out = 0.5         # Final uniform waveguide width for the arms
+    
+    # Y-axis Center Coordinates
+    # Calculated to yield a perfectly constant gap of 0.1125 um between tapers
+    y_outer_taper = 0.3875    
+    y_straight = total_width / 2 - w_outer_out / 2  # (1.7/2) - 0.25 = 0.60
+    
+    layer = (1, 0)
+    xs_outer = gf.cross_section.cross_section(width=w_outer_out, layer=layer)
+
+    # --- 1. Central Taper ---
+    # Centered at y=0 by default
+    c << gf.components.taper(
+        length=l_taper,
+        width1=w_center_in,
+        width2=w_center_out,
+        layer=layer
+    )
+
+    # --- 2. Top Arm Construction ---
+    # Taper segment
+    top_taper = c << gf.components.taper(
+        length=l_taper,
+        width1=w_outer_in,
+        width2=w_outer_out,
+        layer=layer
+    )
+    top_taper.movey(y_outer_taper)
+
+    # S-Bend outward divergence
+    dy_top = y_straight - y_outer_taper
+    top_sbend = c << gf.components.bend_s(
+        size=(l_sbend, dy_top),
+        cross_section=xs_outer
+    )
+    top_sbend.connect("o1", top_taper.ports["o2"])
+
+    # Straight output
+    top_straight = c << gf.components.straight(
+        length=l_straight,
+        cross_section=xs_outer
+    )
+    top_straight.connect("o1", top_sbend.ports["o2"])
+
+    # --- 3. Bottom Arm Construction ---
+    # Taper segment
+    bot_taper = c << gf.components.taper(
+        length=l_taper,
+        width1=w_outer_in,
+        width2=w_outer_out,
+        layer=layer
+    )
+    bot_taper.movey(-y_outer_taper)
+
+    # S-Bend outward divergence (negative dy)
+    dy_bot = -y_straight - (-y_outer_taper)
+    bot_sbend = c << gf.components.bend_s(
+        size=(l_sbend, dy_bot),
+        cross_section=xs_outer
+    )
+    bot_sbend.connect("o1", bot_taper.ports["o2"])
+
+    # Straight output
+    bot_straight = c << gf.components.straight(
+        length=l_straight,
+        cross_section=xs_outer
+    )
+    bot_straight.connect("o1", bot_sbend.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Create the device
+    device = adiabatic_mode_splitter()
+    
+    # CRITICAL FIX: explicitly save the resulting geometry to a GDS file
+    device.write_gds("adiabatic_mode_splitter.gds")
+```

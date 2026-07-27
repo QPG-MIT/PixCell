@@ -1,0 +1,53 @@
+{
+  "turn": 5,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:20:09.533523",
+      "api_duration_seconds": 11.9984450340271,
+      "usage": {
+        "input_tokens": 3725,
+        "output_tokens": 1572,
+        "total_tokens": 5297
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: unsupported operand type(s) for <<: 'DInstance' and 'DInstance'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:23.474481",
+      "api_duration_seconds": 9.036945104598999,
+      "usage": {
+        "input_tokens": 5329,
+        "output_tokens": 1255,
+        "total_tokens": 6584
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(cell)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:33.878583",
+      "api_duration_seconds": 8.921167135238647,
+      "usage": {
+        "input_tokens": 6631,
+        "output_tokens": 1203,
+        "total_tokens": 7834
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(cell)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15685,
+    "output_tokens": 4030,
+    "total_tokens": 19715
+  }
+}

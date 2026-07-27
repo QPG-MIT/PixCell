@@ -1,0 +1,112 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_refined_v4():
+    """
+    Directional coupler with a 120um x 4um footprint.
+    Refined parameters to match visual proportions of the target:
+    - Increased waveguide width to 0.7um for bolder lines matching the target.
+    - Decreased coupling gap to 0.2um for a tighter coupling region.
+    - Maintains 120x4um footprint by dynamically calculating offsets.
+    """
+    c = gf.Component()
+
+    # --- Constraints ---
+    # Footprint: 120um x 4um
+    total_length = 120.0
+    total_height = 4.0
+
+    # --- Geometric Parameters ---
+    # Adjusted based on visual comparison:
+    # Target shows thick waveguides and a very narrow gap.
+    wg_width = 0.7
+    coupling_gap = 0.2
+    
+    # Longitudinal segmentation (Total = 120um)
+    # The V3 proportions (10/25/50) matched the geometry well, so they are retained.
+    length_io = 10.0
+    length_bend = 25.0
+    length_couple = 50.0
+
+    # --- Y-Axis Calculations ---
+    # Outer ports: Align outer edges with the 4um vertical limit (+/- 2.0um)
+    # Center Y = (Limit - Width/2)
+    y_io_top = (total_height / 2) - (wg_width / 2)       # 2.0 - 0.35 = 1.65
+    y_io_bot = -y_io_top                                 # -1.65
+    
+    # Inner coupling: Centered around 0
+    # Center Y = (Gap/2) + (Width/2)
+    y_couple_top = (coupling_gap / 2) + (wg_width / 2)   # 0.1 + 0.35 = 0.45
+    y_couple_bot = -y_couple_top                         # -0.45
+    
+    # Vertical offset for the S-bends
+    dy = y_io_top - y_couple_top                         # 1.65 - 0.45 = 1.2
+
+    # Cross-section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Component Definitions ---
+    s_io = gf.components.straight(length=length_io, cross_section=xs)
+    s_couple = gf.components.straight(length=length_couple, cross_section=xs)
+    
+    # S-Bends
+    # Bend Down: Moves from Outer (High Y) to Inner (Low Y) -> negative dy
+    bend_down = gf.components.bend_s(size=(length_bend, -dy), cross_section=xs)
+    # Bend Up: Moves from Inner (Low Y) to Outer (High Y) -> positive dy
+    bend_up = gf.components.bend_s(size=(length_bend, dy), cross_section=xs)
+
+    # --- Assembly (Left to Right) ---
+    
+    # -- Top Arm --
+    # 1. Input Straight
+    top_in = c << s_io
+    top_in.move((0, y_io_top))
+    
+    # 2. Input Bend
+    top_bend_in = c << bend_down
+    top_bend_in.connect("o1", top_in.ports["o2"])
+    
+    # 3. Coupling Straight
+    top_mid = c << s_couple
+    top_mid.connect("o1", top_bend_in.ports["o2"])
+    
+    # 4. Output Bend
+    top_bend_out = c << bend_up
+    top_bend_out.connect("o1", top_mid.ports["o2"])
+    
+    # 5. Output Straight
+    top_out = c << s_io
+    top_out.connect("o1", top_bend_out.ports["o2"])
+
+    # -- Bottom Arm --
+    # 1. Input Straight
+    bot_in = c << s_io
+    bot_in.move((0, y_io_bot))
+    
+    # 2. Input Bend
+    bot_bend_in = c << bend_up
+    bot_bend_in.connect("o1", bot_in.ports["o2"])
+    
+    # 3. Coupling Straight
+    bot_mid = c << s_couple
+    bot_mid.connect("o1", bot_bend_in.ports["o2"])
+    
+    # 4. Output Bend
+    bot_bend_out = c << bend_down
+    bot_bend_out.connect("o1", bot_mid.ports["o2"])
+    
+    # 5. Output Straight
+    bot_out = c << s_io
+    bot_out.connect("o1", bot_bend_out.ports["o2"])
+
+    # --- Ports ---
+    c.add_port("o1", port=bot_in.ports["o1"])
+    c.add_port("o2", port=top_in.ports["o1"])
+    c.add_port("o3", port=top_out.ports["o2"])
+    c.add_port("o4", port=bot_out.ports["o2"])
+
+    return c
+
+# Generate and save
+device = directional_coupler_refined_v4()
+device.write_gds("directional_coupler_refined_v4.gds")

@@ -1,0 +1,130 @@
+Looking at the image, I can see two black curved shapes that look like waveguides with S-bends or smooth transitions. They appear to be:
+1. Two parallel waveguides that curve in opposite directions
+2. The shapes look like smooth S-curves or sinusoidal bends
+3. They're roughly horizontal but with vertical offset and smooth transitions
+
+The device appears to be two waveguides that:
+- Start relatively close together on the left
+- Expand outward (one goes up, one goes down) in the middle
+- Come back closer together on the right
+
+This looks like it could be created using:
+- Path-based construction with smooth curves
+- Or bend_s components
+- Or custom path construction
+
+Given the footprint constraint of [18, 3] μm (width x height), I need to fit this design within those dimensions.
+
+Let me analyze the image more carefully:
+- The two black shapes are symmetric (mirrored vertically)
+- They start close together, expand outward, then come back together
+- The curves are smooth (likely Euler or smooth paths)
+- Width appears to be around 18 units, height around 3 units based on the footprint
+
+This looks like two S-bend waveguides or a beamsplitter/combiner structure.
+
+I'll create this using:
+1. Two smooth paths or S-bends
+2. One curving up and out, then back
+3. One curving down and out, then back
+4. Using appropriate cross-sections
+
+Let me write the code:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def parametric_device():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Device dimensions based on footprint
+    total_length = 18.0
+    max_separation = 3.0
+    initial_gap = 0.3
+    
+    # Create two S-bend paths
+    # Top waveguide - starts at center, goes up, then back to center
+    top_start_y = initial_gap / 2
+    top_max_y = max_separation / 2
+    
+    # Bottom waveguide - starts at center, goes down, then back to center
+    bottom_start_y = -initial_gap / 2
+    bottom_max_y = -max_separation / 2
+    
+    # Create top path using smooth waypoints
+    top_points = [
+        (0, top_start_y),
+        (total_length/3, top_max_y),
+        (2*total_length/3, top_start_y),
+        (total_length, top_start_y)
+    ]
+    
+    # Create bottom path with mirrored waypoints
+    bottom_points = [
+        (0, bottom_start_y),
+        (total_length/3, bottom_max_y),
+        (2*total_length/3, bottom_start_y),
+        (total_length, bottom_start_y)
+    ]
+
+```
+
+I need to define the waypoints for both waveguides—the top one peaks upward at the middle third of the device while the bottom one dips downward symmetrically. Both paths start and end at their initial positions, creating the characteristic S-bend expansion and contraction pattern. =xs)
+    
+    return c
+
+# Create and save
+device = parametric_device()
+device.write_gds("parametric_device.gds")
+```
+
+Looking more carefully at the image, the shapes appear to be smooth curved bands that bow outward in opposite directions, creating a lens or eye-like structure with a gap between them that narrows at the edges. This suggests arc-shaped waveguides rather than simple sinusoidal paths.
+
+Revising the approach to use arc geometry instead:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def parametric_device():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.4, layer=(1, 0))
+    
+    # Device dimensions
+    length = 18.0
+    max_height = 3.0
+    
+    # Create smooth S-curve paths
+    # Top curve - bows upward
+    top_points = [
+        (0, 0.2),
+        (length/2, max_height/2),
+        (length, 0.2)
+    ]
+    
+    # Bottom curve - bows downward
+    bottom_points = [
+        (0, -0.2),
+        (length/2, -max_height/2),
+        (length, -0.2)
+    ]
+    
+    # Create smooth paths with appropriate radius
+    top_path = gf.path.smooth(top_points, radius=3
+
+.0)
+    bottom_path = gf.path.smooth(bottom_points, radius=3.0)
+    
+    # Extrude to create waveguides
+    top_wg = c << gf.path.extrude(top_path, cross_section=xs)
+    bottom_wg = c << gf.path.extrude(bottom_path, cross_section=xs)
+    
+    return c
+
+The black shapes look like thick bands rather than thin waveguides, so I should increase the cross-section width. The curves appear quite smooth and symmetric, forming a lens or eye-shaped structure with mirrored top and bottom paths.

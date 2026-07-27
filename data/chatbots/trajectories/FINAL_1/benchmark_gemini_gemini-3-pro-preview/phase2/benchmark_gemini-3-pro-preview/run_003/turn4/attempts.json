@@ -1,0 +1,53 @@
+{
+  "turn": 4,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:04:51.103025",
+      "api_duration_seconds": 105.2213249206543,
+      "usage": {
+        "input_tokens": 5626,
+        "output_tokens": 1514,
+        "total_tokens": 15997
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports Unnamed_5_0_0[\"o1\"] and Port \"o2\" (\"150\"/\"500\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:06:37.536577",
+      "api_duration_seconds": 67.88817095756531,
+      "usage": {
+        "input_tokens": 7196,
+        "output_tokens": 1485,
+        "total_tokens": 13831
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports taper_gdsfactorypcomponentsptapersptaper_L25_W0p4_W0p05_c8c5177e_0_0[\"o1\"] and Port \"o2\" (\"500\"/\"400\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:07:47.497807",
+      "api_duration_seconds": 55.04117822647095,
+      "usage": {
+        "input_tokens": 8768,
+        "output_tokens": 1439,
+        "total_tokens": 14336
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 21590,
+    "output_tokens": 4438,
+    "total_tokens": 44164
+  }
+}

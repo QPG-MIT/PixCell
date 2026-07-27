@@ -1,0 +1,173 @@
+Turn 1 Response:
+
+You are right! My apologies. `gdsfactory` has transitioned from `get_active_tech()` to `get_active_pdk()` to retrieve technology-related information like the database unit (dbu).
+
+I've corrected the script to use `gf.get_active_pdk().dbu`.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def custom_device_from_image():
+    c = gf.Component("custom_device")
+
+    # 1. Device and Line Dimensions
+    L = 120.0  # Total horizontal length (footprint_um[0])
+    H = 4.0    # Total vertical height (footprint_um[1])
+    layer = (1, 0) # Default layer for the geometry
+
+    # Get the active PDK's database unit (dbu)
+    # Symmetrical cross sections must have widths that are multiples of 2 * dbu
+    dbu = gf.get_active_pdk().dbu # Corrected: Use get_active_pdk()
+    dbu_precision_unit = 2 * dbu 
+
+    # Calculate initial line_width assuming line_width = gap_width for uniform spacing
+    # 9 lines + 8 gaps = 17 total elements vertically
+    initial_line_width = H / 17
+
+    # Adjust line_width to be a multiple of dbu_precision_unit
+    # This might cause a slight deviation from the nominal H, but is required for GDSFactory's cross_section validation.
+    line_width = round(initial_line_width / dbu_precision_unit) * dbu_precision_unit
+    gap_width = line_width # Maintain line_width = gap_width as per visual inspection
+
+    print(f"Original line_width: {initial_line_width:.5f} um")
+    print(f"Adjusted line_width (multiple of {dbu_precision_unit:.3f} um): {line_width:.5f} um")
+    print(f"Actual total height with adjusted widths: {17 * line_width:.5f} um")
+
+    # 2. Calculate y-offsets for the center of each of the 9 lines
+    # Lines are indexed from 0 (bottom-most) to 8 (top-most)
+    all_offsets_y = []
+    # The bottom edge of the device is at -H/2. The center of the bottom-most line is at -H/2 + line_width/2.
+    current_y = -H / 2 + line_width / 2 
+    for i in range(9):
+        all_offsets_y.append(current_y)
+        # For the next line, move up by one line_width (the current line) + one gap_width (the space)
+        current_y += line_width + gap_width
+
+    # 3. Parameters for the curves
+    # These parameters control the shape and extent of the curved sections at the ends.
+    dx_start_straight = 10.0 # Horizontal length of the straight segment at the very ends before/after the curve starts/ends.
+    dx_curve = 15.0         # Horizontal length over which the main curve happens.
+    R_smooth_outer = 1.0    # Smoothing radius for the outermost lines (s0, s8).
+    R_smooth_inner_curve = 0.5 # Smoothing radius for the inner curving lines (s1, s7).
+
+    all_line_components = [] # To store all extruded lines for boolean union
+
+    # Define the cross_section for all lines
+    xs_single_line = gf.cross_section.cross_section(width=line_width, layer=layer)
+
+    # 4. Create paths and extrude for each of the 9 lines
+
+    # Paths for central 5 lines (indices 2 to 6) - these are straight
+    for i in range(2, 7):
+        p_straight = gf.path.straight(length=L)
+        line_ref = c << gf.path.extrude(p_straight, xs_single_line) # Add to component 'c'
+        # Position the straight line centrally in X and at its calculated Y offset
+        line_ref.center = (L/2, all_offsets_y[i])
+        all_line_components.append(line_ref)
+
+    # Paths for outer 4 lines (indices 0, 1, 7, 8) - these curve at the ends
+    # Define points for gf.path.smooth to create the desired inward curves.
+    # The target_y_... values are calculated such that the *edge* of the curving line
+    # aligns with the *edge* of an adjacent straight line, ensuring smooth visual flow.
+
+    # Line 8 (top-most line)
+    y_s8_center = all_offsets_y[8]
+    # The lower edge of line 8 at its dip should align with the upper edge of line 6.
+    target_y_s8_center_dip = all_offsets_y[6] + line_width 
+    dy_curve_s8 = y_s8_center - target_y_s8_center_dip # Vertical drop for the curve
+
+    points_s8 = [
+        (0, y_s8_center),
+        (dx_start_straight, y_s8_center), # Straight segment at start
+        (dx_start_straight + dx_curve * 0.5, y_s8_center - dy_curve_s8 * 0.5), # Mid-point of left curve
+        (dx_start_straight + dx_curve, target_y_s8_center_dip), # End of left curve dip
+        (L - (dx_start_straight + dx_curve), target_y_s8_center_dip), # Straight middle segment between curves
+        (L - (dx_start_straight + dx_curve * 0.5), y_s8_center - dy_curve_s8 * 0.5), # Mid-point of right curve
+        (L - dx_start_straight, y_s8_center), # End of right curve rise
+        (L, y_s8_center) # Straight segment at end
+    ]
+    path_s8 = gf.path.smooth(points_s8, radius=R_smooth_outer)
+    line_s8_ref = c << gf.path.extrude(path_s8, xs_single_line) # Add to component 'c'
+    all_line_components.append(line_s8_ref)
+
+    # Line 7 (second from top)
+    y_s7_center = all_offsets_y[7]
+    # The lower edge of line 7 at its dip should align with the upper edge of line 5.
+    target_y_s7_center_dip = all_offsets_y[5] + line_width
+    dy_curve_s7 = y_s7_center - target_y_s7_center_dip # Vertical drop for the curve
+
+    points_s7 = [
+        (0, y_s7_center),
+        (dx_start_straight, y_s7_center),
+        (dx_start_straight + dx_curve * 0.5, y_s7_center - dy_curve_s7 * 0.5),
+        (dx_start_straight + dx_curve, target_y_s7_center_dip),
+        (L - (dx_start_straight + dx_curve), target_y_s7_center_dip),
+        (L - (dx_start_straight + dx_curve * 0.5), y_s7_center - dy_curve_s7 * 0.5),
+        (L - dx_start_straight, y_s7_center),
+        (L, y_s7_center)
+    ]
+    path_s7 = gf.path.smooth(points_s7, radius=R_smooth_inner_curve)
+    line_s7_ref = c << gf.path.extrude(path_s7, xs_single_line) # Add to component 'c'
+    all_line_components.append(line_s7_ref)
+
+    # Line 1 (second from bottom) - geometrically mirrored version of line 7
+    y_s1_center = all_offsets_y[1]
+    # The upper edge of line 1 at its rise should align with the lower edge of line 3.
+    target_y_s1_center_rise = all_offsets_y[3] - line_width
+    dy_curve_s1 = target_y_s1_center_rise - y_s1_center # Vertical rise for the curve
+
+    points_s1 = [
+        (0, y_s1_center),
+        (dx_start_straight, y_s1_center),
+        (dx_start_straight + dx_curve * 0.5, y_s1_center + dy_curve_s1 * 0.5), # Mid-point of left curve rise
+        (dx_start_straight + dx_curve, target_y_s1_center_rise),
+        (L - (dx_start_straight + dx_curve), target_y_s1_center_rise),
+        (L - (dx_start_straight + dx_curve * 0.5), y_s1_center + dy_curve_s1 * 0.5),
+        (L - dx_start_straight, y_s1_center),
+        (L, y_s1_center)
+    ]
+    path_s1 = gf.path.smooth(points_s1, radius=R_smooth_inner_curve)
+    line_s1_ref = c << gf.path.extrude(path_s1, xs_single_line) # Add to component 'c'
+    all_line_components.append(line_s1_ref)
+
+    # Line 0 (bottom-most line) - geometrically mirrored version of line 8
+    y_s0_center = all_offsets_y[0]
+    # The upper edge of line 0 at its rise should align with the lower edge of line 2.
+    target_y_s0_center_rise = all_offsets_y[2] - line_width
+    dy_curve_s0 = target_y_s0_center_rise - y_s0_center # Vertical rise for the curve
+
+    points_s0 = [
+        (0, y_s0_center),
+        (dx_start_straight, y_s0_center),
+        (dx_start_straight + dx_curve * 0.5, y_s0_center + dy_curve_s0 * 0.5),
+        (dx_start_straight + dx_curve, target_y_s0_center_rise),
+        (L - (dx_start_straight + dx_curve), target_y_s0_center_rise),
+        (L - (dx_start_straight + dx_curve * 0.5), y_s0_center + dy_curve_s0 * 0.5),
+        (L - dx_start_straight, y_s0_center),
+        (L, y_s0_center)
+    ]
+    path_s0 = gf.path.smooth(points_s0, radius=R_smooth_outer)
+    line_s0_ref = c << gf.path.extrude(path_s0, xs_single_line) # Add to component 'c'
+    all_line_components.append(line_s0_ref)
+
+    # 5. Combine all line components into a single polygon using boolean "or"
+    # Create an initial component for the boolean operation
+    main_shape = all_line_components[0]
+    # Perform boolean union with the rest of the components
+    for i in range(1, len(all_line_components)):
+        main_shape = gf.boolean(main_shape, all_line_components[i], operation="or", layer=layer)
+    
+    # Add the final combined shape to the main component
+    c.add_ref(main_shape)
+
+    return c
+
+# Create the component and save
+if __name__ == '__main__':
+    device = custom_device_from_image()
+    device.write_gds("custom_device.gds")
+    # For visual inspection, if gdsfactory is configured with a viewer:
+    # gf.show(device) 
+```

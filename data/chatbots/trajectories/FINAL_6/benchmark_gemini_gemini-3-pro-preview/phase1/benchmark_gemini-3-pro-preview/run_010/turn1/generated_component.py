@@ -1,0 +1,94 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_quatrefoil():
+    """
+    Recreates the quatrefoil-shaped device geometry using parametric primitives.
+    
+    The shape is constructed from:
+    1. Four ellipses acting as the petals/lobes, shifted from the center.
+    2. Four rectangular stubs at the extremities.
+    3. A boolean union to merge them into a single polygon.
+    """
+    # 1. Define Design Parameters
+    # Constrained by footprint: 4.7 x 4.7 um
+    total_footprint = 4.7
+    
+    # Dimensions derived from image analysis
+    stick_length = 0.35
+    stick_width = 0.15
+    
+    # Core radius (center to start of stick)
+    # R_core + stick_length = total_footprint / 2
+    core_radius = (total_footprint / 2) - stick_length  # 2.0 um
+    
+    # Petal Geometry
+    # Modeled as ellipses shifted outwards to create the central "waist"
+    petal_shift = 0.75
+    petal_r_major = core_radius - petal_shift # 1.25
+    petal_r_minor = 0.6  # Controls the width of the lobes
+    
+    layer = (1, 0)
+
+    # 2. Create Primitives
+    # We create a temporary component to act as a staging area
+    c_temp = gf.Component("temp_assembly")
+    
+    # Define primitives
+    e_vert = gf.components.ellipse(radii=(petal_r_minor, petal_r_major), layer=layer)
+    e_horiz = gf.components.ellipse(radii=(petal_r_major, petal_r_minor), layer=layer)
+    
+    r_horiz = gf.components.rectangle(size=(stick_length, stick_width), layer=layer, centered=True)
+    r_vert = gf.components.rectangle(size=(stick_width, stick_length), layer=layer, centered=True)
+
+    # 3. Assemble References in c_temp
+    # Instead of making a list variable, we add references directly to c_temp
+    
+    # -- Petals --
+    # North
+    p_n = c_temp << e_vert
+    p_n.movey(petal_shift)
+    
+    # South
+    p_s = c_temp << e_vert
+    p_s.movey(-petal_shift)
+    
+    # East
+    p_e = c_temp << e_horiz
+    p_e.movex(petal_shift)
+    
+    # West
+    p_w = c_temp << e_horiz
+    p_w.movex(-petal_shift)
+    
+    # -- Stubs --
+    # North Stick
+    s_n = c_temp << r_vert
+    s_n.movey(core_radius + stick_length/2)
+    
+    # South Stick
+    s_s = c_temp << r_vert
+    s_s.movey(-(core_radius + stick_length/2))
+    
+    # East Stick
+    s_e = c_temp << r_horiz
+    s_e.movex(core_radius + stick_length/2)
+    
+    # West Stick
+    s_w = c_temp << r_horiz
+    s_w.movex(-(core_radius + stick_length/2))
+
+    # 4. Boolean Operation
+    # To flatten all shapes into one polygon without passing a list,
+    # we boolean the component 'c_temp' with itself.
+    # (A or A) == A, but the operation creates a flattened geometry on the new component.
+    c_final = gf.boolean(c_temp, c_temp, operation='or', layer=layer)
+    
+    c_final.name = "quatrefoil_device"
+    return c_final
+
+# Create and save the device
+if __name__ == "__main__":
+    component = device_quatrefoil()
+    component.show() # View in KLayout/GDS viewer if available
+    component.write_gds("quatrefoil_device.gds")

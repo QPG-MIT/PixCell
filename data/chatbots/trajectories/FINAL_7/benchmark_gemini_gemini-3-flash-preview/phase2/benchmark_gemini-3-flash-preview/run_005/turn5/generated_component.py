@@ -1,0 +1,90 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreated_device():
+    """
+    Recreates the device geometry within a 5.5um x 3.0um footprint.
+    Focuses on chunky proportions and symmetric branching as per the target image.
+    """
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # --- 1. Dimensions for 5.5um x 3.0um Footprint ---
+    w_total = 5.5
+    h_total = 3.0
+    r_outer = h_total / 2         # 1.5 um radius
+    l_straight = w_total - 2 * r_outer  # 2.5 um straight section
+    t_wall = 0.52                 # Thicker wall for visual match
+    
+    # Helper to create stadium shapes
+    def make_stadium_shape(length, radius):
+        s = gf.Component()
+        # Straight part
+        s << gf.components.rectangle(size=(length, 2 * radius), centered=True, layer=layer)
+        # Circular end caps
+        c1 = s << gf.components.circle(radius=radius, layer=layer)
+        c2 = s << gf.components.circle(radius=radius, layer=layer)
+        c1.movex(-length / 2)
+        c2.movex(length / 2)
+        return s
+
+    outer_stadium = make_stadium_shape(l_straight, r_outer)
+    inner_stadium = make_stadium_shape(l_straight, r_outer - t_wall)
+    
+    # Create the hollow frame
+    c << gf.boolean(outer_stadium, inner_stadium, operation="not", layer=layer)
+
+    # --- 2. Internal Side Anchors ---
+    # Large blocks on the left and right inner edges.
+    anchor_w = 0.8
+    anchor_h = 1.35
+    anchor_x_pos = 1.85 # Positioned inside the curved caps
+    
+    for x_sign in [-1, 1]:
+        anchor = c << gf.components.rectangle(size=(anchor_w, anchor_h), centered=True, layer=layer)
+        anchor.movex(x_sign * anchor_x_pos)
+    
+    # --- 3. Double-Arm Branching Structure ---
+    arm_thickness = 0.25
+    arm_y_offset = 0.66   # Vertical distance to the horizontal segments
+    
+    # Inner face of anchor is approx +/- 1.45
+    x_inner_anchor = 1.45
+    x_stem_end = 1.25     # Point where split begins
+    x_slant_end = 0.95    # Point where horizontal arm begins
+    
+    for y_sign in [1, -1]:
+        y_pos = y_sign * arm_y_offset
+        # Continuous path from left anchor to right anchor for each arm
+        points = [
+            (-x_inner_anchor, 0),
+            (-x_stem_end, 0),
+            (-x_slant_end, y_pos),
+            (x_slant_end, y_pos),
+            (x_stem_end, 0),
+            (x_inner_anchor, 0)
+        ]
+        arm_path = gf.Path(points)
+        c << gf.path.extrude(arm_path, width=arm_thickness, layer=layer)
+        
+        # --- 4. Load Pads ---
+        # Two prominent rectangles placed on the horizontal segment of each arm.
+        pad_w = 0.85
+        pad_h = 0.45
+        pad_gap = 0.12 # Central gap between the two pads
+        
+        # Centers for the two pads
+        px = (pad_w + pad_gap) / 2
+        
+        for x_sign in [-1, 1]:
+            p = c << gf.components.rectangle(size=(pad_w, pad_h), centered=True, layer=layer)
+            p.move((x_sign * px, y_pos))
+        
+    return c
+
+if __name__ == "__main__":
+    device = recreated_device()
+    device.write_gds("recreated_device_v5.gds")
+    
+    # Footprint Verification
+    print(f"Final Footprint: {device.dxsize:.2f}um x {device.dysize:.2f}um")

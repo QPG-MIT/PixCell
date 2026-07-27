@@ -1,0 +1,86 @@
+import gdsfactory as gf
+import numpy as np
+
+def make_cosine_path(length: float, amplitude: float, y_offset: float, n_points: int = 201) -> gf.Path:
+    """
+    Creates a path that follows a single period of a cosine wave. This is the 
+    centerline for one of the waveguides.
+
+    Args:
+        length: The total horizontal length of the wave (one period).
+        amplitude: The vertical displacement from the offset (peak height).
+        y_offset: The vertical offset of the cosine wave's center from y=0.
+        n_points: Number of points to define the path's smoothness.
+
+    Returns:
+        A gdsfactory Path object.
+    """
+    x = np.linspace(0, length, n_points)
+    y = y_offset + amplitude * np.cos(2 * np.pi * x / length)
+    
+    points = np.array([x, y]).T
+    return gf.Path(points)
+
+@gf.cell
+def create_wavy_coupler():
+    """
+    Creates a wavy directional coupler composed of two constant-width waveguides
+    following cosine paths. This version models the device as two distinct,
+    extruded waveguides, which more accurately matches the target image.
+    """
+    c = gf.Component("wavy_coupler")
+
+    # --- Parameters derived from footprint [18, 3] and image analysis ---
+    length = 18.0
+    
+    # Based on analysis, the device consists of two constant-width waveguides.
+    # We can determine the path and width from the boundary conditions.
+    # Total height is 3, so max y for top waveguide is 1.5.
+    # Max gap at x=0 is ~1.0, min gap at x=L/2 is ~0.2.
+    # This implies a waveguide width of 1.0 um.
+    #
+    # The centerline for the top waveguide y(x) = offset + A*cos(2*pi*x/L):
+    # - At x=0, max height is 1.5, so centerline is at 1.5 - width/2 = 1.0.
+    #   offset + A = 1.0
+    # - At x=L/2, min gap is 0.2, so inner edge is at 0.1. Centerline is at 0.1 + width/2 = 0.6.
+    #   offset - A = 0.6
+    # Solving this system gives: offset = 0.8, amplitude = 0.2.
+    wg_width = 1.0
+    centerline_offset = 0.8
+    centerline_amplitude = 0.2
+
+    # 1. Create the centerline path for the top waveguide
+    path_top = make_cosine_path(
+        length=length,
+        amplitude=centerline_amplitude,
+        y_offset=centerline_offset
+    )
+
+    # 2. Define the cross-section (constant width)
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # 3. Extrude the path to create a single waveguide component
+    waveguide_unit = gf.path.extrude(path_top, cross_section=xs)
+
+    # 4. Add the top waveguide to the main component
+    wg_top_ref = c << waveguide_unit
+
+    # 5. Add a mirrored version for the bottom waveguide
+    wg_bottom_ref = c << waveguide_unit
+    wg_bottom_ref.mirror(p1=(0, 0), p2=(1, 0)) # Mirror across the x-axis
+
+    # 6. Add and rename ports for the final component
+    # o1: top-left, o2: bottom-left, o3: bottom-right, o4: top-right
+    c.add_port("o1", port=wg_top_ref.ports["o1"])
+    c.add_port("o2", port=wg_bottom_ref.ports["o1"])
+    c.add_port("o3", port=wg_bottom_ref.ports["o2"])
+    c.add_port("o4", port=wg_top_ref.ports["o2"])
+
+    return c
+
+# Main execution block for testing and saving
+if __name__ == "__main__":
+    wavy_coupler_device = create_wavy_coupler()
+    wavy_coupler_device.show()
+    wavy_coupler_device.write_gds("wavy_coupler.gds")
+    print("Successfully created and saved wavy_coupler.gds")

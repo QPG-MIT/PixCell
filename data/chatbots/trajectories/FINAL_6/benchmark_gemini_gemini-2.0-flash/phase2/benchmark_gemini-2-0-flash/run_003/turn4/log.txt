@@ -1,0 +1,76 @@
+Turn 4 Response:
+
+Okay, I understand the goal. I need to modify the `simple_flower` function to produce a shape that more closely resembles the target image. The target image has a cross-like shape where the ends of the arms are flat, and connected to a more narrow section (or "neck"). Right now, the code creates ellipses, which doesn't give us those flat ends or narrow necks.
+
+I'm going to change the approach to use rectangles for the flat ends and smaller ellipses (or other shapes) to connect them. I will also add smaller rectangles to create the ends.
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+from gdsfactory.typings import LayerSpec
+
+
+@gf.cell
+def simple_flower(
+    length: float = 4.7,
+    width: float = 0.3,
+    layer: LayerSpec = (1, 0),
+) -> gf.Component:
+    """
+    Creates a simple flower shape using GDSFactory primitives, now with rectangles and ellipses for a closer match.
+
+    Args:
+        length: Total length of the cross arms.
+        width: Width of the cross arms.
+        layer: Layer to draw the shapes on.
+    """
+
+    c = gf.Component()
+
+    # Calculate derived dimensions
+    end_length = width  # Length of the rectangular ends
+    neck_length = (length - end_length) / 2
+    neck_width = width * 0.4  # Width of the "neck" connecting the end rectangle
+    end_width = width *3
+
+    # Create the rectangles for the ends of the arms
+    rect1 = c << rectangle(size=(end_length, end_width), layer=layer)
+    rect2 = c << rectangle(size=(end_length, end_width), layer=layer)
+    rect3 = c << rectangle(size=(end_length, end_width), layer=layer)
+    rect4 = c << rectangle(size=(end_length, end_width), layer=layer)
+
+
+    # Position the rectangles
+    rect1.center = (0, length / 2)
+    rect2.center = (0, -length / 2)
+    rect3.center = (length / 2, 0)
+    rect4.center = (-length / 2, 0)
+
+    neck_rect1 = c << rectangle(size=(neck_length, neck_width), layer=layer)
+    neck_rect2 = c << rectangle(size=(neck_length, neck_width), layer=layer)
+    neck_rect3 = c << rectangle(size=(neck_length, neck_width), layer=layer)
+    neck_rect4 = c << rectangle(size=(neck_length, neck_width), layer=layer)
+
+    neck_rect1.center = (0, length/2 - end_length/2 - neck_length/2)
+    neck_rect2.center = (0, -length/2 + end_length/2 + neck_length/2)
+    neck_rect3.center = (length/2 - end_length/2 - neck_length/2, 0)
+    neck_rect4.center = (-length/2 + end_length/2 + neck_length/2, 0)
+
+    return c
+
+
+if __name__ == "__main__":
+    c = simple_flower()
+    c.show()
+    c.write_gds("simple_flower.gds")
+```
+
+Here's a breakdown of the changes:
+
+1.  **Replaced Ellipses with Rectangles:** The code now uses `gf.components.rectangle` to create the flat ends of the cross arms.
+2.  **Introduced `neck_length` and `neck_width`:** These parameters control the dimensions of the "neck" region connecting the end rectangles to the center.
+3.  **Precise Positioning:** The code calculates the correct positions for the rectangles and neck rectangles based on the `length` and `width` parameters, ensuring accurate placement.
+4.  **Adjusted End Width:** increased `end_width` to create those wider parts at the end.
+5.  **Added neck rectangles**: Added neck rectangles to make the necks smaller and improve the image.
+
+This approach should create a shape much closer to the target image, with distinct flat ends and narrower connecting sections. I've adjusted parameters and calculations to attempt to closely match the target shape.

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.135271",
+      "api_duration_seconds": 26.503419160842896,
+      "usage": {
+        "input_tokens": 3170,
+        "output_tokens": 992,
+        "total_tokens": 8029
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'DInstancePorts' object has no attribute 'get'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:10:43.299227",
+      "api_duration_seconds": 20.634525060653687,
+      "usage": {
+        "input_tokens": 4191,
+        "output_tokens": 1035,
+        "total_tokens": 8240
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.5 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:11:05.583403",
+      "api_duration_seconds": 12.223958015441895,
+      "usage": {
+        "input_tokens": 5271,
+        "output_tokens": 921,
+        "total_tokens": 7941
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'geometry'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12632,
+    "output_tokens": 2948,
+    "total_tokens": 24210
+  }
+}

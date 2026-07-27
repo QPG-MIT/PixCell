@@ -1,0 +1,104 @@
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+from gdsfactory.components import bend_euler
+from gdsfactory.components import straight
+from gdsfactory.components import taper
+from gdsfactory.components import bend_circular
+from gdsfactory.cross_section import strip
+# from gdsfactory.snap import snap_to_grid # Removed this line
+from gdsfactory.add_padding import add_padding
+import numpy as np
+
+@gf.cell
+def mirrored_resonator():
+    """
+    Recreates the resonator structure from the image using GDSFactory primitives.
+    """
+    c = gf.Component("mirrored_resonator")
+
+    # Define cross-section
+    xs = strip(width=0.4, layer=(1, 0))
+
+    # Dimensions
+    straight_length = 7
+    bend_radius = 10
+    gap = 0.2
+    teeth_length = straight_length*2
+    teeth_width = 0.2
+    teeth_height = teeth_width * 1.2
+
+    # --- Top Part ---
+    # 1. Top Straight Waveguide with teeth
+    top_straight = c << straight(length=teeth_length, cross_section=xs)
+    c.add_port("o1", port=top_straight.ports["o1"])
+
+    # Add teeth to the top straight
+    for i in range(50):
+        x = -teeth_length/2 + i * (teeth_length / 50)  # Approximate teeth spacing
+        rect = c << rectangle(size=(teeth_width, teeth_height), layer=(1,0), centered=True)
+        rect.move((x, gap/2))
+
+    # 2. Top U-shaped waveguide
+    bend1 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend2 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    top_straight2 = c << straight(length=straight_length, cross_section=xs)
+
+    bend1.connect("o1", top_straight.ports["o2"])
+    top_straight2.connect("o1", bend1.ports["o2"])
+    bend2.connect("o1", top_straight2.ports["o2"])
+
+    #3 Top final straight line
+    end_top = c << straight(length=straight_length, cross_section=xs)
+    end_top.connect("o1", bend2.ports["o2"])
+
+    # 4. Top Tapered End
+    taper_length = 0.5
+    taper_width2 = xs.width/10
+    top_taper = c << taper(length=taper_length, width1=xs.width, width2=taper_width2)
+    top_taper.connect("o1", end_top.ports["o2"])
+
+
+    # --- Bottom Part ---
+    # 1. Bottom Straight Waveguide with teeth
+    bottom_straight = c << straight(length=teeth_length, cross_section=xs)
+    bottom_straight.move((0,-1*(gap+xs.width*2)))
+
+    # Add teeth to the bottom straight
+    for i in range(50):
+        x = -teeth_length/2 + i * (teeth_length / 50)  # Approximate teeth spacing
+        rect = c << rectangle(size=(teeth_width, teeth_height), layer=(1,0), centered=True)
+        rect.move((x, -1*(gap+xs.width*2)-gap/2))
+
+    # 2. Bottom U-shaped waveguide
+    bend3 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend4 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bottom_straight2 = c << straight(length=straight_length, cross_section=xs)
+
+    bend3.connect("o1", bottom_straight.ports["o2"])
+    bottom_straight2.connect("o1", bend3.ports["o2"])
+    bend4.connect("o1", bottom_straight2.ports["o2"])
+
+    # 3 Bottom final straight line
+    end_bot = c << straight(length=straight_length, cross_section=xs)
+    end_bot.connect("o1", bend4.ports["o2"])
+
+    # 4. Bottom Tapered End
+    bot_taper = c << taper(length=taper_length, width1=xs.width, width2=taper_width2)
+    bot_taper.connect("o1", end_bot.ports["o2"])
+
+    #3 Create center straight
+    center_straight = c << straight(length=teeth_length, cross_section=xs)
+    center_straight.move((0, -gap/2-xs.width))
+
+    c.add_port("o2", port=bot_taper.ports["o2"])
+    
+    # Sanitize
+    c = add_padding(c, default=0, layers=((1,0),))
+    # c = snap_to_grid(c) # Removed this line
+
+    return c
+
+
+if __name__ == "__main__":
+    resonator = mirrored_resonator()
+    resonator.show(show_ports=True)  # Open in KLayout

@@ -1,0 +1,60 @@
+Turn 2 Response:
+
+The previous code produced a diverging "V" shape because of the rotation commands. Based on a closer analysis of the original image, the structure consists of **three parallel, straight waveguide sections that taper (change width)** along the X-axis, rather than diverging away from each other.
+
+To achieve the correct geometry, we need to:
+1.  Place three separate tapers in parallel (one top, one middle, one bottom).
+2.  Adjust their widths (`width1`, `width2`) so that the top/bottom arms taper inwards and the middle arm tapers outwards (or as appropriate) to match the visual pattern.
+3.  Remove the rotation/divergence logic.
+
+Here is the corrected code:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def three_parallel_tapers():
+    """
+    Recreates the geometry from the image: 
+    Three parallel tapering waveguide sections.
+    """
+    c = gf.Component()
+    
+    # Parameters based on the 40um footprint
+    length = 40.0
+    
+    # Define three different taper widths to create the "spike" and arm effect
+    # Top and Bottom arms: Start wide, end narrow
+    # Middle arm: Starts narrow, ends wide (the "spike")
+    top_taper = gf.components.taper(length=length, width1=0.6, width2=0.3)
+    bot_taper = gf.components.taper(length=length, width1=0.6, width2=0.3)
+    mid_taper = gf.components.taper(length=length, width1=0.2, width2=0.4)
+    
+    # Add to component
+    top = c << top_taper
+    bot = c << bot_taper
+    mid = c << mid_taper
+    
+    # Position them in parallel along the Y-axis
+    # Spacing them out to fit the ~1.7um total height constraint
+    top.movey(0.6)
+    bot.movey(-0.6)
+    # mid remains at y=0
+    
+    # Flatten to resolve off-grid instance errors
+    c.flatten()
+    
+    return c
+
+# Generate and save
+device = three_parallel_tapers()
+device.write_gds("tapered_structure.gds")
+
+# Preview
+device.show()
+```
+
+### Key Changes:
+*   **Removed Rotation:** The geometry is now strictly parallel to the X-axis, which matches the visual structure of the original image (which does not diverge into a V-shape).
+*   **Parallel Placement:** Used `movey()` to stack the three tapers vertically.
+*   **Geometric Fidelity:** By adjusting `width1` and `width2` on the tapers, we create the varying thickness pattern seen in the first image, effectively recreating the "taper-and-spike" silhouette without needing complex polygon drawing.

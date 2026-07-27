@@ -1,0 +1,123 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def parametric_heater_v2():
+    """
+    Creates a device matching the visual reference:
+    - 5 Central Waveguides
+    - Curved Heater/Pad structures with internal slots
+    - Smooth 'sine' transitions
+    - Fits 120x4um footprint
+    """
+    c = gf.Component()
+    
+    # =======================================================================
+    # 1. Configuration & Dimensions
+    # =======================================================================
+    length = 120.0
+    footprint_height = 4.0
+    y_max = footprint_height / 2  # +/- 2.0um limit
+    
+    # Waveguides (Slightly tighter pitch to allow room for pads)
+    n_wg = 5
+    w_wg = 0.25
+    g_wg = 0.15
+    layer_wg = (1, 0)
+    
+    # Pad Internal Details (The "Rail" and "Slot" seen in the image)
+    w_rail = 0.15   # Width of the thin inner metal strip
+    w_slot = 0.1    # Width of the empty space inside the pad
+    
+    # Gap Configuration (The Curve)
+    # Gap between waveguide array and the start of the pad structure
+    gap_center = 0.15  # Close approach in center
+    gap_edge = 0.6     # Pad curves away at edges
+    
+    # =======================================================================
+    # 2. Define Parametric Cross Sections
+    # =======================================================================
+    
+    # Calculate fixed waveguide vertical positions (centered at y=0)
+    # Array total height = 5*0.25 + 4*0.15 = 1.25 + 0.6 = 1.85
+    # Top edge of array = 1.85 / 2 = 0.925
+    pitch = w_wg + g_wg
+    wg_offsets = [(i - (n_wg - 1) / 2) * pitch for i in range(n_wg)]
+    y_array_top = (n_wg * w_wg + (n_wg - 1) * g_wg) / 2
+
+    def get_complex_cross_section(gap_to_wg):
+        """
+        Generates a CrossSection containing:
+        - 5 Waveguides (Fixed)
+        - 2 Inner Rails (Variable Y)
+        - 2 Outer Blocks (Variable Y and Width)
+        """
+        sections = []
+        
+        # A. Add Waveguides (Fixed position)
+        for offset in wg_offsets:
+            sections.append(gf.Section(width=w_wg, offset=offset, layer=layer_wg))
+            
+        # B. Add Top & Bottom Structures
+        # We calculate the Y position for the top structure based on the gap
+        y_rail_inner = y_array_top + gap_to_wg
+        y_rail_center = y_rail_inner + w_rail / 2
+        
+        y_block_inner = y_rail_inner + w_rail + w_slot
+        # Calculate block width to fill remaining space up to y_max
+        w_block = max(0.001, y_max - y_block_inner) 
+        y_block_center = y_block_inner + w_block / 2
+        
+        # Add Top Rail and Block
+        sections.append(gf.Section(width=w_rail, offset=y_rail_center, layer=layer_wg))
+        sections.append(gf.Section(width=w_block, offset=y_block_center, layer=layer_wg))
+        
+        # Add Bottom Rail and Block (Mirrored)
+        sections.append(gf.Section(width=w_rail, offset=-y_rail_center, layer=layer_wg))
+        sections.append(gf.Section(width=w_block, offset=-y_block_center, layer=layer_wg))
+        
+        return gf.cross_section.cross_section(sections=sections)
+
+    # Create the two states: Center (Narrow Gap) and Edge (Wide Gap)
+    xs_center = get_complex_cross_section(gap_center)
+    xs_edge = get_complex_cross_section(gap_edge)
+    
+    # =======================================================================
+    # 3. Path Generation with High Resolution
+    # =======================================================================
+    # CRITICAL FIX: We create a path with 200 points. 
+    # The standard 'gf.path.straight' only has 2 points, which forces linear interpolation.
+    n_points = 200
+    x_points = np.linspace(0, length/2, n_points)
+    y_points = np.zeros(n_points)
+    
+    path_half = gf.Path(np.column_stack((x_points, y_points)))
+    
+    # =======================================================================
+    # 4. Transition and Extrusion
+    # =======================================================================
+    # Transition 1: Left Edge -> Center
+    trans_in = gf.path.transition(xs_edge, xs_center, width_type='sine')
+    
+    # Transition 2: Center -> Right Edge
+    trans_out = gf.path.transition(xs_center, xs_edge, width_type='sine')
+    
+    # Extrude the two halves
+    half_left = gf.path.extrude_transition(path_half, trans_in)
+    half_right = gf.path.extrude_transition(path_half, trans_out)
+    
+    # =======================================================================
+    # 5. Assembly
+    # =======================================================================
+    ref_l = c << half_left
+    ref_r = c << half_right
+    
+    # Connect the start of right half to the end of left half
+    ref_r.connect("o1", ref_l.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    device = parametric_heater_v2()
+    device.show()
+    device.write_gds("parametric_heater_v2.gds")

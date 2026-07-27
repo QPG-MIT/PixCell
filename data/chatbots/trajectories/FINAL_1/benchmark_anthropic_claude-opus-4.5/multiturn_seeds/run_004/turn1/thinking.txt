@@ -1,0 +1,210 @@
+Looking at the image, I can see what appears to be a Y-splitter or Y-junction waveguide device. Let me analyze the shape:
+
+1. On the left side, there appear to be two parallel straight waveguides that are close together
+2. These two waveguides merge/converge toward the right side into a single waveguide
+3. The device has a footprint of [40.0, 1.7] micrometers
+
+Looking more carefully at the image:
+- On the left, there are two separate waveguide arms (the top one curves upward, the bottom curves downward)
+- They start separated and then merge together on the right side
+- This looks like a standard Y-branch or Y-junction splitter
+
+Wait, looking again more carefully:
+- The top shape appears to be a single waveguide that goes straight on the left, then curves up and to the right
+- The bottom shape has two lines that cross each other (like an X pattern) and then merge into a single waveguide on the right
+
+Actually, let me look at this more carefully. I see:
+1. A top waveguide that starts straight on the left, then curves up toward the right
+2. Two middle lines that appear to cross (forming an X shape)
+3. A bottom waveguide that starts straight on the left, then curves down toward the right
+
+Hmm, the footprint is 40.0 x 1.7 um. That's very narrow in the y-direction. So this must be relatively thin waveguides.
+
+Looking at the image again:
+- There appear to be 3 inputs on the left side (top straight waveguide at the top, two crossing waveguides in the middle, and a curved section at the bottom)
+- On the right side, there are two outputs - one going up and one going down
+
+Wait, I think I'm overcomplicating this. Let me look at the black shapes:
+
+1. Top black shape: A curved/bent waveguide that starts horizontal on the left and curves upward toward the right, ending horizontal
+
+
+2. Middle black shapes: Two straight lines that cross in an X pattern
+3. Bottom black shape: A curved waveguide that starts on the left and curves downward toward the right
+
+Given the 40 x 1.7 micrometer footprint, this appears to be a waveguide crosser with S-bends on the top and bottom, allowing two waveguides to cross without interfering with each other. c = gf.Component()
+    
+    # Define cross-section
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Footprint: 40.0 x 1.7 um
+    
+    # Top S-bend waveguide
+    top_sbend = c << gf.components.bend_s(size=(30, 0.5), cross_section=xs)
+    top_sbend.move((0, 0.6))
+    
+    # Bottom S-bend waveguide (mirrored)
+    bottom_sbend = c << gf.components.bend_s(size=(30, -0.5), cross_section=xs)
+    bottom_sbend.move((0, -0.6))
+    
+    # Crossing waveguides in the middle section
+    
+    return c
+
+The geometry appears to be a waveguide crossing structure with two S-bend paths curving vertically around a central crossing region. The upper path curves upward while the lower path curves downward, each spanning roughly 30 micrometers horizontally with vertical offsets of ±0.6 micrometers. Two straight waveguides intersect in the middle section to complete the crossing pattern. Two S-bend waveguides (one curving upward, one curving downward) with crossing straight waveguides in the middle. The upper input routes to the top-right output through the curved section, while the lower input connects through the bottom curved path. The crossing waveguides in the center appear to link different ports together, creating what looks like a 2x2 coupler or switching structure with adiabatic transitions to manage the mode coupling between the closely-spaced waveguides. ((0, 0))
+    
+    # Lower S-bend - curves downward  
+    sbend_down = c << gf.components.bend_s(size=(length, -height/2), cross_section=xs)
+    sbend_down.move((0, 0))
+    
+    # Crossing waveguides (diagonal lines)
+    # Need to create straight diagonal waveguides
+    
+    return c
+```
+
+I'm realizing the layout needs adjustment. The image shows distinct input/output positions on each side. The left side has the top S-bend, two diagonal crossing waveguides at different vertical positions, and the bottom S-bend. On the right side, these elements converge—the S-bends reach different heights while the crossing waveguides intersect in the middle.
+
+With the 40 × 1.7 μm footprint and typical waveguide dimensions, the structure likely consists of an upper S-bend routing from mid-left to upper-right, a lower S-bend routing from mid-left to lower-right, and two diagonal paths crossing through the center that connect different input-output pairs. The black regions in the image suggest a simpler configuration than I initially thought. height * 0.1))
+    
+    # Create center straight section
+    center_straight = c << gf.components.straight(
+        length=total_length * 0.4,
+        cross_section=xs
+    )
+    center_straight.move((0, 0))
+    
+    # Create output waveguides
+    top_output = c << gf.components.straight(
+        length=total_length * 0.3,
+        cross_section=xs
+    )
+    top_output.move((total_length * 0.7, total_height * 0.5))
+    
+    bottom_output = c << gf.components.straight(
+        length=total_length * 0.3,
+        cross_section=xs
+    )
+    bottom_output.move((total_length * 0.7, -total_height * 0.5))
+    
+    return c
+```
+
+Now I need to position these elements so they connect properly. The S-bends should smoothly transition from the center straight to the output waveguides. I'll need to adjust the positioning and sizing to ensure the connections align at the ports.
+
+I'm building the device by placing S-bends that curve upward and downward from a central straight section, then adding output waveguides at the top and bottom. The key is getting the port positions to match so the waveguides connect seamlessly - the S-bend exit ports need to align with the output waveguide entry ports. eguide path
+    # Starts at (0, y1), curves up to (length, y2) where y2 > y1
+    points_top = [(0, 0.2), (10, 0.2), (30, 0.7), (40, 0.7)]
+    path_top = gf.path.smooth(points=points_top, radius=5)
+    wg_top = c << gf.path.extrude(path_top, cross_section=xs)
+    
+    # Bottom curved waveguide path
+    points_bottom = [(0, -0.2), (10, -0.2), (30, -0.7), (40, -0.7)]
+    path_bottom = gf.path.smooth(points=points_bottom, radius=5)
+    wg_bottom = c << gf.path.extrude(path_bottom, cross_section=xs)
+
+I'll define smooth curved paths for both waveguides using control points that separate vertically as they progress horizontally. The top path rises from y=0.2 to y=0.7, while the bottom descends from y=-0.2 to y=-0.7, creating the crossing geometry needed.
+
+Now I need to add the diagonal crossing waveguides that intersect these curved paths. The first diagonal runs from upper-left to lower-right, and the second runs lower-left to upper-right, creating the crossing pattern. avelength = 0.12  # Thin waveguides to fit in 1.7um height
+    total_length = 40.0
+    total_height = 1.7
+    
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    
+    # Calculate positions
+    y_center = 0
+    y_spread = total_height / 2 - wg_width  # Spread at the wide end
+    
+    # Top S-bend waveguide
+    # Starts at center-ish on left, ends at top on right
+    sbend_top = c << gf.components.bend_s(
+        size=(total_length, y_spread),
+        cross_section=xs
+    )
+    
+    # Bottom S-bend waveguide (mirrored)
+
+I'm setting up the waveguide dimensions to fit within the constrained footprint—using a narrow width of 0.12 micrometers to accommodate the 1.7 micrometer height. The S-bends will route the top and bottom paths across the full 40 micrometer length, with vertical separation determined by the available space minus the waveguide width itself.
+
+Looking more carefully at the actual image, I need to reconsider what I'm seeing. There appear to be four distinct elements: a curved path at the top that bends upward, two crossing diagonal lines in the middle section, and a curved path at the bottom that bends downward. This suggests the structure isn't just two simple S-bends but rather a more complex routing with crossing elements in between.
+
+The diagonal lines crossing each other indicate this is likely a waveguide crosser or intersection component where two separate signal paths need to cross without coupling. I should set up the basic parameters—waveguide width around 0.12 micrometers, total length of about 40 micrometers, and vertical span of roughly 1.7 micrometers—then define the cross-section before building out each segment.
+
+For the routing, I'll use straight sections at the input (about 5 micrometers) to establish the initial spacing, then apply smooth curves over the remaining 30 micrometers to transition the paths. The top path needs to curve upward from a smaller input separation to a larger output separation, while the bottom path mirrors this behavior in the opposite direction. I'll construct these using smooth path interpolation with appropriate bend radii to maintain the waveguide properties. , y_input_spread + 0.2),
+        (total_length/2, -y_input_spread)
+    ]
+    path_diag1 = gf.Path(points_diag1)
+    wg_diag1 = c << gf.path.extrude(path_diag1, cross_section=xs)
+
+Then I add the second diagonal waveguide that runs from the lower input upward, crossing the first diagonal at the midpoint. Both crossing waveguides use the same cross-section and are extruded into the component.
+
+Looking back at the image more carefully, I notice the structure has two parallel inputs on the left that taper and cross in the middle section, then split into two outputs on the right—one curving upward and one downward. The crossing pattern and the 40 × 1.7 μm footprint suggest this might be a specific type of waveguide coupler or splitter rather than simple diagonal paths.
+
+I'm reconsidering the geometry: the top section appears to be an S-bend curving upward, the middle contains crossing or interacting waveguides, and the bottom is an inverted S-bend curving downward. This could be a crossed waveguide structure or a directional coupler with bends.
+
+For the implementation, I need to set up the device dimensions (40 × 1.7 footprint) with input and output waveguide separations of 0.3 and 0.75 respectively. The S-bends will handle the vertical offset between these separations, with the straight input section taking 8 units and the remaining 32 units for the bending sections. I'll construct the upper path first using straight segments followed by curved transitions. end_len + 2
+    
+    # Left-upper to right-lower diagonal
+    diag_ul_lr = gf.path.straight(length=cross_end_x - cross_start_x, angle=45)
+    diag_ul_lr_ref = c << gf.components.straight(length=cross_end_x - cross_start_x, cross_section=xs)
+    diag_ul_lr_ref.rotate(45)
+    diag_ul_lr_ref.move((cross_start_x, input_sep/2))
+    
+    # Right-lower to left-upper diagonal
+    diag_lr_ul = gf.components.straight(length=cross_end_x - cross_start_x, cross_section=xs)
+    diag_lr_ul_ref = c << diag_lr_ul
+    diag_lr_ul_ref.rotate(-45)
+    diag_lr_ul_ref.move((cross_start_x, -input_sep/2))
+
+I mirror the lower path with a negative dy value for the S-bend. Then I position the straight and S-bend components for the lower channel, connecting them similarly to the upper path. For the crossing waveguides, I'm creating diagonal paths that intersect—one going from upper-left to lower-right and another from lower-left to upper-right, both rotated at 45-degree angles and positioned at the appropriate coordinates. adiabatic taper/coupling region in between. I should simplify this approach and build a clean parametric design for what looks like a 2x2 adiabatic coupler with crossing waveguides. The device has two input waveguides on one side, two outputs on the other, and a coupling region where the waveguides interact. I'll set up basic parameters like waveguide width (0.1 μm), total length (40 μm), and height (1.7 μm), then define the cross-section and start constructing the waveguide paths.
+
+The structure uses S-bend waveguides to form the outer boundary—an upper one curving from lower-left to upper-right and a lower one curving in the opposite direction. These are positioned symmetrically around the center. Then I need to add the diagonal crossing waveguides that connect different input positions to different output positions, creating the coupling interaction. the overall structure more carefully. Looking at the image, I can see this is a 2x2 coupler with two input waveguides that cross in the middle section before becoming two output waveguides. The paths appear to intersect rather than couple adiabatically.
+
+Let me restructure this with a clearer approach: I'll define the input and output waveguides as straight horizontal sections, then create the crossing diagonals in the middle that transition between them. The device has a specific footprint of 40 micrometers by 1.7 micrometers, so I need to work within those constraints. I'll use gdsfactory's path extrusion to create the waveguide geometry with proper cross-sections, making sure the diagonal sections properly connect the input ports to the output ports while maintaining the crossing geometry shown in the image. ), (L1, y_in_upper), (L1+L2, y_out_upper), (length, y_out_upper)],
+        radius=10
+    )
+    wg_up = c << gf.path.extrude(path_up, cross_section=xs)
+    
+    # Lower path: from y_in_lower to y_out_lower
+    path_down = gf.path.smooth(
+        points=[(0, y_in_lower), (L1, y_in_lower), (L1+L2, y_out_lower), (length, y_out_lower)],
+        radius=10
+    )
+    wg_down = c << gf.path.extrude(path_down, cross_section=xs)
+
+I'm creating smooth curved paths for both the upper and lower waveguides, each transitioning from the input positions through the bend region to the output positions with a 10-unit radius. Then I'm extruding these paths with the defined cross-section to form the actual waveguide structures. Next I need to add the crossing diagonal waveguides in the input section.
+
+For the upper diagonal, I'm drawing a path that starts slightly offset from the upper input position and angles down to meet the lower waveguide at the midpoint of the bend region. The lower diagonal mirrors this, starting from below the lower input and angling upward to intersect at the same point. Both diagonals get extruded with the same cross-section, and finally the component is returned. Each S-bend needs to traverse roughly 0.7-0.8 um vertically, and with waveguide widths around 0.1 um, the 1.7 um vertical span accommodates the structure comfortably. The implementation uses gdsfactory to construct a 2x2 coupler where the upper and lower S-bends diverge from a central region, with crossing waveguides connecting different ports in the first section.
+
+Setting up the device parameters: total length of 40 um, height of 1.7 um, and thin waveguides at 0.1 um width. The input waveguides sit closer together at ±0.15 um from center, while the output positions spread to ±0.75 um, creating a vertical displacement of approximately 0.6 um that the S-bends must accommodate.
+
+For the upper path, I'm creating a three-stage structure: an 8 um input straight section, a 24 um S-bend that handles the vertical displacement, and another 8 um output straight. The input straight gets positioned at the upper y-coordinate, the S-bend connects to its output port, and the output straight connects to the S-bend's exit.
+
+The lower path mirrors this setup but with an inverted S-bend (negative dy value) positioned at the negative y-coordinate. Both paths follow the same connection pattern—input straight to S-bend to output straight—creating symmetric upper and lower channels.
+
+Now I'm setting up the crossing waveguides that bridge from the input regions toward the center. These diagonal paths start at offset y-positions (±0.25 from the input level) and converge at y=0 in the middle. The first diagonal extends from the upper input area diagonally down to the center point, while the second diagonal mirrors this from the lower input area.
+
+After the diagonals cross, S-bend sections take over to curve the light outward toward the right output ports. The overall structure flows from straight input waveguides through crossing diagonals and into curved S-bends that separate the outputs. The output section uses S-bends that diverge outward over the remaining ~40% of the device length. Input waveguides are positioned at ±0.35 µm, converging toward a crossing point at y=0, then diverging again to output positions at ±0.75 µm. The top path follows a diagonal into the crossing region, then curves upward via S-bend to reach the upper output. length, y_bottom_output)  # End at bottom output
+        ],
+        radius=8
+    )
+    wg_bottom = c << gf.path.extrude(path_bottom, cross_section=xs)
+    
+    return c
+
+device = waveguide_crosser_with_sbends()
+device.write_gds("waveguide_crosser.gds")
+
+Looking at the diagram more carefully, I see the structure differently now. The top waveguide travels horizontally on the left side, then bends upward before continuing straight on the right. The center has two waveguides crossing each other in an X pattern. The bottom waveguide has a more intricate left section that appears to merge from multiple paths before curving downward to continue on the right side.
+
+I need to build this with three main components: an upper S-bend, two crossing waveguides in the middle, and a lower S-bend. The design should have four input ports on the left and two output ports on the right, with a total footprint of 40.0 x 1.7 micrometers.
+
+Setting up the component with a waveguide width of 0.1 micrometers, I'll position the upper S-bend with a vertical offset of 0.35 micrometers and place it 0.2 micrometers from the top edge. The S-bend spans the full 40-micrometer length horizontally.
+
+For the lower S-bend, I'm mirroring the upper one with a negative vertical offset and positioning it 0.2 micrometers below center. Then I need to add crossing diagonal paths—the first diagonal starts at y=0.45 and descends to y=-0.15 over a horizontal distance of 24 micrometers (60% of the total length).
+
+The second diagonal mirrors this trajectory, starting lower at y=-0.45 and rising to y=0.15. Both diagonals are extruded with the same cross-section and combined into the component before returning it. Finally, the device is instantiated and exported to a GDS file. I'm noticing the positioning might need adjustment to better align with the target layout.
+
+Now I'm shifting toward a more refined approach using S-bends and a junction structure. The new design introduces a waveguide junction component with specific dimensional constraints—40 micrometers long and 1.7 micrometers tall. The waveguide width is set to 0.1 micrometers on layer (1, 0). The key insight here is distributing the Y-coordinates strategically: inputs cluster closer together at the left edge while outputs spread across the full height at the right edge. The upper S-bend begins at y=0.15.
+
+The upper S-bend ends at height/2 - wg_width/2 - 0.05, while the lower S-bend mirrors this with negative values. I calculate the vertical displacements for each S-bend, then instantiate them using gf.components.bend_s with the computed size parameters and position them accordingly. The design also incorporates crossing waveguides that originate from different Y-coordinates to create the junction topology. Then return the completed cell. I'm generating the device and writing it to a GDS file for fabrication.

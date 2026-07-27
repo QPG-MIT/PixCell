@@ -1,0 +1,116 @@
+Turn 4 Response:
+
+Based on the analysis of the target image and the current output, the main discrepancy is the lack of straight waveguide sections at the input and output ports. The previous code filled the side regions entirely with S-bends, whereas the target image clearly shows horizontal straight "lead-in" sections before the bends begin.
+
+To fix this, I will:
+1.  **Redistribute the Length:** Partition the 120um total length into distinct segments: Straight Inputs -> S-Bends -> Central Coupler -> S-Bends -> Straight Outputs.
+2.  **Adjust Proportions:** Based on visual estimation of the target, I will use:
+    *   **Coupler:** 50um (Central region)
+    *   **Bends:** 25um each
+    *   **Straights:** 10um each (at the edges)
+    *   Total: $10 + 25 + 50 + 25 + 10 = 120$ um.
+3.  **Maintain Vertical Constraint:** The vertical shift calculation remains valid to ensure the 4um total height footprint.
+
+Here is the improved GDSFactory script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler():
+    c = gf.Component()
+
+    # 1. Design Parameters
+    # Constraints: Footprint 120um x 4um
+    total_length = 120.0
+    total_height = 4.0
+    
+    # Waveguide specs
+    wg_width = 0.5
+    gap = 0.2
+    layer = (1, 0)
+    
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+
+    # 2. Longitudinal Segmentation
+    # We partition the 120um length to match the target image features:
+    # [Straight (10)] - [Bend (25)] - [Coupler (50)] - [Bend (25)] - [Straight (10)]
+    len_straight_io = 10.0
+    len_bend = 25.0
+    len_coupler = 50.0 
+
+    # 3. Vertical Geometry Calculation
+    # Calculate the vertical shift (dy) for the S-bends.
+    # Center y of the inner waveguides (at coupler):
+    y_inner = (gap + wg_width) / 2
+    # Center y of the outer waveguides (at ports):
+    # The device height is 4.0um, centered at 0. Top edge is +2.0, Bottom is -2.0.
+    # Center of top waveguide = 2.0 - wg_width/2
+    y_outer = (total_height - wg_width) / 2
+    
+    dy = y_outer - y_inner  # The vertical distance the bend must cover
+
+    # 4. Define Primitives
+    
+    # Central Straight Coupler
+    coupler_core = c << gf.components.coupler_straight(
+        length=len_coupler, 
+        gap=gap, 
+        cross_section=xs
+    )
+
+    # Straight Extension (for Input/Output ports)
+    straight_ext = gf.components.straight(length=len_straight_io, cross_section=xs)
+
+    # S-Bends (Up and Down variants)
+    # Bend Up: Moves from y to y+dy
+    bend_up = gf.components.bend_s(size=(len_bend, dy), cross_section=xs)
+    # Bend Down: Moves from y to y-dy
+    bend_down = gf.components.bend_s(size=(len_bend, -dy), cross_section=xs)
+
+    # 5. Assembly
+    
+    # --- Left Side (Inputs) ---
+    
+    # Top-Left Branch: Straight -> Bend Down -> Coupler Top-West
+    sl_top = c << straight_ext
+    bl_top = c << bend_down
+    
+    bl_top.connect("o2", coupler_core.ports["o2"]) # Connect end of bend to coupler
+    sl_top.connect("o2", bl_top.ports["o1"])       # Connect straight to start of bend
+
+    # Bottom-Left Branch: Straight -> Bend Up -> Coupler Bottom-West
+    sl_bot = c << straight_ext
+    bl_bot = c << bend_up
+    
+    bl_bot.connect("o2", coupler_core.ports["o1"])
+    sl_bot.connect("o2", bl_bot.ports["o1"])
+
+    # --- Right Side (Outputs) ---
+    
+    # Top-Right Branch: Coupler Top-East -> Bend Up -> Straight
+    br_top = c << bend_up
+    sr_top = c << straight_ext
+    
+    br_top.connect("o1", coupler_core.ports["o3"]) # Connect start of bend to coupler
+    sr_top.connect("o1", br_top.ports["o2"])       # Connect straight to end of bend
+    
+    # Bottom-Right Branch: Coupler Bottom-East -> Bend Down -> Straight
+    br_bot = c << bend_down
+    sr_bot = c << straight_ext
+    
+    br_bot.connect("o1", coupler_core.ports["o4"])
+    sr_bot.connect("o1", br_bot.ports["o2"])
+
+    # 6. Expose Ports
+    c.add_port("o1", port=sl_bot.ports["o1"]) # Bottom Left Input
+    c.add_port("o2", port=sl_top.ports["o1"]) # Top Left Input
+    c.add_port("o3", port=sr_top.ports["o2"]) # Top Right Output
+    c.add_port("o4", port=sr_bot.ports["o2"]) # Bottom Right Output
+
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler()
+    device.write_gds("directional_coupler.gds")
+```

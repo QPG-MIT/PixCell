@@ -1,0 +1,54 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+
+    # Dimensions
+    footprint_width = 25
+    footprint_height = 10
+    narrow = 0.5
+    pitch = footprint_width / 4  # 6.25
+    wide = pitch  # 6.25
+    bottom_wide = pitch  # 6.25
+    bottom_narrow = 0.01  # Almost point
+    h_base = 2
+    h_taper = 6
+    h_straight = 1
+    h_bottom = 1
+
+    # Cross-section for narrow straights
+    xs_narrow = gf.cross_section.cross_section(width=narrow, layer=layer)
+
+    # Base rectangle, centered at (0, 1 + h_base/2)
+    base = c << gf.components.rectangle(size=(footprint_width, h_base), layer=layer, centered=True)
+    base.move((0, 1 + h_base / 2))  # Center at y=2, from y=1 to 3
+
+    # Bottom taper pointing down
+    tap_bottom = gf.components.taper(length=h_bottom, width1=bottom_wide, width2=bottom_narrow, layer=layer)
+    ref_tap_bottom = c << tap_bottom
+    ref_tap_bottom.rotate(-90)
+    ref_tap_bottom.move((0, 1))  # Wide end at y=1, narrow at y=0
+
+    # Centers for top structures
+    centers = [-1.5 * pitch, -0.5 * pitch, 0.5 * pitch, 1.5 * pitch]
+
+    for cx in centers:
+        # Top taper pointing up
+        tap_top = gf.components.taper(length=h_taper, width1=wide, width2=narrow, layer=layer)
+        ref_tap_top = c << tap_top
+        ref_tap_top.rotate(90)
+        ref_tap_top.move((cx, 3))  # Wide end at y=3, narrow at y=9
+
+        # Top straight
+        straight = gf.components.straight(length=h_straight, cross_section=xs_narrow)
+        ref_straight = c << straight
+        ref_straight.rotate(90)
+        ref_straight.move((cx, 9))  # Bottom at y=9, top at y=10
+
+    return c
+
+# Create and save
+device = my_device()
+device.write_gds("my_device.gds")

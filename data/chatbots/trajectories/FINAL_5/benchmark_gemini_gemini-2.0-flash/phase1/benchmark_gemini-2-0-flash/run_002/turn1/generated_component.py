@@ -1,0 +1,99 @@
+import gdsfactory as gf
+from gdsfactory.typings import CrossSectionSpec
+
+
+@gf.cell
+def my_device(
+    wg_width: float = 0.5,
+    wg_layer: tuple[int, int] = (1, 0),
+    ridge_width: float = 0.8,
+    ridge_layer: tuple[int, int] = (2, 0),
+    length: float = 10.0,
+    gap: float = 0.2,
+    straight_width: float = 0.5,
+    straight_length: float = 8.0,
+    xs: CrossSectionSpec = "strip",
+) -> gf.Component:
+    """Recreates the geometry from the provided image using GDSFactory.
+
+    Args:
+        wg_width: width of the main waveguide.
+        wg_layer: layer of the main waveguide.
+        ridge_width: width of the ridge waveguide.
+        ridge_layer: layer of the ridge waveguide.
+        length: length of the U-shaped waveguide section (after the grating).
+        gap: gap between the waveguides.
+        straight_width: width of the straight horizontal waveguide.
+        straight_length: length of the straight horizontal waveguide.
+        xs: cross_section of the waveguide.
+
+    Returns:
+        Component: The device.
+    """
+    c = gf.Component()
+
+    # CrossSection
+    xs = gf.cross_section.cross_section(width=wg_width, layer=wg_layer)
+
+    # 1. Top U-shaped waveguide
+    bend_top = gf.components.bend_euler(angle=-90, cross_section=xs)
+    u_top = c << bend_top
+    u_top_arm_component = gf.components.straight(length=length, cross_section=xs)
+    u_top_arm = c << u_top_arm_component
+    u_top_end_component = gf.components.taper(width1=wg_width, width2=0.1, length=2)
+    u_top_end = c << u_top_end_component
+    top_straight_component = gf.components.straight(length=straight_length, cross_section=xs)
+    top_straight = c << top_straight_component
+
+    u_top_arm.connect("o1", u_top.ports["o2"])
+    u_top_end.connect("o1", u_top_arm.ports["o2"])
+    top_straight.connect("o1", u_top.ports["o1"])
+
+    # 2. Bottom U-shaped waveguide (mirrored)
+    bend_bot = gf.components.bend_euler(angle=90, cross_section=xs)
+    u_bot = c << bend_bot
+    u_bot_arm_component = gf.components.straight(length=length, cross_section=xs)
+    u_bot_arm = c << u_bot_arm_component
+    u_bot_end_component = gf.components.taper(width1=wg_width, width2=0.1, length=2)
+    u_bot_end = c << u_bot_end_component
+    bot_straight_component = gf.components.straight(length=straight_length, cross_section=xs)
+    bot_straight = c << bot_straight_component
+    
+    u_bot_arm.connect("o2", u_bot.ports["o1"])
+    bot_straight.connect("o2", u_bot.ports["o2"])
+    u_bot_end.connect("o1", u_bot_arm.ports["o1"])
+    
+    u_bot.movey(-gap)
+    u_bot_arm.movey(-gap)
+    bot_straight.movey(-gap)
+    u_bot_end.movey(-gap)
+
+    # Horizontal straight waveguide between the U-shapes
+    straight_middle_component = gf.components.straight(
+        length=straight_length, width=straight_width, layer=wg_layer
+    )
+    straight_middle = c << straight_middle_component
+    straight_middle.movey(-gap/2)
+    u_top.movey(gap/2)
+    u_top_arm.movey(gap/2)
+    top_straight.movey(gap/2)
+    u_top_end.movey(gap/2)
+
+    # 4. Grating coupler representation (using rectangles)
+    # Create dummy grating as a series of rectangles
+    grating_period = 0.3
+    grating_width = 0.15
+    num_gratings = 30
+    grating_top_component = gf.components.grating_coupler_elliptical_tm(period=grating_period)
+    grating_bot_component = gf.components.grating_coupler_elliptical_tm(period=grating_period)
+
+    grating = c << grating_top_component
+    grating2 = c << grating_bot_component
+    grating.connect("o1",top_straight.ports["o2"])
+    grating2.connect("o1",bot_straight.ports["o1"])
+
+    return c
+
+if __name__ == "__main__":
+    c = my_device()
+    c.show(show_ports=True)

@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:01:30.945997",
+      "api_duration_seconds": 96.07716464996338,
+      "usage": {
+        "input_tokens": 4987,
+        "output_tokens": 1314,
+        "total_tokens": 14258
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:03:08.228309",
+      "api_duration_seconds": 50.11272597312927,
+      "usage": {
+        "input_tokens": 6327,
+        "output_tokens": 1174,
+        "total_tokens": 10728
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports straight_gdsfactorypcomponentspwaveguidespstraight_L12__82554c58_0_0[\"o1\"] and Port \"o2\" (\"2000\"/\"1000\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:03:59.626989",
+      "api_duration_seconds": 58.91032385826111,
+      "usage": {
+        "input_tokens": 7580,
+        "output_tokens": 1355,
+        "total_tokens": 13143
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 18894,
+    "output_tokens": 3843,
+    "total_tokens": 38129
+  }
+}

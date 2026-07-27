@@ -1,0 +1,69 @@
+Turn 2 Response:
+
+Looking at the rendered image, I can see that the current implementation has a problem: the top and bottom waveguides are using straight-line segments with sharp corners rather than the smooth, continuous curves shown in the original image.
+
+The issue is that `gf.path.smooth()` with just three points is creating a path with linear segments and then applying smoothing, but for this application, I need a more controlled, continuous curve that starts parallel to the center waveguide and then gradually curves outward.
+
+Let me revise the approach:
+
+1. Instead of using `gf.path.smooth()` with a few points, I'll create a more precise path using `gf.Path` with carefully chosen control points to ensure a smooth, continuous curve.
+2. I'll use a path that starts parallel to the center waveguide and then smoothly curves outward using an Euler bend or a custom path with more control points.
+3. I'll adjust the y-coordinates to better match the 1.7μm total height constraint.
+
+Here's the improved script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreate_device():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create central straight waveguide
+    central_wg = c << gf.components.straight(length=40.0, cross_section=xs)
+    central_wg.move((0, 0))
+    
+    # Create top curved waveguide using a custom path with more control points
+    # Start at (0, 0.4) to leave space from center, end at (40, 0.85) for 1.7um total height
+    top_points = [
+        (0, 0.4),      # Start position (slightly offset from center)
+        (10, 0.4),     # Continue straight for a bit
+        (20, 0.6),     # Start curving upward
+        (30, 0.75),    # Continue curving
+        (40, 0.85)     # End at top edge (1.7um total height / 2 = 0.85um)
+    ]
+    
+    top_path = gf.Path(top_points)
+    top_wg = c << gf.path.extrude(top_path, cross_section=xs)
+    
+    # Create bottom curved waveguide (mirror of top)
+    bottom_points = [
+        (0, -0.4),     # Start position (slightly offset from center)
+        (10, -0.4),    # Continue straight for a bit
+        (20, -0.6),    # Start curving downward
+        (30, -0.75),   # Continue curving
+        (40, -0.85)    # End at bottom edge
+    ]
+    
+    bottom_path = gf.Path(bottom_points)
+    bottom_wg = c << gf.path.extrude(bottom_path, cross_section=xs)
+    
+    # Add ports for connectivity
+    c.add_port("o1_top", port=top_wg.ports["o1"])
+    c.add_port("o2_top", port=top_wg.ports["o2"])
+    c.add_port("o1_central", port=central_wg.ports["o1"])
+    c.add_port("o2_central", port=central_wg.ports["o2"])
+    c.add_port("o1_bottom", port=bottom_wg.ports["o1"])
+    c.add_port("o2_bottom", port=bottom_wg.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = recreate_device()
+device.write_gds("recreated_device.gds")
+```
+
+This revised approach uses `gf.Path` with more control points to create a smoother, more continuous curve that better matches the original image. The path starts parallel to the center waveguide, then gradually curves outward with a more natural, flowing shape rather than the sharp corners seen in the previous version.

@@ -1,0 +1,184 @@
+{
+  "model": "qwen/qwen3-vl-235b-a22b-instruct",
+  "model_id": "qwen/qwen3-vl-235b-a22b-instruct",
+  "provider": "openrouter",
+  "supports_seed": true,
+  "supports_thinking": false,
+  "sse_threshold": Infinity,
+  "additional_turns": 3,
+  "runs_processed": 5,
+  "runs_completed": 3,
+  "elapsed_time": "0:16:32.982874",
+  "best_run_by_sse": 0,
+  "best_seed_by_sse": 1331,
+  "best_final_sse": 252284.0,
+  "best_final_iou": 0.1686244056620482,
+  "results": [
+    {
+      "run_id": 0,
+      "seed": 1331,
+      "phase1_sse": 343105.0,
+      "phase1_iou": 0.00015153413743563442,
+      "phase1_dice": 0.0003030223566398317,
+      "trajectory": [
+        {
+          "turn": 3,
+          "SSE": 257882.0,
+          "IoU": 0.0013128289333555366,
+          "Dice": 0.0026222153465346536
+        },
+        {
+          "turn": 4,
+          "SSE": 252284.0,
+          "IoU": 0.0,
+          "Dice": 0.0
+        },
+        {
+          "turn": 5,
+          "SSE": 288403.0,
+          "IoU": 0.008849466282674292,
+          "Dice": 0.017543680357550426
+        }
+      ],
+      "final_turn": 5,
+      "final_sse": 288403.0,
+      "final_iou": 0.008849466282674292,
+      "final_dice": 0.017543680357550426,
+      "best_sse": 252284.0,
+      "best_sse_turn": 4,
+      "best_iou": 0.008849466282674292,
+      "best_iou_turn": 5,
+      "early_stopped": false,
+      "stop_reason": null
+    },
+    {
+      "run_id": 1,
+      "seed": 1332,
+      "phase1_sse": 446099.0,
+      "phase1_iou": 0.018339337152011408,
+      "phase1_dice": 0.03601812575226842,
+      "trajectory": [
+        {
+          "turn": 3,
+          "SSE": 375822.0,
+          "IoU": 0.06659844972021946,
+          "Dice": 0.12488007972951576
+        },
+        {
+          "turn": 4,
+          "SSE": 277536.0,
+          "IoU": 0.007545253642104661,
+          "Dice": 0.0149774982609066
+        },
+        {
+          "turn": 5,
+          "SSE": 264155.0,
+          "IoU": 0.003895349714165045,
+          "Dice": 0.0077604696849609914
+        }
+      ],
+      "final_turn": 5,
+      "final_sse": 264155.0,
+      "final_iou": 0.003895349714165045,
+      "final_dice": 0.0077604696849609914,
+      "best_sse": 264155.0,
+      "best_sse_turn": 5,
+      "best_iou": 0.06659844972021946,
+      "best_iou_turn": 3,
+      "early_stopped": false,
+      "stop_reason": null
+    },
+    {
+      "run_id": 2,
+      "seed": 1333,
+      "phase1_sse": 415994.0,
+      "phase1_iou": 0.005612632726333957,
+      "phase1_dice": 0.011162613801136229,
+      "trajectory": [
+        {
+          "turn": 3,
+          "SSE": 264362.0,
+          "IoU": 0.0038322550013377096,
+          "Dice": 0.007635249778525203
+        },
+        {
+          "turn": 4,
+          "SSE": 305119.0,
+          "IoU": 0.1686244056620482,
+          "Dice": 0.288586144265093
+        },
+        {
+          "turn": 5,
+          "SSE": 305119.0,
+          "IoU": 0.1686244056620482,
+          "Dice": 0.288586144265093
+        }
+      ],
+      "final_turn": 5,
+      "final_sse": 305119.0,
+      "final_iou": 0.1686244056620482,
+      "final_dice": 0.288586144265093,
+      "best_sse": 264362.0,
+      "best_sse_turn": 3,
+      "best_iou": 0.1686244056620482,
+      "best_iou_turn": 4,
+      "early_stopped": false,
+      "stop_reason": null
+    },
+    {
+      "run_id": 3,
+      "seed": 1334,
+      "phase1_sse": 319054.0,
+      "phase1_iou": 0.031276282430811736,
+      "phase1_dice": 0.06065548672774807,
+      "trajectory": [],
+      "final_turn": 2,
+      "final_sse": 319054.0,
+      "final_iou": 0.031276282430811736,
+      "final_dice": 0.06065548672774807,
+      "best_sse": 319054.0,
+      "best_sse_turn": 2,
+      "best_iou": 0.031276282430811736,
+      "best_iou_turn": 2,
+      "early_stopped": true,
+      "stop_reason": "Turn 3 failed"
+    },
+    {
+      "run_id": 4,
+      "seed": 1335,
+      "phase1_sse": 450684.0,
+      "phase1_iou": 0.1505519629222653,
+      "phase1_dice": 0.2617038913042766,
+      "trajectory": [
+        {
+          "turn": 3,
+          "SSE": 435271.0,
+          "IoU": 0.15497931473633325,
+          "Dice": 0.26836725603473344
+        },
+        {
+          "turn": 4,
+          "SSE": 464040.0,
+          "IoU": 0.1353313407916999,
+          "Dice": 0.2383997268979281
+        },
+        {
+          "turn": 5,
+          "SSE": 561620.0,
+          "IoU": 0.040716840490692754,
+          "Dice": 0.07824768257136104
+        }
+      ],
+      "final_turn": 5,
+      "final_sse": 561620.0,
+      "final_iou": 0.040716840490692754,
+      "final_dice": 0.07824768257136104,
+      "best_sse": 435271.0,
+      "best_sse_turn": 3,
+      "best_iou": 0.15497931473633325,
+      "best_iou_turn": 3,
+      "early_stopped": true,
+      "stop_reason": "SSE increased for 2 consecutive turns"
+    }
+  ]
+}

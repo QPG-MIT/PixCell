@@ -1,0 +1,66 @@
+import gdsfactory as gf
+
+@gf.cell
+def create_device():
+    c = gf.Component("optical_device")
+
+    # Cross-section parameters
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    # Top part
+    top_straight_outer = c << gf.components.straight(length=100, cross_section=xs)
+    top_straight_outer.movey(10)
+
+    top_straight_inner1 = c << gf.components.straight(length=96, cross_section=xs)
+    top_straight_inner1.movey(11)
+
+    top_straight_inner2 = c << gf.components.straight(length=92, cross_section=xs)
+    top_straight_inner2.movey(12)
+    
+    top_straight_inner3 = c << gf.components.straight(length=88, cross_section=xs)
+    top_straight_inner3.movey(13)
+    
+    top_straight_inner4 = c << gf.components.straight(length=84, cross_section=xs)
+    top_straight_inner4.movey(14)
+
+    # Bottom part
+    bottom_straight_outer = c << gf.components.straight(length=100, cross_section=xs)
+    bottom_straight_outer.movey(-10)
+
+    bottom_straight_inner1 = c << gf.components.straight(length=96, cross_section=xs)
+    bottom_straight_inner1.movey(-11)
+
+    bottom_straight_inner2 = c << gf.components.straight(length=92, cross_section=xs)
+    bottom_straight_inner2.movey(-12)
+    
+    bottom_straight_inner3 = c << gf.components.straight(length=88, cross_section=xs)
+    bottom_straight_inner3.movey(-13)
+    
+    bottom_straight_inner4 = c << gf.components.straight(length=84, cross_section=xs)
+    bottom_straight_inner4.movey(-14)
+
+    # Middle section
+    middle_straight1 = c << gf.components.straight(length=100, cross_section=xs)
+    middle_straight1.movey(0)
+
+    middle_straight2 = c << gf.components.straight(length=100, cross_section=xs)
+    middle_straight2.movey(1)
+
+    middle_straight3 = c << gf.components.straight(length=100, cross_section=xs)
+    middle_straight3.movey(-1)
+    
+    middle_straight4 = c << gf.components.straight(length=100, cross_section=xs)
+    middle_straight4.movey(2)
+
+    middle_straight5 = c << gf.components.straight(length=100, cross_section=xs)
+    middle_straight5.movey(-2)
+
+    # Add ports
+    c.add_port("o1", port=middle_straight1.ports["o1"])
+    c.add_port("o2", port=middle_straight1.ports["o2"])
+
+    return c
+
+device = create_device()
+device.write_gds("optical_device.gds")
+device.show()

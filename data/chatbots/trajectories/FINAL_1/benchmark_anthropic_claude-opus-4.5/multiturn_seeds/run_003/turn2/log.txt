@@ -1,0 +1,83 @@
+Turn 2 Response:
+
+Looking at the original image more carefully, I can see this is a **waveguide X-crossing** structure where:
+1. Two waveguides enter on the left at different vertical positions
+2. They CROSS each other in the middle (forming an X pattern)
+3. They return to their original vertical positions on the right
+
+My previous code had converging waveguides without the crossing. Let me fix this:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def waveguide_x_crossing():
+    """
+    Creates a waveguide X-crossing structure.
+    Two waveguides cross each other in the middle and return to original positions.
+    Footprint: 40 um x 1.7 um
+    """
+    c = gf.Component()
+    
+    # Parameters
+    wg_width = 0.15
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+    
+    # Vertical positions
+    y_edge = 0.55        # Position at input/output edges
+    y_cross = 0.50       # How far they swing during crossing
+    
+    # Top waveguide: starts high, dips down to cross, returns high
+    points_top = [
+        (0, y_edge),          # Upper-left start
+        (6, y_edge),          # Initial straight section
+        (14, -y_cross),       # Dip down through crossing zone
+        (26, -y_cross),       # Continue through crossing
+        (34, y_edge),         # Rise back up
+        (40, y_edge)          # Upper-right end
+    ]
+    
+    # Bottom waveguide: starts low, rises up to cross, returns low
+    points_bottom = [
+        (0, -y_edge),         # Lower-left start
+        (6, -y_edge),         # Initial straight section
+        (14, y_cross),        # Rise up through crossing zone
+        (26, y_cross),        # Continue through crossing
+        (34, -y_edge),        # Drop back down
+        (40, -y_edge)         # Lower-right end
+    ]
+    
+    # Create smooth paths with appropriate bend radius
+    bend_radius = 6
+    path_top = gf.path.smooth(points=points_top, radius=bend_radius)
+    path_bottom = gf.path.smooth(points=points_bottom, radius=bend_radius)
+    
+    # Extrude paths to create waveguides
+    wg_top = gf.path.extrude(path_top, cross_section=xs)
+    wg_bottom = gf.path.extrude(path_bottom, cross_section=xs)
+    
+    # Add references to component
+    ref_top = c.add_ref(wg_top)
+    ref_bottom = c.add_ref(wg_bottom)
+    
+    # Add ports
+    c.add_port("o1", port=ref_top.ports["o1"])      # Top-left input
+    c.add_port("o2", port=ref_bottom.ports["o1"])   # Bottom-left input
+    c.add_port("o3", port=ref_top.ports["o2"])      # Top-right output
+    c.add_port("o4", port=ref_bottom.ports["o2"])   # Bottom-right output
+    
+    return c
+
+
+# Create and save the device
+device = waveguide_x_crossing()
+device.write_gds("waveguide_x_crossing.gds")
+```
+
+Key changes:
+- **X-crossing pattern**: Each waveguide now swings to the opposite side in the middle, creating the crossing
+- **Top waveguide**: Starts at +y, dips to -y in the middle, returns to +y
+- **Bottom waveguide**: Starts at -y, rises to +y in the middle, returns to -y
+- **Symmetric S-S bends**: Both waveguides have matching double S-bend shapes
+- **Proper crossing**: The paths physically cross each other in the center region

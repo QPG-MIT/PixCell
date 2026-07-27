@@ -1,0 +1,53 @@
+import gdsfactory as gf
+
+@gf.cell
+def device():
+    """
+    Creates a device with two waveguides that converge in the middle
+    and diverge at the edges, matching the footprint constraint of 120x4 µm.
+    """
+    c = gf.Component()
+    
+    # Define cross-section
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Parameters based on footprint [120, 4] µm
+    total_length = 120.0
+    outer_offset = 1.75  # Vertical position at edges (±1.75 µm)
+    inner_offset = 1.0   # Vertical position in middle (±1.0 µm)
+    transition_start = 25.0  # Where transition begins
+    transition_end = 95.0    # Where return transition begins
+    
+    # Top waveguide path - curves down then back up
+    points_top = [
+        (0, outer_offset),
+        (transition_start, inner_offset),
+        (transition_end, inner_offset),
+        (total_length, outer_offset)
+    ]
+    
+    path_top = gf.path.smooth(points_top, radius=10.0)
+    wg_top = gf.path.extrude(path_top, cross_section=xs)
+    c.add_ref(wg_top)
+    
+    # Bottom waveguide path - curves up then back down (mirror of top)
+    points_bottom = [
+        (0, -outer_offset),
+        (transition_start, -inner_offset),
+        (transition_end, -inner_offset),
+        (total_length, -outer_offset)
+    ]
+    
+    path_bottom = gf.path.smooth(points_bottom, radius=10.0)
+    wg_bottom = gf.path.extrude(path_bottom, cross_section=xs)
+    c.add_ref(wg_bottom)
+    
+    return c
+
+# Create and save the device
+if __name__ == "__main__":
+    device = device()
+    device.show()  # Optional: display in viewer
+    device.write_gds("device.gds")
+    print("Device created successfully!")
+    print(f"Bounding box: {device.bbox}")

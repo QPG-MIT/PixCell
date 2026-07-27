@@ -1,0 +1,116 @@
+import gdsfactory as gf
+
+@gf.cell
+def bent_line(width: float, dy_bend: float) -> gf.Component:
+    """
+    Creates a perfectly continuous line (length 120um) that is straight in the center 
+    and bends smoothly by 'dy_bend' at the outer edges using S-bends.
+    """
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    # Define lengths for the 120um footprint
+    L_end = 20.0
+    L_bend = 20.0
+    L_center = 40.0
+    
+    # 1. Primitives
+    s1 = gf.components.straight(length=L_end, cross_section=xs)
+    # The left S-bend goes in reverse from the flat edge towards the center
+    sb_left = gf.components.bend_s(size=(L_bend, -dy_bend), cross_section=xs)
+    sc = gf.components.straight(length=L_center, cross_section=xs)
+    sb_right = gf.components.bend_s(size=(L_bend, dy_bend), cross_section=xs)
+    s2 = gf.components.straight(length=L_end, cross_section=xs)
+    
+    # 2. Assembly (Left to Right)
+    # Start at x = -60.0 and y = dy_bend
+    ref1 = c << s1
+    ref1.move((-60.0, dy_bend)) 
+    
+    ref2 = c << sb_left
+    ref2.connect("o1", ref1.ports["o2"])
+    
+    ref3 = c << sc
+    ref3.connect("o1", ref2.ports["o2"])
+    
+    ref4 = c << sb_right
+    ref4.connect("o1", ref3.ports["o2"])
+    
+    ref5 = c << s2
+    ref5.connect("o1", ref4.ports["o2"])
+    
+    return c
+
+
+@gf.cell
+def edge_coupler_array() -> gf.Component:
+    c = gf.Component("edge_coupler_array")
+    c_raw = gf.Component("raw_geometry")
+    
+    # Parameters to match visual proportions
+    w = 0.08       # line width
+    g = 0.08       # gap width
+    pitch = w + g  # 0.16 um
+    dy = 0.8       # How much the flared lines bend outwards at the ends
+    
+    # ==========================================
+    # 1. Central Group (5 perfectly straight lines)
+    # ==========================================
+    for i in range(-2, 3):
+        # A centered rectangle of length 120 spans from x=-60 to x=60
+        line = gf.components.rectangle(size=(120.0, w), centered=True, layer=(1, 0))
+        ref = c_raw << line
+        ref.movey(i * pitch)
+        
+    # ==========================================
+    # 2. Top Flaring Group (4 thin lines + 1 thick solid block)
+    # ==========================================
+    # Add the 4 thin bent lines
+    for i in range(4):
+        # Calculate vertical position above the central group
+        y_offset = (2 * pitch) + pitch * (i + 1)
+        bl = bent_line(width=w, dy_bend=dy)
+        r = c_raw << bl
+        r.movey(y_offset)
+        
+    # Add the thick solid outer block (made intentionally oversized)
+    w_thick = 4.0
+    y_thick = (2 * pitch) + pitch * 4 + (w / 2) + g + (w_thick / 2)
+    tb = bent_line(width=w_thick, dy_bend=dy)
+    rt = c_raw << tb
+    rt.movey(y_thick)
+    
+    # ==========================================
+    # 3. Bottom Flaring Group (Symmetric to Top)
+    # ==========================================
+    # Negative dy_bend flips the curvature downwards
+    dy_bot = -dy
+    
+    # Add the 4 thin downward-bent lines
+    for i in range(4):
+        y_offset_bot = -((2 * pitch) + pitch * (i + 1))
+        bl_bot = bent_line(width=w, dy_bend=dy_bot)
+        r_bot = c_raw << bl_bot
+        r_bot.movey(y_offset_bot)
+        
+    # Add the thick solid bottom block (oversized downwards)
+    tb_bot = bent_line(width=w_thick, dy_bend=dy_bot)
+    rt_bot = c_raw << tb_bot
+    y_thick_bot = -y_thick
+    rt_bot.movey(y_thick_bot)
+    
+    # ==========================================
+    # 4. Strict Footprint Clip (120.0 x 4.0)
+    # ==========================================
+    # Slicing the overgrown outer blocks flat against the 4.0um footprint constraint.
+    # This precisely creates the flat top/bottom boundaries seen in the target image.
+    bbox = gf.components.rectangle(size=(120.0, 4.0), centered=True, layer=(1, 0))
+    
+    final_geometry = gf.boolean(c_raw, bbox, operation="and", layer=(1, 0))
+    c << final_geometry
+    
+    return c
+
+if __name__ == "__main__":
+    device = edge_coupler_array()
+    device.write_gds("edge_coupler_array.gds")

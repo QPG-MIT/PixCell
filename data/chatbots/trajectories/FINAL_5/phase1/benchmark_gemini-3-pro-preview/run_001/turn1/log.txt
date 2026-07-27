@@ -1,0 +1,512 @@
+Seed: 1350
+Attempts: 3
+Success: True
+
+GDS Files: ['/Users/aadarwal/Desktop/diffusionphotonics/gemini_device_2/test4_exploration/seed_1350/contra_dc_device.gds']
+
+Full Log:
+
+==================================================
+Attempt 1
+==================================================
+Based on the analysis of the provided image and the GDSFactory parametric function catalog, here is the Python script to recreate the device.
+
+The device is identified as a **Grating-Assisted Contra-Directional Coupler** with loop-back ports. It consists of two symmetric "hairpin" structures (one top, one bottom) with periodic grating corrugations on the inner waveguides, and a thin central bus waveguide.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+# 1. Define the periodic Grating Waveguide using Basic Shapes
+@gf.cell
+def bragg_waveguide(
+    length=40.0,
+    period=0.6,
+    width=0.5,
+    corrugation_width=0.3,
+    layer=(1, 0)
+):
+    """
+    Creates a straight waveguide with periodic rectangular corrugations (gratings).
+    """
+    c = gf.Component()
+    
+    # Define Cross Section for the main core
+    xs = gf.cross_section.cross_section(width=width, layer=layer)
+    
+    # Add the central straight waveguide core
+    wg = c << gf.components.straight(length=length, cross_section=xs)
+    
+    # Add periodic grating teeth using rectangles
+    # We place rectangles on top of the waveguide to create the width modulation
+    n_periods = int(length / period)
+    tooth_width = period / 2
+    total_tooth_height = width + corrugation_width
+    
+    for i in range(n_periods):
+        # Calculate position for each tooth
+        x_pos = i * period
+        
+        # Create the rectangle primitive
+        tooth = c << gf.components.rectangle(
+            size=(tooth_width, total_tooth_height),
+            layer=layer,
+            centered=True
+        )
+        
+        # Move the tooth to the correct position along the waveguide
+        # straight starts at (0,0), so we align along the x-axis
+        tooth.move((x_pos + period/2, 0))
+        
+    # Expose the ports from the underlying straight waveguide
+    c.add_port("o1", port=wg.ports["o1"])
+    c.add_port("o2", port=wg.ports["o2"])
+    
+    return c
+
+# 2. Define one half of the loop structure (Hairpin)
+@gf.cell
+def loop_arm(
+    grating_len=40.0,
+    bend_radius=5.0,
+    width=0.5,
+    layer=(1, 0)
+):
+    """
+    Creates one U-shaped arm: 
+    Input Taper -> Grating Waveguide -> 180 Bend -> Return Straight
+    """
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=width, layer=layer)
+    
+    # Component 1: The Grating Section
+    grating = c << bragg_waveguide(length=grating_len, width=width, layer=layer)
+    
+    # Component 2: The 180 Degree U-Turn (Euler Bend)
+    # We connect this to the Right side (o2) of the grating
+    u_bend = c << gf.components.bend_euler(
+        radius=bend_radius, 
+        angle=180, 
+        cross_section=xs
+    )
+    u_bend.connect("o1", grating.ports["o2"])
+    
+    # Component 3: The Return Straight Path
+    # Runs parallel back towards the left
+    return_wg = c << gf.components.straight(
+        length=grating_len + 10, # Slightly longer than grating
+        cross_section=xs
+    )
+    return_wg.connect("o1", u_bend.ports["o2"])
+    
+    # Component 4: The Input Tail
+    # Connects to the Left side (o1) of the grating and curves away
+    # We use a gentle bend to simulate the curved input seen in the image
+    input_tail = c << gf.components.bend_euler(
+        radius=15, 
+        angle=45, 
+        cross_section=xs
+    )
+    # We want the tail to connect to the grating input.
+    # Since grating.o1 faces West (180 deg), we connect the tail's output to it.
+    input_tail.connect("o2", grating.ports["o1"])
+    
+    return c
+
+# 3. Assemble the Final Device
+@gf.cell
+def contra_directional_coupler_device():
+    c = gf.Component()
+    
+    # Parameters extracted from visual analysis
+    wg_width = 1.5      # Thick waveguides in image
+    layer = (1, 0)
+    gap = 0.5           # Gap between the two inner grating arms
+    
+    # ---------------------------------------------------------
+    # TOP ARM
+    # ---------------------------------------------------------
+    # Instantiate the top half loop
+    top_arm = c << loop_arm(width=wg_width, layer=layer)
+    
+    # Position it:
+    # The grating (y=0 inside the cell) needs to be at y = +gap/2 + width/2
+    y_offset = (gap + wg_width) / 2
+    top_arm.movey(y_offset)
+    
+    # ---------------------------------------------------------
+    # BOTTOM ARM
+    # ---------------------------------------------------------
+    # Instantiate the bottom half loop
+    bot_arm = c << loop_arm(width=wg_width, layer=layer)
+    
+    # The bottom arm is a 180-degree rotated version of the top arm
+    # Mirroring geometry: rotate 180 degrees
+    bot_arm.rotate(180)
+    
+    # Position it:
+    # After rotation, it needs to be shifted to the correct y-position (negative)
+    bot_arm.movey(-y_offset)
+    
+    # Align X: Center the gratings. 
+    # The default origin of our loop_arm is at the left of the grating.
+    # Rotation moves that point. We need to align center-to-center.
+    # Simple fix: center both references to (0,0)
+    top_arm.movex(-top_arm.size_info.width / 2)
+    bot_arm.movex(-bot_arm.size_info.width / 2) # Re-aligning roughly
+    
+    # Precise alignment correction:
+    # We want the gratings to align vertically.
+    # The top arm grating starts at X=0 (relative to arm origin).
+    # The bottom arm (rotated) grating ends at X=0 (relative to arm origin).
+    # Let's align the gratings explicitly.
+    # The 'bragg_waveguide' inside starts at 0 and goes to L.
+    # We want the middle of the grating to be at x=0.
+    top_arm.movex(-20) # Shift left by half grating length (40/2)
+    bot_arm.movex(20)  # Shift right (because it was rotated 180)
+    
+    # ---------------------------------------------------------
+    # CENTRAL THIN LINE
+    # ---------------------------------------------------------
+    # There is a very thin straight line running through the center in the image
+    thin_xs = gf.cross_section.cross_section(width=0.2, layer=layer)
+    center_line = c << gf.components.straight(length=80, cross_section=thin_xs)
+    center_line.center = (0, 0)
+
+    return c
+
+# 4. Generate and Save
+if __name__ == "__main__":
+    device = contra_directional_coupler_device()
+    device.show() # View in KLayout if available
+    device.write_gds("contra_dc_device.gds")
+    print("GDS file written: contra_dc_device.gds")
+```
+
+==================================================
+Attempt 2
+==================================================
+```python
+import gdsfactory as gf
+
+@gf.cell
+def bragg_waveguide(
+    length=40.0,
+    period=0.6,
+    width=0.5,
+    corrugation_width=0.3,
+    layer=(1, 0)
+):
+    """
+    Creates a straight waveguide with periodic rectangular corrugations (gratings).
+    """
+    c = gf.Component()
+    
+    # Define generic cross section
+    xs = gf.cross_section.cross_section(width=width, layer=layer)
+    
+    # Add the central straight waveguide core
+    wg = c << gf.components.straight(length=length, cross_section=xs)
+    
+    # Add periodic grating teeth
+    n_periods = int(length / period)
+    tooth_width = period / 2
+    total_tooth_height = width + corrugation_width
+    
+    for i in range(n_periods):
+        x_pos = i * period
+        tooth = c << gf.components.rectangle(
+            size=(tooth_width, total_tooth_height),
+            layer=layer,
+            centered=True
+        )
+        # Position tooth along the waveguide
+        tooth.move((x_pos + period/2, 0))
+        
+    c.add_port("o1", port=wg.ports["o1"])
+    c.add_port("o2", port=wg.ports["o2"])
+    return c
+
+@gf.cell
+def loop_arm(
+    grating_len=40.0,
+    bend_radius=5.0,
+    width=0.5,
+    layer=(1, 0)
+):
+    """
+    Creates one half of the loop structure:
+    Input Tail -> Grating -> 180 Bend -> Return Straight
+    """
+    c = gf.Component()
+    
+    # FIX: Explicitly set the radius in the cross_section.
+    # This ensures the bend_euler validation passes (min_bend_radius <= radius).
+    xs = gf.cross_section.cross_section(width=width, layer=layer, radius=bend_radius)
+    
+    # 1. Grating Section
+    grating = c << bragg_waveguide(length=grating_len, width=width, layer=layer)
+    
+    # 2. 180 Degree U-Turn
+    # We explicitly pass the radius here, which matches the XS definition
+    u_bend = c << gf.components.bend_euler(
+        radius=bend_radius, 
+        angle=180, 
+        cross_section=xs
+    )
+    u_bend.connect("o1", grating.ports["o2"])
+    
+    # 3. Return Straight Path
+    return_wg = c << gf.components.straight(
+        length=grating_len + 15, # Slightly longer to extend past input
+        cross_section=xs
+    )
+    return_wg.connect("o1", u_bend.ports["o2"])
+    
+    # 4. Input Tail (Curved entry)
+    # Gentle bend at the input
+    input_tail = c << gf.components.bend_euler(
+        radius=15, 
+        angle=45, 
+        cross_section=xs
+    )
+    # Connect output of tail to input of grating
+    input_tail.connect("o2", grating.ports["o1"])
+    
+    return c
+
+@gf.cell
+def contra_directional_coupler_device():
+    c = gf.Component()
+    
+    # Parameters based on image analysis
+    wg_width = 1.2
+    layer = (1, 0)
+    gap = 0.4
+    bend_radius = 5.0 # Tight bends
+    
+    # ---------------------------------------------------------
+    # TOP ARM
+    # ---------------------------------------------------------
+    top_arm = c << loop_arm(
+        width=wg_width, 
+        layer=layer, 
+        bend_radius=bend_radius
+    )
+    
+    # Calculate Y position: center of grating needs to be offset
+    # Distance from center line = gap/2 + width/2
+    y_offset = gap/2 + wg_width/2
+    top_arm.movey(y_offset)
+    
+    # ---------------------------------------------------------
+    # BOTTOM ARM
+    # ---------------------------------------------------------
+    # The bottom arm is a mirror image of the top arm across the X-axis
+    bot_arm = c << loop_arm(
+        width=wg_width, 
+        layer=layer, 
+        bend_radius=bend_radius
+    )
+    # Mirror across X-axis (line from (0,0) to (1,0))
+    bot_arm.mirror(p1=(0,0), p2=(1,0))
+    # Move to negative Y position
+    bot_arm.movey(-y_offset)
+    
+    # ---------------------------------------------------------
+    # CENTRAL THIN LINE
+    # ---------------------------------------------------------
+    thin_xs = gf.cross_section.cross_section(width=0.15, layer=layer)
+    center_line = c << gf.components.straight(length=90, cross_section=thin_xs)
+    
+    # Center the line horizontally relative to the arms
+    # Arms start at X=0 (grating start) roughly, with tails extending negative.
+    # Let's center the straight line on the grating center (X=20).
+    center_line.x = 20
+    center_line.y = 0
+
+    return c
+
+if __name__ == "__main__":
+    # Create and save the device
+    device = contra_directional_coupler_device()
+    device.show()
+    device.write_gds("contra_dc_device.gds")
+    print("GDS file written: contra_dc_device.gds")
+```
+
+==================================================
+Attempt 3
+==================================================
+```python
+import gdsfactory as gf
+
+@gf.cell
+def bragg_waveguide(
+    length=40.0,
+    period=0.6,
+    width=0.5,
+    corrugation_width=0.3,
+    layer=(1, 0)
+):
+    """
+    Creates a straight waveguide with periodic rectangular corrugations (gratings).
+    """
+    c = gf.Component()
+    
+    # Define cross section for the main waveguide body
+    xs = gf.cross_section.cross_section(width=width, layer=layer)
+    
+    # Add the central straight waveguide core
+    wg = c << gf.components.straight(length=length, cross_section=xs)
+    
+    # Add periodic grating teeth
+    # We calculate the number of periods that fit
+    n_periods = int(length / period)
+    tooth_width = period / 2
+    total_tooth_height = width + corrugation_width
+    
+    for i in range(n_periods):
+        x_pos = i * period
+        # Create a rectangular tooth
+        tooth = c << gf.components.rectangle(
+            size=(tooth_width, total_tooth_height),
+            layer=layer,
+            centered=True
+        )
+        # Position the tooth along the waveguide
+        # Shift x by half period to align properly, y is centered on 0
+        tooth.move((x_pos + period/2, 0))
+        
+    # Expose the ports from the underlying waveguide
+    c.add_port("o1", port=wg.ports["o1"])
+    c.add_port("o2", port=wg.ports["o2"])
+    
+    # Flatten the component to merge polygons and snap to grid.
+    # This prevents off-grid issues when this component is referenced and rotated.
+    c.flatten()
+    return c
+
+@gf.cell
+def loop_arm(
+    grating_len=40.0,
+    bend_radius=5.0,
+    width=0.5,
+    layer=(1, 0)
+):
+    """
+    Creates one half of the loop structure:
+    Input Tail (Curved) -> Grating -> 180 Bend -> Return Straight
+    """
+    c = gf.Component()
+    
+    # Define cross-section. Explicit radius is required to allow tighter bends 
+    # than the default (which is often 10um).
+    xs = gf.cross_section.cross_section(width=width, layer=layer, radius=bend_radius)
+    
+    # 1. Grating Section
+    grating = c << bragg_waveguide(length=grating_len, width=width, layer=layer)
+    
+    # 2. 180 Degree U-Turn
+    # We use bend_euler for the main 180 turn for a smooth adiabatic transition
+    u_bend = c << gf.components.bend_euler(
+        radius=bend_radius, 
+        angle=180, 
+        cross_section=xs
+    )
+    # Connect the start of the bend to the end (right side) of the grating
+    u_bend.connect("o1", grating.ports["o2"])
+    
+    # 3. Return Straight Path
+    # This runs parallel to the grating
+    return_wg = c << gf.components.straight(
+        length=grating_len + 15, # Slightly longer to extend past the input
+        cross_section=xs
+    )
+    return_wg.connect("o1", u_bend.ports["o2"])
+    
+    # 4. Input Tail (Curved entry)
+    # We use bend_circular for the 45-degree angle to avoid Euler parameter warnings
+    # and potential geometry generation issues at odd angles.
+    input_tail = c << gf.components.bend_circular(
+        radius=15, 
+        angle=45, 
+        cross_section=xs
+    )
+    # Connect the tail so it curves OUTWARDS from the grating input.
+    # Connecting tail.o2 to grating.o1 achieves the flare-out effect.
+    input_tail.connect("o2", grating.ports["o1"])
+    
+    # Flatten the cell. This is critical because the 45-degree rotation creates 
+    # vertices at irrational coordinates. Flattening snaps them to the manufacturing grid
+    # and resolves "Found off-grid instances" errors.
+    c.flatten()
+    return c
+
+@gf.cell
+def contra_directional_coupler_device():
+    """
+    Assembles the full device: Top Arm, Bottom Arm (mirrored), and Central Bus.
+    """
+    c = gf.Component()
+    
+    # Design Parameters derived from image analysis
+    wg_width = 1.2      # Relatively wide waveguides
+    layer = (1, 0)
+    gap = 0.4           # Gap between the grating teeth and central bus area
+    bend_radius = 5.0   # Tight loop radius
+    
+    # ---------------------------------------------------------
+    # TOP ARM CONSTRUCTION
+    # ---------------------------------------------------------
+    top_arm = c << loop_arm(
+        width=wg_width, 
+        layer=layer, 
+        bend_radius=bend_radius
+    )
+    
+    # Calculate Y offset for the Top Arm
+    # The grating inside loop_arm is centered at y=0.
+    # We want the gap between the two arms to be `gap`.
+    # Distance from centerline (y=0) to grating center = gap/2 + width/2
+    y_offset = gap/2 + wg_width/2
+    top_arm.movey(y_offset)
+    
+    # ---------------------------------------------------------
+    # BOTTOM ARM CONSTRUCTION
+    # ---------------------------------------------------------
+    # The bottom arm is a mirror image of the top arm.
+    bot_arm = c << loop_arm(
+        width=wg_width, 
+        layer=layer, 
+        bend_radius=bend_radius
+    )
+    
+    # Mirror across the X-axis (line from 0,0 to 1,0)
+    bot_arm.mirror(p1=(0,0), p2=(1,0))
+    
+    # Move to the negative Y position
+    bot_arm.movey(-y_offset)
+    
+    # ---------------------------------------------------------
+    # CENTRAL BUS WAVEGUIDE
+    # ---------------------------------------------------------
+    # Thin waveguide running through the center
+    thin_xs = gf.cross_section.cross_section(width=0.15, layer=layer)
+    center_line = c << gf.components.straight(length=90, cross_section=thin_xs)
+    
+    # Align the center line horizontally with the arms.
+    # The arms start at X=0 (grating start) roughly. The grating is 40um long.
+    # Center of grating is at X=20. We center the 90um line at X=20.
+    center_line.x = 20
+    center_line.y = 0
+
+    return c
+
+if __name__ == "__main__":
+    # Generate the GDS file
+    device = contra_directional_coupler_device()
+    device.show() # Opens in KLayout if configured
+    device.write_gds("contra_dc_device.gds")
+    print("GDS file written: contra_dc_device.gds")
+```

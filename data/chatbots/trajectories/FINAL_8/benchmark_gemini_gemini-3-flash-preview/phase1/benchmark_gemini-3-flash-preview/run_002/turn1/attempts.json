@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.987830",
+      "api_duration_seconds": 122.93412399291992,
+      "usage": {
+        "input_tokens": 3155,
+        "output_tokens": 1160,
+        "total_tokens": 16200
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S120_0_e7249d33' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:14.417154",
+      "api_duration_seconds": 15.064441204071045,
+      "usage": {
+        "input_tokens": 4375,
+        "output_tokens": 973,
+        "total_tokens": 6017
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:36.204906",
+      "api_duration_seconds": 21.16879892349243,
+      "usage": {
+        "input_tokens": 5367,
+        "output_tokens": 1072,
+        "total_tokens": 7801
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12897,
+    "output_tokens": 3205,
+    "total_tokens": 30018
+  }
+}

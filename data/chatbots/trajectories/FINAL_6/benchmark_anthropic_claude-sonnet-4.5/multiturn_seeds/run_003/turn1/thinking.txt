@@ -1,0 +1,72 @@
+Looking at the image, I can see a cross-shaped pattern with four oval/elliptical lobes extending from the center in the cardinal directions (up, down, left, right). The center appears to have a rectangular or square region where all the lobes meet.
+
+The shape looks like:
+- Four elliptical/oval shapes arranged in a + pattern
+- Each lobe is elongated and extends outward from the center
+- They all meet at a central region
+- The overall footprint should be 4.7 x 4.7 microns
+
+To recreate this, I could:
+1. Create four ellipses and position them appropriately
+2. Use a boolean OR operation to merge them
+3. Or create a more complex path-based approach
+
+Looking more carefully, each arm appears to be an elongated ellipse or rounded rectangle. The shape is symmetric in all four directions.
+
+Let me think about the dimensions:
+- Total footprint: 4.7 x 4.7 um
+- Each arm extends from center, so roughly 2.35 um in each direction
+- The width of each arm appears to be maybe 1/3 to 1/2 of the total width
+
+I'll create this using ellipses positioned at the four cardinal directions and merge them with boolean operations.
+
+Actually, looking more carefully, it might be easier to create this as:
+1. A horizontal ellipse (stretched in x direction)
+2. A vertical ellipse (stretched in y direction)  
+3. Boolean OR them together
+
+Let me estimate dimensions:
+- The horizontal ellipse might be about 4.7 um wide and maybe 1.5 um tall
+- The vertical ellipse might be about 1.5 um wide and 4.7 um tall
+- They overlap in the center
+
+This would create the four-lobed cross pattern we see.
+
+Let me write the code:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def four_lobe_cross():
+    """
+    Creates a four-lobed cross pattern with elliptical arms.
+    """
+    c = gf.Component()
+    
+    # Dimensions based on 4.7 x 4.7 um footprint
+    total_size = 4.7
+    lobe_width = 1.5  # width of each lobe
+    
+    # Create horizontal ellipse
+    h_ellipse = gf.components.ellipse(
+        radii=(total_size/2, lobe_width/2),
+        layer=(1, 0)
+    )
+    
+    # Create vertical ellipse
+    v_ellipse = gf.components.ellipse(
+        radii=(lobe_width/2, total_size/2),
+        layer=(1, 0)
+    )
+    
+    # Add both ellipses to the component
+    c.add_ref(h_ellipse)
+    c.add_ref(v_ellipse)
+    
+    return c
+```
+
+This approach creates the cross by overlaying a horizontal and vertical ellipse, with the horizontal one being 4.7 um wide by 1.5 um tall, and the vertical one being 1.5 um wide by 4.7 um tall. When combined, they form the four-lobed pattern with the lobes extending in all cardinal directions. inspection of the image shows the horizontal lobe spans the full width at 4.7 μm and the vertical lobe spans the full height at 4.7 μm. Each lobe's minor axis appears to be roughly 1/3 of the total dimension, around 1.5-1.6 μm. I'll adjust the code to set total_length to 4.7 and lobe_width to 1.6, then create the horizontal ellipse first before adding the vertical component.
+
+The approach uses gdsfactory to define two ellipses—one stretched horizontally with radii (2.35, 0.8) and one stretched vertically with radii (0.8, 2.35)—then combines them with a boolean OR operation to form the cross pattern. The result gets added to the component and exported as a GDS file.

@@ -1,0 +1,155 @@
+import gdsfactory as gf
+from gdsfactory.cross_section import Section
+
+@gf.cell
+def specialized_coupler_final():
+    """
+    Final recreation of the multi-rail directional coupler.
+    
+    Structure:
+    - Central Region: Parallel coupling between a center rail and two complex arms.
+    - Arms: Each arm consists of an inner rail (path), a second thin rail, and a thick outer block.
+    - Transitions: S-bends connect the coupling region to the I/O ports.
+    
+    Constraints:
+    - Footprint height < 4.0um.
+    - Thick blocks oriented to the outside.
+    """
+    c = gf.Component()
+
+    # =======================================================================
+    # 1. Dimensions & Constraints
+    # =======================================================================
+    L_total = 120.0
+    L_straight = 40.0
+    L_bend = (L_total - L_straight) / 2  # 40.0
+
+    # Feature Sizes (Tuned for density and 4um limit)
+    w_center = 0.15
+    w_thin = 0.15
+    w_thick = 0.6
+    gap = 0.15
+
+    # --- Cross-Section Definition Logic ---
+    # The 'Path' is the center of the Innermost Rail (Rail 1).
+    # All other features are defined as offsets from this path.
+    
+    # Offset to Rail 2 Center:
+    # (Half Rail1) + Gap + (Half Rail2)
+    off_rail2 = (w_thin/2) + gap + (w_thin/2)  # 0.3
+    
+    # Offset to Block Center:
+    # Offset Rail2 + (Half Rail2) + Gap + (Half Block)
+    off_block = off_rail2 + (w_thin/2) + gap + (w_thick/2) # 0.825
+
+    # Absolute Y position of the Path (Rail 1) in the coupling region
+    # Relative to y=0 (Center of middle rail)
+    y_path_abs = (w_center/2) + gap + (w_thin/2) # 0.3
+
+    # Check Total Height
+    # Max Y = y_path + off_block + (w_thick/2) = 0.3 + 0.825 + 0.3 = 1.425
+    # Total H = 2.85um. Fits comfortably in 4um.
+    
+    # Flare Height (S-bend vertical offset)
+    # We use the remaining budget to flare the inputs out.
+    # Max allowed Y ~ 2.0. Current Max Y = 1.425.
+    dy_flare = 0.55
+
+    # =======================================================================
+    # 2. Parametric Cross-Sections
+    # =======================================================================
+    
+    # Center Rail (Simple straight wire)
+    xs_center = gf.cross_section.cross_section(
+        width=w_center,
+        layer=(1, 0)
+    )
+
+    # Top Arm (Positive Offsets = Up/Left)
+    sections_top = [
+        Section(width=w_thin, offset=off_rail2, layer=(1, 0)),
+        Section(width=w_thick, offset=off_block, layer=(1, 0))
+    ]
+    xs_top = gf.cross_section.cross_section(
+        width=w_thin,
+        sections=sections_top,
+        layer=(1, 0)
+    )
+
+    # Bottom Arm (Negative Offsets = Down/Right)
+    sections_bot = [
+        Section(width=w_thin, offset=-off_rail2, layer=(1, 0)),
+        Section(width=w_thick, offset=-off_block, layer=(1, 0))
+    ]
+    xs_bot = gf.cross_section.cross_section(
+        width=w_thin,
+        sections=sections_bot,
+        layer=(1, 0)
+    )
+
+    # =======================================================================
+    # 3. Geometry Construction
+    # =======================================================================
+
+    # --- Center Rail ---
+    # Only exists in the straight coupling region
+    center_wg = c << gf.components.straight(
+        length=L_straight,
+        cross_section=xs_center
+    )
+    center_wg.move((L_bend, 0))
+
+    # --- Top Arm ---
+    # 1. Straight Coupling Section (Anchored relative to center)
+    top_c = c << gf.components.straight(
+        length=L_straight,
+        cross_section=xs_top
+    )
+    top_c.move((L_bend, y_path_abs))
+
+    # 2. Input S-Bend (Connects to Start of Coupling)
+    # Curves from High Y down to Coupling Y. Delta Y is negative.
+    top_in = c << gf.components.bend_s(
+        size=(L_bend, -dy_flare),
+        cross_section=xs_top
+    )
+    top_in.connect("o2", top_c.ports["o1"])
+
+    # 3. Output S-Bend (Connects to End of Coupling)
+    # Curves from Coupling Y up to High Y. Delta Y is positive.
+    top_out = c << gf.components.bend_s(
+        size=(L_bend, dy_flare),
+        cross_section=xs_top
+    )
+    top_out.connect("o1", top_c.ports["o2"])
+
+    # --- Bottom Arm ---
+    # 1. Straight Coupling Section
+    bot_c = c << gf.components.straight(
+        length=L_straight,
+        cross_section=xs_bot
+    )
+    bot_c.move((L_bend, -y_path_abs))
+
+    # 2. Input S-Bend
+    # Curves from Low Y up to Coupling Y. Delta Y is positive.
+    bot_in = c << gf.components.bend_s(
+        size=(L_bend, dy_flare),
+        cross_section=xs_bot
+    )
+    bot_in.connect("o2", bot_c.ports["o1"])
+
+    # 3. Output S-Bend
+    # Curves from Coupling Y down to Low Y. Delta Y is negative.
+    bot_out = c << gf.components.bend_s(
+        size=(L_bend, -dy_flare),
+        cross_section=xs_bot
+    )
+    bot_out.connect("o1", bot_c.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    component = specialized_coupler_final()
+    component.show()
+    component.write_gds("specialized_coupler_final.gds")

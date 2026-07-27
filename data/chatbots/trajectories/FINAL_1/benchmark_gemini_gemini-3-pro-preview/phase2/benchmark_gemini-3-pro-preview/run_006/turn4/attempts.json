@@ -1,0 +1,53 @@
+{
+  "turn": 4,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:12:30.189680",
+      "api_duration_seconds": 141.00559067726135,
+      "usage": {
+        "input_tokens": 5627,
+        "output_tokens": 1485,
+        "total_tokens": 18427
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:14:52.588544",
+      "api_duration_seconds": 84.61582684516907,
+      "usage": {
+        "input_tokens": 7143,
+        "output_tokens": 1443,
+        "total_tokens": 16729
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: straight_gdsfactorypcomponentspwaveguidespstraight_L13__b687d246_27000_400_A359p98303679540277, Cell name: straight_gdsfactorypcomponentspwaveguidespstraight_L13__b687d246\nInstance name: straight_gdsfactorypcomponentspwaveguidespstraight_L13__b687d24",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:16:18.464900",
+      "api_duration_seconds": 66.55583715438843,
+      "usage": {
+        "input_tokens": 8838,
+        "output_tokens": 1516,
+        "total_tokens": 15438
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 21608,
+    "output_tokens": 4444,
+    "total_tokens": 50594
+  }
+}

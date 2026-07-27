@@ -1,0 +1,707 @@
+{
+  "model": "gemini/gemini-3-pro-preview",
+  "model_id": "gemini-3-pro-preview",
+  "provider": "gemini",
+  "supports_seed": true,
+  "supports_thinking": true,
+  "runs_tested": 25,
+  "turn1_successful": 13,
+  "turn2_successful": 12,
+  "elapsed_time": "0:19:13.208378",
+  "best_run_by_sse": 16,
+  "best_seed_by_sse": 1337,
+  "best_run_by_iou": 16,
+  "best_seed_by_iou": 1337,
+  "ranked_by_sse": [],
+  "ranked_by_iou": [
+    {
+      "seed": 1337,
+      "turn1": {
+        "IoU": 0.5089980674101523,
+        "Dice": 0.6746172555193928
+      },
+      "turn2": {
+        "IoU": 0.5370548714773795,
+        "Dice": 0.6988102785962034
+      },
+      "final_iou": 0.5370548714773795,
+      "final_dice": 0.6988102785962034,
+      "improvement": {
+        "IoU": "+5.5%",
+        "Dice": "+3.6%"
+      },
+      "run_id": 16
+    },
+    {
+      "seed": 1328,
+      "turn1": {
+        "IoU": 0.5702471652895518,
+        "Dice": 0.7263151660387158
+      },
+      "turn2": {
+        "IoU": 0.5182864581635034,
+        "Dice": 0.6827255230747628
+      },
+      "final_iou": 0.5182864581635034,
+      "final_dice": 0.6827255230747628,
+      "improvement": {
+        "IoU": "-9.1%",
+        "Dice": "-6.0%"
+      },
+      "run_id": 7
+    },
+    {
+      "seed": 1338,
+      "turn1": {
+        "IoU": 0.5333256466428379,
+        "Dice": 0.6956456351076309
+      },
+      "turn2": {
+        "IoU": 0.515250776212085,
+        "Dice": 0.6800864705710825
+      },
+      "final_iou": 0.515250776212085,
+      "final_dice": 0.6800864705710825,
+      "improvement": {
+        "IoU": "-3.4%",
+        "Dice": "-2.2%"
+      },
+      "run_id": 17
+    },
+    {
+      "seed": 1345,
+      "turn1": {
+        "IoU": 0.4992806238120615,
+        "Dice": 0.6660269143512223
+      },
+      "turn2": {
+        "IoU": 0.5050152446901969,
+        "Dice": 0.6711098063251217
+      },
+      "final_iou": 0.5050152446901969,
+      "final_dice": 0.6711098063251217,
+      "improvement": {
+        "IoU": "+1.1%",
+        "Dice": "+0.8%"
+      },
+      "run_id": 24
+    },
+    {
+      "seed": 1331,
+      "turn1": {
+        "IoU": 0.36694597827010744,
+        "Dice": 0.536884389146795
+      },
+      "turn2": {
+        "IoU": 0.47294483003150356,
+        "Dice": 0.6421758919801337
+      },
+      "final_iou": 0.47294483003150356,
+      "final_dice": 0.6421758919801337,
+      "improvement": {
+        "IoU": "+28.9%",
+        "Dice": "+19.6%"
+      },
+      "run_id": 10
+    },
+    {
+      "seed": 1329,
+      "turn1": {
+        "IoU": 0.17367707272125574,
+        "Dice": 0.2959537623386862
+      },
+      "turn2": {
+        "IoU": 0.40778714124738236,
+        "Dice": 0.5793306804692916
+      },
+      "final_iou": 0.40778714124738236,
+      "final_dice": 0.5793306804692916,
+      "improvement": {
+        "IoU": "+134.8%",
+        "Dice": "+95.8%"
+      },
+      "run_id": 8
+    },
+    {
+      "seed": 1321,
+      "turn1": {
+        "IoU": 0.26500953129110255,
+        "Dice": 0.4189842443647468
+      },
+      "turn2": {
+        "IoU": 0.33936627009438236,
+        "Dice": 0.5067564827811707
+      },
+      "final_iou": 0.33936627009438236,
+      "final_dice": 0.5067564827811707,
+      "improvement": {
+        "IoU": "+28.1%",
+        "Dice": "+20.9%"
+      },
+      "run_id": 0
+    },
+    {
+      "seed": 1334,
+      "turn1": {
+        "IoU": 0.34250272549227695,
+        "Dice": 0.510245110104616
+      },
+      "turn2": {
+        "IoU": 0.30425019149214416,
+        "Dice": 0.4665518831844108
+      },
+      "final_iou": 0.30425019149214416,
+      "final_dice": 0.4665518831844108,
+      "improvement": {
+        "IoU": "-11.2%",
+        "Dice": "-8.6%"
+      },
+      "run_id": 13
+    },
+    {
+      "seed": 1340,
+      "turn1": {
+        "IoU": 0.12425260621130456,
+        "Dice": 0.22104037033106266
+      },
+      "turn2": {
+        "IoU": 0.23749662969711405,
+        "Dice": 0.3838339822472777
+      },
+      "final_iou": 0.23749662969711405,
+      "final_dice": 0.3838339822472777,
+      "improvement": {
+        "IoU": "+91.1%",
+        "Dice": "+73.6%"
+      },
+      "run_id": 19
+    },
+    {
+      "seed": 1344,
+      "turn1": {
+        "IoU": 0.17455543163670947,
+        "Dice": 0.29722808636365755
+      },
+      "turn2": {
+        "IoU": 0.2321070582114573,
+        "Dice": 0.3767644323836387
+      },
+      "final_iou": 0.2321070582114573,
+      "final_dice": 0.3767644323836387,
+      "improvement": {
+        "IoU": "+33.0%",
+        "Dice": "+26.8%"
+      },
+      "run_id": 23
+    }
+  ],
+  "ranked_by_dice": [
+    {
+      "seed": 1337,
+      "turn1": {
+        "IoU": 0.5089980674101523,
+        "Dice": 0.6746172555193928
+      },
+      "turn2": {
+        "IoU": 0.5370548714773795,
+        "Dice": 0.6988102785962034
+      },
+      "final_iou": 0.5370548714773795,
+      "final_dice": 0.6988102785962034,
+      "improvement": {
+        "IoU": "+5.5%",
+        "Dice": "+3.6%"
+      },
+      "run_id": 16
+    },
+    {
+      "seed": 1328,
+      "turn1": {
+        "IoU": 0.5702471652895518,
+        "Dice": 0.7263151660387158
+      },
+      "turn2": {
+        "IoU": 0.5182864581635034,
+        "Dice": 0.6827255230747628
+      },
+      "final_iou": 0.5182864581635034,
+      "final_dice": 0.6827255230747628,
+      "improvement": {
+        "IoU": "-9.1%",
+        "Dice": "-6.0%"
+      },
+      "run_id": 7
+    },
+    {
+      "seed": 1338,
+      "turn1": {
+        "IoU": 0.5333256466428379,
+        "Dice": 0.6956456351076309
+      },
+      "turn2": {
+        "IoU": 0.515250776212085,
+        "Dice": 0.6800864705710825
+      },
+      "final_iou": 0.515250776212085,
+      "final_dice": 0.6800864705710825,
+      "improvement": {
+        "IoU": "-3.4%",
+        "Dice": "-2.2%"
+      },
+      "run_id": 17
+    },
+    {
+      "seed": 1345,
+      "turn1": {
+        "IoU": 0.4992806238120615,
+        "Dice": 0.6660269143512223
+      },
+      "turn2": {
+        "IoU": 0.5050152446901969,
+        "Dice": 0.6711098063251217
+      },
+      "final_iou": 0.5050152446901969,
+      "final_dice": 0.6711098063251217,
+      "improvement": {
+        "IoU": "+1.1%",
+        "Dice": "+0.8%"
+      },
+      "run_id": 24
+    },
+    {
+      "seed": 1331,
+      "turn1": {
+        "IoU": 0.36694597827010744,
+        "Dice": 0.536884389146795
+      },
+      "turn2": {
+        "IoU": 0.47294483003150356,
+        "Dice": 0.6421758919801337
+      },
+      "final_iou": 0.47294483003150356,
+      "final_dice": 0.6421758919801337,
+      "improvement": {
+        "IoU": "+28.9%",
+        "Dice": "+19.6%"
+      },
+      "run_id": 10
+    },
+    {
+      "seed": 1329,
+      "turn1": {
+        "IoU": 0.17367707272125574,
+        "Dice": 0.2959537623386862
+      },
+      "turn2": {
+        "IoU": 0.40778714124738236,
+        "Dice": 0.5793306804692916
+      },
+      "final_iou": 0.40778714124738236,
+      "final_dice": 0.5793306804692916,
+      "improvement": {
+        "IoU": "+134.8%",
+        "Dice": "+95.8%"
+      },
+      "run_id": 8
+    },
+    {
+      "seed": 1321,
+      "turn1": {
+        "IoU": 0.26500953129110255,
+        "Dice": 0.4189842443647468
+      },
+      "turn2": {
+        "IoU": 0.33936627009438236,
+        "Dice": 0.5067564827811707
+      },
+      "final_iou": 0.33936627009438236,
+      "final_dice": 0.5067564827811707,
+      "improvement": {
+        "IoU": "+28.1%",
+        "Dice": "+20.9%"
+      },
+      "run_id": 0
+    },
+    {
+      "seed": 1334,
+      "turn1": {
+        "IoU": 0.34250272549227695,
+        "Dice": 0.510245110104616
+      },
+      "turn2": {
+        "IoU": 0.30425019149214416,
+        "Dice": 0.4665518831844108
+      },
+      "final_iou": 0.30425019149214416,
+      "final_dice": 0.4665518831844108,
+      "improvement": {
+        "IoU": "-11.2%",
+        "Dice": "-8.6%"
+      },
+      "run_id": 13
+    },
+    {
+      "seed": 1340,
+      "turn1": {
+        "IoU": 0.12425260621130456,
+        "Dice": 0.22104037033106266
+      },
+      "turn2": {
+        "IoU": 0.23749662969711405,
+        "Dice": 0.3838339822472777
+      },
+      "final_iou": 0.23749662969711405,
+      "final_dice": 0.3838339822472777,
+      "improvement": {
+        "IoU": "+91.1%",
+        "Dice": "+73.6%"
+      },
+      "run_id": 19
+    },
+    {
+      "seed": 1344,
+      "turn1": {
+        "IoU": 0.17455543163670947,
+        "Dice": 0.29722808636365755
+      },
+      "turn2": {
+        "IoU": 0.2321070582114573,
+        "Dice": 0.3767644323836387
+      },
+      "final_iou": 0.2321070582114573,
+      "final_dice": 0.3767644323836387,
+      "improvement": {
+        "IoU": "+33.0%",
+        "Dice": "+26.8%"
+      },
+      "run_id": 23
+    }
+  ],
+  "all_results": [
+    {
+      "run_id": 0,
+      "seed": 1321,
+      "turn1_success": true,
+      "turn2_success": true,
+      "turn1_metrics": {
+        "IoU": 0.26500953129110255,
+        "Dice": 0.4189842443647468
+      },
+      "turn2_metrics": {
+        "IoU": 0.33936627009438236,
+        "Dice": 0.5067564827811707
+      },
+      "turn1_attempts": 3,
+      "turn2_attempts": 1
+    },
+    {
+      "run_id": 1,
+      "seed": 1322,
+      "turn1_success": false,
+      "turn2_success": false,
+      "turn1_metrics": null,
+      "turn2_metrics": null,
+      "turn1_attempts": 0,
+      "turn2_attempts": 0
+    },
+    {
+      "run_id": 2,
+      "seed": 1323,
+      "turn1_success": false,
+      "turn2_success": false,
+      "turn1_metrics": null,
+      "turn2_metrics": null,
+      "turn1_attempts": 3,
+      "turn2_attempts": 0
+    },
+    {
+      "run_id": 3,
+      "seed": 1324,
+      "turn1_success": false,
+      "turn2_success": false,
+      "turn1_metrics": null,
+      "turn2_metrics": null,
+      "turn1_attempts": 3,
+      "turn2_attempts": 0
+    },
+    {
+      "run_id": 4,
+      "seed": 1325,
+      "turn1_success": false,
+      "turn2_success": false,
+      "turn1_metrics": null,
+      "turn2_metrics": null,
+      "turn1_attempts": 3,
+      "turn2_attempts": 0
+    },
+    {
+      "run_id": 5,
+      "seed": 1326,
+      "turn1_success": false,
+      "turn2_success": false,
+      "turn1_metrics": null,
+      "turn2_metrics": null,
+      "turn1_attempts": 3,
+      "turn2_attempts": 0
+    },
+    {
+      "run_id": 6,
+      "seed": 1327,
+      "turn1_success": false,
+      "turn2_success": false,
+      "turn1_metrics": null,
+      "turn2_metrics": null,
+      "turn1_attempts": 3,
+      "turn2_attempts": 0
+    },
+    {
+      "run_id": 7,
+      "seed": 1328,
+      "turn1_success": true,
+      "turn2_success": true,
+      "turn1_metrics": {
+        "IoU": 0.5702471652895518,
+        "Dice": 0.7263151660387158
+      },
+      "turn2_metrics": {
+        "IoU": 0.5182864581635034,
+        "Dice": 0.6827255230747628
+      },
+      "turn1_attempts": 3,
+      "turn2_attempts": 1
+    },
+    {
+      "run_id": 8,
+      "seed": 1329,
+      "turn1_success": true,
+      "turn2_success": true,
+      "turn1_metrics": {
+        "IoU": 0.17367707272125574,
+        "Dice": 0.2959537623386862
+      },
+      "turn2_metrics": {
+        "IoU": 0.40778714124738236,
+        "Dice": 0.5793306804692916
+      },
+      "turn1_attempts": 3,
+      "turn2_attempts": 1
+    },
+    {
+      "run_id": 9,
+      "seed": 1330,
+      "turn1_success": false,
+      "turn2_success": false,
+      "turn1_metrics": null,
+      "turn2_metrics": null,
+      "turn1_attempts": 3,
+      "turn2_attempts": 0
+    },
+    {
+      "run_id": 10,
+      "seed": 1331,
+      "turn1_success": true,
+      "turn2_success": true,
+      "turn1_metrics": {
+        "IoU": 0.36694597827010744,
+        "Dice": 0.536884389146795
+      },
+      "turn2_metrics": {
+        "IoU": 0.47294483003150356,
+        "Dice": 0.6421758919801337
+      },
+      "turn1_attempts": 2,
+      "turn2_attempts": 3
+    },
+    {
+      "run_id": 11,
+      "seed": 1332,
+      "turn1_success": true,
+      "turn2_success": false,
+      "turn1_metrics": {
+        "IoU": 0.48765659904957726,
+        "Dice": 0.6556037184403009
+      },
+      "turn2_metrics": null,
+      "turn1_attempts": 3,
+      "turn2_attempts": 3
+    },
+    {
+      "run_id": 12,
+      "seed": 1333,
+      "turn1_success": false,
+      "turn2_success": false,
+      "turn1_metrics": null,
+      "turn2_metrics": null,
+      "turn1_attempts": 3,
+      "turn2_attempts": 0
+    },
+    {
+      "run_id": 13,
+      "seed": 1334,
+      "turn1_success": true,
+      "turn2_success": true,
+      "turn1_metrics": {
+        "IoU": 0.34250272549227695,
+        "Dice": 0.510245110104616
+      },
+      "turn2_metrics": {
+        "IoU": 0.30425019149214416,
+        "Dice": 0.4665518831844108
+      },
+      "turn1_attempts": 3,
+      "turn2_attempts": 2
+    },
+    {
+      "run_id": 14,
+      "seed": 1335,
+      "turn1_success": false,
+      "turn2_success": false,
+      "turn1_metrics": null,
+      "turn2_metrics": null,
+      "turn1_attempts": 3,
+      "turn2_attempts": 0
+    },
+    {
+      "run_id": 15,
+      "seed": 1336,
+      "turn1_success": false,
+      "turn2_success": false,
+      "turn1_metrics": null,
+      "turn2_metrics": null,
+      "turn1_attempts": 3,
+      "turn2_attempts": 0
+    },
+    {
+      "run_id": 16,
+      "seed": 1337,
+      "turn1_success": true,
+      "turn2_success": true,
+      "turn1_metrics": {
+        "IoU": 0.5089980674101523,
+        "Dice": 0.6746172555193928
+      },
+      "turn2_metrics": {
+        "IoU": 0.5370548714773795,
+        "Dice": 0.6988102785962034
+      },
+      "turn1_attempts": 2,
+      "turn2_attempts": 1
+    },
+    {
+      "run_id": 17,
+      "seed": 1338,
+      "turn1_success": true,
+      "turn2_success": true,
+      "turn1_metrics": {
+        "IoU": 0.5333256466428379,
+        "Dice": 0.6956456351076309
+      },
+      "turn2_metrics": {
+        "IoU": 0.515250776212085,
+        "Dice": 0.6800864705710825
+      },
+      "turn1_attempts": 3,
+      "turn2_attempts": 1
+    },
+    {
+      "run_id": 18,
+      "seed": 1339,
+      "turn1_success": false,
+      "turn2_success": false,
+      "turn1_metrics": null,
+      "turn2_metrics": null,
+      "turn1_attempts": 3,
+      "turn2_attempts": 0
+    },
+    {
+      "run_id": 19,
+      "seed": 1340,
+      "turn1_success": true,
+      "turn2_success": true,
+      "turn1_metrics": {
+        "IoU": 0.12425260621130456,
+        "Dice": 0.22104037033106266
+      },
+      "turn2_metrics": {
+        "IoU": 0.23749662969711405,
+        "Dice": 0.3838339822472777
+      },
+      "turn1_attempts": 3,
+      "turn2_attempts": 3
+    },
+    {
+      "run_id": 20,
+      "seed": 1341,
+      "turn1_success": false,
+      "turn2_success": false,
+      "turn1_metrics": null,
+      "turn2_metrics": null,
+      "turn1_attempts": 3,
+      "turn2_attempts": 0
+    },
+    {
+      "run_id": 21,
+      "seed": 1342,
+      "turn1_success": true,
+      "turn2_success": true,
+      "turn1_metrics": {
+        "IoU": 0.22439322405129425,
+        "Dice": 0.3665378403660516
+      },
+      "turn2_metrics": {
+        "IoU": 0.16556619219630997,
+        "Dice": 0.2840957352826592
+      },
+      "turn1_attempts": 2,
+      "turn2_attempts": 1
+    },
+    {
+      "run_id": 22,
+      "seed": 1343,
+      "turn1_success": true,
+      "turn2_success": true,
+      "turn1_metrics": {
+        "IoU": 0.1638744624321984,
+        "Dice": 0.28160161206689405
+      },
+      "turn2_metrics": {
+        "IoU": 0.0,
+        "Dice": 0.0
+      },
+      "turn1_attempts": 3,
+      "turn2_attempts": 2
+    },
+    {
+      "run_id": 23,
+      "seed": 1344,
+      "turn1_success": true,
+      "turn2_success": true,
+      "turn1_metrics": {
+        "IoU": 0.17455543163670947,
+        "Dice": 0.29722808636365755
+      },
+      "turn2_metrics": {
+        "IoU": 0.2321070582114573,
+        "Dice": 0.3767644323836387
+      },
+      "turn1_attempts": 2,
+      "turn2_attempts": 1
+    },
+    {
+      "run_id": 24,
+      "seed": 1345,
+      "turn1_success": true,
+      "turn2_success": true,
+      "turn1_metrics": {
+        "IoU": 0.4992806238120615,
+        "Dice": 0.6660269143512223
+      },
+      "turn2_metrics": {
+        "IoU": 0.5050152446901969,
+        "Dice": 0.6711098063251217
+      },
+      "turn1_attempts": 3,
+      "turn2_attempts": 1
+    }
+  ]
+}

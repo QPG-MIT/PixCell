@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:33:31.301753",
+      "api_duration_seconds": 598.0240819454193,
+      "usage": {
+        "input_tokens": 2769,
+        "output_tokens": 21475,
+        "total_tokens": 24244
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:43:30.571179",
+      "api_duration_seconds": 321.97624015808105,
+      "usage": {
+        "input_tokens": 3886,
+        "output_tokens": 11770,
+        "total_tokens": 15656
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Cross section with width 0 is not allowed. [type=value_error, input_value={'width': 0, 'enclosure':...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:48:55.847849",
+      "api_duration_seconds": 152.70293712615967,
+      "usage": {
+        "input_tokens": 5553,
+        "output_tokens": 6081,
+        "total_tokens": 11634
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Cross section with width 0 is not allowed. [type=value_error, input_value={'width': 0, 'enclosure':...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12208,
+    "output_tokens": 39326,
+    "total_tokens": 51534
+  }
+}

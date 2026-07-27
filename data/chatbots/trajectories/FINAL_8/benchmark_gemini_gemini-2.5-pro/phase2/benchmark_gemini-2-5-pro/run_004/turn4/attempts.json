@@ -1,0 +1,53 @@
+{
+  "turn": 4,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:29:28.868122",
+      "api_duration_seconds": 100.9967041015625,
+      "usage": {
+        "input_tokens": 4116,
+        "output_tokens": 2660,
+        "total_tokens": 18243
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "UnboundLocalError: cannot access local variable 'sections' where it is not associated with a value",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:31:11.515766",
+      "api_duration_seconds": 33.879570960998535,
+      "usage": {
+        "input_tokens": 6810,
+        "output_tokens": 2381,
+        "total_tokens": 10855
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Width of symmetrical cross sections must have be a multiple of 2 dbu. This could cause cross sections and extrusions to become unsymmetrical otherwise. [type=value_error, input_value={'width': 89, 'enclosure'...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the followin",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:31:46.672364",
+      "api_duration_seconds": 41.341553926467896,
+      "usage": {
+        "input_tokens": 9701,
+        "output_tokens": 2875,
+        "total_tokens": 14835
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')\nAttributeError: 'Pdk' object has no attribute 'grid_size'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 20627,
+    "output_tokens": 7916,
+    "total_tokens": 43933
+  }
+}

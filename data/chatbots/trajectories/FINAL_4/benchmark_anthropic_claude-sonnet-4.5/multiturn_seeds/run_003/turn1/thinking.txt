@@ -1,0 +1,67 @@
+The error is because `device.size` is not a valid attribute. In gdsfactory, we should use `device.bbox` or just remove that print statement. Let me fix the script:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def wavy_bands(
+    length: float = 18.0,
+    spacing: float = 1.5,
+    min_width: float = 0.3,
+    max_width: float = 0.8,
+    layer: tuple = (1, 0)
+) -> gf.Component:
+    """
+    Create two horizontal wavy bands with varying width.
+    
+    Args:
+        length: Total horizontal length in microns
+        spacing: Vertical spacing between the two bands
+        min_width: Minimum width of each band
+        max_width: Maximum width of each band
+        layer: GDS layer specification
+    """
+    c = gf.Component()
+    
+    # Number of points for smooth variation
+    num_points = 100
+    x_coords = np.linspace(0, length, num_points)
+    
+    # Create width variation function (sinusoidal for smooth wave effect)
+    # Width varies from min to max and back
+    widths = min_width + (max_width - min_width) * (
+        0.5 + 0.5 * np.sin(2 * np.pi * x_coords / length - np.pi / 2)
+    )
+    
+    # Create two bands with variable width
+    for band_offset in [spacing / 2, -spacing / 2]:
+        # Create points for top and bottom edges of the band
+        y_wave = band_offset
+        
+        top_points = []
+        bottom_points = []
+        
+        for i, x in enumerate(x_coords):
+            half_width = widths[i] / 2
+            # Add slight sinusoidal curve to the centerline
+            y_curve = y_wave + 0.15 * np.sin(2 * np.pi * x / length)
+            
+            top_points.append((x, y_curve + half_width))
+            bottom_points.append((x, y_curve - half_width))
+        
+        # Create closed polygon
+        all_points = top_points + bottom_points[::-1]
+        
+        # Add polygon to component
+        c.add_polygon(all_points, layer=layer)
+    
+    return c
+
+# Create the device
+device = wavy_bands()
+```
+
+The key fixes: I'm adding a secondary sinusoidal curve to the centerline of each band for a more organic wavy appearance, then constructing the top and bottom edges by offsetting from this curved centerline by the half-width. The polygons are closed by reversing the bottom points and appending them to the top points.
+
+For output, I'll write directly to GDS format and skip any size attribute access since that's not a standard method on the component object.

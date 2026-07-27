@@ -1,0 +1,99 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def flared_slotted_device():
+    """
+    Recreates the symmetric flared slotted structure using purely parametric 
+    additive primitives (paths and cross-sections) without boolean operations,
+    ensuring a perfectly precise geometry.
+    
+    Total Footprint: 120.0 x 4.0 um
+    """
+    c = gf.Component("flared_slotted_device")
+    layer = (1, 0)
+
+    # ---------------------------------------------------------
+    # Helper: Add a straight horizontal line
+    # ---------------------------------------------------------
+    def add_straight_line(y_center, width):
+        xs = gf.cross_section.cross_section(width=width, layer=layer)
+        line = c << gf.components.straight(length=120, cross_section=xs)
+        # Shift so it's centered around x=0
+        line.move((-60, y_center))
+
+    # 1. Central 5 lines
+    # Width = 0.1, spacing = 0.1, symmetrically placed around y=0
+    for y in [-0.4, -0.2, 0.0, 0.2, 0.4]:
+        add_straight_line(y_center=y, width=0.1)
+
+    # 2. Top 4 straight lines
+    # These represent the parts of the top block separated by straight slots
+    for y in [0.84, 0.97, 1.10, 1.23]:
+        add_straight_line(y_center=y, width=0.08)
+
+    # 3. Bottom 4 straight lines
+    # Mirrored bottom block straight segments
+    for y in [-0.84, -0.97, -1.10, -1.23]:
+        add_straight_line(y_center=y, width=0.08)
+
+    # ---------------------------------------------------------
+    # Helper: Add a line with a straight flat inner edge and flared outer edge
+    # ---------------------------------------------------------
+    def add_flared_line(xs_end_params, xs_mid_params):
+        xs_end = gf.cross_section.cross_section(
+            width=xs_end_params['width'], 
+            offset=xs_end_params['offset'], 
+            layer=layer
+        )
+        xs_mid = gf.cross_section.cross_section(
+            width=xs_mid_params['width'], 
+            offset=xs_mid_params['offset'], 
+            layer=layer
+        )
+        
+        # Smooth transition for the outer edge, keeping inner edge flat mathematically
+        t_left = gf.path.transition(xs_end, xs_mid, width_type='sine')
+        t_right = gf.path.transition(xs_mid, xs_end, width_type='sine')
+        
+        p_side = gf.path.straight(length=30)
+        p_center = gf.path.straight(length=60)
+        
+        c_left = gf.path.extrude_transition(p_side, t_left)
+        c_mid = gf.path.extrude(p_center, xs_mid)
+        c_right = gf.path.extrude_transition(p_side, t_right)
+        
+        ref_left = c << c_left
+        ref_mid = c << c_mid
+        ref_right = c << c_right
+        
+        # Connect seamlessly, spanning from x=-60 to x=+60 total length 120
+        ref_left.movex(-60)
+        ref_mid.connect("o1", ref_left.ports["o2"])
+        ref_right.connect("o1", ref_mid.ports["o2"])
+
+    # 4. Top flared line
+    # Bottom edge stays flat at y=1.32. Top edge flares from y=1.40 to y=2.00
+    add_flared_line(
+        xs_end_params={'width': 0.68, 'offset': 1.66},
+        xs_mid_params={'width': 0.08, 'offset': 1.36}
+    )
+
+    # 5. Bottom flared line
+    # Top edge stays flat at y=-1.32. Bottom edge flares from y=-1.40 to y=-2.00
+    add_flared_line(
+        xs_end_params={'width': 0.68, 'offset': -1.66},
+        xs_mid_params={'width': 0.08, 'offset': -1.36}
+    )
+
+    return c
+
+if __name__ == "__main__":
+    # Generate the device
+    device = flared_slotted_device()
+    
+    # REQUIRED: Save the output GDS file
+    device.write_gds("flared_slotted_device.gds")
+```

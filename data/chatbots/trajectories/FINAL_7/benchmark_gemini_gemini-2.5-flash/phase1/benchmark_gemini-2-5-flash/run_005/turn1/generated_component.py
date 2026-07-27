@@ -1,0 +1,176 @@
+import gdsfactory as gf
+import math
+
+# Define a default GDS layer
+LAYER = (1, 0)
+
+@gf.cell
+def inner_bar_with_holes(
+    bar_length: float = 1.0,
+    bar_width: float = 0.2,
+    hole_width: float = 0.3,
+    hole_height: float = 0.3,
+    hole_gap: float = 0.3,
+    layer: tuple[int, int] = LAYER,
+) -> gf.Component:
+    """
+    Creates a central horizontal bar with two rectangular holes cut out of it.
+    """
+    c = gf.Component()
+
+    # Main bar rectangle, centered at (0,0) initially
+    main_bar = gf.components.rectangle(size=(bar_length, bar_width), layer=layer, centered=True)
+
+    # Hole rectangle primitive, also centered
+    hole = gf.components.rectangle(size=(hole_width, hole_height), layer=layer, centered=True)
+
+    # Calculate x-offset for positioning the holes
+    offset_x = (hole_gap / 2) + (hole_width / 2)
+
+    # Create references for holes and move them to their respective positions
+    hole1_ref = c << hole
+    # Corrected: move expects a tuple (x, y)
+    hole1_ref.move(destination=(-offset_x, 0)) 
+
+    hole2_ref = c << hole
+    # Corrected: move expects a tuple (x, y)
+    hole2_ref.move(destination=(offset_x, 0))
+
+    # Perform boolean operations to cut the holes from the main bar
+    component_with_holes = gf.boolean(main_bar, hole1_ref, operation="not", layer=layer)
+    component_with_holes = gf.boolean(component_with_holes, hole2_ref, operation="not", layer=layer)
+
+    return component_with_holes
+
+
+@gf.cell
+def create_arm_segment(
+    start_point: tuple[float, float],
+    end_point: tuple[float, float],
+    width1: float,
+    width2: float,
+    layer: tuple[int, int] = LAYER,
+) -> gf.Component:
+    """
+    Creates a tapered arm segment between a start and end point with varying width.
+    The taper is positioned and rotated to connect the given points.
+    """
+    c = gf.Component()
+
+    # Calculate length and angle of the arm segment
+    dx = end_point[0] - start_point[0]
+    dy = end_point[1] - start_point[1]
+    length = (dx**2 + dy**2)**0.5
+    angle_deg = math.degrees(math.atan2(dy, dx))
+
+    # Create a horizontal taper component
+    taper = gf.components.taper(length=length, width1=width1, width2=width2, layer=layer)
+    taper_ref = c << taper
+
+    # Rotate the taper to the calculated angle
+    taper_ref.rotate(angle_deg)
+
+    # Move the taper's start point (o1 port, which is at (0,0) before rotation)
+    # to the desired start_point coordinate.
+    # Corrected: move expects a tuple (x, y)
+    taper_ref.move(destination=start_point)
+
+    return c
+
+
+@gf.cell
+def race_track_connector() -> gf.Component:
+    """
+    Recreates the race track connector device geometry.
+    """
+    final_device = gf.Component("race_track_connector")
+
+    # 1. Parameters for the overall device and outer frame
+    total_width = 3.0
+    total_height = 5.5
+    outer_wall_thickness = 0.25
+
+    # Radii for outer and inner ellipses, centered at (0,0)
+    r_x_outer = total_width / 2
+    r_y_outer = total_height / 2
+    r_x_inner = r_x_outer - outer_wall_thickness
+    r_y_inner = r_y_outer - outer_wall_thickness
+
+    # Create outer and inner ellipse components
+    # The 'centered' argument is not supported for gf.components.ellipse
+    # By default, gf.components.ellipse creates an ellipse centered at (0,0).
+    hollow_oval_outer = gf.components.ellipse(radii=(r_x_outer, r_y_outer), layer=LAYER)
+    hollow_oval_inner = gf.components.ellipse(radii=(r_x_inner, r_y_inner), layer=LAYER)
+
+    # Boolean operation to create the hollow outer frame
+    outer_frame_component = gf.boolean(hollow_oval_outer, hollow_oval_inner, operation="not", layer=LAYER)
+    final_device << outer_frame_component  # Add the outer frame to the final device
+
+    # 2. Parameters for the inner structures
+    bar_length = 1.0
+    bar_width = 0.2
+    hole_width = 0.3
+    hole_height = 0.3
+    hole_gap = 0.3
+    arm_start_width = bar_width
+    arm_oval_width = 0.4
+
+    # Vertical offset from the device center (0,0) to the center of each inner structure's bar
+    inner_structure_center_y_offset = 1.35
+
+    # 3. Create the top inner structure
+    # Create the central bar with holes component
+    bar_top_component = inner_bar_with_holes(bar_length, bar_width, hole_width, hole_height, hole_gap, layer=LAYER)
+
+    # Create a temporary component to move the bar_top to its correct y-position
+    bar_top_moved = gf.Component()
+    bar_top_moved_ref = bar_top_moved << bar_top_component
+    bar_top_moved_ref.movey(inner_structure_center_y_offset) # movey is a valid method for ComponentReference
+
+    # Calculate end points for the arms on the inner ellipse boundary
+    # We use an empirically adjusted y-coordinate for the arm connection point,
+    # then calculate the corresponding x-coordinate on the ellipse.
+    y_ellipse_connection_point = inner_structure_center_y_offset + 0.35
+    # Ensure y_ellipse_connection_point does not exceed r_y_inner to avoid math domain error
+    y_scaled = min(abs(y_ellipse_connection_point), r_y_inner * 0.999) # Small fudge factor
+    x_ellipse_connection_point = r_x_inner * (1 - (y_scaled / r_y_inner)**2)**0.5
+
+    # Define start and end points for the top-left arm
+    start_point_tl = (-bar_length / 2, inner_structure_center_y_offset)
+    end_point_tl = (-x_ellipse_connection_point, y_ellipse_connection_point)
+
+    # Create the top-left arm component
+    arm_tl_component = create_arm_segment(start_point_tl, end_point_tl, arm_start_width, arm_oval_width, layer=LAYER)
+
+    # Define start and end points for the top-right arm
+    start_point_tr = (bar_length / 2, inner_structure_center_y_offset)
+    end_point_tr = (x_ellipse_connection_point, y_ellipse_connection_point)
+
+    # Create the top-right arm component
+    arm_tr_component = create_arm_segment(start_point_tr, end_point_tr, arm_start_width, arm_oval_width, layer=LAYER)
+
+    # Boolean combine the central bar and its arms to form a single top structure
+    # Ensure all components passed to boolean are actual Component objects, not references directly.
+    # The `bar_top_moved` is a Component, and `arm_tl_component` / `arm_tr_component` are also Components.
+    top_structure_combined = gf.boolean(bar_top_moved, arm_tl_component, operation="or", layer=LAYER)
+    top_structure_combined = gf.boolean(top_structure_combined, arm_tr_component, operation="or", layer=LAYER)
+
+    final_device << top_structure_combined  # Add the combined top structure to the final device
+
+    # 4. Create the bottom inner structure by mirroring the top one
+    bottom_structure_combined = gf.Component()
+    # Mirror the 'top_structure_combined' component across the x-axis
+    bottom_structure_ref = bottom_structure_combined << top_structure_combined
+    bottom_structure_ref.mirror(p1=(0, 0), p2=(1, 0)) # Mirror across the x-axis
+
+    final_device << bottom_structure_combined  # Add the mirrored bottom structure to the final device
+
+    return final_device
+
+
+# Create and save the GDS device
+if __name__ == "__main__":
+    device = race_track_connector()
+    device.write_gds("race_track_connector.gds")
+    # To view the GDS file, you can uncomment the line below if you have a GDS viewer configured
+    # gf.show(device)

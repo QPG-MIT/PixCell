@@ -1,0 +1,88 @@
+import gdsfactory as gf
+
+@gf.cell
+def create_parametric_device():
+    """
+    Recreates the specified three-pronged waveguide structure using parametric
+    GDSFactory components, matching the provided image and footprint.
+
+    The device consists of a central tapering waveguide and two symmetric,
+    curved, and tapering outer arms. The geometry is constructed by combining a
+    standard taper component with a custom path-based component that has a
+    variable cross-section.
+    """
+    c = gf.Component()
+
+    # --- Design Parameters derived from footprint [40.0, 1.7] and image ---
+
+    # Overall dimensions
+    total_length = 40.0
+    total_height = 1.7
+
+    # Central taper ("needle") parameters
+    length_taper_mid = 28.0
+    width_taper_mid_start = 0.2
+    width_taper_mid_end = 0.02
+
+    # Outer arm parameters
+    width_arm_start = 0.15
+    width_arm_end = 0.5
+    gap_at_input = 0.1
+
+    # --- 1. Construct the Central Taper ---
+    taper_mid = gf.components.taper(
+        length=length_taper_mid,
+        width1=width_taper_mid_start,
+        width2=width_taper_mid_end,
+    )
+
+    # --- 2. Construct the Top Outer Arm (Path-Based) ---
+
+    # Calculate y-coordinates for the arm's path based on other parameters
+    y_start_arm = width_taper_mid_start / 2 + gap_at_input + width_arm_start / 2
+    y_end_arm = (total_height - width_arm_end) / 2
+
+    # FIX: Replaced the non-existent 'gf.path.bezier' with 'gf.path.smooth'.
+    # This function takes a list of waypoints and connects them with smooth bends.
+    # The waypoints are defined to create the straight-to-curved-to-straight profile.
+    waypoints = [
+        (0, y_start_arm),
+        (total_length * 0.55, y_start_arm),  # Defines end of initial straight section
+        (total_length * 0.80, y_end_arm),    # Defines start of final straight section
+        (total_length, y_end_arm),
+    ]
+    # The radius parameter controls the smoothness of the corners.
+    path_arm = gf.path.smooth(points=waypoints, radius=5)
+
+    # Define the cross-section transition from the narrow start to the wide end
+    xs_start = gf.cross_section.strip(width=width_arm_start)
+    xs_end = gf.cross_section.strip(width=width_arm_end)
+    transition = gf.path.transition(
+        cross_section1=xs_start, cross_section2=xs_end, width_type="sine"
+    )
+
+    # Extrude the path with the smooth transition to create the arm component
+    arm_top = gf.path.extrude(path=path_arm, cross_section=transition)
+
+    # --- 3. Assemble the Final Device ---
+
+    # Add the central taper and position it at the origin
+    ref_mid = c << taper_mid
+    ref_mid.xmin = 0
+    ref_mid.y = 0
+
+    # Add the top arm (its path is already defined in the correct absolute position)
+    ref_top = c << arm_top
+
+    # Add the bottom arm by mirroring the top arm across the x-axis
+    ref_bot = c << arm_top
+    ref_bot.mirror(p1=(0, 0), p2=(1, 0))
+
+    return c
+
+# Create an instance of the component for inspection or saving.
+final_device = create_parametric_device()
+
+# You can uncomment the following lines to display the component or save it
+# final_device.show()
+# final_device.write_gds("recreated_device.gds")

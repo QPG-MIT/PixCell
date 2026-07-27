@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:11:17.974484",
+      "api_duration_seconds": 23.273944854736328,
+      "usage": {
+        "input_tokens": 5201,
+        "output_tokens": 718,
+        "total_tokens": 8925
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: circle() got an unexpected keyword argument 'centered'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:11:44.043785",
+      "api_duration_seconds": 23.952352046966553,
+      "usage": {
+        "input_tokens": 5945,
+        "output_tokens": 711,
+        "total_tokens": 9872
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'list' object has no attribute 'is_regular_array'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:12:09.519933",
+      "api_duration_seconds": 16.459731817245483,
+      "usage": {
+        "input_tokens": 6687,
+        "output_tokens": 748,
+        "total_tokens": 9464
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 17833,
+    "output_tokens": 2177,
+    "total_tokens": 28261
+  }
+}

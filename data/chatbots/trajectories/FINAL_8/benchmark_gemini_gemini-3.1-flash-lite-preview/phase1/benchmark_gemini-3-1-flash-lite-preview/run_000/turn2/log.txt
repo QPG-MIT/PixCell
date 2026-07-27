@@ -1,0 +1,81 @@
+Turn 2 Response:
+
+The error occurs because `bend_euler` does not accept a `direction` argument. In GDSFactory, you control the direction of a turn using the `angle` parameter (positive for counter-clockwise, negative for clockwise) or by rotating the component after placement.
+
+To reconstruct the image, which shows 5 parallel horizontal waveguides with curves at both ends (forming "staple" or "U" shapes), we will build a single unit using primitives and then stack them vertically.
+
+Here is the corrected, robust script:
+
+```python
+import gdsfactory as gf
+
+# Define the cross-section
+xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+@gf.cell
+def single_unit():
+    """
+    Creates one 'U' shaped waveguide (Horizontal straight with bends at both ends).
+    """
+    c = gf.Component()
+    
+    # 1. Left bend (Curve 90 degrees upwards)
+    # bend_euler angle=90 turns 90 degrees counter-clockwise
+    b1 = c << gf.components.bend_euler(angle=90, cross_section=xs)
+    
+    # 2. Middle straight section
+    s = c << gf.components.straight(length=20, cross_section=xs)
+    
+    # 3. Right bend (Curve 90 degrees downwards)
+    # Using angle=-90 turns 90 degrees clockwise (completing the U shape)
+    b2 = c << gf.components.bend_euler(angle=-90, cross_section=xs)
+    
+    # Connect the components
+    # Connect the output of the left bend to the start of the straight
+    b1.connect("o2", s.ports["o1"])
+    
+    # Connect the end of the straight to the input of the right bend
+    b2.connect("o1", s.ports["o2"])
+    
+    # Return the component with external ports
+    c.add_port("o1", port=b1.ports["o1"])
+    c.add_port("o2", port=b2.ports["o2"])
+    
+    return c
+
+@gf.cell
+def device_array():
+    """
+    Creates 5 parallel units stacked vertically.
+    """
+    c = gf.Component()
+    
+    num_waveguides = 5
+    spacing = 3.0
+    
+    for i in range(num_waveguides):
+        # Create a unit
+        unit = c << single_unit()
+        
+        # Position the unit based on index to create the parallel stack
+        # This moves each unit up along the Y-axis
+        unit.movey(i * spacing)
+        
+    return c
+
+# --- Execution ---
+if __name__ == "__main__":
+    device = device_array()
+    
+    # Save the file
+    device.write_gds("device_fixed.gds")
+    
+    print("Success: 'device_fixed.gds' produced.")
+    # device.show() # Uncomment to open in KLayout
+```
+
+### Key Changes Made:
+1.  **Removed `direction`:** Deleted the invalid keyword argument that caused the `TypeError`.
+2.  **Angle Control:** Used `angle=90` and `angle=-90` in `bend_euler` to control the curvature direction, creating a proper "U" or "staple" shape.
+3.  **Port Connectivity:** Used `.connect()` to chain the components. This is the "GDSFactory way"—it aligns ports automatically so you don't have to calculate precise `(x, y)` coordinates, ensuring the waveguides stay perfectly aligned even if you change the bend radius or straight length.
+4.  **Arraying:** Used a loop to position the units along the Y-axis, creating the stacked, parallel structure seen in your reference image.

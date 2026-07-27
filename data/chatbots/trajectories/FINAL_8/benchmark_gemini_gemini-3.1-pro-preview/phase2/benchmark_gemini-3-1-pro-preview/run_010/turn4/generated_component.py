@@ -1,0 +1,105 @@
+import gdsfactory as gf
+
+@gf.cell
+def apodized_directional_coupler() -> gf.Component:
+    """
+    Creates an apodized directional coupler matching the specified footprint (120.0 x 4.0 um).
+    Refined geometric construction:
+    - 5 straight, thin waveguides form the center bus.
+    - Top and bottom buses consist of 1 thick outer line and 4 thin inner lines.
+    - These outer buses perfectly merge into a solid block in the center section (gap=0) 
+      and fan out via calculated S-bends to have equal spacing at the ends.
+    - The outermost edges reach exactly to y = +/- 2.0 to fulfill the 4.0um height footprint.
+    """
+    c = gf.Component("apodized_directional_coupler")
+
+    # --- Length Segmentation ---
+    # Total length must equal 120.0 to match footprint constraints
+    L_total = 120.0
+    L_center = 40.0
+    L_bend = 20.0
+    L_end = 20.0  # (120 - 40 - 20*2) / 2 = 20.0
+    
+    # --- Width Parameters ---
+    w_thin = 0.05
+    w_thick = 0.50
+    layer = (1, 0)
+
+    # --- Assembly Helpers ---
+    def add_straight_lane(y_pos: float, width: float):
+        """Adds a line running perfectly straight across the entire component."""
+        xs = gf.cross_section.cross_section(width=width, layer=layer)
+        lane = c << gf.components.straight(length=L_total, cross_section=xs)
+        lane.move((-L_total / 2.0, y_pos))
+
+    def add_bent_lane(y_center: float, width: float, dy: float):
+        """Constructs a lane with a straight center, S-bends, and straight ends."""
+        xs = gf.cross_section.cross_section(width=width, layer=layer)
+        
+        # Center Segment
+        str_c = c << gf.components.straight(length=L_center, cross_section=xs)
+        str_c.move((-L_center / 2.0, y_center))
+        
+        # Right Side Segment (Bend + Straight)
+        bend_r = c << gf.components.bend_s(size=(L_bend, dy), cross_section=xs)
+        bend_r.connect('o1', str_c.ports['o2'])
+        str_r = c << gf.components.straight(length=L_end, cross_section=xs)
+        str_r.connect('o1', bend_r.ports['o2'])
+        
+        # Left Side Segment (Bend + Straight) - dy is negated to bend symmetrically
+        bend_l = c << gf.components.bend_s(size=(L_bend, -dy), cross_section=xs)
+        bend_l.connect('o2', str_c.ports['o1'])
+        str_l = c << gf.components.straight(length=L_end, cross_section=xs)
+        str_l.connect('o1', bend_l.ports['o1'])
+
+    # --- 1. Center Bus ---
+    # 5 thin lines precisely grouped in the exact center
+    pitch_center = 0.10
+    for i in range(-2, 3):
+        add_straight_lane(i * pitch_center, w_thin)
+
+    # --- 2. Outer Bus Geometry Calculations ---
+    # To create the "solid block" effect in the center, the lines must be perfectly adjacent.
+    # To create the "fanned out" effect at the ends, they must be separated by a gap.
+    
+    # Center positions (y_c) where lines are flush against each other (pitch = width)
+    y_thin1_c = 0.40  # Starting offset from the center bus
+    y_thin2_c = 0.45
+    y_thin3_c = 0.50
+    y_thin4_c = 0.55
+    y_thick_c = 0.825 # Placed adjacent to the last thin line (0.55 + 0.025 + 0.25)
+    
+    # End positions (y_e) where lines are spread out
+    # Adjusted perfectly so the topmost edge of the thick line hits exactly +2.0
+    y_thin1_e = 0.725
+    y_thin2_e = 0.925
+    y_thin3_e = 1.125
+    y_thin4_e = 1.325
+    y_thick_e = 1.750 # Top edge = 1.750 + w_thick/2(0.25) = 2.000 
+    
+    # Calculate required vertical shifts (dy) for the S-bends
+    dy_thin1 = y_thin1_e - y_thin1_c
+    dy_thin2 = y_thin2_e - y_thin2_c
+    dy_thin3 = y_thin3_e - y_thin3_c
+    dy_thin4 = y_thin4_e - y_thin4_c
+    dy_thick = y_thick_e - y_thick_c
+
+    # --- 3. Build Top Bus ---
+    add_bent_lane(y_thin1_c, w_thin, dy_thin1)
+    add_bent_lane(y_thin2_c, w_thin, dy_thin2)
+    add_bent_lane(y_thin3_c, w_thin, dy_thin3)
+    add_bent_lane(y_thin4_c, w_thin, dy_thin4)
+    add_bent_lane(y_thick_c, w_thick, dy_thick)
+
+    # --- 4. Build Bottom Bus (Symmetric Mirror) ---
+    add_bent_lane(-y_thin1_c, w_thin, -dy_thin1)
+    add_bent_lane(-y_thin2_c, w_thin, -dy_thin2)
+    add_bent_lane(-y_thin3_c, w_thin, -dy_thin3)
+    add_bent_lane(-y_thin4_c, w_thin, -dy_thin4)
+    add_bent_lane(-y_thick_c, w_thick, -dy_thick)
+
+    return c
+
+if __name__ == "__main__":
+    device = apodized_directional_coupler()
+    device.write_gds("apodized_directional_coupler.gds")

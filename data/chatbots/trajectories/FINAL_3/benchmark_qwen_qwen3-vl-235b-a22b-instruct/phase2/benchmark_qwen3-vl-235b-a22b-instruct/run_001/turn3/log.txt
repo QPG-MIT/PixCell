@@ -1,0 +1,58 @@
+Turn 3 Response:
+
+Looking at the target image versus the current output, I can see a fundamental mismatch:
+
+The target image shows a **single waveguide** that starts straight, then curves downward in a smooth S-like transition, and then becomes straight again. It's a single continuous path with a smooth bend.
+
+The current code creates **two separate waveguides** (top and bottom) with S-bends, which results in two parallel paths that look like a dumbbell or hourglass shape.
+
+To fix this, I need to:
+1. Create only one waveguide, not two
+2. Use a smooth path that transitions from straight to curved and back to straight
+3. Use the path system (which is the true parametric method) to create a custom smooth curve
+
+The key insight is that the target device is a single waveguide with a smooth, continuous curvature transition, not two separate S-bends. I should use `gf.Path` with `gf.path.smooth()` or create a custom path with control points to achieve the smooth transition shown in the target image.
+
+Here's the improved version:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreate_s_bend_device():
+    c = gf.Component()
+    
+    # Define cross-section for waveguide
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create a smooth path that matches the target shape
+    # Start straight, then curve down, then straight again
+    points = [
+        (0, 0),           # Start point
+        (30, 0),          # First straight segment
+        (60, -2),         # Curve down
+        (90, -2),         # Continue at lower level
+        (120, -2)         # End point
+    ]
+    
+    # Create path with smooth transitions
+    path = gf.path.smooth(points=points, radius=10.0)
+    
+    # Extrude the path to create the waveguide
+    waveguide = gf.path.extrude(path, cross_section=xs)
+    
+    # Add the waveguide to the component
+    ref = c << waveguide
+    
+    # Add ports at the beginning and end
+    c.add_port("o1", port=ref.ports["o1"])
+    c.add_port("o2", port=ref.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = recreate_s_bend_device()
+device.write_gds("s_bend_device.gds")
+```
+
+This code creates a single waveguide with a smooth transition from the top level to the bottom level, matching the target image's continuous curve. The `gf.path.smooth()` function will automatically create smooth bends between the specified points, and the radius parameter controls how gradual the curves are.

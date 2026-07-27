@@ -1,0 +1,217 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    """
+    Recreates the geometry from the provided image using GDSFactory parametric functions.
+
+    The device consists of:
+    - A central straight waveguide.
+    - Two C-shaped arms (top and bottom) that are mirror images of each other.
+      Each C-shaped arm has a pointed tip on the left and a smooth, rounded end on the right.
+    - Two arrays of vertical grating-like bars, positioned between the central line and each C-arm.
+    """
+    c = gf.Component("my_device")
+
+    # Define overall device dimensions from the footprint constraint
+    TOTAL_WIDTH = 18.24
+    TOTAL_HEIGHT = 0.7
+    LAYER = (1, 0) # Default layer for all geometries
+
+    # Derived dimensions for features
+    ARM_WIDTH = 0.15          # Width of the C-shaped arms
+    GAP_ARM_MIDDLE = 0.1      # Vertical gap between C-arm and middle line
+    MIDDLE_LINE_WIDTH = 0.2   # Width of the central straight line
+
+    # Parameters for C-arms' internal bends and custom ends
+    tip_length = 0.5 # Length of the left pointed tip
+    # R_bend_U defines the centerline radius of the 180-degree U-bend
+    R_bend_U = 0.2 # Visually estimated from the image for the C-arm's vertical curvature.
+
+    # Cross-sections for different features
+    # FIX: Add radius_min to XSECTION_ARM to allow for tight bends.
+    # The radius_min should be less than or equal to the smallest bend radius used in components
+    # that utilize this cross_section. Here, it's R_bend_U.
+    XSECTION_ARM = gf.cross_section.cross_section(width=ARM_WIDTH, layer=LAYER, radius_min=R_bend_U)
+    XSECTION_MIDDLE = gf.cross_section.cross_section(width=MIDDLE_LINE_WIDTH, layer=LAYER)
+
+
+    # Calculate vertical Y-coordinates for feature centerlines/edges, relative to y=0
+    y_middle_line_center = 0
+
+    # Calculate the exact Y-center for the top C-arm component:
+    # y=0 is the center of the middle line.
+    # Top edge of middle line: `MIDDLE_LINE_WIDTH / 2`.
+    # Gap starts here: `MIDDLE_LINE_WIDTH / 2`.
+    # Gap ends here: `MIDDLE_LINE_WIDTH / 2 + GAP_ARM_MIDDLE`.
+    # This is the bottom-most edge of the top C-arm.
+    # The C-arm's overall vertical span is `2 * R_bend_U + ARM_WIDTH`.
+    # The center of this span, relative to its own bottom edge, is `(ARM_WIDTH/2 + R_bend_U)`.
+    # So, the overall center `y_top_arm_center_for_call` should be:
+    y_top_arm_center_for_call = (
+        y_middle_line_center
+        + MIDDLE_LINE_WIDTH / 2
+        + GAP_ARM_MIDDLE
+        + (ARM_WIDTH / 2 + R_bend_U) # Center of the C-arm relative to its bottom edge
+    )
+
+
+    # 1. Central Straight Line
+    middle_line_ref = c << gf.components.straight(length=TOTAL_WIDTH, cross_section=XSECTION_MIDDLE)
+    middle_line_ref.movey(y_middle_line_center) # Ensure it's centered at y=0
+
+    @gf.cell
+    def create_c_arm_with_ends(y_center, total_width, r_bend_u, tip_len, arm_width, xsection_arm, layer):
+        """
+        Creates a single C-shaped arm, including the pointed left tip and rounded right end.
+        `r_bend_u` is the centerline radius of the main 180-degree bend.
+        `y_center` is the desired vertical center of the entire C-arm structure.
+        """
+        arm_container = gf.Component() # Temporary component to assemble and boolean parts
+
+        # Define key X-coordinates for layout
+        x_start_arm = 0
+        x_end_arm = total_width
+        
+        # X-coordinate of the center of the right rounded end-cap
+        # The end cap has radius arm_width/2. Its rightmost point is at x_end_arm.
+        # So its center is at `x_end_arm - arm_width / 2`.
+        x_end_cap_center = x_end_arm - arm_width / 2
+        
+        # X-coordinate where the 180-degree U-bend starts (left edge of bend)
+        # The U-bend spans 2 * r_bend_u horizontally.
+        x_start_u_bend = x_end_cap_center - (2 * r_bend_u)
+        
+        # X-coordinate where the taper ends (wide end)
+        x_end_taper = tip_len
+
+        # 1. Left pointed tip (taper)
+        # Taper component points right by default (o1: width1=0, o2: width2=arm_width)
+        taper_tip_comp = gf.components.taper(
+            length=tip_len,
+            width1=0,          # Pointy end on the left (port o1)
+            width2=arm_width,  # Wide end on the right (port o2)
+            cross_section=xsection_arm
+        )
+        tip_ref = arm_container << taper_tip_comp
+        # The taper's centerline is at y=0 by default.
+        # The entire C-arm structure is centered at y_center.
+        # The top straight of the C-arm should be at `y_center + r_bend_u`.
+        # So, the taper's centerline needs to be at `y_center + r_bend_u`.
+        tip_ref.movey(y_center + r_bend_u) 
+
+        # 2. Top Straight Waveguide
+        # Connects from the wide end of the taper to the start of the U-bend.
+        top_straight_length = x_start_u_bend - x_end_taper
+        # Ensure length is positive to avoid issues. Minimal length for connectivity.
+        if top_straight_length < 0.001: top_straight_length = 0.001
+
+        top_straight_comp = gf.components.straight(
+            length=top_straight_length,
+            cross_section=xsection_arm
+        )
+        top_straight_ref = arm_container << top_straight_comp
+        # Connect the left end (o1) of the top straight to the right end (o2) of the taper
+        top_straight_ref.connect("o1", tip_ref.ports["o2"])
+
+        # 3. Main 180-degree U-bend
+        u_bend_comp = gf.components.bend_euler(
+            radius=r_bend_u,
+            angle=180, # Creates a U-turn
+            cross_section=xsection_arm
+        )
+        u_bend_ref = arm_container << u_bend_comp
+        # Connect the top-left port (o1) of the U-bend to the right end (o2) of the top straight
+        u_bend_ref.connect("o1", top_straight_ref.ports["o2"])
+
+        # 4. Bottom Straight Waveguide
+        # Connects from the bottom-right port (o2) of the U-bend, going left.
+        # Length is typically the same as the top straight for a symmetrical C-arm.
+        bottom_straight_length = top_straight_length
+
+        bottom_straight_comp = gf.components.straight(
+            length=bottom_straight_length,
+            cross_section=xsection_arm
+        )
+        bottom_straight_ref = arm_container << bottom_straight_comp
+        # Rotate by 180 degrees so it points left
+        bottom_straight_ref.rotate(180)
+        # Connect its now-rightmost port (o1, after rotation) to the U-bend's bottom-right port (o2)
+        bottom_straight_ref.connect("o1", u_bend_ref.ports["o2"])
+
+        # 5. Right rounded end cap
+        end_cap_radius = arm_width / 2
+        end_cap_comp = gf.components.circle(radius=end_cap_radius, layer=layer)
+        end_cap_ref = arm_container << end_cap_comp
+        # Position the end cap at the end of the U-bend's bottom branch.
+        # The `u_bend_ref.ports["o2"]` represents the centerline of the end of the bottom branch.
+        end_cap_ref.move(u_bend_ref.ports["o2"].center)
+
+        # Boolean union all parts into a single component
+        # This is done by adding the first component, then sequentially boolean-ORing with others.
+        final_arm_geom = arm_container.add(tip_ref) # Start with the taper
+        final_arm_geom = gf.boolean(final_arm_geom, top_straight_ref, operation="or", layer=layer)
+        final_arm_geom = gf.boolean(final_arm_geom, u_bend_ref, operation="or", layer=layer)
+        final_arm_geom = gf.boolean(final_arm_geom, bottom_straight_ref, operation="or", layer=layer)
+        final_arm_geom = gf.boolean(final_arm_geom, end_cap_ref, operation="or", layer=layer)
+        
+        # Return the booleaned component
+        return final_arm_geom
+
+
+    # 2. Top C-Arm
+    top_c_arm_complete_comp = create_c_arm_with_ends(y_top_arm_center_for_call, TOTAL_WIDTH, R_bend_U, tip_length, ARM_WIDTH, XSECTION_ARM, LAYER)
+    c << top_c_arm_complete_comp
+
+    # 3. Grating Bars for Top Arm
+    bar_width = 0.04  # Width of each individual grating bar
+    bar_height = GAP_ARM_MIDDLE # Height of the bars, filling the gap
+    bar_spacing = 0.08 # Horizontal spacing between centers of consecutive bars
+    
+    # Define the horizontal range where the grating bars are placed
+    # Starts after the pointed tip, ends before the C-arm's right bend begins
+    x_start_grating = tip_length + 0.5
+    # The U-bend starts its horizontal sweep at x_start_u_bend.
+    # We want to end the grating bars before this, leaving some visual margin.
+    x_end_grating = TOTAL_WIDTH - (ARM_WIDTH/2 + 2*R_bend_U) - 0.2
+    
+    # Calculate the number of bars required to fit within the defined range
+    num_bars = int((x_end_grating - x_start_grating) / bar_spacing)
+    if num_bars <= 0: num_bars = 1 # Ensure at least one bar if range is too small
+
+    # Vertical position for top grating bars (centered within the gap)
+    y_grating_center_top = y_middle_line_center + MIDDLE_LINE_WIDTH / 2 + GAP_ARM_MIDDLE / 2
+    
+    # Create a prototype rectangle component for a single grating bar
+    grating_bar_prototype = gf.components.rectangle(size=(bar_width, bar_height), layer=LAYER, centered=True)
+    
+    # Place multiple instances of the grating bar
+    for i in range(num_bars):
+        bar_ref = c << grating_bar_prototype
+        bar_ref.movex(x_start_grating + i * bar_spacing)
+        bar_ref.movey(y_grating_center_top)
+
+    # 4. Bottom C-Arm (mirror of the top C-arm)
+    bottom_c_arm_ref = c << top_c_arm_complete_comp # Add a reference to the top arm's component
+    bottom_c_arm_ref.mirror((True, False)) # Mirror across the x-axis (y=0)
+
+    # 5. Grating Bars for Bottom Arm
+    y_grating_center_bottom = -y_grating_center_top # Symmetrical vertical position
+    
+    for i in range(num_bars):
+        bar_ref = c << grating_bar_prototype
+        bar_ref.movex(x_start_grating + i * bar_spacing)
+        bar_ref.movey(y_grating_center_bottom)
+
+    return c
+
+# Create and save the GDS device file
+device = my_device()
+device.write_gds("my_device.gds")
+
+# Optional: Uncomment the line below to view the component if a GDS viewer is configured
+# gf.show(device)
+```

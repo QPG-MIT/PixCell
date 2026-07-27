@@ -1,0 +1,138 @@
+Turn 4 Response:
+
+The error `AttributeError: 'super' object has no attribute...` occurred because I attempted to add a polygon directly to a `ComponentReference` (the result of `c << component`) rather than to the `Component` itself. Additionally, the boolean operation is cleaner when performed between two distinct `Component` objects.
+
+Here is the corrected script. I have refactored the `create_wing_shape` function to build the envelope and slots in separate valid `Component` objects before applying the boolean operation.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_120_4():
+    """
+    Parametric recreation of the symmetric waveguide structure.
+    Footprint: 120um x 4um.
+    Features: 
+    - Central bus of 5 waveguides.
+    - Top/Bottom wings with cosine-tapered side rails.
+    - Precise vertical budgeting to fit 4um height constraint.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions & Constants ---
+    total_len = 120.0
+    layer_core = (1, 0)
+    
+    # --- Vertical Feature Budgeting (Target Height = 4.0um) ---
+    line_w = 0.15
+    gap_w = 0.15
+    
+    # 1. Central Bus: 5 lines + 4 gaps
+    n_bus = 5
+    h_bus = n_bus * line_w + (n_bus - 1) * gap_w  # 1.35 um height
+    
+    # 2. Wings: 4 bars + 3 slots (per wing)
+    n_wing_bars = 4
+    n_wing_slots = 3
+    h_wing = n_wing_bars * line_w + n_wing_slots * gap_w # 1.05 um height
+    
+    # 3. Isolation Gap (Spacing between Bus and Wings)
+    # Budget: 4.0um - (1.35 + 2*1.05) = 0.55 um remaining
+    # Divide by 2 gaps -> 0.275 um each
+    bus_wing_gap = 0.275
+    
+    # --- Horizontal Geometry Parameters ---
+    w_base = 120.0    # Full width at the center (near bus)
+    w_tip = 110.0     # Width at the outer edges (tapered)
+    rail_w = 2.0      # Width of the solid side rails
+
+    # --- 1. Central Bus Construction ---
+    xs_bus = gf.cross_section.cross_section(width=line_w, layer=layer_core)
+    wg_straight = gf.components.straight(length=total_len, cross_section=xs_bus)
+    
+    # Place 5 lines centered around y=0
+    y_start_bus = -h_bus / 2 + line_w / 2
+    for i in range(n_bus):
+        ref = c << wg_straight
+        ref.x = 0
+        ref.y = y_start_bus + i * (line_w + gap_w)
+
+    # --- 2. Wing Generator Function ---
+    def create_wing_shape():
+        """
+        Creates the wing component with a cosine taper profile.
+        """
+        # A. Create Outer Envelope (Tapered Shape)
+        # We create a standalone component for the envelope polygon
+        envelope_cmp = gf.Component()
+        
+        num_pts = 101
+        delta = (w_base - w_tip) / 2
+        
+        pts_right = []
+        for i in range(num_pts):
+            # y coordinate from 0 (base) to h_wing (tip)
+            yi = (i / (num_pts - 1)) * h_wing
+            y_norm = yi / h_wing
+            
+            # Cosine taper: slope is 0 at y=0, max at y=h_wing
+            offset = delta * (1 - np.cos(y_norm * np.pi / 2))
+            xi = (w_base / 2) - offset
+            pts_right.append((xi, yi))
+            
+        # Mirror right edge to get left edge
+        pts_left = [(-x, y) for x, y in reversed(pts_right)]
+        envelope_pts = pts_right + pts_left
+        
+        envelope_cmp.add_polygon(envelope_pts, layer=layer_core)
+        
+        # B. Create Internal Slots
+        # We create a separate component to hold the slots
+        slots_cmp = gf.Component()
+        
+        for i in range(n_wing_slots):
+            # Calculate Y center of the slot
+            y_slot_center = line_w + gap_w/2 + i * (line_w + gap_w)
+            
+            # Calculate the envelope width at this specific Y height
+            y_norm_slot = y_slot_center / h_wing
+            offset_at_slot = delta * (1 - np.cos(y_norm_slot * np.pi / 2))
+            w_env_at_slot = w_base - 2 * offset_at_slot
+            
+            # Slot width is envelope width minus the two side rails
+            w_slot = w_env_at_slot - 2 * rail_w
+            
+            if w_slot > 0:
+                s = slots_cmp << gf.components.rectangle(
+                    size=(w_slot, gap_w), 
+                    layer=layer_core, 
+                    centered=True
+                )
+                s.y = y_slot_center
+                s.x = 0
+        
+        # C. Boolean Subtract
+        # Subtract slots from envelope
+        return gf.boolean(envelope_cmp, slots_cmp, operation="not", layer=layer_core)
+
+    # --- 3. Place Wings ---
+    wing_final = create_wing_shape()
+    
+    # Place Top Wing
+    top_ref = c << wing_final
+    top_ref.ymin = h_bus / 2 + bus_wing_gap
+    top_ref.x = 0
+    
+    # Place Bottom Wing (Mirrored)
+    bot_ref = c << wing_final
+    bot_ref.mirror(p1=(0,0), p2=(1,0)) # Mirror vertically across X-axis
+    bot_ref.ymax = -(h_bus / 2 + bus_wing_gap)
+    bot_ref.x = 0
+    
+    return c
+
+if __name__ == "__main__":
+    device = device_120_4()
+    device.write_gds("device_120_4.gds")
+```

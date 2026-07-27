@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.937519",
+      "api_duration_seconds": 121.67103695869446,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 1215,
+        "total_tokens": 17444
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: boolean() missing 1 required positional argument: 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:13.068005",
+      "api_duration_seconds": 12.572818040847778,
+      "usage": {
+        "input_tokens": 3590,
+        "output_tokens": 1300,
+        "total_tokens": 4972
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'geometry'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:27.111827",
+      "api_duration_seconds": 22.010753870010376,
+      "usage": {
+        "input_tokens": 4919,
+        "output_tokens": 1352,
+        "total_tokens": 7701
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: Component.offset() missing 1 required positional argument: 'layer'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10856,
+    "output_tokens": 3867,
+    "total_tokens": 30117
+  }
+}

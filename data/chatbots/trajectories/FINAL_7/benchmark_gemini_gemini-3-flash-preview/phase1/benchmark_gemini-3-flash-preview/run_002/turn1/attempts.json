@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.842877",
+      "api_duration_seconds": 76.59270191192627,
+      "usage": {
+        "input_tokens": 3170,
+        "output_tokens": 1282,
+        "total_tokens": 13401
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'circle_gdsfactorypcomponentspshapespcircle_R1p5_AR2p5_L1_0' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:27.982992",
+      "api_duration_seconds": 39.84525203704834,
+      "usage": {
+        "input_tokens": 4510,
+        "output_tokens": 1367,
+        "total_tokens": 10242
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:14.374522",
+      "api_duration_seconds": 25.044077157974243,
+      "usage": {
+        "input_tokens": 5896,
+        "output_tokens": 1276,
+        "total_tokens": 9113
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'list' object has no attribute 'is_regular_array'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13576,
+    "output_tokens": 3925,
+    "total_tokens": 32756
+  }
+}

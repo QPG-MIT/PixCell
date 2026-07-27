@@ -1,0 +1,134 @@
+import gdsfactory as gf
+from gdsfactory.cross_section import Section
+
+@gf.cell
+def create_waist_structure(
+    length: float = 120.0,
+    waist_length: float = 60.0,
+    dy: float = 0.4,
+    cross_section="xs_multi",
+) -> gf.Component:
+    """
+    Creates a symmetric waist structure (wide-narrow-wide) by connecting
+    an inward S-bend, a straight section, and an outward S-bend.
+
+    Args:
+        length: Total horizontal length of the structure.
+        waist_length: Length of the central narrow straight section.
+        dy: The vertical displacement of the bends.
+        cross_section: The cross_section to extrude.
+    """
+    c = gf.Component()
+    
+    # The horizontal length of each S-bend transition
+    dx = (length - waist_length) / 2.0
+    
+    # Create the segment components
+    bend_in = gf.components.bend_s(size=(dx, -dy), cross_section=cross_section)
+    straight_waist = gf.components.straight(length=waist_length, cross_section=cross_section)
+    # The outward bend is the reverse of the inward one
+    bend_out = gf.components.bend_s(size=(dx, dy), cross_section=cross_section)
+
+    # Add references and connect them sequentially
+    b1_ref = c << bend_in
+    s_ref = c << straight_waist
+    b2_ref = c << bend_out
+
+    s_ref.connect("o1", b1_ref.ports["o2"])
+    b2_ref.connect("o1", s_ref.ports["o2"])
+
+    # Expose the start and end ports for the new component
+    c.add_port("o1", port=b1_ref.ports["o1"])
+    c.add_port("o2", port=b2_ref.ports["o2"])
+    
+    return c
+
+
+@gf.cell
+def create_spool_device():
+    """
+    Creates a symmetric device with a central straight bus and two outer
+    waist structures, resembling a spool or hourglass.
+    Parameters are derived to match the target image and footprint [120.0, 4.0].
+    """
+    c = gf.Component("SpoolDevice")
+    layer = (1, 0)
+
+    # --- 1. Define Parameters from Analysis ---
+    
+    # Footprint constraints
+    total_length = 120.0
+    total_height_at_ends = 4.0
+
+    # From visual analysis, the device consists of 3 sections and 2 inter-section
+    # gaps. We assume these 5 vertical components are of equal height at the ends.
+    section_height = total_height_at_ends / 5.0  # = 0.8 um
+    inter_section_gap_at_ends = section_height # = 0.8 um
+    
+    # Within each 5-line section, assume the 5 lines and 4 gaps are of equal width.
+    # 9 * line_width = section_height
+    line_width = section_height / 9.0  # approx 0.089 um
+    line_gap = line_width
+    
+    # Horizontal geometry for the waist structure
+    waist_length = 60.0
+    
+    # The gap at the device waist appears roughly half the gap at the ends.
+    # The change in gap size determines the vertical displacement (dy) of the bends.
+    gap_at_waist = inter_section_gap_at_ends / 2.0 # = 0.4 um
+    dy = inter_section_gap_at_ends - gap_at_waist  # = 0.4 um
+
+    # Vertical center-to-center spacing of the sections at the ends of the device.
+    center_spacing_at_ends = section_height + inter_section_gap_at_ends # = 1.6 um
+
+    # --- 2. Define the 5-line Cross-Section ---
+    
+    pitch = line_width + line_gap
+    offsets = [-2 * pitch, -1 * pitch, 0, 1 * pitch, 2 * pitch]
+    
+    sections = [
+        Section(width=line_width, offset=offset, layer=layer) for offset in offsets
+    ]
+    xs_multi = gf.cross_section.cross_section(sections=sections)
+
+    # --- 3. Create Child Components ---
+    
+    # Middle straight bus
+    middle_bus = gf.components.straight(length=total_length, cross_section=xs_multi)
+    
+    # Reusable outer waist structure component
+    outer_waist_component = create_waist_structure(
+        length=total_length,
+        waist_length=waist_length,
+        dy=dy,
+        cross_section=xs_multi,
+    )
+    
+    # --- 4. Assemble Final Device ---
+    
+    # Add references of the child components to the main component
+    bus_ref = c << middle_bus
+    top_waist_ref = c << outer_waist_component
+    bot_waist_ref = c << outer_waist_component
+
+    # Position the components. The middle bus is centered at (0, 0) by default.
+    
+    # The top waist component is placed above the center. Its path starts at y=center_spacing.
+    top_waist_ref.y = center_spacing_at_ends
+    
+    # The bottom waist is mirrored vertically and placed below the center.
+    bot_waist_ref.mirror_x() 
+    bot_waist_ref.y = -center_spacing_at_ends
+    
+    c.flatten() # Combine polygons for a clean GDS
+    return c
+
+
+# --- Main execution block to generate the GDS file ---
+if __name__ == "__main__":
+    device_to_write = create_spool_device()
+    device_to_write.write_gds("output.gds")
+    print("GDS file 'output.gds' has been successfully generated.")
+    
+    # Optional: uncomment the line below to show the geometry in a viewer
+    # device_to_write.show(show_ports=False)

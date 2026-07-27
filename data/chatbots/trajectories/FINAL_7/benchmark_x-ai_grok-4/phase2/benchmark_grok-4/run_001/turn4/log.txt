@@ -1,0 +1,77 @@
+Turn 4 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+    t = 0.5
+    outer_straight = 2.5
+    outer_radius = 1.5
+    outer_height = 3.0
+    inner_height = outer_height - 2 * t
+    inner_radius = outer_radius - t
+    empty = gf.Component()
+
+    # Outer solid stadium
+    outer = gf.Component()
+    rect_o = gf.components.rectangle(size=(outer_straight, outer_height), layer=layer, centered=True)
+    outer << rect_o
+    cl = outer << gf.components.circle(radius=outer_radius, layer=layer)
+    cl.move((-outer_straight / 2, 0))
+    cr = outer << gf.components.circle(radius=outer_radius, layer=layer)
+    cr.move((outer_straight / 2, 0))
+
+    # Merge outer
+    outer_merged = gf.boolean(outer, empty, operation="or", layer=layer)
+
+    # Inner solid stadium
+    inner = gf.Component()
+    rect_i = gf.components.rectangle(size=(outer_straight, inner_height), layer=layer, centered=True)
+    inner << rect_i
+    cl_i = inner << gf.components.circle(radius=inner_radius, layer=layer)
+    cl_i.move((-outer_straight / 2, 0))
+    cr_i = inner << gf.components.circle(radius=inner_radius, layer=layer)
+    cr_i.move((outer_straight / 2, 0))
+
+    # Merge inner
+    inner_merged = gf.boolean(inner, empty, operation="or", layer=layer)
+
+    # Hollow frame
+    frame = gf.boolean(outer_merged, inner_merged, operation="not", layer=layer)
+
+    # Gaps to subtract (now full thickness)
+    gaps = gf.Component()
+    gap_x_size = 0.7
+    gap_y_size = 0.5
+    gap_y = inner_height / 2 + t / 2
+    gap = gf.components.rectangle(size=(gap_x_size, gap_y_size), layer=layer, centered=True)
+    gt = gaps << gap
+    gt.move((0, gap_y))
+    gb = gaps << gap
+    gb.move((0, -gap_y))
+
+    # Frame with gaps removed
+    frame_with_gaps = gf.boolean(frame, gaps, operation="not", layer=layer)
+
+    # Add protruding tabs
+    tabs = gf.Component()
+    tab_x_size = 0.2
+    tab_y_size = 0.7
+    tab = gf.components.rectangle(size=(tab_x_size, tab_y_size), layer=layer, centered=True)
+    top_tab = tabs << tab
+    top_tab.move((0, 1.5 - tab_y_size / 2))
+    bottom_tab = tabs << tab
+    bottom_tab.move((0, -1.5 + tab_y_size / 2))
+
+    # Final device: union of frame_with_gaps and tabs
+    device = gf.boolean(frame_with_gaps, tabs, operation="or", layer=layer)
+    c << device
+
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")
+```

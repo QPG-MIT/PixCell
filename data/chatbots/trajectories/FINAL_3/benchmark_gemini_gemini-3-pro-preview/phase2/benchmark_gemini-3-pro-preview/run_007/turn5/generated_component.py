@@ -1,0 +1,154 @@
+import gdsfactory as gf
+import numpy as np
+
+# Helper function to generate a Bezier Path manually
+# This avoids the "module 'gdsfactory.path' has no attribute 'bezier'" error
+# and gives us full control over the points.
+def get_bezier_path(control_points, n=201):
+    """
+    Returns a gdsfactory Path object based on cubic bezier control points.
+    P(t) = (1-t)^3 P0 + 3(1-t)^2 t P1 + 3(1-t) t^2 P2 + t^3 P3
+    """
+    t = np.linspace(0, 1, n)
+    P0, P1, P2, P3 = [np.array(p) for p in control_points]
+    
+    # Vectorized cubic bezier calculation
+    points = (
+        (1 - t[:, None])**3 * P0 +
+        3 * (1 - t[:, None])**2 * t[:, None] * P1 +
+        3 * (1 - t[:, None]) * t[:, None]**2 * P2 +
+        t[:, None]**3 * P3
+    )
+    return gf.Path(points)
+
+@gf.cell
+def directional_coupler():
+    c = gf.Component()
+
+    # 1. Design Parameters
+    # Fixed constraints from prompt
+    total_length = 120.0
+    total_height = 4.0
+    
+    # Geometric Parameters matching the "bone" shape:
+    # Wide ports tapering to narrow coupling region
+    w_wide = 1.0       # Width of input/output waveguides
+    w_narrow = 0.4     # Width of coupling waveguides
+    gap = 0.2          # Coupling gap
+    
+    # Longitudinal Segmentation
+    # [Straight 10] - [Bend 25] - [Coupler 50] - [Bend 25] - [Straight 10]
+    len_coupler = 50.0 
+    len_bend = 25.0
+    len_straight = (total_length - len_coupler - 2*len_bend) / 2 # 10.0
+    
+    # Vertical Geometry Calculation
+    # Center y of inner waveguide (coupler region)
+    y_inner = (gap + w_narrow) / 2
+    
+    # Center y of outer waveguide (io region)
+    # Total height is 4.0um centered at 0 -> Top edge is at +2.0
+    # Center of top wide waveguide = 2.0 - w_wide/2
+    y_outer = 2.0 - w_wide / 2
+    
+    dy = y_outer - y_inner # Vertical shift for the S-bend
+
+    # Layer definition
+    layer = (1, 0)
+    
+    xs_wide = gf.cross_section.cross_section(width=w_wide, layer=layer)
+    xs_narrow = gf.cross_section.cross_section(width=w_narrow, layer=layer)
+
+    # 2. Custom Tapered S-Bend Factory
+    def create_tapered_bend(length, height, xs_start, xs_end):
+        # Create S-shaped path using Bezier control points
+        # P0=(0,0) and P1=(L/2, 0) ensure horizontal start tangent
+        # P2=(L/2, H) and P3=(L, H) ensure horizontal end tangent
+        points = [
+            (0.0, 0.0),
+            (length * 0.5, 0.0),
+            (length * 0.5, height),
+            (length, height)
+        ]
+        
+        path = get_bezier_path(control_points=points)
+        
+        # 'sine' width type gives the organic, smooth taper look seen in the image
+        trans = gf.path.transition(xs_start, xs_end, width_type='sine')
+        
+        # Extrude the path with the width transition
+        bend_comp = gf.path.extrude_transition(path, trans)
+        
+        # CRITICAL FIX for "Found off-grid instances":
+        # The numerical calculation of the path can leave ports with epsilon rotation errors 
+        # (e.g. 1e-6 degrees). This causes placement rotation and off-grid vertices.
+        # We enforce exact 0/180 degree orientations here.
+        bend_comp.ports["o1"].orientation = 180
+        bend_comp.ports["o2"].orientation = 0
+        
+        return bend_comp
+
+    # 3. Instantiate Components
+
+    # Central Coupler (Narrow)
+    coupler_core = c << gf.components.coupler_straight(
+        length=len_coupler,
+        gap=gap,
+        cross_section=xs_narrow
+    )
+
+    # Input/Output Straights (Wide)
+    straight_comp = gf.components.straight(length=len_straight, cross_section=xs_wide)
+    sl_top = c << straight_comp
+    sl_bot = c << straight_comp
+    sr_top = c << straight_comp
+    sr_bot = c << straight_comp
+
+    # Tapered Bends
+    # Top-Left: Starts Wide, goes to Narrow. Moves DOWN by dy.
+    bend_tl = c << create_tapered_bend(len_bend, -dy, xs_wide, xs_narrow)
+    
+    # Bottom-Left: Starts Wide, goes to Narrow. Moves UP by dy.
+    bend_bl = c << create_tapered_bend(len_bend, dy, xs_wide, xs_narrow)
+    
+    # Top-Right: Starts Narrow (at coupler), goes to Wide. Moves UP by dy.
+    bend_tr = c << create_tapered_bend(len_bend, dy, xs_narrow, xs_wide)
+    
+    # Bottom-Right: Starts Narrow (at coupler), goes to Wide. Moves DOWN by dy.
+    bend_br = c << create_tapered_bend(len_bend, -dy, xs_narrow, xs_wide)
+
+    # 4. Assemble and Connect
+    # Note: connect() automatically moves/rotates the first component to match the second.
+    
+    # --- Left Side (Inputs) ---
+    # Top Branch
+    # Connect narrow end of bend (o2) to coupler input (o2)
+    bend_tl.connect("o2", coupler_core.ports["o2"]) 
+    # Connect straight to wide end of bend (o1)
+    sl_top.connect("o2", bend_tl.ports["o1"])
+    
+    # Bottom Branch
+    bend_bl.connect("o2", coupler_core.ports["o1"])
+    sl_bot.connect("o2", bend_bl.ports["o1"])
+
+    # --- Right Side (Outputs) ---
+    # Top Branch
+    # Connect narrow end of bend (o1) to coupler output (o3)
+    bend_tr.connect("o1", coupler_core.ports["o3"])
+    sr_top.connect("o1", bend_tr.ports["o2"])
+    
+    # Bottom Branch
+    bend_br.connect("o1", coupler_core.ports["o4"])
+    sr_bot.connect("o1", bend_br.ports["o2"])
+
+    # 5. Expose Ports
+    c.add_port("o1", port=sl_bot.ports["o1"]) # Bottom West
+    c.add_port("o2", port=sl_top.ports["o1"]) # Top West
+    c.add_port("o3", port=sr_top.ports["o2"]) # Top East
+    c.add_port("o4", port=sr_bot.ports["o2"]) # Bottom East
+
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler()
+    device.write_gds("directional_coupler.gds")

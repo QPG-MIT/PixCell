@@ -1,0 +1,120 @@
+Turn 2 Response:
+
+Based on the analysis of the original image compared to your previous render, the key discrepancy is the **cross-sectional profile** of the waveguides.
+
+1.  **Asymmetry:** The original image shows that the "arms" are not composed of three equal stripes. Instead, each arm consists of two **thin inner stripes** (near the coupling gap) and one **very thick outer block**.
+2.  **Geometry:** To recreate the visual appearance within the $120 \times 4\,\mu\text{m}$ footprint, we need to adjust the widths and offsets in the `CrossSection` definition so the outer shapes fill the vertical space, mimicking the solid black regions in the original image.
+
+Here is the refined script using GDSFactory's parametric functions and custom cross-sections to match the original image.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def striped_coupler_asymmetric():
+    """
+    Recreates the asymmetric striped directional coupler.
+    Features 3 stripes per arm: 2 thin inner stripes and 1 thick outer block.
+    Fits within approx 120um x 4um.
+    """
+    c = gf.Component()
+
+    # --- Parameters ---
+    # Longitudinal dimensions
+    len_bend = 30.0
+    len_couple = 60.0
+    
+    # Cross-section dimensions (tuned to match image visual weight)
+    w_thin = 0.15       # Width of the two inner lines
+    w_thick = 1.2       # Width of the large outer block
+    gap_stripe = 0.15   # Gap between stripes within an arm
+    gap_coupling = 0.3  # Gap between the top and bottom arms in the center
+    
+    # --- Define Cross Sections ---
+    
+    # We define the path reference line to be the CENTER of the "Middle" (thin) stripe.
+    # This simplifies connecting bends.
+    
+    # Offsets relative to the Middle stripe center (u=0):
+    # 1. Inner Stripe (closer to device center): Negative offset
+    off_inner = -(w_thin/2 + gap_stripe + w_thin/2)
+    
+    # 2. Outer Stripe (the thick block): Positive offset
+    off_outer = +(w_thin/2 + gap_stripe + w_thick/2)
+
+    # Top Arm Cross Section
+    s_top_inner = gf.Section(width=w_thin, offset=off_inner, layer=(1, 0))
+    s_top_outer = gf.Section(width=w_thick, offset=off_outer, layer=(1, 0))
+    
+    xs_top = gf.cross_section.cross_section(
+        width=w_thin, # The "main" section drawn at the path center
+        sections=[s_top_inner, s_top_outer],
+        layer=(1, 0)
+    )
+
+    # Bottom Arm Cross Section (Mirrored)
+    # For the bottom arm, "Inner" is effectively "Upper" (closer to 0), "Outer" is "Lower".
+    # If we stick to the logic that the path is the Middle stripe:
+    # Inner (up towards 0) -> Positive offset
+    # Outer (down towards edge) -> Negative offset
+    
+    s_bot_inner = gf.Section(width=w_thin, offset=-off_inner, layer=(1, 0)) # Negate offset for mirror
+    s_bot_outer = gf.Section(width=w_thick, offset=-off_outer, layer=(1, 0))
+    
+    xs_bot = gf.cross_section.cross_section(
+        width=w_thin,
+        sections=[s_bot_inner, s_bot_outer],
+        layer=(1, 0)
+    )
+
+    # --- Calculate Positioning ---
+    
+    # Vertical position of the Path (Middle Stripe) in the coupling region.
+    # Center y=0.
+    # Coupling gap extends from y = -gap/2 to y = +gap/2.
+    # Top Inner Stripe bottom edge is at y = gap_coupling/2.
+    # Top Inner Stripe Center is at y = gap_coupling/2 + w_thin/2.
+    # We know the Path (Middle Stripe) is spaced (w_thin + gap_stripe) away from Inner Stripe center.
+    y_path_top_couple = (gap_coupling / 2) + w_thin + gap_stripe
+    y_path_bot_couple = -y_path_top_couple
+    
+    # Vertical shift for the S-bends
+    dy = 1.0  # How much the arms flare out
+    
+    # --- Generate Geometry ---
+
+    # 1. Top Arm
+    # S-bend Input (High -> Low)
+    # bend_s size is (length, height_change). Height change is negative.
+    top_in = c << gf.components.bend_s(size=(len_bend, -dy), cross_section=xs_top)
+    top_in.movey(y_path_top_couple + dy) # Move start point up
+    
+    # Straight Coupling
+    top_mid = c << gf.components.straight(length=len_couple, cross_section=xs_top)
+    top_mid.connect("o1", top_in.ports["o2"])
+    
+    # S-bend Output (Low -> High)
+    top_out = c << gf.components.bend_s(size=(len_bend, dy), cross_section=xs_top)
+    top_out.connect("o1", top_mid.ports["o2"])
+
+    # 2. Bottom Arm
+    # S-bend Input (Low -> High)
+    # Height change is positive (going up towards center)
+    bot_in = c << gf.components.bend_s(size=(len_bend, dy), cross_section=xs_bot)
+    bot_in.movey(y_path_bot_couple - dy) # Move start point down
+    
+    # Straight Coupling
+    bot_mid = c << gf.components.straight(length=len_couple, cross_section=xs_bot)
+    bot_mid.connect("o1", bot_in.ports["o2"])
+    
+    # S-bend Output (High -> Low)
+    bot_out = c << gf.components.bend_s(size=(len_bend, -dy), cross_section=xs_bot)
+    bot_out.connect("o1", bot_mid.ports["o2"])
+
+    return c
+
+# Create and save
+device = striped_coupler_asymmetric()
+device.show()
+device.write_gds("striped_coupler_refined.gds")
+```

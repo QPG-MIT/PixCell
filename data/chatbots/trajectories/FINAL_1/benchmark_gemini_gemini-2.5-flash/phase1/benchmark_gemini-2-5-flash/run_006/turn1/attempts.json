@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.194608",
+      "api_duration_seconds": 53.310559034347534,
+      "usage": {
+        "input_tokens": 2348,
+        "output_tokens": 1858,
+        "total_tokens": 14371
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: Path.__init__() got an unexpected keyword argument 'points'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:04.168519",
+      "api_duration_seconds": 15.246964931488037,
+      "usage": {
+        "input_tokens": 4234,
+        "output_tokens": 1801,
+        "total_tokens": 7692
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:21.935294",
+      "api_duration_seconds": 28.688520908355713,
+      "usage": {
+        "input_tokens": 6066,
+        "output_tokens": 1968,
+        "total_tokens": 13152
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'Path' object has no attribute 'straight'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12648,
+    "output_tokens": 5627,
+    "total_tokens": 35215
+  }
+}

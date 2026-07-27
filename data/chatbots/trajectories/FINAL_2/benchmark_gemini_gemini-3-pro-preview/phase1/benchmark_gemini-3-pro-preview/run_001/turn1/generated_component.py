@@ -1,0 +1,83 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_mmi_1x4():
+    """
+    Recreates the 1x4 MMI device geometry from the image.
+    
+    Components:
+    - Central Body: 25um x 10um rectangle.
+    - Top Outputs: 4x Tapered waveguides distributed along the top edge.
+    - Bottom Input: 1x Tapered waveguide centered on the bottom edge.
+    """
+    c = gf.Component("MMI_1x4_Recreation")
+
+    # 1. Define Parametric Dimensions
+    # Main body dimensions from footprint constraint
+    body_width = 25.0
+    body_height = 10.0
+    
+    # Top Finger Parameters (Visual estimation relative to body)
+    # Length is slightly longer than body height
+    top_finger_length = 12.0
+    top_finger_width_base = 3.0
+    top_finger_width_tip = 1.0
+    
+    # Bottom Finger Parameters
+    # Length is shorter than body height
+    bot_finger_length = 6.0
+    bot_finger_width_base = 4.0
+    bot_finger_width_tip = 1.5
+
+    # 2. Create the Central Body
+    # Using the 'rectangle' primitive
+    body = c << gf.components.rectangle(
+        size=(body_width, body_height), 
+        layer=(1, 0), 
+        centered=True
+    )
+
+    # 3. Create and Place Top Fingers (Outputs)
+    # Create the taper primitive
+    taper_top = gf.components.taper(
+        length=top_finger_length,
+        width1=top_finger_width_base, # Base attached to rectangle
+        width2=top_finger_width_tip,  # Tip facing out
+        layer=(1, 0)
+    )
+
+    # Calculate positions for 4 evenly spaced fingers
+    # Spacing logic: ~50% fill factor. Pitch approx 6um.
+    # Positions centered at: -9, -3, 3, 9
+    x_positions = [-9.0, -3.0, 3.0, 9.0]
+
+    for x in x_positions:
+        ref = c << taper_top
+        # Rotate 90 degrees to point Up
+        ref.rotate(90)
+        # Move the base (port o1, originally at 0,0) to the top edge of the body
+        ref.move((x, body_height / 2))
+
+    # 4. Create and Place Bottom Finger (Input)
+    # Create the taper primitive
+    taper_bot = gf.components.taper(
+        length=bot_finger_length,
+        width1=bot_finger_width_base,
+        width2=bot_finger_width_tip,
+        layer=(1, 0)
+    )
+
+    # Place centered on bottom edge
+    ref_bot = c << taper_bot
+    # Rotate -90 degrees to point Down
+    ref_bot.rotate(-90)
+    # Move the base (port o1) to the bottom edge of the body
+    ref_bot.move((0, -body_height / 2))
+
+    return c
+
+# Generate the device and save to GDS
+if __name__ == "__main__":
+    device = device_mmi_1x4()
+    device.write_gds("mmi_1x4_recreated.gds")
+    print("GDS file generated successfully.")

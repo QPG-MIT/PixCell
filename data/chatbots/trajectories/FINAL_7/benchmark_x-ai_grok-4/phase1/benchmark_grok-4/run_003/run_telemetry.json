@@ -1,0 +1,39 @@
+{
+  "run_id": 3,
+  "seed": 1334,
+  "model": "x-ai/grok-4",
+  "provider": "openrouter",
+  "turns": {
+    "turn1": {
+      "success": true,
+      "attempts": 1,
+      "usage": {
+        "input_tokens": 2769,
+        "output_tokens": 15465,
+        "total_tokens": 18234
+      },
+      "duration_seconds": 445.69,
+      "final_sse": 547435.0,
+      "final_iou": 0.2316087041349273
+    },
+    "turn2": {
+      "success": false,
+      "attempts": 3,
+      "usage": {
+        "input_tokens": 5477,
+        "output_tokens": 3632,
+        "total_tokens": 9109
+      },
+      "duration_seconds": 1099.43,
+      "final_sse": null,
+      "final_iou": null
+    }
+  },
+  "cumulative_usage": {
+    "input_tokens": 8246,
+    "output_tokens": 19097,
+    "total_tokens": 27343
+  },
+  "total_api_calls": 4,
+  "total_successful_turns": 1
+}

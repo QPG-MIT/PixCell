@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.847972",
+      "api_duration_seconds": 36.47422695159912,
+      "usage": {
+        "input_tokens": 5444,
+        "output_tokens": 886,
+        "total_tokens": 6330
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ModuleNotFoundError: No module named 'gdsfactory.geometry'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:47.607708",
+      "api_duration_seconds": 7.578514099121094,
+      "usage": {
+        "input_tokens": 6355,
+        "output_tokens": 1035,
+        "total_tokens": 7390
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:56.702614",
+      "api_duration_seconds": 7.174304008483887,
+      "usage": {
+        "input_tokens": 7420,
+        "output_tokens": 1015,
+        "total_tokens": 8435
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 19219,
+    "output_tokens": 2936,
+    "total_tokens": 22155
+  }
+}

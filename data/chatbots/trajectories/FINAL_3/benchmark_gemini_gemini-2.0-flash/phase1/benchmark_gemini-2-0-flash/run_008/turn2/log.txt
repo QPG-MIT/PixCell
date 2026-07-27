@@ -1,0 +1,62 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def bent_waveguide_with_rectangle(bend_radius: float = 10.0, rectangle_width: float = 5.0, rectangle_length: float = 20.0, cross_section="strip"):
+    """
+    Creates a bent waveguide with a rectangle shape nearby.
+
+    Args:
+        bend_radius: Radius of the bend.
+        rectangle_width: Width of the rectangle.
+        rectangle_length: Length of the rectangle.
+        cross_section: cross section name (default: "strip")
+    """
+    c = gf.Component()
+
+    # Load the cross-section
+    xs = gf.get_cross_section(cross_section)
+
+    # Create a bend (Euler bend for smoother transition)
+    bend = c << gf.components.bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend.rotate(90)
+
+    # Create a straight waveguide segment attached to the bend's input
+    straight1 = c << gf.components.straight(length=50, cross_section=xs)  # Adjusted length for visibility
+    straight1.connect("o2", bend.ports["o1"])
+
+    # Create a rectangle
+    rectangle = c << gf.components.rectangle(size=(rectangle_length, rectangle_width))
+
+    # Position the rectangle near the bend
+    rectangle.movex(straight1.xmin + bend_radius / 2 - rectangle_length / 2) #position the rectangle to be above bend vertically centered
+    rectangle.movey(straight1.ymax + 10)
+
+    # Add ports
+    c.add_port("o1", port=straight1.ports["o1"])
+    c.add_port("o2", port=bend.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Example usage
+    component = bent_waveguide_with_rectangle()
+    component.show()
+    component.write_gds("bent_waveguide_with_rectangle.gds")
+```
+
+**Reasoning for the fix:**
+
+The primary task is to generate a structure resembling the provided image, which consists of a bent waveguide section with a rectangle adjacent to it.  Here's a breakdown of the changes and their rationale:
+
+1. **Clearer Structure:** I've reorganized the component creation to make the structure more apparent.  We create the bend, then a rectangle.
+2. **Euler Bend Usage:** The code now utilizes `gf.components.bend_euler` which creates an Euler bend.  The original image shows a smooth curve, and Euler bends provides that smooth, adiabatic transition in curvature.
+3. **Straight Sections added.** Added straight sections to see more of the waveguide, and have something to connect the bend to.
+4. **Rectangle Placement:** The critical part is the positioning of the rectangle.  The original image shows the rectangle located close to the bend.   I've calculated the coordinates for proper placement near the bend. The placement calculation is now: The `x` position places the rectangle's center horizontally with the center of the bend. The `y` position places it slightly above the straight waveguide.
+5. **Output Port Addition:** Two ports have been added for connection with other components.
+6. **Clearer Naming:** The function has been named to better reflect what it produces.
+7. **Angle Correction** Rotated Bend object 90 degrees counter clockwise
+
+This revised code produces a structure that more closely resembles the target image, using the specified parametric components. The positioning of the rectangle and use of Euler bends is very crucial.

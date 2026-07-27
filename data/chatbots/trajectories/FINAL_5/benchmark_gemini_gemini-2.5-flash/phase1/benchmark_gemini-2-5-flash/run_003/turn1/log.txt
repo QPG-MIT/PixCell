@@ -1,0 +1,159 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_from_image():
+    c = gf.Component("device_from_image")
+
+    # Define common cross-section
+    xs_width = 0.1
+    xs = gf.cross_section.cross_section(width=xs_width, layer=(1, 0))
+
+    # Footprint dimensions
+    footprint_W = 18.24
+    footprint_H = 0.7
+
+    # 1. Central Straight Line
+    # Choose length to extend significantly, but not necessarily to the very ends
+    wg_center_length = 17.0
+    wg_center = c << gf.components.straight(length=wg_center_length, cross_section=xs)
+    wg_center.center = (0, 0) # Centered horizontally and vertically
+
+    # 2. Grating Teeth (Top and Bottom)
+    num_teeth = 31
+    tooth_width = 0.1
+    tooth_height = 0.1 # Same as xs_width for consistency
+    tooth_gap = 0.1
+
+    @gf.cell
+    def _grating_row(num_teeth, tooth_width, tooth_height, tooth_gap, layer):
+        """Creates a single row of grating teeth.
+        The row is built starting its first tooth at x=0.
+        """
+        row = gf.Component()
+        # The `rectangle` primitive can be created already centered for easier placement
+        # or we can place its bottom-left corner at the desired (x,y)
+        # Here, `centered=False` implies (x,y) is the bottom-left corner.
+        tooth_base = gf.components.rectangle(size=(tooth_width, tooth_height), layer=layer, centered=False)
+        for i in range(num_teeth):
+            tooth_ref = row << tooth_base
+            tooth_ref.x = i * (tooth_width + tooth_gap)
+        return row
+
+    # Create the grating row component definition
+    grating_row_comp_definition = _grating_row(num_teeth, tooth_width, tooth_height, tooth_gap, xs.layer)
+
+    # Calculate the total width of the grating row for centering its instances
+    # The width is (number of teeth * tooth_width) + (number of gaps * tooth_gap)
+    row_total_width = (num_teeth * tooth_width) + ((num_teeth - 1) * tooth_gap)
+
+    # Vertical positioning for gratings
+    # The central line is at y=0, width 0.1, so extends from -0.05 to 0.05
+    # Gap between central line and grating = 0.1
+    # Grating teeth height = 0.1
+    # Top grating: bottom edge at (wg_center_top_y_edge + tooth_gap) = (0.05 + 0.1) = 0.15.
+    y_bottom_top_grating = xs_width / 2 + tooth_gap
+    top_grating_ref = c << grating_row_comp_definition
+    top_grating_ref.y = y_bottom_top_grating
+    # To center horizontally, move the reference's origin (currently at the left edge of the first tooth)
+    # by half of its total width to the left.
+    top_grating_ref.x = -row_total_width / 2
+
+    # Bottom grating: top edge at -(wg_center_bottom_y_edge + tooth_gap) = -(0.05 + 0.1) = -0.15.
+    # Its bottom edge will be at y_top_bottom_grating - tooth_height
+    y_top_bottom_grating = -(xs_width / 2 + tooth_gap)
+    bottom_grating_ref = c << grating_row_comp_definition
+    bottom_grating_ref.y = y_top_bottom_grating - tooth_height
+    # Center horizontally, same as the top grating
+    bottom_grating_ref.x = -row_total_width / 2
+
+    # 3. Outer Arms (Top and Bottom)
+    # The arms have a long straight central section and curved, pointed ends.
+    # The centerline of the top arm should be at y = 0.25 + xs_width/2 = 0.3.
+    # The centerline of the bottom arm should be at y = -0.25 - xs_width/2 = -0.3.
+    y_arm_center_top = 0.3
+    y_arm_center_bottom = -0.3
+
+    # Define the range for the straight section of the arms
+    # Visually, the straight part of the arms is slightly longer than the grating section (6.1 um)
+    # but not as long as the full footprint.
+    # Let's say the straight section of the arm runs from x=-7.0 to x=7.0
+    p_straight_start_x = -7.0
+    p_straight_end_x = 7.0
+
+    # Define the absolute x-coordinates for the tips
+    p_start_tip_x = -footprint_W / 2 # ~-9.12
+    p_end_tip_x = footprint_W / 2   # ~9.12
+
+    # Define control points for the top arm's centerline path using `gf.path.smooth`.
+    # These points create the overall "hook" shape while keeping the path within the 0.7 um height bounds
+    # (centerline must stay between -0.3 and 0.3 to keep outer edges within -0.35 and 0.35).
+    # Small vertical deviations at the tips mimic the image's aesthetic without exceeding footprint significantly.
+    vertical_tip_offset = 0.015 # A small offset to create a subtle vertical curve at the tip
+
+    points_top_arm_path = [
+        (p_start_tip_x, y_arm_center_top + vertical_tip_offset),   # Leftmost tip, slightly curved up
+        (-8.0, y_arm_center_top + vertical_tip_offset/2),         # Control point for initial curve
+        (p_straight_start_x - 0.5, y_arm_center_top),             # Transition to straight
+        (p_straight_start_x, y_arm_center_top),                   # Start of main straight section
+        (p_straight_end_x, y_arm_center_top),                     # End of main straight section
+        (p_straight_end_x + 0.5, y_arm_center_top),               # Transition from straight
+        (8.0, y_arm_center_top - vertical_tip_offset/2),          # Control point for final curve
+        (p_end_tip_x, y_arm_center_top - vertical_tip_offset),    # Rightmost tip, slightly curved down
+    ]
+
+    # Define control points for the bottom arm's centerline path (mirrored vertically)
+    points_bottom_arm_path = [
+        (p_start_tip_x, y_arm_center_bottom - vertical_tip_offset),
+        (-8.0, y_arm_center_bottom - vertical_tip_offset/2),
+        (p_straight_start_x - 0.5, y_arm_center_bottom),
+        (p_straight_start_x, y_arm_center_bottom),
+        (p_straight_end_x, y_arm_center_bottom),
+        (p_straight_end_x + 0.5, y_arm_center_bottom),
+        (8.0, y_arm_center_bottom + vertical_tip_offset/2),
+        (p_end_tip_x, y_arm_center_bottom + vertical_tip_offset),
+    ]
+
+    # Create the paths using gf.path.smooth for smooth transitions
+    # A radius around 0.3-0.5 is good for smooth, but not overly large, curves.
+    path_top_arm = gf.path.smooth(points_top_arm_path, radius=0.4)
+    path_bottom_arm = gf.path.smooth(points_bottom_arm_path, radius=0.4)
+
+    # Define a custom cross_section that varies width along the path for tapering
+    # The `t` parameter ranges from 0 to 1 along the path.
+    taper_percent = 0.15  # Taper over the first/last 15% of the path length
+
+    def variable_width_fn(t):
+        if t < taper_percent:
+            # First segment: width goes from 0 to xs_width
+            return xs_width * (t / taper_percent)
+        elif t > (1 - taper_percent):
+            # Last segment: width goes from xs_width to 0
+            return xs_width * ((1 - t) / taper_percent)
+        else:
+            # Middle segment: constant xs_width
+            return xs_width
+
+    # Create the custom cross_section with the variable width function
+    xs_tapered = gf.cross_section.cross_section(width=variable_width_fn, layer=xs.layer)
+
+    # Extrude the paths with the tapered cross_section to create the arms
+    arm_top = c << gf.path.extrude(path_top_arm, xs_tapered)
+    arm_bottom = c << gf.path.extrude(path_bottom_arm, xs_tapered)
+
+    return c
+
+if __name__ == "__main__":
+    device = device_from_image()
+    device.show()
+
+    # Calculate and print the actual footprint for verification
+    bbox = device.bounding_box()
+    calculated_width = bbox[1, 0] - bbox[0, 0]
+    calculated_height = bbox[1, 1] - bbox[0, 1]
+    print(f"Calculated device footprint: [{calculated_width:.2f}, {calculated_height:.2f}] um")
+    print(f"Expected device footprint: [18.24, 0.70] um")
+```

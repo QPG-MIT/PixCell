@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:14.908194",
+      "api_duration_seconds": 235.06870198249817,
+      "usage": {
+        "input_tokens": 3170,
+        "output_tokens": 1039,
+        "total_tokens": 28842
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'circle_gdsfactorypcomponentspshapespcircle_R1p5_AR2p5_L1_0' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:14:11.272531",
+      "api_duration_seconds": 80.14735388755798,
+      "usage": {
+        "input_tokens": 4267,
+        "output_tokens": 1297,
+        "total_tokens": 13227
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:15:32.776977",
+      "api_duration_seconds": 138.86789083480835,
+      "usage": {
+        "input_tokens": 5583,
+        "output_tokens": 1230,
+        "total_tokens": 21368
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13020,
+    "output_tokens": 3566,
+    "total_tokens": 63437
+  }
+}

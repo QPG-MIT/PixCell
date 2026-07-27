@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.901974",
+      "api_duration_seconds": 155.58822298049927,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 3785,
+        "total_tokens": 30707
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')\nAttributeError: 'CrossSection' object has no attribute 'add'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:47.048949",
+      "api_duration_seconds": 22.925822019577026,
+      "usage": {
+        "input_tokens": 6187,
+        "output_tokens": 2998,
+        "total_tokens": 10238
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')\nAttributeError: 'CrossSection' object has no attribute 'add_section'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:11.311530",
+      "api_duration_seconds": 32.06646013259888,
+      "usage": {
+        "input_tokens": 9240,
+        "output_tokens": 2981,
+        "total_tokens": 15520
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_8/benchmark_gemini_gemini-2.5-flash/phase1/benchmark_gemini-2-5-flash/run_005/turn1/generated_component.py\", line 142, in <module>\n    device = my_device()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfact",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 17776,
+    "output_tokens": 9764,
+    "total_tokens": 56465
+  }
+}

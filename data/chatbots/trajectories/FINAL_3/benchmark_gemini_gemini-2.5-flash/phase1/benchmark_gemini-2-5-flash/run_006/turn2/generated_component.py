@@ -1,0 +1,177 @@
+import gdsfactory as gf
+from gdsfactory.typings import CrossSectionSpec
+
+@gf.cell
+def my_coupler_like_device_euler(
+    wg_width: float = 0.5,
+    gap_coupler: float = 0.2,  # Gap between inner edges in the central coupling section
+    length_straight_in: float = 15.0,  # Length of input/output straight sections
+    length_coupler: float = 70.0,  # Length of the central parallel coupling section
+    cross_section: CrossSectionSpec = "strip",
+) -> gf.Component:
+    """
+    Recreates the directional coupler-like geometry from the provided image using Euler bends.
+
+    The device consists of two parallel waveguides that transition from a wider
+    vertical separation at the inputs/outputs to a narrower separation in the center
+    through S-bends, implemented using gf.routing.route_single with Euler bends.
+
+    Args:
+        wg_width: The width of the waveguides.
+        gap_coupler: The gap between the inner edges of the waveguides
+                      in the central parallel region.
+        length_straight_in: The length of the straight sections at the input and output.
+        length_coupler: The length of the straight parallel section in the middle.
+        cross_section: The cross-section specification for the waveguides.
+
+    Returns:
+        A gdsfactory Component representing the device.
+    """
+    c = gf.Component("coupler_like_device_euler")
+    xs = gf.get_cross_section(cross_section, width=wg_width)
+
+    total_length = 120.0
+    total_height = 4.0
+
+    # Calculate vertical offset for input/output port centers from device centerline (y=0)
+    # The total height (4um) covers the outermost edges of the waveguides.
+    # So, the center-to-center vertical separation of input/output waveguides is total_height - wg_width.
+    y_port_offset = (total_height - wg_width) / 2  # = (4 - 0.5) / 2 = 1.75 um
+
+    # Calculate vertical offset for waveguide centers in the coupling region from device centerline (y=0)
+    # Center-to-center separation in coupling region = wg_width + gap_coupler.
+    y_coupler_offset = (wg_width + gap_coupler) / 2  # = (0.5 + 0.2) / 2 = 0.35 um
+
+    # Calculate horizontal displacement (dx) for each S-bend
+    # The total horizontal extent used by straight_in, coupler, straight_out is
+    # 2 * length_straight_in + length_coupler.
+    # The remaining length is divided by two S-bends.
+    dx_s_bend = (total_length - (2 * length_straight_in) - length_coupler) / 2
+
+    if dx_s_bend < 0:
+        raise ValueError(
+            f"Invalid lengths: (2 * length_straight_in) ({2*length_straight_in:.1f}um) "
+            f"+ length_coupler ({length_coupler:.1f}um) "
+            f"exceeds total_length ({total_length:.1f}um). "
+            f"dx_s_bend calculated as {dx_s_bend:.1f}um. Please adjust lengths."
+        )
+    if dx_s_bend == 0:
+        print("Warning: dx_s_bend is 0, S-bends will be vertical lines. Consider adjusting lengths.")
+
+    # Define primitive straight components
+    straight_io_comp = gf.components.straight(length=length_straight_in, cross_section=xs)
+    straight_coupler_comp = gf.components.straight(length=length_coupler, cross_section=xs)
+
+    # --- Place all straight segments first ---
+    # The device will be centered at (0,0). So x-coordinates range from -total_length/2 to total_length/2.
+
+    # 1. Input Straight (Top)
+    ref_s_in_top = c << straight_io_comp
+    # Move its 'o1' port to the desired start position (-total_length/2, y_port_offset)
+    ref_s_in_top.move(origin=ref_s_in_top.ports["o1"].center, destination=(-total_length / 2, y_port_offset))
+
+    # 2. Input Straight (Bottom)
+    ref_s_in_bottom = c << straight_io_comp
+    ref_s_in_bottom.move(origin=ref_s_in_bottom.ports["o1"].center, destination=(-total_length / 2, -y_port_offset))
+
+    # 3. Central Coupling Straight (Top)
+    ref_s_coupler_top = c << straight_coupler_comp
+    # The 'o1' port of this segment starts after length_straight_in + dx_s_bend from the left edge.
+    x_coupler_start = -total_length / 2 + length_straight_in + dx_s_bend
+    ref_s_coupler_top.move(origin=ref_s_coupler_top.ports["o1"].center, destination=(x_coupler_start, y_coupler_offset))
+
+    # 4. Central Coupling Straight (Bottom)
+    ref_s_coupler_bottom = c << straight_coupler_comp
+    ref_s_coupler_bottom.move(origin=ref_s_coupler_bottom.ports["o1"].center, destination=(x_coupler_start, -y_coupler_offset))
+
+    # 5. Output Straight (Top)
+    ref_s_out_top = c << straight_io_comp
+    # The 'o1' port of this segment starts after length_straight_in + dx_s_bend + length_coupler + dx_s_bend.
+    x_output_start = -total_length / 2 + length_straight_in + dx_s_bend + length_coupler + dx_s_bend
+    ref_s_out_top.move(origin=ref_s_out_top.ports["o1"].center, destination=(x_output_start, y_port_offset))
+
+    # 6. Output Straight (Bottom)
+    ref_s_out_bottom = c << straight_io_comp
+    ref_s_out_bottom.move(origin=ref_s_out_bottom.ports["o1"].center, destination=(x_output_start, -y_port_offset))
+
+
+    # --- Route between components using gf.routing.route_single ---
+    # The default bend for route_single is bend_euler, but we specify it explicitly for clarity.
+
+    # Top Left S-bend (from input straight to central coupler straight)
+    route_top_left = gf.routing.route_single(
+        c,
+        port1=ref_s_in_top.ports["o2"],
+        port2=ref_s_coupler_top.ports["o1"],
+        cross_section=xs,
+        bend=gf.components.bend_euler,
+    )
+    c.add(route_top_left) # Corrected: Directly add the route object
+
+    # Bottom Left S-bend (from input straight to central coupler straight)
+    route_bottom_left = gf.routing.route_single(
+        c,
+        port1=ref_s_in_bottom.ports["o2"],
+        port2=ref_s_coupler_bottom.ports["o1"],
+        cross_section=xs,
+        bend=gf.components.bend_euler,
+    )
+    c.add(route_bottom_left) # Corrected: Directly add the route object
+
+    # Top Right S-bend (from central coupler straight to output straight)
+    route_top_right = gf.routing.route_single(
+        c,
+        port1=ref_s_coupler_top.ports["o2"],
+        port2=ref_s_out_top.ports["o1"],
+        cross_section=xs,
+        bend=gf.components.bend_euler,
+    )
+    c.add(route_top_right) # Corrected: Directly add the route object
+
+    # Bottom Right S-bend (from central coupler straight to output straight)
+    route_bottom_right = gf.routing.route_single(
+        c,
+        port1=ref_s_coupler_bottom.ports["o2"],
+        port2=ref_s_out_bottom.ports["o1"],
+        cross_section=xs,
+        bend=gf.components.bend_euler,
+    )
+    c.add(route_bottom_right) # Corrected: Directly add the route object
+
+
+    # --- Expose Ports ---
+    # These ports are already correctly positioned by the initial placement of the straight_io components.
+    c.add_port("o1", port=ref_s_in_top.ports["o1"])    # Top-left input
+    c.add_port("o2", port=ref_s_in_bottom.ports["o1"]) # Bottom-left input
+    c.add_port("o3", port=ref_s_out_top.ports["o2"])   # Top-right output
+    c.add_port("o4", port=ref_s_out_bottom.ports["o2"])# Bottom-right output
+
+    return c
+
+# --- Create and Save the Device ---
+if __name__ == "__main__":
+    device = my_coupler_like_device_euler(
+        wg_width=0.5,
+        gap_coupler=0.2,
+        length_straight_in=15.0,
+        length_coupler=70.0,
+        cross_section="strip",
+    )
+
+    device.show() # Opens the component in KLayout if installed
+    device.write_gds("my_coupler_like_device_euler.gds") # This will now write the GDS file
+
+    # Verify the bounds against the footprint constraint [120, 4]
+    # The device is centered at (0,0), so expected bounds are [-60, -2] to [60, 2].
+    bbox = device.dbbox()
+    expected_x_min = -120 / 2
+    expected_x_max = 120 / 2
+    expected_y_min = -4 / 2
+    expected_y_max = 4 / 2
+
+    assert abs(bbox.xmin - expected_x_min) < 1e-9, f"xmin mismatch: {bbox.xmin} vs {expected_x_min}"
+    assert abs(bbox.xmax - expected_x_max) < 1e-9, f"xmax mismatch: {bbox.xmax} vs {expected_x_max}"
+    assert abs(bbox.ymin - expected_y_min) < 1e-9, f"ymin mismatch: {bbox.ymin} vs {expected_y_min}"
+    assert abs(bbox.ymax - expected_y_max) < 1e-9, f"ymax mismatch: {bbox.ymax} vs {expected_y_max}"
+    print(f"Device bounds: {bbox}")
+    print("Bounding box matches footprint constraints.")

@@ -1,0 +1,86 @@
+import gdsfactory as gf
+
+@gf.cell
+def edge_coupler_structure() -> gf.Component:
+    """
+    Recreates the device geometry shown in the original image using core parametric primitives.
+    Target footprint: exactly [40.0, 1.7] (Length x Width)
+    """
+    c = gf.Component("edge_coupler_structure")
+    layer = (1, 0)
+    
+    # ---------------------------------------------------------
+    # 1. Center Waveguide
+    # ---------------------------------------------------------
+    # Center straight: Length 4.0, Width 0.40 (Y bounds: -0.20 to +0.20)
+    xs_center = gf.cross_section.cross_section(width=0.40, layer=layer)
+    center_str = c << gf.components.straight(length=4.0, cross_section=xs_center)
+    
+    # Center taper: Tapers to a sharp point (width 0.01) over length 20.0. Ends at X=24.0.
+    center_tap = c << gf.components.taper(
+        length=20.0, 
+        width1=0.40, 
+        width2=0.01, 
+        layer=layer
+    )
+    center_tap.connect("o1", center_str.ports["o2"])
+
+    # ---------------------------------------------------------
+    # 2. Left Outer Arms (Perfectly flat outer edges, tight inner gap)
+    # ---------------------------------------------------------
+    # We create the arms using a boolean subtraction.
+    # Bounding box width = 0.54 -> Top edge is exactly at Y = +0.27, Bottom at Y = -0.27
+    xs_bbox = gf.cross_section.cross_section(width=0.54, layer=layer)
+    bbox = gf.components.straight(length=20.0, cross_section=xs_bbox)
+    
+    # The 'hole' carves out the center space. 
+    # Start hole width = 0.50 -> inner arm edges at Y = +/- 0.25 (Leaves a tight 0.05 gap from center WG)
+    # End hole width = 0.10 -> inner arm edges at Y = +/- 0.05 (Leaves a 0.045 gap from the center tip)
+    hole = gf.components.taper(length=20.0, width1=0.50, width2=0.10, layer=layer)
+    
+    arms_left = gf.boolean(bbox, hole, operation="not", layer=layer)
+    ref_arms_left = c << arms_left
+    ref_arms_left.movex(4.0) # Align exactly with the start of the center taper
+
+    # Resulting Top Arm at X=24.0:
+    # Outer edge = 0.27, Inner edge = 0.05 -> Width = 0.22, Center = 0.16
+
+    # ---------------------------------------------------------
+    # 3. Right S-Bends
+    # ---------------------------------------------------------
+    xs_arms = gf.cross_section.cross_section(width=0.22, layer=layer)
+    
+    # Top S-Bend moves the arm from center Y=0.16 up to center Y=0.74 (dy = +0.58) over length 10.0
+    sbend_top = c << gf.components.bend_s(size=(10.0, 0.58), cross_section=xs_arms)
+    sbend_top.move((24.0, 0.16)) # Connects seamlessly to the boolean arm
+    
+    # Bottom S-Bend moves the arm from center Y=-0.16 down to center Y=-0.74 (dy = -0.58)
+    sbend_bot = c << gf.components.bend_s(size=(10.0, -0.58), cross_section=xs_arms)
+    sbend_bot.move((24.0, -0.16))
+
+    # ---------------------------------------------------------
+    # 4. Final Straights
+    # ---------------------------------------------------------
+    # Final straight sections (Length 6.0) to bring the total length to exactly 40.0
+    str_final = gf.components.straight(length=6.0, cross_section=xs_arms)
+    
+    ref_str_top = c << str_final
+    ref_str_top.connect("o1", sbend_top.ports["o2"])
+    # Final Top Edge bounds: Center Y=0.74 + Width/2 (0.11) = +0.85
+    
+    ref_str_bot = c << str_final
+    ref_str_bot.connect("o1", sbend_bot.ports["o2"])
+    # Final Bottom Edge bounds: Center Y=-0.74 - Width/2 (0.11) = -0.85
+    
+    # Final Footprint Geometry Verification:
+    # Max length: 4 (str) + 20 (taper/boolean) + 10 (S-bend) + 6 (final str) = 40.0
+    # Max width span: Y from -0.85 to +0.85 = 1.70
+    
+    return c
+
+if __name__ == "__main__":
+    # Generate the component
+    c = edge_coupler_structure()
+    
+    # Write the GDS file required by the evaluation environment
+    c.write_gds("edge_coupler_structure.gds")

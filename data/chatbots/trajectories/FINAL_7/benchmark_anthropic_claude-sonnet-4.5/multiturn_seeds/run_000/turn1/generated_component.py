@@ -1,0 +1,105 @@
+import gdsfactory as gf
+import numpy as np
+
+def create_stadium_polygon(width, height):
+    """Create points for a stadium/capsule shape polygon"""
+    radius = height / 2
+    rect_width = max(0, width - height)
+    
+    points = []
+    
+    # Right semicircle
+    for angle in np.linspace(-np.pi/2, np.pi/2, 30):
+        x = rect_width/2 + radius * np.cos(angle)
+        y = radius * np.sin(angle)
+        points.append((x, y))
+    
+    # Left semicircle
+    for angle in np.linspace(np.pi/2, 3*np.pi/2, 30):
+        x = -rect_width/2 + radius * np.cos(angle)
+        y = radius * np.sin(angle)
+        points.append((x, y))
+    
+    return points
+
+@gf.cell
+def chain_link_device():
+    c = gf.Component()
+    
+    # Dimensions (landscape orientation)
+    total_width = 5.5
+    total_height = 3.0
+    
+    # Create outer stadium border using geometry offset
+    border_thickness = 0.28
+    
+    # Outer border - create directly as polygon
+    outer_points = create_stadium_polygon(total_width, total_height)
+    c.add_polygon(outer_points, layer=(1, 0))
+    
+    # Inner cutout
+    inner_points = create_stadium_polygon(
+        total_width - 2 * border_thickness,
+        total_height - 2 * border_thickness
+    )
+    
+    # Create temporary component for boolean
+    temp_outer = gf.Component()
+    temp_outer.add_polygon(outer_points, layer=(1, 0))
+    
+    temp_inner = gf.Component()
+    temp_inner.add_polygon(inner_points, layer=(1, 0))
+    
+    # Create border with boolean
+    border = gf.geometry.boolean(temp_outer, temp_inner, operation="not", layer=(1, 0))
+    
+    # Clear and add border
+    c = gf.Component()
+    c << border
+    
+    # Chain link parameters
+    link_width = 3.6
+    link_height = 0.55
+    window_width = 0.75
+    window_height = 0.32
+    window_gap = 0.35
+    
+    # Create link body
+    link_points = create_stadium_polygon(link_width, link_height)
+    temp_link = gf.Component()
+    temp_link.add_polygon(link_points, layer=(1, 0))
+    
+    # Create windows
+    temp_window1 = gf.components.rectangle(
+        size=(window_width, window_height), layer=(1, 0), centered=True
+    )
+    temp_window1_moved = gf.Component()
+    w1_ref = temp_window1_moved << temp_window1
+    w1_ref.movex(-window_width/2 - window_gap/2)
+    temp_window1_moved = temp_window1_moved.flatten()
+    
+    temp_window2 = gf.components.rectangle(
+        size=(window_width, window_height), layer=(1, 0), centered=True
+    )
+    temp_window2_moved = gf.Component()
+    w2_ref = temp_window2_moved << temp_window2
+    w2_ref.movex(window_width/2 + window_gap/2)
+    temp_window2_moved = temp_window2_moved.flatten()
+    
+    # Boolean operations to create link with windows
+    link_step1 = gf.geometry.boolean(temp_link, temp_window1_moved, operation="not", layer=(1, 0))
+    link_final = gf.geometry.boolean(link_step1, temp_window2_moved, operation="not", layer=(1, 0))
+    
+    # Position top link
+    top_link = c << link_final
+    top_link.movey(0.52)
+    
+    # Position bottom link
+    bottom_link = c << link_final
+    bottom_link.movey(-0.52)
+    
+    return c
+
+# Generate the device
+device = chain_link_device()
+device.write_gds("chain_link_device.gds")

@@ -1,0 +1,81 @@
+Turn 1 Response:
+
+The error occurred because `gf.get_cross_section` is a function used to retrieve a cross-section from a library and requires an identifier as the first argument. To create a new cross-section with specific parameters like `width` and `layer`, we should follow the method shown in **Section 6 (Component Assembly Pattern)** of your provided catalog.
+
+Here is the corrected script. It uses `gf.cross_section.cross_section()` as specified in your reference to define the waveguide properties and calculates the S-bend heights to perfectly match the **120µm x 4µm** footprint.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_reconstruction(
+    coupler_length: float = 40.0,
+    bend_length: float = 40.0,
+    gap: float = 0.2,
+    width: float = 0.5,
+    bend_height: float = 1.4,
+    layer: tuple[int, int] = (1, 0),
+) -> gf.Component:
+    """
+    Recreates the directional coupler using parametric primitives.
+    
+    Footprint calculation:
+    - Width: 40 (left bend) + 40 (center) + 40 (right bend) = 120 um
+    - Height: 
+        Waveguide centers in middle = +/- (gap/2 + width/2) = +/- 0.35 um
+        S-bend offset = 1.4 um
+        Waveguide centers at ports = +/- (0.35 + 1.4) = +/- 1.75 um
+        Total Height = (1.75 - (-1.75)) + width = 3.5 + 0.5 = 4.0 um
+    """
+    c = gf.Component()
+    
+    # Use the method from Section 6 of the provided catalog
+    xs = gf.cross_section.cross_section(width=width, layer=layer)
+    
+    # 1. Create the central interaction section
+    # Standard ports: o1 (top-left), o2 (bot-left), o3 (bot-right), o4 (top-right)
+    coupler_mid = c << gf.components.coupler_straight(
+        length=coupler_length, 
+        gap=gap, 
+        cross_section=xs
+    )
+    
+    # 2. Add S-bend branches for the left side (input side)
+    # S-bend ports: o1 (left), o2 (right)
+    sbend_l_top = c << gf.components.bend_s(size=(bend_length, bend_height), cross_section=xs)
+    sbend_l_top.connect("o2", coupler_mid.ports["o1"])
+    
+    sbend_l_bot = c << gf.components.bend_s(size=(bend_length, -bend_height), cross_section=xs)
+    sbend_l_bot.connect("o2", coupler_mid.ports["o2"])
+    
+    # 3. Add S-bend branches for the right side (output side)
+    sbend_r_top = c << gf.components.bend_s(size=(bend_length, bend_height), cross_section=xs)
+    sbend_r_top.connect("o1", coupler_mid.ports["o4"])
+    
+    sbend_r_bot = c << gf.components.bend_s(size=(bend_length, -bend_height), cross_section=xs)
+    sbend_r_bot.connect("o1", coupler_mid.ports["o3"])
+    
+    # 4. Define and expose external ports
+    c.add_port("o1", port=sbend_l_top.ports["o1"])
+    c.add_port("o2", port=sbend_l_bot.ports["o1"])
+    c.add_port("o3", port=sbend_r_bot.ports["o2"])
+    c.add_port("o4", port=sbend_r_top.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    component = directional_coupler_reconstruction()
+    
+    # Verify footprint dimensions using xsize and ysize (compatible with KFactory/GDSFactory 8)
+    print(f"Final Footprint: {component.xsize} um x {component.ysize} um")
+    
+    # Save the output
+    component.write_gds("coupler_parametric.gds")
+    
+    # Attempt to visualize if a viewer is available
+    try:
+        component.show()
+    except Exception:
+        print("GDS file saved successfully.")
+```

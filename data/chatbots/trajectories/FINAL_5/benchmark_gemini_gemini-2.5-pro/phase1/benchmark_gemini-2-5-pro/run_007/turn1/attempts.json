@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.999627",
+      "api_duration_seconds": 177.30363202095032,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 2237,
+        "total_tokens": 21554
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:08.845180",
+      "api_duration_seconds": 24.607524156570435,
+      "usage": {
+        "input_tokens": 4605,
+        "output_tokens": 1588,
+        "total_tokens": 6869
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 3.0 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:34.854261",
+      "api_duration_seconds": 38.34233498573303,
+      "usage": {
+        "input_tokens": 6238,
+        "output_tokens": 1868,
+        "total_tokens": 10943
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: cross_section() got an unexpected keyword argument 'min_bend_radius'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13192,
+    "output_tokens": 5693,
+    "total_tokens": 39366
+  }
+}

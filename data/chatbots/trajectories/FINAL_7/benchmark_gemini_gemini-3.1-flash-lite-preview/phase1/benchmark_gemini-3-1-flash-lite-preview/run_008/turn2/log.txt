@@ -1,0 +1,71 @@
+Turn 2 Response:
+
+The `RuntimeError` occurred because GDSFactory locks cells once they are used in a hierarchy or referenced. Attempting to use `gf.boolean` on a component that already contains references causes this conflict, as the system tries to "flatten" or compute the geometry while the cell is locked.
+
+To fix this and achieve the silhouette in your image, **we do not need `gf.boolean` at all**. GDSII format natively merges overlapping polygons on the same layer. By simply placing your structures inside the racetrack component, they will automatically weld together into the single contiguous shape you see in your image.
+
+Here is the corrected, simplified script that follows GDSFactory best practices to avoid the locking error:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def internal_structure():
+    """Creates the 'H' shaped internal geometry."""
+    c = gf.Component()
+    # Vertical bar of the H
+    c << gf.components.rectangle(size=(0.4, 2.2), centered=True)
+    # Horizontal crossbar of the H
+    c << gf.components.rectangle(size=(1.2, 0.6), centered=True)
+    return c
+
+@gf.cell
+def racetrack():
+    """Creates the outer stadium loop."""
+    c = gf.Component()
+    # Stadium dimensions based on your image
+    radius = 1.5
+    straight_len = 2.5
+    
+    # Path construction for the stadium
+    p = gf.Path()
+    p.append(gf.path.straight(length=straight_len))
+    p.append(gf.path.arc(radius=radius, angle=180))
+    p.append(gf.path.straight(length=straight_len))
+    p.append(gf.path.arc(radius=radius, angle=180))
+    
+    # Extrude path
+    c << gf.path.extrude(p, cross_section=gf.cross_section.cross_section(width=0.4, layer=(1, 0)))
+    return c
+
+@gf.cell
+def final_device():
+    c = gf.Component()
+    
+    # 1. Add the Racetrack
+    # The racetrack is centered at (0,0) by default
+    c << racetrack()
+    
+    # 2. Add two internal structures
+    # We assign them to variables 's1' and 's2' (these are references)
+    s1 = c << internal_structure()
+    s2 = c << internal_structure()
+    
+    # 3. Position the references
+    # Since we are modifying the REFERENCE, not the CELL, this will not trigger the lock error
+    s1.movex(-0.8)
+    s2.movex(0.8)
+    
+    return c
+
+# Generate the device
+if __name__ == "__main__":
+    device = final_device()
+    device.show()  # Opens KLayout
+    device.write_gds("racetrack_device.gds")
+```
+
+### Why this fixes the issue:
+1.  **Removed `gf.boolean`:** Because the shapes are on the same layer, GDSFactory/KLayout automatically renders them as a merged silhouette. This avoids the complex "cell locking" issues associated with computing boolean unions on live components.
+2.  **Reference Manipulation:** In the `final_device` function, we now modify `s1` and `s2` (which are `Reference` objects), rather than modifying the component definition or the global component `c`.
+3.  **Modular Cells:** Each part is defined as its own `@gf.cell`, which keeps the hierarchy clean and prevents the transformation errors you experienced.

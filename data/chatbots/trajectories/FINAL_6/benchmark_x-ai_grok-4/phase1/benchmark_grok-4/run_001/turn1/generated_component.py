@@ -1,0 +1,18 @@
+import gdsfactory as gf
+import numpy as np
+import math
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    a = 2.35
+    num_points = 256  # Higher for smoother curve
+    t = np.linspace(0, 2 * math.pi, num_points)
+    x = a * np.cos(t) ** 3
+    y = a * np.sin(t) ** 3
+    points = np.stack((x, y), axis=1)
+    c.add_polygon(points, layer=(1, 0))
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")

@@ -1,0 +1,85 @@
+Turn 3 Response:
+
+Looking at the target image versus my current output, I can see the key differences:
+
+1. **The target has a tapering structure** - the waveguides start wide on the left and gradually narrow toward the right, whereas my current design has constant width waveguides.
+
+2. **The curvature is different** - the target shows smooth, gradual curves that start from the center and fan out, while my current design has more abrupt curves with control points that don't create the same gradual divergence.
+
+3. **The central waveguide should be part of the tapering structure** - in the target, all three waveguides appear to originate from a common wider section on the left and gradually separate and narrow.
+
+To fix this, I need to:
+- Use taper components or path extrusion with width transitions
+- Create a more gradual, smooth curvature that starts from the center
+- Ensure all three waveguides originate from a common wider section on the left
+
+Here's my improved version:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreate_device():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create the central waveguide with tapering
+    # Start with wider width on left, taper to narrower width on right
+    central_taper = c << gf.components.taper(length=40.0, width1=1.0, width2=0.5)
+    central_taper.move((0, 0))
+    
+    # Create top curved waveguide with tapering
+    # Use a path with smooth curve and width transition
+    top_points = [
+        (0, 0.0),      # Start at center
+        (10, 0.3),     # Start curving upward
+        (20, 0.6),     # Continue curving
+        (30, 0.8),     # Continue curving
+        (40, 0.85)     # End at top edge
+    ]
+    
+    top_path = gf.Path(top_points)
+    
+    # Create a transition cross-section that tapers from wider to narrower
+    xs_wide = gf.cross_section.cross_section(width=1.0, layer=(1, 0))
+    xs_narrow = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    width_transition = gf.path.transition(xs_wide, xs_narrow, width_type='linear')
+    
+    top_wg = c << gf.path.extrude_transition(top_path, width_transition)
+    
+    # Create bottom curved waveguide (mirror of top)
+    bottom_points = [
+        (0, 0.0),      # Start at center
+        (10, -0.3),    # Start curving downward
+        (20, -0.6),    # Continue curving
+        (30, -0.8),    # Continue curving
+        (40, -0.85)    # End at bottom edge
+    ]
+    
+    bottom_path = gf.Path(bottom_points)
+    bottom_wg = c << gf.path.extrude_transition(bottom_path, width_transition)
+    
+    # Add ports for connectivity
+    c.add_port("o1_top", port=top_wg.ports["o1"])
+    c.add_port("o2_top", port=top_wg.ports["o2"])
+    c.add_port("o1_central", port=central_taper.ports["o1"])
+    c.add_port("o2_central", port=central_taper.ports["o2"])
+    c.add_port("o1_bottom", port=bottom_wg.ports["o1"])
+    c.add_port("o2_bottom", port=bottom_wg.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = recreate_device()
+device.write_gds("recreated_device.gds")
+```
+
+This improved version:
+1. Uses taper components and width transitions to create the narrowing effect from left to right
+2. Starts all three waveguides from the center (y=0) to create the fanning effect
+3. Uses smoother curves with more gradual transitions
+4. Maintains the 1.7um total height constraint (±0.85um from center)
+
+The key changes are using `extrude_transition` with a width transition from 1.0um to 0.5um, and starting all waveguides from the center point to create the fanning effect seen in the target image.

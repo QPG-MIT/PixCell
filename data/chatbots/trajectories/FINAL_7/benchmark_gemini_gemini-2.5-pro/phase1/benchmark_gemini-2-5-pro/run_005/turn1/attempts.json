@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.926654",
+      "api_duration_seconds": 116.24836897850037,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 1314,
+        "total_tokens": 16794
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.components' has no attribute 'stadium'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:07.581436",
+      "api_duration_seconds": 26.493387937545776,
+      "usage": {
+        "input_tokens": 3693,
+        "output_tokens": 1417,
+        "total_tokens": 7038
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:35.448025",
+      "api_duration_seconds": 19.673646211624146,
+      "usage": {
+        "input_tokens": 5623,
+        "output_tokens": 1453,
+        "total_tokens": 7942
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o2' is not a valid port name or index. Available ports: ['e1', 'e2', 'e3', 'e4']\"\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_7/benchmark_gemini_gemini-2.5-pro/phase1/benchmark_gemini-2-5-pro/run_005/turn1/generated_component.py\", line 98, in <module>\n    c = create_device_from_image()\n  File \"/Use",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11663,
+    "output_tokens": 4184,
+    "total_tokens": 31774
+  }
+}

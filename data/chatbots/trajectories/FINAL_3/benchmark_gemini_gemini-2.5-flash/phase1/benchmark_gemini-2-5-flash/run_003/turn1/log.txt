@@ -1,0 +1,145 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def custom_coupler_shape() -> gf.Component:
+    """
+    Recreates the geometry shown in the image using GDSFactory parametric functions.
+
+    The device consists of two waveguides that start separated, bend towards each other,
+    run parallel for a central section, then bend away to their original separation.
+    This is constructed by composing straight waveguides and S-bends.
+
+    The total footprint is 120um x 4um, with the waveguides having a width of 0.5um.
+    """
+    c = gf.Component("custom_coupler_shape")
+    
+    # Define the cross-section for the waveguides
+    # Using default width=0.5, layer=(1,0) as commonly used in gdsfactory
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    # Device footprint constraints
+    total_length = 120.0  # Total length of the device in um
+    total_height = 4.0    # Total height (vertical span) of the device in um
+
+    # Calculate waveguide offsets based on total_height and waveguide_width
+    waveguide_width = xs.width
+    
+    # Y-coordinate for the center of the outer waveguides (topmost and bottommost position)
+    # This ensures the outer edges of the waveguides are exactly at +/- total_height/2
+    outer_y_offset = total_height / 2 - waveguide_width / 2 # Example: 2.0 - 0.25 = 1.75 um
+    
+    # Define the desired gap between the two waveguides in the central parallel section
+    inner_gap = 0.2 # Assuming a 0.2um gap between the inner edges of the waveguides
+    # Y-coordinate for the center of the inner waveguides (closest to the centerline)
+    inner_y_offset = inner_gap / 2 + waveguide_width / 2 # Example: 0.1 + 0.25 = 0.35 um
+
+    # Determine the vertical change (dy) for the S-bends
+    # Each S-bend transitions the waveguide center from outer_y_offset to inner_y_offset (or vice-versa)
+    dy_bend = outer_y_offset - inner_y_offset # Example: 1.75 - 0.35 = 1.4 um
+
+    # Divide the total_length into segments for the construction:
+    # L_straight_end (left input/right output straight sections)
+    # dx_bend (horizontal span of each S-bend)
+    # L_mid (central parallel straight section)
+    # The total length is: L_straight_end + dx_bend + L_mid + dx_bend + L_straight_end
+    
+    # Parameters chosen based on visual balance and to fit total_length = 120
+    L_straight_end = 20.0  # Length of the straight input/output sections
+    dx_bend = 30.0         # Horizontal length of each S-bend
+    L_mid = total_length - (2 * L_straight_end) - (2 * dx_bend) # 120 - (2*20) - (2*30) = 120 - 40 - 60 = 20.0
+    
+    # A check to ensure the calculated middle length is valid
+    if L_mid < 0:
+        raise ValueError(f"Calculated L_mid is negative ({L_mid}). Adjust L_straight_end or dx_bend parameters.")
+    
+    # --- Top Waveguide Construction ---
+    # 1. Left straight section: positioned at the top outer Y-offset
+    wg_top_left = c << gf.components.straight(length=L_straight_end, cross_section=xs)
+    wg_top_left.movey(outer_y_offset) # Move the waveguide's center to outer_y_offset
+
+    # 2. First S-bend: curves downwards from outer_y_offset to inner_y_offset
+    # `size=(dx, dy)` with negative `dy` causes the bend to go downwards
+    bend_s1_top = c << gf.components.bend_s(size=(dx_bend, -dy_bend), cross_section=xs)
+    bend_s1_top.connect("o1", wg_top_left.ports["o2"]) # Connect its input to the previous section's output
+
+    # 3. Middle straight section: runs parallel at the inner Y-offset
+    wg_top_mid = c << gf.components.straight(length=L_mid, cross_section=xs)
+    wg_top_mid.connect("o1", bend_s1_top.ports["o2"])
+
+    # 4. Second S-bend: curves upwards from inner_y_offset back to outer_y_offset
+    # `size=(dx, dy)` with positive `dy` causes the bend to go upwards
+    bend_s2_top = c << gf.components.bend_s(size=(dx_bend, dy_bend), cross_section=xs)
+    bend_s2_top.connect("o1", wg_top_mid.ports["o2"])
+
+    # 5. Right straight section: positioned at the top outer Y-offset
+    wg_top_right = c << gf.components.straight(length=L_straight_end, cross_section=xs)
+    wg_top_right.connect("o1", bend_s2_top.ports["o2"])
+
+    # --- Bottom Waveguide Construction (vertically mirrored version of the top path) ---
+    # 1. Left straight section: positioned at the bottom outer Y-offset
+    wg_bot_left = c << gf.components.straight(length=L_straight_end, cross_section=xs)
+    wg_bot_left.movey(-outer_y_offset) # Move the waveguide's center to -outer_y_offset
+
+    # 2. First S-bend: curves upwards from -outer_y_offset to -inner_y_offset
+    # Positive `dy` makes it curve upwards (towards y=0 from negative y)
+    bend_s1_bot = c << gf.components.bend_s(size=(dx_bend, dy_bend), cross_section=xs)
+    bend_s1_bot.connect("o1", wg_bot_left.ports["o2"])
+
+    # 3. Middle straight section: runs parallel at the inner Y-offset
+    wg_bot_mid = c << gf.components.straight(length=L_mid, cross_section=xs)
+    wg_bot_mid.connect("o1", bend_s1_bot.ports["o2"])
+
+    # 4. Second S-bend: curves downwards from -inner_y_offset back to -outer_y_offset
+    # Negative `dy` makes it curve downwards (away from y=0 from negative y)
+    bend_s2_bot = c << gf.components.bend_s(size=(dx_bend, -dy_bend), cross_section=xs)
+    bend_s2_bot.connect("o1", wg_bot_mid.ports["o2"])
+
+    # 5. Right straight section: positioned at the bottom outer Y-offset
+    wg_bot_right = c << gf.components.straight(length=L_straight_end, cross_section=xs)
+    wg_bot_right.connect("o1", bend_s2_bot.ports["o2"])
+
+    # --- Expose the input/output ports of the main component ---
+    # Standard 2x2 port naming convention: o1 (top-left), o2 (bottom-left),
+    # o3 (top-right), o4 (bottom-right)
+    c.add_port("o1", port=wg_top_left.ports["o1"])   # Input port for the top waveguide
+    c.add_port("o2", port=wg_bot_left.ports["o1"])   # Input port for the bottom waveguide
+    c.add_port("o3", port=wg_top_right.ports["o2"])  # Output port for the top waveguide
+    c.add_port("o4", port=wg_bot_right.ports["o2"])  # Output port for the bottom waveguide
+
+    # The `gf.cell` decorator automatically handles the centering and bounding box calculation
+    # for the component based on the placed references.
+    return c
+
+if __name__ == "__main__":
+    # Create an instance of the custom coupler shape
+    my_device = custom_coupler_shape()
+    
+    # Print the bounding box and dimensions to verify against the footprint constraint
+    bbox = my_device.bbox()
+    
+    # Corrected: Access width and height directly from the DBox object
+    width = bbox.width()
+    height = bbox.height()
+    
+    print(f"Device Bounding Box: {bbox}")
+    print(f"Device Width: {width:.3f} um, Height: {height:.3f} um")
+    
+    # Check against the desired footprint
+    expected_width = 120.0
+    expected_height = 4.0
+    print(f"Expected Width: {expected_width} um, Expected Height: {expected_height} um")
+
+    # Assertions to ensure the dimensions are as expected within a small tolerance
+    assert abs(width - expected_width) < 1e-3, f"Width mismatch: Expected {expected_width}, Got {width}"
+    assert abs(height - expected_height) < 1e-3, f"Height mismatch: Expected {expected_height}, Got {height}"
+    
+    # Save the component to a GDSII file
+    my_device.write_gds("custom_coupler_shape.gds")
+    
+    # Display the component using the GDSFactory viewer (requires KLayout or similar)
+    # Uncomment the line below to open a viewer
+    # gf.show(my_device)
+```

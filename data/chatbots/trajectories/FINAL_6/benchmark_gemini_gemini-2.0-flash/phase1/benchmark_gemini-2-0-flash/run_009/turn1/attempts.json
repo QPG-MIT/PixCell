@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.243557",
+      "api_duration_seconds": 10.201355934143066,
+      "usage": {
+        "input_tokens": 3894,
+        "output_tokens": 1273,
+        "total_tokens": 5167
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ImportError: cannot import name 'Component' from 'gdsfactory.typings' (/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/gdsfactory/typings.py). Did you mean: 'component'?",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:21.172300",
+      "api_duration_seconds": 6.794254779815674,
+      "usage": {
+        "input_tokens": 5239,
+        "output_tokens": 996,
+        "total_tokens": 6235
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "NameError: name 'stemwidth' is not defined. Did you mean: 'stem_width'?",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:29.604364",
+      "api_duration_seconds": 6.875990867614746,
+      "usage": {
+        "input_tokens": 6268,
+        "output_tokens": 902,
+        "total_tokens": 7170
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15401,
+    "output_tokens": 3171,
+    "total_tokens": 18572
+  }
+}

@@ -1,0 +1,61 @@
+Looking at the image, I can see a black device on white background that appears to show two wavy or sinusoidal bands running horizontally. The bands seem to be parallel to each other with a gap between them.
+
+The device footprint is 18 μm x 3 μm.
+
+Let me analyze the structure:
+1. There are two horizontal wavy/sinusoidal bands
+2. They appear to be roughly parallel
+3. The bands have smooth curves going up and down
+4. The overall width appears to be about 18 μm
+5. The overall height appears to be about 3 μm
+
+Looking more carefully, the bands seem to form a shape where:
+- Top band: starts from left, curves down, then back up, creating a smooth wave
+- Bottom band: mirrors or complements this pattern
+- The gap between them varies
+
+Actually, looking more closely, this could be:
+- Two parallel waveguides with sinusoidal/wavy patterns
+- Or it could be a single shape with a gap in the middle that varies
+
+The pattern looks like it could be created using paths with sinusoidal variations.
+
+Let me think about how to create this:
+
+1. Use gf.Path to create wavy paths
+2. The paths should have sinusoidal variations
+3. Extrude them to create waveguides
+
+Looking at the image again, it seems like:
+- There are two separate bands/waveguides
+- Each has a sinusoidal pattern
+- They're roughly parallel but the gap between them varies
+- The wavelength and amplitude of the waves seem consistent
+
+Given the 18 μm x 3 μm footprint:
+- Length: 18 μm
+- Height: 3 μm
+- The two bands together fit within this height
+- Each band might be around 0.5-0.8 μm wide
+- The gap between them varies
+
+I'll create this using sinusoidal paths. I can use numpy to create points for the sine waves, then create paths from those points, and extrude them.
+
+
+Now I'll write the code to implement this. I'll set up a component with parameters for the length (18 μm), total height (3 μm), and create sinusoidal paths using numpy to generate the wave points. I'll define the waveguide width around 0.5 μm and an amplitude of about 0.4 μm for the sine wave oscillation, with roughly 2.5 periods across the length.
+
+For the coordinate generation, I'm using linspace to create 200 evenly-spaced x-points along the length. The top waveguide oscillates around y = 1.75 μm (65% of total height) while the bottom one centers at y = 1.25 μm (35% of total height), both following the same sine wave pattern. I'll then stack these into point arrays and create the waveguide paths using these coordinates.
+
+Now I need to instantiate Path objects from those point arrays, define a cross-section with the specified width, extrude both paths to form the actual waveguide geometries, add them to the component, and return the result. Finally, I'll instantiate the device, display it, and write it to a GDS file.
+
+Looking at the reference image more carefully, the two waveguide bands appear to oscillate in opposite phase—when one deflects upward, the other moves downward. This creates that characteristic pinching and spreading pattern. I should adjust the wave generation to account for this 180-degree phase offset between the top and bottom paths.
+
+Setting up the waveguide parameters: width of 0.6 μm, amplitude of 0.5 μm for the oscillation. The x-coordinates span the full 18 μm length with 200 points. For the top path, I'll center it at a higher y-position and apply a sine wave. The bottom path gets positioned lower and uses the negative of that same sine function, creating the opposite-phase behavior. Then I'll stack these into coordinate arrays for path generation.
+
+Once the centerline paths are defined, I create Path objects from each set of coordinates. A cross-section with 0.6 μm width gets applied to both paths through extrusion, generating the actual waveguide geometries. These two waveguide components get added to the main component, and the function returns the complete structure. Finally, instantiate the device, display it, and export to GDS format.
+
+Looking at the target image more carefully, I can see roughly 2-3 complete wave cycles along the length, and both bands oscillate in phase rather than opposing each other. The vertical separation between them remains relatively constant while they trace matching sinusoidal paths.
+
+I'll set up the parameters: a length of 18 micrometers with about 2.5 sine periods, a waveguide width of 0.5 micrometers, an oscillation amplitude of 0.3 micrometers, and a vertical center-to-center separation of 1.2 micrometers. Then I'll generate the x-coordinates across the full length and compute the sine wave modulation, using it to define the top waveguide's centerline by adding the modulation to the base vertical position.
+
+The bottom waveguide follows the same sinusoidal pattern but shifted down by the separation distance. Both paths get converted to gdsfactory Path objects, then extruded using a cross-section with the specified width to create the actual waveguide geometries, which are then added to the component.

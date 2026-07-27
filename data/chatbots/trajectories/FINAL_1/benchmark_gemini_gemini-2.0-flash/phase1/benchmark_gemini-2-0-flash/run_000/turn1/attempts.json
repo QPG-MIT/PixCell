@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:08.656810",
+      "api_duration_seconds": 6.562947750091553,
+      "usage": {
+        "input_tokens": 4411,
+        "output_tokens": 828,
+        "total_tokens": 5239
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 5 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:16.838187",
+      "api_duration_seconds": 8.808148860931396,
+      "usage": {
+        "input_tokens": 5280,
+        "output_tokens": 1046,
+        "total_tokens": 6326
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: straight_gdsfactorypcomponentspwaveguidespstraight_L10__b034d34d_33536_2164_A44p99999999999999, Cell name: straight_gdsfactorypcomponentspwaveguidespstraight_L10__b034d34d\nInstance name: straight_gdsfactorypcomponentspwaveguidespstraight_L10__b034d34",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:27.098677",
+      "api_duration_seconds": 9.582438707351685,
+      "usage": {
+        "input_tokens": 6918,
+        "output_tokens": 1053,
+        "total_tokens": 7971
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: cross_section() got an unexpected keyword argument 'snap_to_grid'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16609,
+    "output_tokens": 2927,
+    "total_tokens": 19536
+  }
+}

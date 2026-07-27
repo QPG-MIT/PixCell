@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:12:12.050067",
+      "api_duration_seconds": 53.35305881500244,
+      "usage": {
+        "input_tokens": 6068,
+        "output_tokens": 1173,
+        "total_tokens": 11966
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 7.665 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:13:06.828719",
+      "api_duration_seconds": 87.38165307044983,
+      "usage": {
+        "input_tokens": 7288,
+        "output_tokens": 1158,
+        "total_tokens": 16864
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:14:35.461659",
+      "api_duration_seconds": 42.79240608215332,
+      "usage": {
+        "input_tokens": 8477,
+        "output_tokens": 1141,
+        "total_tokens": 13236
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 21833,
+    "output_tokens": 3472,
+    "total_tokens": 42066
+  }
+}

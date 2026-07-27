@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:20:43.182698",
+      "api_duration_seconds": 51.03885507583618,
+      "usage": {
+        "input_tokens": 10674,
+        "output_tokens": 3274,
+        "total_tokens": 22932
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "IndexError: index -1 is out of bounds for axis 0 with size 0",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:35.591758",
+      "api_duration_seconds": 44.767250061035156,
+      "usage": {
+        "input_tokens": 13980,
+        "output_tokens": 2975,
+        "total_tokens": 24763
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: Path has too few points (2). Expected at least 3 for robust segmentation into two 2-point segments.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:22:21.557711",
+      "api_duration_seconds": 27.74662709236145,
+      "usage": {
+        "input_tokens": 17011,
+        "output_tokens": 2862,
+        "total_tokens": 23860
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: Path has too few points (2). Expected at least 3 for robust segmentation into two 2-point segments.",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 41665,
+    "output_tokens": 9111,
+    "total_tokens": 71555
+  }
+}

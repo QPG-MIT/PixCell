@@ -1,0 +1,90 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def adiabatic_coupler_pinched():
+    """
+    Creates a highly tapered adiabatic coupler to match the target visual.
+    Footprint: 18x3 um.
+    The waveguides are wide at the ports and significantly narrower in the center 
+    with a very small gap.
+    """
+    c = gf.Component("adiabatic_coupler_pinched")
+    
+    # 1. Design Parameters
+    length = 18.0
+    num_points = 300
+    
+    # Port parameters (ends) - aiming for 1.2um width at ports
+    # Top edge at 1.5, bottom at -1.5. Center of top waveguide at 0.9
+    w_port = 1.2
+    y_port = 0.9
+    
+    # Coupling region parameters (center)
+    w_center = 0.45
+    # For a 0.05um gap: y_center = (gap + width)/2 = (0.05 + 0.45)/2 = 0.25
+    y_center = 0.25
+    
+    x = np.linspace(0, length, num_points)
+    
+    # 2. Mathematical Smoothing Function
+    def smooth_step(t):
+        """Standard adiabatic transition function."""
+        return t - np.sin(2 * np.pi * t) / (2 * np.pi)
+
+    # 3. Calculate Geometry Arrays
+    y_path = np.zeros_like(x)
+    w = np.zeros_like(x)
+    
+    for i, xi in enumerate(x):
+        # Calculate progress from 0 to 1 across the whole device
+        t_global = xi / length
+        
+        # Mirror the transition at the midpoint (length/2)
+        if t_global <= 0.5:
+            t = t_global / 0.5 # 0 to 1 transition for the first half
+            y_path[i] = y_port + (y_center - y_port) * smooth_step(t)
+            w[i] = w_port + (w_center - w_port) * smooth_step(t)
+        else:
+            t = (t_global - 0.5) / 0.5 # 0 to 1 transition for the second half
+            y_path[i] = y_center + (y_port - y_center) * smooth_step(t)
+            w[i] = w_center + (w_port - w_center) * smooth_step(t)
+            
+    # 4. Construct Polygons
+    # Top Arm
+    points_top = []
+    y_upper = y_path + w/2
+    y_lower = y_path - w/2
+    
+    # Outer edge (top)
+    for i in range(num_points):
+        points_top.append((x[i], y_upper[i]))
+    # Inner edge (bottom)
+    for i in range(num_points - 1, -1, -1):
+        points_top.append((x[i], y_lower[i]))
+    
+    c.add_polygon(points_top, layer=(1, 0))
+    
+    # Bottom Arm (Mirror of top arm across Y=0)
+    points_bottom = [(px, -py) for px, py in points_top]
+    c.add_polygon(points_bottom, layer=(1, 0))
+    
+    # 5. Define Ports
+    c.add_port(name="o1", center=(0, y_port), width=w_port, orientation=180, layer=(1, 0))
+    c.add_port(name="o2", center=(length, y_port), width=w_port, orientation=0, layer=(1, 0))
+    c.add_port(name="o3", center=(0, -y_port), width=w_port, orientation=180, layer=(1, 0))
+    c.add_port(name="o4", center=(length, -y_port), width=w_port, orientation=0, layer=(1, 0))
+
+    return c
+
+if __name__ == "__main__":
+    # Generate the component
+    device = adiabatic_coupler_pinched()
+    
+    # Output file
+    device.write_gds("pinched_coupler.gds")
+    
+    # Verify constraints
+    print(f"Device: {device.name}")
+    print(f"Footprint: {device.size_info.width:.2f}um x {device.size_info.height:.2f}um")
+    print(f"Min Gap: {2*(0.25 - 0.45/2):.3f} um")

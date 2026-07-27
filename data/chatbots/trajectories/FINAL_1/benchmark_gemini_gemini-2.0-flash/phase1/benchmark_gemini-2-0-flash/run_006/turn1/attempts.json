@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:08.680892",
+      "api_duration_seconds": 7.549968957901001,
+      "usage": {
+        "input_tokens": 4411,
+        "output_tokens": 922,
+        "total_tokens": 5333
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 5 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:17.651477",
+      "api_duration_seconds": 9.957403898239136,
+      "usage": {
+        "input_tokens": 5374,
+        "output_tokens": 1252,
+        "total_tokens": 6626
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports bend_euler_gdsfactorypcomponentspbendspbend_euler_R10_A_66688e21_0_0[\"o1\"] and Port \"o2\" (\"500\"/\"1000\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:29.187513",
+      "api_duration_seconds": 10.597232103347778,
+      "usage": {
+        "input_tokens": 6707,
+        "output_tokens": 1317,
+        "total_tokens": 8024
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: straight_gdsfactorypcomponentspwaveguidespstraight_L10__3dccd7fb_22071_2929_A44p99999999999999, Cell name: straight_gdsfactorypcomponentspwaveguidespstraight_L10__3dccd7fb\nInstance name: straight_gdsfactorypcomponentspwaveguidespstraight_L10__3dccd7f",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16492,
+    "output_tokens": 3491,
+    "total_tokens": 19983
+  }
+}

@@ -1,0 +1,186 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_recreation():
+    """
+    Recreates the grating-assisted coupler device.
+    Uses boolean subtraction for the grating and copies port properties 
+    from generated references to avoid backend layer-index errors.
+    """
+    c = gf.Component()
+
+    # ---------------------------------------------------------
+    # 1. Dimensions & Parameters
+    # ---------------------------------------------------------
+    L_total = 18.24
+    wg_width = 0.45
+    gap = 0.15          
+    
+    # Tight bend radius for the "hairpin" look
+    bend_radius = 0.5
+    
+    # Grating parameters
+    period = 0.40
+    duty_cycle = 0.5
+    L_grating = 11.2 
+    
+    # Define Cross Section with explicit radius to allow tight bends
+    # using (1, 0) as the standard GDS layer
+    xs = gf.cross_section.cross_section(
+        width=wg_width,
+        layer=(1, 0),
+        radius=bend_radius
+    )
+
+    # ---------------------------------------------------------
+    # 2. Sub-Component Definitions
+    # ---------------------------------------------------------
+
+    def create_grating_arm(length, period, dc, width):
+        """
+        Creates a waveguide with etched slots.
+        Returns a Component with 'o1' and 'o2' ports.
+        """
+        # Temporary component to hold geometry for boolean operations
+        temp = gf.Component()
+        
+        # 1. The base waveguide (Positive)
+        wg_ref = temp << gf.components.straight(length=length, cross_section=xs)
+        
+        # 2. The etch pattern (Negative)
+        etch_layer = (2, 0) # Temporary layer for boolean cuts
+        slot_w = period * dc
+        slot_h = width * 0.7
+        
+        # Create one slot
+        slot = gf.components.rectangle(size=(slot_w, slot_h), layer=etch_layer, centered=True)
+        
+        # Create array of slots
+        # We manually place references to avoid 'add_array' backend issues
+        n_slots = int(length / period)
+        for i in range(n_slots):
+            s = temp << slot
+            s.x = (i + 0.5) * period
+            s.y = 0 # Centered on waveguide
+            
+        # 3. Perform Boolean: Base - Etch
+        # This returns a new Component containing the etched polygons
+        # We target the same layer as the cross_section
+        boolean_comp = gf.boolean(
+            A=wg_ref, 
+            B=temp.get_component_layer_stack(etch_layer), # Select only etch rectangles
+            operation="not", 
+            layer=xs.layer
+        )
+        
+        # 4. Finalize Component with Ports
+        D = gf.Component()
+        ref = D << boolean_comp
+        
+        # CRITICAL: Reuse the layer object from the original waveguide port
+        # This prevents 'Value cannot be converted to integer' errors
+        p1_ref = wg_ref.ports['o1']
+        p2_ref = wg_ref.ports['o2']
+        
+        D.add_port(name="o1", center=(0,0), width=width, orientation=180, layer=p1_ref.layer)
+        D.add_port(name="o2", center=(length,0), width=width, orientation=0, layer=p2_ref.layer)
+        
+        return D
+
+    def create_tapered_tip():
+        """Creates a curved, tapered termination tip."""
+        D = gf.Component()
+        
+        # Path: Euler bend curving away (negative angle)
+        # Using a larger radius for the gentle taper curve
+        p = gf.path.euler(radius=3.0, angle=-45, p=0.5)
+        
+        # Transition: Waveguide Width -> Sharp Tip
+        xs_tip = gf.cross_section.cross_section(width=0.04, layer=(1, 0))
+        trans = gf.path.transition(xs, xs_tip, width_type='sine')
+        
+        ref = D << gf.path.extrude_transition(p, trans)
+        
+        # Reuse port from the extrusion
+        D.add_port("o1", port=ref.ports["o1"])
+        return D
+
+    # Instantiate reusable components
+    grating_arm = create_grating_arm(L_grating, period, duty_cycle, wg_width)
+    tip = create_tapered_tip()
+
+    # ---------------------------------------------------------
+    # 3. Assembly
+    # ---------------------------------------------------------
+
+    # A. Central Bus
+    # ----------------
+    bus = c << gf.components.straight(length=L_total + 2.0, cross_section=xs)
+    bus.x = 0
+    bus.y = 0
+
+    # B. Top Arm (Loop Right, Return Left)
+    # ------------------------------------
+    # 1. Grating (Inner)
+    t_g = c << grating_arm
+    t_g.x = -L_grating / 2
+    t_g.y = wg_width + gap
+    
+    # 2. Bend (Right)
+    # Connects to the East port (o2) of the grating.
+    # A standard bend attached to an East port turns North (Left).
+    # We want it to turn North, creating the loop.
+    t_bend = c << gf.components.bend_euler(radius=bend_radius, angle=180, cross_section=xs)
+    t_bend.connect("o1", t_g.ports["o2"])
+    
+    # 3. Return (Outer)
+    t_ret = c << gf.components.straight(length=L_grating + 2.0, cross_section=xs)
+    t_ret.connect("o1", t_bend.ports["o2"])
+    
+    # 4. Tip
+    t_tip = c << tip
+    t_tip.connect("o1", t_ret.ports["o2"])
+
+    # C. Bottom Arm (Loop Left, Return Right)
+    # ---------------------------------------
+    # 1. Grating (Inner)
+    b_g = c << grating_arm
+    b_g.x = -L_grating / 2
+    b_g.y = -(wg_width + gap)
+    
+    # 2. Bend (Left)
+    # Connects to the West port (o1) of the grating.
+    b_bend = c << gf.components.bend_euler(radius=bend_radius, angle=180, cross_section=xs)
+    # We attach to the West port. To make the bend loop downwards (South),
+    # we need to rotate it so its 'o1' faces East.
+    # Attaching East-facing Bend-o1 to West-facing Grating-o1:
+    # The bend turns 'Left' relative to itself.
+    # If Bend-o1 is East, 'Left' is North. Wait.
+    
+    # Let's rely on .connect behavior.
+    # Standard bend: o1 faces West (180), o2 faces East (0) after 180 turn? 
+    # No, gf.components.bend_euler() creates a bend where o1 is at (0,0) facing West (180)?
+    # Actually, default bend usually starts at (0,0) facing East (0) and turns to North (90).
+    # A 180 bend: Starts East (0), Ends West (180), y increases (Turn Left).
+    
+    # We want the Bottom bend to start at Grating-o1 (facing West).
+    # We want it to turn 'Right' (South) relative to the grating.
+    # A standard bend turns Left.
+    # If we mirror the bend, it turns Right.
+    b_bend.mirror(p1=(0,0), p2=(1,0)) # Mirror across X-axis -> Turns Right
+    b_bend.connect("o1", b_g.ports["o1"])
+    
+    # 3. Return
+    b_ret = c << gf.components.straight(length=L_grating + 2.0, cross_section=xs)
+    b_ret.connect("o1", b_bend.ports["o2"])
+    
+    # 4. Tip
+    b_tip = c << tip
+    b_tip.connect("o1", b_ret.ports["o2"])
+
+    return c
+
+# Generate and save
+device = device_recreation()
+device.write_gds("grating_coupler_device.gds")

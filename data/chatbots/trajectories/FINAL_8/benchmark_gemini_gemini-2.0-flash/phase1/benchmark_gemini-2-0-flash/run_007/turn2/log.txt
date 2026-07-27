@@ -1,0 +1,29 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+
+@gf.cell
+def my_device(rect_width=5, rect_height=10):
+    c = gf.Component("my_device")
+
+    # Create a rectangle
+    rect = c << rectangle(size=(rect_width, rect_height))
+    rect.movex(-rect_width/2) #move the center to x=0
+    rect.movey(-rect_height/2) #move the center to y=0
+
+    return c
+
+device = my_device()
+device.show()
+device.write_gds("my_device.gds")
+```
+
+**Reasoning for the fix:**
+
+The previous code had several issues, the main issue being it was the same code as before but without straight lines, since the goal is to recreate the image I provided. 
+
+Based on the single crop of the image you provided, it appears to be a simple rectangle.  Therefore, the fix involves creating a component containing only a rectangle using the `gf.components.rectangle` function, centering it at (0,0)
+
+I have also parameterized the width and height of the rectangle using `rect_width` and `rect_height` so that the user can experiment with different values. The dimensions are initialized to 5 and 10 respectively. Finally, the `movex` and `movey` functions are utilized to place the rectangle with its center at the (0,0).

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.537689",
+      "api_duration_seconds": 94.48736310005188,
+      "usage": {
+        "input_tokens": 2348,
+        "output_tokens": 1413,
+        "total_tokens": 13737
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: extrude() got an unexpected keyword argument 'path'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:45.486979",
+      "api_duration_seconds": 14.990542888641357,
+      "usage": {
+        "input_tokens": 3788,
+        "output_tokens": 1213,
+        "total_tokens": 5623
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: get_cross_section expects a CrossSectionSpec (CrossSection, CrossSectionFactory, Transition, string or dict), got <class 'gdsfactory.cross_section.Transition'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:03.175315",
+      "api_duration_seconds": 17.363919973373413,
+      "usage": {
+        "input_tokens": 5071,
+        "output_tokens": 1331,
+        "total_tokens": 7109
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11207,
+    "output_tokens": 3957,
+    "total_tokens": 26469
+  }
+}

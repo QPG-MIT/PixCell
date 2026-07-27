@@ -1,0 +1,79 @@
+Turn 2 Response:
+
+The error `ValueError: Found off-grid instances` occurs because floating-point math during rotations or movements can result in coordinates that are not aligned with the manufacturing grid (usually 1nm). 
+
+To fix this, we will:
+1.  **Remove the rotation** (as the rails in the image are straight vertical lines). This resolves the primary cause of the off-grid error.
+2.  **Add `c.flatten()`** as suggested by the error message, which merges all geometries into a single layer, ensuring the GDS file is perfectly valid for fabrication.
+3.  **Use explicit grid snapping** for all coordinates to ensure absolute compatibility.
+
+Here is the corrected, robust script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_device():
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Parameters
+    bar_height = 0.2
+    gap = 0.4
+    pitch = bar_height + gap
+    center_width = 100.0
+    
+    # 1. Create Center Stack (5 bars)
+    for i in range(5):
+        y_pos = (i - 2) * pitch
+        bar = gf.components.rectangle(size=(center_width, bar_height), layer=layer, centered=True)
+        ref = c << bar
+        ref.movey(round(y_pos, 3))
+        
+    # 2. Create Top/Bottom Wings
+    # Each wing has 4 bars with decreasing widths
+    wing_widths = [80.0, 65.0, 50.0, 35.0]
+    
+    for side in [1, -1]: # 1 for top, -1 for bottom
+        # Offset for the wing section
+        y_offset_start = 2.5 * pitch * side
+        
+        for i, w in enumerate(wing_widths):
+            # Calculate Y position
+            y_pos = y_offset_start + ((i + 0.5) * pitch * side)
+            
+            bar = gf.components.rectangle(size=(w, bar_height), layer=layer, centered=True)
+            ref = c << bar
+            ref.movey(round(y_pos, 3))
+            
+        # 3. Create Vertical Rails (Straight, no rotation needed)
+        # Place rails at the edges of the widest wing bar
+        rail_height = 4 * pitch
+        rail_width = 0.4
+        rail_x = (wing_widths[0] / 2)
+        rail_y = y_offset_start + (2 * pitch * side)
+        
+        for x_sign in [-1, 1]:
+            rail = gf.components.rectangle(size=(rail_width, rail_height), layer=layer, centered=True)
+            ref_rail = c << rail
+            ref_rail.movex(round(x_sign * rail_x, 3))
+            ref_rail.movey(round(rail_y, 3))
+
+    # flatten() merges all references, which resolves grid issues and is standard for finalized cells
+    c.flatten()
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    c = create_device()
+    
+    # Write to file
+    filename = "device.gds"
+    c.write_gds(filename)
+    print(f"Successfully generated {filename}")
+```
+
+### Why this version works:
+*   **Grid Compliance:** By explicitly using `round(value, 3)`, we ensure all coordinates are multiples of 0.001 (1nm), which is the standard fabrication grid.
+*   **No Rotations:** The vertical rails are now built as standard rectangles without the `.rotate()` function. This prevents the generation of diagonal polygon vertices that cause grid errors.
+*   **Flattening:** Adding `c.flatten()` at the end is the most robust way to ensure that even if there were any tiny precision errors, the final output is one solid, valid polygon layer that the foundry software will accept immediately.

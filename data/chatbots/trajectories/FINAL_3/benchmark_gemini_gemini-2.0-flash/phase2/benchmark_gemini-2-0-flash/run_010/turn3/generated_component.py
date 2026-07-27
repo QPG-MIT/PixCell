@@ -1,0 +1,76 @@
+import gdsfactory as gf
+from gdsfactory.components import bend_euler, straight
+from gdsfactory.path import smooth
+
+@gf.cell
+def mzi_waveguide(length_arm=60.0, length_straight=20.0, bend_radius=10.0, gap=0.3):
+    """MZI-like waveguide structure.
+
+    Args:
+        length_arm: Length of the MZI arm (top and bottom).
+        length_straight: Length of the input/output straight sections.
+        bend_radius: Radius of the Euler bends.
+        gap: Gap between the two central waveguides.
+    """
+    c = gf.Component("mzi_waveguide")
+    xs = gf.cross_section.cross_section(width=0.5)
+
+    # Input waveguides
+    input_straight = c << straight(length=length_straight, cross_section=xs)
+    input_straight.name = "input_straight"
+
+    # First bend
+    bend1 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend1.name = "bend1"
+    bend1.connect("o1", input_straight.ports["o2"])
+
+    # Second bend
+    bend2 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend2.name = "bend2"
+    bend2.rotate(angle=180)
+    bend2.connect("o1", input_straight.ports["o2"])
+    bend2.movey(gap + xs.width)
+
+    # Top arm
+    top_straight = c << straight(length=length_arm, cross_section=xs)
+    top_straight.name = "top_straight"
+    top_straight.connect("o1", bend1.ports["o2"])
+
+    # Bottom arm
+    bottom_straight = c << straight(length=length_arm, cross_section=xs)
+    bottom_straight.name = "bottom_straight"
+    bottom_straight.connect("o1", bend2.ports["o2"])
+
+    # Third bend
+    bend3 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend3.name = "bend3"
+    bend3.rotate(angle=180)
+    bend3.connect("o1", top_straight.ports["o2"])
+
+    # Fourth bend
+    bend4 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend4.name = "bend4"
+    bend4.connect("o1", bottom_straight.ports["o2"])
+
+    # Output straight
+    output_straight1 = c << straight(length=length_straight, cross_section=xs)
+    output_straight1.name = "output_straight1"
+    output_straight1.connect("o1", bend3.ports["o2"])
+
+    output_straight2 = c << straight(length=length_straight, cross_section=xs)
+    output_straight2.name = "output_straight2"
+    output_straight2.connect("o1", bend4.ports["o2"])
+    output_straight2.movey(-(gap + xs.width))
+
+    # Ports
+    c.add_port("o1", port=input_straight.ports["o1"])
+    c.add_port("o2", port=output_straight1.ports["o2"])
+    c.add_port("o3", port=output_straight2.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    mzi = mzi_waveguide()
+    mzi.write_gds("mzi_waveguide.gds")
+    mzi.show()
+    print("GDS file 'mzi_waveguide.gds' created.")

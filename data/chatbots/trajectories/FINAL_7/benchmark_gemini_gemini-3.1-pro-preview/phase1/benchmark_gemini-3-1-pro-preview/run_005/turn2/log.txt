@@ -1,0 +1,113 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def mzm_in_racetrack() -> gf.Component:
+    """
+    Parametric creation of a Mach-Zehnder Modulator embedded within a racetrack resonator.
+    Dimensions are explicitly derived to exactly match the 5.5 x 3.0 um footprint constraint 
+    and maintain visually proportional internal structures (uniform 0.15um waveguide/wall thicknesses).
+    """
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # ---------------------------------------------------------
+    # 1. Racetrack Resonator
+    # ---------------------------------------------------------
+    # Constraints: footprint 5.5 x 3.0
+    # To maintain uniform internal scaling, we use a ring thickness of 0.6.
+    # Height = 3.0 -> Outer radius = 1.5. 
+    # Center radius = 1.5 - (0.6/2) = 1.2.
+    # Inner radius = 1.2 - 0.3 = 0.9.
+    straight_len = 2.5  # 5.5 total width - 3.0 (2 * outer_radius)
+    ring_thickness = 0.6
+    ring_center_radius = 1.2 
+    
+    # Constructing as a continuous path prevents boolean clipping artifacts
+    p_ring = gf.Path()
+    p_ring.append(gf.path.straight(length=straight_len))
+    p_ring.append(gf.path.arc(radius=ring_center_radius, angle=180))
+    p_ring.append(gf.path.straight(length=straight_len))
+    p_ring.append(gf.path.arc(radius=ring_center_radius, angle=180))
+    
+    ring_xs = gf.cross_section.cross_section(width=ring_thickness, layer=layer)
+    ring_ref = c << gf.path.extrude(p_ring, cross_section=ring_xs)
+    # Center the drawn path (default starts at origin)
+    ring_ref.move((-straight_len / 2, -ring_center_radius))
+
+    # ---------------------------------------------------------
+    # 2. MZI Modulator Phase Shifters (Boxes with Holes)
+    # ---------------------------------------------------------
+    # Designed to have uniform 0.15um walls top, bottom, and between holes, 
+    # perfectly matching the waveguide routing width.
+    wg_width = 0.15
+    box_length = 2.05
+    box_height = 0.45
+    hole_length = 0.8
+    hole_height = 0.15
+    y_arm = 0.45
+    
+    box_solid = gf.components.rectangle(size=(box_length, box_height), layer=layer, centered=True)
+    hole = gf.components.rectangle(size=(hole_length, hole_height), layer=layer, centered=True)
+    
+    # Calculate hole centers to maintain 0.15um walls. 
+    # Box spans [-1.025, 1.025]. Left hole center = -1.025 + 0.15(wall) + 0.4(half hole) = -0.475
+    c_h1 = gf.Component()
+    c_h1.add_ref(hole).move((-0.475, 0))
+    
+    c_h2 = gf.Component()
+    c_h2.add_ref(hole).move((0.475, 0))
+    
+    box_step1 = gf.boolean(box_solid, c_h1, operation='not', layer=layer)
+    box_final = gf.boolean(box_step1, c_h2, operation='not', layer=layer)
+    
+    m1 = c << box_final
+    m1.move((0, y_arm))
+    m2 = c << box_final
+    m2.move((0, -y_arm))
+
+    # ---------------------------------------------------------
+    # 3. Central MZI Splitting Stems
+    # ---------------------------------------------------------
+    # Stems merge the arms and connect to the inner curve of the racetrack.
+    # Left inner edge of the racetrack is at x = -1.25 (straight edge) - 0.9 (inner radius) = -2.15
+    stem_width = 0.45
+    stem_height = 0.4
+    stem_x_left = -2.15 + stem_width / 2  # -1.925
+    stem_x_right = 2.15 - stem_width / 2  # 1.925
+    
+    stem_rect = gf.components.rectangle(size=(stem_width, stem_height), layer=layer, centered=True)
+    
+    s_left = c << stem_rect
+    s_left.move((stem_x_left, 0))
+    s_right = c << stem_rect
+    s_right.move((stem_x_right, 0))
+
+    # ---------------------------------------------------------
+    # 4. Y-Branch Routing Arms
+    # ---------------------------------------------------------
+    # Paths connecting the stem (ends at |x|=1.7) to the modulator boxes (starts at |x|=1.025).
+    route_xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+    
+    # Start slightly inside the stem (-1.75) to ensure solid overlap without gaps,
+    # diagonal transition, then a short horizontal section for clean entry into the box.
+    p_tl = gf.Path([(-1.75, 0), (-1.2, y_arm), (-1.025, y_arm)])
+    c << gf.path.extrude(p_tl, cross_section=route_xs)
+    
+    p_bl = gf.Path([(-1.75, 0), (-1.2, -y_arm), (-1.025, -y_arm)])
+    c << gf.path.extrude(p_bl, cross_section=route_xs)
+    
+    p_tr = gf.Path([(1.025, y_arm), (1.2, y_arm), (1.75, 0)])
+    c << gf.path.extrude(p_tr, cross_section=route_xs)
+    
+    p_br = gf.Path([(1.025, -y_arm), (1.2, -y_arm), (1.75, 0)])
+    c << gf.path.extrude(p_br, cross_section=route_xs)
+
+    return c
+
+if __name__ == "__main__":
+    component = mzm_in_racetrack()
+    component.write_gds("mzm_in_racetrack.gds")
+```

@@ -1,0 +1,75 @@
+import gdsfactory as gf
+
+@gf.cell
+def comb_structure() -> gf.Component:
+    """
+    Creates the comb-like structure shown in the image.
+    Builds the shape strictly from parametric primitives and boolean operations.
+    """
+    # Create the top-level component
+    c = gf.Component("CombStructure")
+
+    # 1. Main Body
+    # The [25, 10] footprint matches the central rectangular body's proportions
+    body = gf.components.rectangle(size=(25, 10), layer=(1, 0), centered=True)
+
+    # 2. Define the Top Peg Sub-Component
+    @gf.cell
+    def top_peg() -> gf.Component:
+        peg = gf.Component("TopPeg")
+        
+        # Base section: a taper narrowing upwards
+        taper = peg << gf.components.taper(length=6.5, width1=2.5, width2=1.2)
+        
+        # Top section: a straight waveguide, modeled as a taper with constant width
+        straight = peg << gf.components.taper(length=4.5, width1=1.2, width2=1.2)
+        
+        # Connect the straight section to the narrow end of the taper
+        straight.connect("o1", taper.ports["o2"])
+        return peg
+
+    # 3. Define the Bottom Peg Sub-Component
+    @gf.cell
+    def bottom_peg() -> gf.Component:
+        peg = gf.Component("BottomPeg")
+        # A single taper pointing downwards (narrower tip)
+        peg << gf.components.taper(length=3.0, width1=2.0, width2=1.0)
+        return peg
+
+    # 4. Group all attachments into a container component
+    attachments = gf.Component("Attachments")
+
+    # Array 4 top pegs evenly spaced across the top of the body
+    # Spacing centers at -9, -3, 3, 9 aligns perfectly with the 25um total width
+    peg_top_comp = top_peg()
+    for x in [-9.0, -3.0, 3.0, 9.0]:
+        ref = attachments << peg_top_comp
+        # Rotate 90 degrees to point upwards
+        ref.rotate(90)
+        # Move to position. We use 4.9 instead of 5.0 to intentionally overlap 
+        # by 0.1um with the body. This prevents coincident edge errors in booleans.
+        ref.move((x, 4.9))
+
+    # Place the single bottom peg centered on the bottom edge
+    peg_bot_comp = bottom_peg()
+    ref_bot = attachments << peg_bot_comp
+    # Rotate -90 degrees to point downwards
+    ref_bot.rotate(-90)
+    # Overlap by 0.1um across the bottom edge (y = -5)
+    ref_bot.move((0, -4.9))
+
+    # 5. Boolean Union
+    # Fuse the main body and the attached pegs into a single, contiguous polygon structure
+    final_geometry = gf.boolean(A=body, B=attachments, operation="or", layer=(1, 0))
+
+    # Add the single monolithic shape to the final component
+    c << final_geometry
+
+    return c
+
+if __name__ == "__main__":
+    # Generate the layout
+    device = comb_structure()
+    
+    # Save the output to a GDS file (this resolves the 'No GDS file produced' error)
+    device.write_gds("comb_structure.gds")

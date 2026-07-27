@@ -1,0 +1,157 @@
+import gdsfactory as gf
+
+@gf.cell
+def racetrack_with_heaters():
+    """
+    Creates a compact racetrack resonator with internal heater arms.
+    Constraints: 5.5um x 3.0um footprint.
+    """
+    c = gf.Component()
+    
+    # --- Geometric Parameters ---
+    total_width = 5.5
+    total_height = 3.0
+    
+    # Ring dimensions
+    ring_width = 0.5
+    # Outer radius is half of height (1.5). Center radius is 1.5 - 0.25 = 1.25
+    center_radius = (total_height / 2.0) - (ring_width / 2.0)
+    straight_length = total_width - total_height # 5.5 - 3.0 = 2.5
+    
+    # Arm dimensions
+    arm_width = 0.55
+    arm_y_offset = 0.65
+    arm_core_len = 0.8
+    taper_len = 1.0
+    
+    # Hole dimensions
+    hole_size = (0.55, 0.2)
+    hole_gap = 0.2
+    
+    # Layer definition
+    main_layer = (1, 0)
+    
+    # --- 1. Define Cross Sections ---
+    
+    # XS for the Ring: Needs specific radius < 1.25 to avoid min_bend_radius error
+    xs_ring = gf.cross_section.cross_section(
+        width=ring_width,
+        radius=1.0, 
+        layer=main_layer
+    )
+    
+    # XS for the Inner Arms: Defines the width and layer for the straight segment
+    xs_arm = gf.cross_section.cross_section(
+        width=arm_width,
+        layer=main_layer
+    )
+
+    # --- 2. Create Racetrack Ring ---
+    
+    # Primitives using xs_ring
+    bend = gf.components.bend_circular(radius=center_radius, angle=180, cross_section=xs_ring)
+    straight = gf.components.straight(length=straight_length, cross_section=xs_ring)
+    
+    # Place Straights
+    s_top = c << straight
+    s_top.move((-straight_length/2, center_radius))
+    
+    s_bot = c << straight
+    s_bot.move((-straight_length/2, -center_radius))
+    
+    # Place Bends
+    b_right = c << bend
+    b_right.connect("o1", s_bot.ports["o2"])
+    
+    b_left = c << bend
+    b_left.connect("o1", s_top.ports["o1"])
+
+    # --- 3. Create Internal Arms ---
+    
+    # Straight segment uses xs_arm (Fixes the TypeError)
+    arm_center = gf.components.straight(length=arm_core_len, cross_section=xs_arm)
+    
+    # Taper usually accepts 'layer' directly in GDSFactory primitives
+    arm_taper = gf.components.taper(length=taper_len, width1=arm_width, width2=1.4, layer=main_layer)
+    
+    arm_refs = []
+    
+    def build_arm(y_pos):
+        # Center
+        ref_c = c << arm_center
+        ref_c.move((-arm_core_len/2, y_pos))
+        
+        # Right Taper
+        ref_tr = c << arm_taper
+        ref_tr.connect("o1", ref_c.ports["o2"])
+        
+        # Left Taper
+        ref_tl = c << arm_taper
+        ref_tl.connect("o1", ref_c.ports["o1"])
+        
+        return [ref_c, ref_tr, ref_tl]
+
+    # Build Top and Bottom
+    arm_refs += build_arm(arm_y_offset)
+    arm_refs += build_arm(-arm_y_offset)
+    
+    # --- 4. Create Holes (Voids) ---
+    
+    hole_rect = gf.components.rectangle(size=hole_size, centered=True, layer=main_layer)
+    hole_refs = []
+    
+    x_hole = (hole_gap + hole_size[0]) / 2.0
+    
+    locations = [
+        (-x_hole, arm_y_offset),
+        (x_hole, arm_y_offset),
+        (-x_hole, -arm_y_offset),
+        (x_hole, -arm_y_offset)
+    ]
+    
+    for loc in locations:
+        h = c << hole_rect
+        h.move(loc)
+        hole_refs.append(h)
+
+    # --- 5. Boolean Operations ---
+    
+    # Collect positive shapes
+    positives = [s_top, s_bot, b_right, b_left] + arm_refs
+    
+    # Perform Boolean NOT to cut holes
+    final_shape = gf.boolean(
+        A=positives,
+        B=hole_refs,
+        operation="not",
+        layer=main_layer
+    )
+    
+    # Create final component
+    c_final = gf.Component()
+    c_final.add_ref(final_shape)
+    
+    # Restore Ports (manually calculated since boolean consumes original refs)
+    # Top Left Port
+    c_final.add_port(
+        "o1", 
+        center=(-straight_length/2, center_radius), 
+        width=ring_width, 
+        orientation=180, 
+        layer=main_layer
+    )
+    # Bottom Right Port (or wherever needed) - Example: Top Right
+    c_final.add_port(
+        "o2", 
+        center=(straight_length/2, center_radius), 
+        width=ring_width, 
+        orientation=0, 
+        layer=main_layer
+    )
+
+    return c_final
+
+if __name__ == "__main__":
+    device = racetrack_with_heaters()
+    device.write_gds("racetrack_heaters.gds")
+    device.show()

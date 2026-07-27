@@ -1,0 +1,94 @@
+Turn 1 Response:
+
+To recreate the device shown in the image while respecting the **120µm x 4µm** footprint constraint, we can utilize `gf.components.straight` and `gf.components.bend_s` from the provided catalog. 
+
+The device is a symmetric directional coupler. It consists of two identical waveguide branches that are mirrored. Each branch starts far from the center, uses an S-bend to converge toward the other waveguide, runs parallel in a coupling region, and then uses another S-bend to diverge.
+
+### Python Script using GDSFactory
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def mirrored_coupler(
+    total_length: float = 120.0,
+    total_height: float = 4.0,
+    wg_width: float = 0.5,
+    gap: float = 0.2,
+    coupling_length: float = 40.0,
+    s_bend_length: float = 30.0,
+) -> gf.Component:
+    """
+    Recreates the directional coupler from the image using parametric primitives.
+    
+    Args:
+        total_length: Total width of the device (120um).
+        total_height: Total height of the device (4um).
+        wg_width: Width of the waveguides.
+        gap: Gap between waveguides in the coupling region.
+        coupling_length: Length of the central straight coupling section.
+        s_bend_length: Horizontal reach of the S-bends.
+    """
+    c = gf.Component("directional_coupler")
+    
+    # Define the cross section based on the catalog
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    
+    # Calculate derived dimensions to fit the footprint
+    # Total Length = 2*arm_length + 2*s_bend_length + coupling_length
+    arm_length = (total_length - coupling_length - 2 * s_bend_length) / 2
+    
+    # Vertical centerlines for the footprint boundaries
+    # The top of the top waveguide should be at total_height / 2
+    y_outer = (total_height / 2) - (wg_width / 2)
+    # The inner edge of the coupling waveguide should be at gap / 2
+    y_inner = (gap / 2) + (wg_width / 2)
+    
+    # Vertical offset for the S-bend transition
+    dy = y_inner - y_outer  # Negative value for the top branch converging down
+    
+    # --- 1. Create a single branch (top half) ---
+    branch = gf.Component("coupler_branch")
+    
+    # Create segments
+    left_arm = branch << gf.components.straight(length=arm_length, cross_section=xs)
+    sb_in = branch << gf.components.bend_s(size=(s_bend_length, dy), cross_section=xs)
+    middle = branch << gf.components.straight(length=coupling_length, cross_section=xs)
+    sb_out = branch << gf.components.bend_s(size=(s_bend_length, -dy), cross_section=xs)
+    right_arm = branch << gf.components.straight(length=arm_length, cross_section=xs)
+    
+    # Connect segments together sequentially
+    sb_in.connect("o1", left_arm.ports["o2"])
+    middle.connect("o1", sb_in.ports["o2"])
+    sb_out.connect("o1", middle.ports["o2"])
+    right_arm.connect("o1", sb_out.ports["o2"])
+    
+    # --- 2. Assemble the full device ---
+    # Add top branch
+    top = c << branch
+    top.movey(y_outer)
+    
+    # Add bottom branch by mirroring the top branch
+    bot = c << branch
+    bot.mirror_y()
+    bot.movey(-y_outer)
+    
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    component = mirrored_coupler()
+    
+    # Export to GDS
+    component.write_gds("recreated_coupler.gds")
+    
+    # Visual check (if environment supports it)
+    component.show()
+```
+
+### Analysis of the Construction:
+1.  **Primitives**: We used `gf.components.straight` for the horizontal arms and the coupling region, and `gf.components.bend_s` for the smooth transitions seen in the image.
+2.  **Symmetry**: By creating one `branch` component and mirroring it, we ensure perfect vertical symmetry, matching the visual characteristics of the target image.
+3.  **Footprint Alignment**:
+    *   **Width**: $10\mu m (\text{arm}) + 30\mu m (\text{s-bend}) + 40\mu m (\text{coupling}) + 30\mu m (\text{s-bend}) + 10\mu m (\text{arm}) = 120\mu m$.
+    *   **Height**: The top branch centerline is at $1.75\mu m$ (for a $0.5\mu m$ width). The top edge is at $1.75 + 0.25 = 2.0\mu m$. The bottom mirrored edge is at $-2.0\mu m$, resulting in a total height of $4\mu m$.

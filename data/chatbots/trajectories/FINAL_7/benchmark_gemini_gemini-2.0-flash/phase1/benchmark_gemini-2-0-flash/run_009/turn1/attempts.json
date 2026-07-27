@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.709908",
+      "api_duration_seconds": 8.946009159088135,
+      "usage": {
+        "input_tokens": 3894,
+        "output_tokens": 960,
+        "total_tokens": 4854
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: rectangle_gdsfactorypcomponentspshapesprectangle_S3_0p5_09d5f5a3_11000_3500_A44p99999999999999, Cell name: rectangle_gdsfactorypcomponentspshapesprectangle_S3_0p5_09d5f5a3\nInstance name: rectangle_gdsfactorypcomponentspshapesprectangle_S3_0p5_09d5f5a",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:20.155509",
+      "api_duration_seconds": 10.448568105697632,
+      "usage": {
+        "input_tokens": 5282,
+        "output_tokens": 1254,
+        "total_tokens": 6536
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:32.069673",
+      "api_duration_seconds": 8.243779182434082,
+      "usage": {
+        "input_tokens": 6566,
+        "output_tokens": 1074,
+        "total_tokens": 7640
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15742,
+    "output_tokens": 3288,
+    "total_tokens": 19030
+  }
+}

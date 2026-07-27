@@ -1,0 +1,209 @@
+Looking at the image, I can see what appears to be a chain link or connected chain-like structure. Let me analyze it:
+
+1. There's an outer rounded rectangle (stadium/obround shape) - thick black border
+2. Inside there are two horizontal elements that look like links or connectors, each with rectangular segments
+
+The device appears to be two chain links interlocked or connected. Let me look more carefully:
+
+- The outer shape is a rounded rectangle (stadium shape) with thick walls
+- Inside there are two horizontal bar-like structures, each with what appears to be three rectangular sections or segments
+
+Looking at the structure more carefully:
+- Outer oval/stadium shape (like a capsule or obround)
+- Inside, there are two horizontal elements that look like chain links
+- Each link has a elongated shape with rectangular cutouts or segments
+
+This looks like a representation of two interlocked chain links viewed from above. The structure shows:
+1. A thick outer ring/border in the shape of a rounded rectangle
+2. Two horizontal bars crossing through the middle, each with rectangular patterns
+
+Let me think about how to recreate this:
+
+The footprint is 3.0 x 5.5 um, but looking at the image proportions, it seems wider than tall. Let me reconsider - maybe it's 5.5 x 3.0 um (width x height)?
+
+Actually looking at the footprint constraint [3.0, 5.5] - this could be width x height or could be a different convention. The image shows something that appears wider than it is tall.
+
+Let me design this step by step:
+
+1. Create the outer rounded rectangle (stadium shape) with a thick border
+2. Create the inner structure - appears to be two horizontal bars with rectangular segments
+
+For the outer shape:
+- It looks like a thick-walled stadium/obround shape
+- This can be created by doing a boolean subtraction of a smaller stadium from a larger one
+
+For the inner elements:
+- Two horizontal bars with rectangular cutouts or protrusions
+
+
+- The bars extend across the interior space, each with distinct rectangular segments that could represent chain link connectors or interlocking elements. I'm thinking the inner structures might actually be cross-sections of another link passing through the outer capsule, creating that interlocked appearance. I need to figure out the exact proportions and spacing of these horizontal bars relative to the overall footprint dimensions.
+
+For the implementation, I'll start with the outer stadium shape as the primary structure, then add the two internal horizontal elements that define the link pattern. Given the 3.0 x 5.5 um footprint, the width is notably larger than the height, so I'll scale the outer radius to match half the height and calculate the straight section accordingly. The wall thickness should be proportional to the overall dimensions—something around 0.4 units seems reasonable for the border.
+
+To construct this, I'll use boolean operations: create a filled outer stadium, subtract an inner stadium to form the thick walls, then incorporate the internal horizontal elements that create the distinctive chain link appearance.
+
+The internal structure consists of two horizontal bars with rectangular cutouts—the upper bar has three white rectangular spaces while the lower has two, giving them a segmented chain-like quality. These bars appear to connect to the curved ends of the outer capsule shape.
+
+Now I'm setting up the component with a footprint of 3.0 × 5.5 micrometers. The outer stadium shape will be constructed from a rectangle with semicircular ends, where the straight section spans 2.5 micrometers and the radius is 1.5 micrometers. I'll use a wall thickness of 0.25 micrometers and apply boolean operations to create the geometry—starting with a centered rectangle for the main body and adding circular elements at each end. def chain_link_structure():
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Dimensions from footprint [3.0, 5.5] - width and height
+    total_width = 5.5
+    total_height = 3.0
+    
+    # Wall and link parameters
+    outer_wall = 0.35
+    link_height = 0.35
+    link_gap = 0.3
+    
+    # Stadium shape: rectangle with semicircular ends
+    radius = total_height / 2
+    straight = total_width - total_height
+
+I'm switching to path extrusion for cleaner stadium geometry. The outer boundary uses a stadium profile with the straight section calculated from total width minus the diameter of the semicircular ends. The inner structure will have horizontal links separated by gaps. at the image more carefully. The structure has a thick outer border in a stadium shape, with two horizontal elements crossing through it. Each horizontal element appears to be a chain link pattern with pointed or curved ends and rectangular body sections spanning across.
+
+I should simplify the approach: create the outer stadium frame as a thick border, then add two horizontal bar shapes with the rectangular patterns. Starting with the basic component setup and dimensions for the device.
+
+Setting up parameters for the outer wall thickness and inner link height. The stadium shape is constructed from a rectangle with semicircular ends - I'll calculate the radius from the height and determine the straight section width. Building the outer boundary using rectangle and circle components, positioning the circular caps on each side to form the complete stadium shape. - wall*2, height - wall*2, layer)
+    
+    c << gf.boolean(outer_stadium, inner_stadium, operation="not", layer=layer)
+    
+    return c
+```
+
+I'm building a stadium shape by combining a centered rectangle with circles on each end, then using boolean operations to create the ring structure. The outer stadium uses the full dimensions while the inner one is reduced by the wall thickness on all sides, and subtracting the inner from the outer gives me the desired hollow chain link shape. the white rectangles are cutouts within the bars, not separate elements. The top bar has three rectangular holes while the bottom bar has two, with the solid black portions forming the actual structure. The bars appear to taper or curve at their ends where they meet the stadium's inner walls.
+
+I should redesign the approach to create these bar structures with cutouts rather than trying to build them from individual segments. The implementation needs to define the overall bar geometry first, then subtract the rectangular holes from it. 0)
+    
+    # Device dimensions from footprint [3.0, 5.5]
+    # Image shows wider than tall structure
+    total_width = 5.5
+    total_height = 3.0
+    
+    # Outer stadium wall thickness
+    wall = 0.30
+    
+    # Helper to create stadium shape
+    def make_stadium(w, h, lay):
+        s = gf.Component()
+        rad = h / 2
+        rect_len = w - h
+        if rect_len <= 0:
+            # Pure circle/ellipse case
+            return gf.components.circle(radius=rad, layer=lay)
+        
+        rect = gf.components.rectangle(size=(rect_len, h), layer=lay, centered=True)
+        left = gf.components.circle(radius=rad, layer=lay)
+        right = gf.components.circle(radius=rad, layer=lay)
+        s.add_ref(rect)
+        s.add_ref(left, port=rect.ports.get("e1", None))
+        s.add_ref(right, port=rect.ports.get("e2", None))
+        return s
+
+Now I need to build the outer stadium frame using boolean operations to create the hollow wall effect, then add the internal horizontal links with their cutouts positioned appropriately within the device footprint. inner_width = total_width - 2*wall
+    inner_height = total_height - 2*wall
+    
+    link_bar_height = 0.5
+    link_gap = 0.15
+    
+    top_link_y = link_gap/2 + link_bar_height/2
+    bottom_link_y = -top_link_y
+    
+    top_link_outer = make_stadium(inner_width, link_bar_height, layer)
+    
+    cutout_w = 0.4
+    cutout_h = link_bar_height *
+
+0.6
+    cutout_spacing = 0.5
+
+The approach is getting unwieldy, so I'm going to restart with a cleaner structure. I'll define the main dimensions first—total width and height with wall thickness—then build helper functions like a stadium shape generator. For the chain links themselves, I'll work with simplified geometry: rectangular bars with rounded ends, positioned vertically with a gap between them, and cutouts spaced evenly across each link. _h = 0.48
+    gap = 0.16
+    
+    # Top link
+    ty = gap/2 + link_h/2
+    top_bar = stadium(iw, link_h, layer)
+    
+    # Cutouts for top link (3 rectangular holes)
+    cut_w = 0.45
+    cut_h = link_h * 0.55
+    cuts_top = gf.Component("cuts_top")
+    for dx in [-0.7, 0, 0.7]:
+        cut = gf.components.rectangle(size=(cut_w, cut_h), layer=layer, centered=True)
+        cr = cuts_top << cut
+        cr.move((dx, 0))
+    
+    top_link = gf.boolean(top_bar, cuts_top, operation="not", layer=layer)
+    tr = c << top_link
+    tr.move((0, ty))
+    
+    # Bottom link with 2 cutouts instead
+    by = -ty
+    bot_bar = stadium(iw, link_h, layer)
+    cuts_bot = gf.Component("cuts_bot")
+    for dx in [-0.45, 0.45]:
+        cut = gf.components.rectangle(size=(cut_w, cut_h), layer=layer, centered=True)
+        cr = cuts_bot << cut
+        cr.move((dx, 0))
+    
+    bot_link = gf.boolean(bot_bar, cuts_bot, operation="not", layer=layer)
+    br = c << bot_link
+    br.move((0, by))
+    
+    return c
+
+if __name__ == "__main__":
+    device = chain_links()
+    device.write_gds("chain_links.gds")
+
+Looking at the image more carefully, I'm second-guessing the structure. The pattern doesn't quite match what I've implemented.
+
+The outer border forms one complete link, but the inner elements appear to have curved or tapered ends rather than straight edges. Each inner structure seems to have lens or eye-shaped terminations at both ends, with rectangular segments filling the middle section. This suggests the two inner shapes might represent portions of a second link threading through the outer one, rather than independent bars with simple rectangular cutouts.
+
+To model this accurately, I need to account for the curved transitions at the ends of each inner element where they meet the stadium walls, then the straight sections with their segmented patterns. The top bar appears to have three rectangular divisions while the bottom has two, and both connect smoothly to the curved portions of the outer frame.
+
+I'll create a helper function to construct stadium shapes by combining a central rectangle with semicircles on each end. The function builds this by placing a rectangle in the middle, then positioning circles at both the left and right extremities to form the rounded ends. The positioning accounts for cases where the rectangle length might be zero or negative by adjusting the offset calculations accordingly.
+
+With this helper in place, I can generate the outer and inner stadium boundaries by calling it with the full dimensions and the reduced dimensions accounting for the frame wall thickness. A boolean "not" operation between these two shapes creates the frame itself. The inner stadium dimensions are then calculated by subtracting twice the wall thickness from the original width and height. For the link bars, I'm setting a bar height of 0.45 and spacing of 0.25 between them, then determining the vertical positions for each bar.
+
+Now I need to create the actual bar geometry. The top and bottom bars are stadium shapes scaled to 95% of the inner width, and I'm adding rectangular cutouts positioned at -0.65, 0, and 0.65 along the x-axis. Each cutout is 0.38 wide and 60% of the bar height tall.
+
+After creating the top bar with its three cutouts using a boolean "not" operation, I position it at the calculated top_y coordinate. For the bottom bar, I use only two cutouts positioned at -0.45 and 0.45, then apply the same boolean operation to subtract them from the stadium shape before moving it to bot_y.
+
+Looking back at the reference image more carefully, the structure consists of an outer thick capsule frame with interior white space, and two horizontal elements inside that appear lens-shaped with rectangular cutouts creating a grid pattern. The top element has three white rectangles while the bottom has two, and both connect to the inner curved walls of the outer frame.
+
+This creates a chain link effect where the outer frame forms one link and the inner bars with cutouts represent portions of a second link passing through. I need to refine the implementation to properly model these rectangular cutouts within the horizontal bars and ensure they connect correctly to the frame's inner edges. Setting up the inner link bar dimensions with width matching the stadium interior, a bar height of 0.48, and vertical spacing of 0.20. The top and bottom bars are positioned symmetrically around the center. Creating the top bar as a stadium shape with three rectangular cutouts spaced at -0.70, 0, and 0.70 along the x-axis, each with width 0.40 and height scaled to 55% of the bar height.
+
+Applying a boolean "not" operation to subtract the cutouts from the top bar, then positioning it at the calculated top y-coordinate. The bottom bar follows a similar approach but with only two cutouts positioned at -0.50 and 0.50, which are then subtracted from the stadium shape and placed at the bottom y-coordinate. Finally, returning the completed component.
+
+For the main execution block, instantiating the chain_links function and writing the result to a GDS file. Looking back at the design requirements, I want to make sure the geometry is accurate—the outer shape should be a thick-walled stadium, with two internal horizontal bars containing rectangular openings. The top bar has three gaps while the bottom has two, which aligns with the current implementation.
+
+Setting up the component dimensions at 5.5 × 3.0 micrometers with a frame wall thickness of 0.32 micrometers to match the proportions visible in the reference image. The stadium shape is constructed from a central rectangle with semicircular end caps, where the radius equals half the height to create the proper rounded profile.
+
+For the outer frame, I'm creating a stadium shape at full dimensions, then subtracting an inner stadium shape that's reduced by twice the wall thickness on each side. This boolean operation will leave the thick border visible in the design.
+
+Next, I need to set up the inner link bars with specific parameters: each bar is 0.50 units tall with a 0.22 unit gap between them, positioned symmetrically above and below the center. The cutouts in these bars are 0.42 units wide and about 58% of the bar height. The bars themselves span roughly 92% of the inner width to accommodate the pointed ends, and I'm starting to construct the top bar with three cutouts.
+
+For the top bar, I create a solid stadium shape, then define three rectangular cutouts spaced 0.68 units apart (centered at -0.68, 0, and 0.68 on the x-axis). These cutouts are subtracted from the solid bar using a boolean "not" operation, and the resulting bar is positioned at the calculated top_bar_y coordinate.
+
+The bottom bar follows a similar approach but with two cutouts instead of three, positioned 0.52 units apart symmetrically. After subtracting these cutouts from the solid bottom bar shape, I place it at bottom_bar_y and return the completed component.
+
+For testing, I instantiate the device and export it as a GDS file. I'm reconsidering the dimensions to align with the [3.0, 5.5] footprint constraint—interpreting this as width and height respectively, though the visual suggests a wider-than-tall aspect ratio, which would contradict those values if taken literally. width ≈ 5.7, height ≈ 2.9, which aligns with the 5.5 × 3.0 dimensions. I'll proceed with those values for the design.
+
+There's an inconsistency I need to resolve: the footprint notation [3.0, 5.5] typically indicates [width, height], suggesting a 3.0 um wide by 5.5 um tall structure. However, the image depicts a horizontally-oriented device that's clearly wider than it is tall. I need to determine whether the footprint values are reversed or if there's a different convention being used here.
+
+Given what I can see visually, I'll treat the footprint as [height, width] = [3.0, 5.5], making the device 5.5 um wide and 3.0 um tall to match the apparent proportions. Now I'll write the code to implement this chain link structure with the proper dimensions and geometry.
+
+The device uses a WIDTH of 5.5 and HEIGHT of 3.0, with a FRAME_THICKNESS of 0.35 to create the visible thick border. I'm defining a helper function to generate stadium shapes (rectangles with semicircular ends) by combining a central rectangular section with circular end caps, which forms the outer capsule-like border visible in the image. * FRAME_THICKNESS
+    inner_shape = make_stadium(inner_width, inner_height, layer)
+    
+    # Subtract inner from outer to create frame
+    outer_frame = gf.boolean(outer_shape, inner_shape, operation="not", layer=layer)
+    c << outer_frame
+    
+    Now I need to add the internal link bars. There are two horizontal bars positioned inside with specific dimensions: each bar is 0.52 units tall with a 0.24 unit gap between them. The bars span 90% of the inner width, and I'll need to create cutouts that are 0.44 units wide and about 55% of the bar height.
+
+    For positioning, the top bar sits at y = (0.24 + 0.52) / 2 and the bottom bar mirrors this below the center. The top bar gets three rectangular cutouts spaced 0.70 units apart along its length, created by subtracting cut shapes from the bar geometry.
+
+    The bottom bar follows a similar pattern but with only two cutouts positioned 0.55 units apart. Both bars use the boolean "not" operation to remove the cut geometry, then get placed at their respective y-coordinates in the main component. rectangular cutouts. The overall dimensions are scaled to approximately 5.5 × 3.0 μm to match the visual proportions shown.

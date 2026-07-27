@@ -1,0 +1,78 @@
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler_device():
+    """
+    Recreates the symmetric waveguide coupler with refined proportions.
+    Footprint constraint: 120um (length) x 4um (height)
+    """
+    c = gf.Component("symmetric_coupler")
+    
+    # Refined parameters to match visual proportions
+    width = 0.35      # Thinner waveguides for accurate aspect ratio
+    gap = 0.15        # Separation in the central coupling region
+    
+    # Longitudinal segments (Total = 120um)
+    l_io = 10.0       # Input/output straight sections
+    l_sbend = 20.0    # Transition regions
+    l_coupler = 60.0  # Main coupling region: 10*2 + 20*2 + 60 = 120
+    
+    # Vertical spacing calculations for 4um total footprint height
+    # Center-to-center distance at the ports (outer edges at +/- 2.0um)
+    s_out = 4.0 - width 
+    # Center-to-center distance at the coupling region
+    s_in = width + gap
+    # Vertical offset required for each S-bend
+    dy_offset = (s_out - s_in) / 2
+    
+    # Define cross section
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    # --- TOP WAVEGUIDE CONSTRUCTION ---
+    # 1. Input straight
+    t1 = c << gf.components.straight(length=l_io, cross_section=xs)
+    t1.movey(s_out / 2)
+    
+    # 2. First S-bend (downwards transition)
+    ts1 = c << gf.components.bend_s(size=(l_sbend, -dy_offset), cross_section=xs)
+    ts1.connect("o1", t1.ports["o2"])
+    
+    # 3. Central coupling straight
+    tc = c << gf.components.straight(length=l_coupler, cross_section=xs)
+    tc.connect("o1", ts1.ports["o2"])
+    
+    # 4. Second S-bend (upwards transition)
+    ts2 = c << gf.components.bend_s(size=(l_sbend, dy_offset), cross_section=xs)
+    ts2.connect("o1", tc.ports["o2"])
+    
+    # 5. Output straight
+    t2 = c << gf.components.straight(length=l_io, cross_section=xs)
+    t2.connect("o1", ts2.ports["o2"])
+    
+    # --- BOTTOM WAVEGUIDE CONSTRUCTION ---
+    # 1. Input straight
+    b1 = c << gf.components.straight(length=l_io, cross_section=xs)
+    b1.movey(-s_out / 2)
+    
+    # 2. First S-bend (upwards transition)
+    bs1 = c << gf.components.bend_s(size=(l_sbend, dy_offset), cross_section=xs)
+    bs1.connect("o1", b1.ports["o2"])
+    
+    # 3. Central coupling straight
+    bc = c << gf.components.straight(length=l_coupler, cross_section=xs)
+    bc.connect("o1", bs1.ports["o2"])
+    
+    # 4. Second S-bend (downwards transition)
+    bs2 = c << gf.components.bend_s(size=(l_sbend, -dy_offset), cross_section=xs)
+    bs2.connect("o1", bc.ports["o2"])
+    
+    # 5. Output straight
+    b2 = c << gf.components.straight(length=l_io, cross_section=xs)
+    b2.connect("o1", bs2.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    device = symmetric_coupler_device()
+    device.write_gds("refined_coupler.gds")
+    device.show()

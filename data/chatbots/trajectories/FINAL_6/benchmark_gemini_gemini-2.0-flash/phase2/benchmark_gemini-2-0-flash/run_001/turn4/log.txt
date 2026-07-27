@@ -1,0 +1,55 @@
+Turn 4 Response:
+
+Okay, I see the problem. The current code uses ellipses that are too large and stretches them too far along the arms, leading to pointed ends instead of rounded ones as in the target image. The goal is to make each ellipse a rounded cap at the end of each arm, effectively creating four "leaves."
+
+Here's the refined code:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import rectangle, ellipse
+
+@gf.cell
+def my_fancy_cross(length=1.5, width=0.2, end_width=0.3):  # Reduced length and width
+    """
+    Creates a cross geometry with rounded elements at the end of each arm,
+    resembling a four-leaf clover or asterisk-like shape.
+    """
+    c = gf.Component("my_fancy_cross")
+
+    # Define the layers
+    layer = (1, 0)
+
+    # Create the central rectangles
+    horizontal_rect = c << rectangle(size=(length, width), layer=layer, centered=True) # Reduced lengths
+    vertical_rect = c << rectangle(size=(width, length), layer=layer, centered=True)
+
+    # Create the rounded ends for each arm
+    ellipse_params = {'radii': (end_width, end_width), 'layer': layer}  # Equal Radii -> Circle
+    horizontal_left = c << ellipse(**ellipse_params)
+    horizontal_left.move((-length/2 - end_width,0))
+
+    horizontal_right = c << ellipse(**ellipse_params)
+    horizontal_right.move((length/2 + end_width,0))
+
+    vertical_top = c << ellipse(**ellipse_params)
+    vertical_top.move((0,length/2 + end_width))
+
+    vertical_bottom = c << ellipse(**ellipse_params)
+    vertical_bottom.move((0,-length/2 - end_width))
+
+    return c
+
+if __name__ == "__main__":
+    c = my_fancy_cross()
+    c.show()  # Show in KLayout
+    c.write_gds("my_fancy_cross.gds")  # Save as GDS file
+```
+
+Key Changes and Reasoning:
+
+* **Reduced `length` and `width`:** The previous values made the overall cross too large and the arms too long and thin.  The length is shortened to 1.5. The width is also significantly reduced.
+* **Equal radii for Ellipse (Circles):**  The biggest problem was using overly large and stretched ellipses.  I changed the `ellipse_params` to use equal radii (`end_width`, `end_width`). This means we are now creating circles rather than ellipses. This creates much rounder caps.
+* **Adjusted Ellipse Placement:** To position the circle caps correctly at the end of the arms, the move commands are changed. The `length` here now refers to the length of the rectangle arm. Therefore, the move offset should be relative to the end of the arm. This now correctly positions the rounded ends flush with the rectangles.
+* **`end_width` parameter:**  Introduced this parameter to control the size of the rounded ends. It also now defines the circle radii, so it directly controls how round the "leaves" appear. The values are adjusted to make a much better fit.
+
+This revised version should produce a cross with rounded ends that much more closely resembles the four-leaf clover/asterisk shape in the target image.  The proportions are more balanced, and the rounded ends are now circular and correctly positioned.  The footprint of the overall design is now closer to the specified constraint as well.

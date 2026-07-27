@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.939670",
+      "api_duration_seconds": 100.01651191711426,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 1552,
+        "total_tokens": 15132
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:51.291196",
+      "api_duration_seconds": 20.357177734375,
+      "usage": {
+        "input_tokens": 3918,
+        "output_tokens": 1525,
+        "total_tokens": 6441
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(component)}\")\nValueError: Expected a Component, got <class 'NoneType'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:13.070034",
+      "api_duration_seconds": 37.455573081970215,
+      "usage": {
+        "input_tokens": 5487,
+        "output_tokens": 1510,
+        "total_tokens": 10198
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: boolean() missing 1 required positional argument: 'layer'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11752,
+    "output_tokens": 4587,
+    "total_tokens": 31771
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "source": "projects/1x2_coupler (benchmark_* folders)",
+  "notes": "Gemini, Claude, and OpenAI use all models listed here. Other families use the single listed model for all papers.",
+  "families": [
+    {
+      "family": "gemini",
+      "models": [
+        {
+          "model_key": "gemini/gemini-2.0-flash",
+          "benchmark_dir": "benchmark_gemini_gemini-2.0-flash"
+        },
+        {
+          "model_key": "gemini/gemini-2.5-flash",
+          "benchmark_dir": "benchmark_gemini_gemini-2.5-flash"
+        },
+        {
+          "model_key": "gemini/gemini-2.5-pro",
+          "benchmark_dir": "benchmark_gemini_gemini-2.5-pro"
+        },
+        {
+          "model_key": "gemini/gemini-3-flash-preview",
+          "benchmark_dir": "benchmark_gemini_gemini-3-flash-preview"
+        },
+        {
+          "model_key": "gemini/gemini-3-pro-preview",
+          "benchmark_dir": "benchmark_gemini_gemini-3-pro-preview"
+        }
+      ]
+    },
+    {
+      "family": "claude",
+      "models": [
+        {
+          "model_key": "anthropic/claude-3.7-sonnet",
+          "benchmark_dir": "benchmark_anthropic_claude-3.7-sonnet"
+        },
+        {
+          "model_key": "anthropic/claude-opus-4",
+          "benchmark_dir": "benchmark_anthropic_claude-opus-4"
+        },
+        {
+          "model_key": "anthropic/claude-opus-4.5",
+          "benchmark_dir": "benchmark_anthropic_claude-opus-4.5"
+        },
+        {
+          "model_key": "anthropic/claude-sonnet-4",
+          "benchmark_dir": "benchmark_anthropic_claude-sonnet-4"
+        },
+        {
+          "model_key": "anthropic/claude-sonnet-4.5",
+          "benchmark_dir": "benchmark_anthropic_claude-sonnet-4.5"
+        }
+      ]
+    },
+    {
+      "family": "openai",
+      "models": [
+        {
+          "model_key": "openai/gpt-5",
+          "benchmark_dir": "benchmark_openai_gpt-5"
+        },
+        {
+          "model_key": "openai/gpt-5.2",
+          "benchmark_dir": "benchmark_openai_gpt-5.2"
+        },
+        {
+          "model_key": "openai/gpt-5.2-pro",
+          "benchmark_dir": "benchmark_openai_gpt-5.2-pro"
+        }
+      ]
+    },
+    {
+      "family": "kimi",
+      "models": [
+        {
+          "model_key": "moonshotai/kimi-vl-a3b-thinking",
+          "benchmark_dir": "benchmark_moonshotai_kimi-vl-a3b-thinking"
+        }
+      ]
+    },
+    {
+      "family": "qwen",
+      "models": [
+        {
+          "model_key": "qwen/qwen3-vl-235b-a22b-thinking",
+          "benchmark_dir": "benchmark_qwen_qwen3-vl-235b-a22b-thinking"
+        }
+      ]
+    },
+    {
+      "family": "grok",
+      "models": [
+        {
+          "model_key": "x-ai/grok-4",
+          "benchmark_dir": "benchmark_x-ai_grok-4"
+        }
+      ]
+    }
+  ]
+}

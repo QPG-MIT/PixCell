@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:46.088104",
+      "api_duration_seconds": 7.264863967895508,
+      "usage": {
+        "input_tokens": 5144,
+        "output_tokens": 858,
+        "total_tokens": 6002
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.components' has no attribute 'arc'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:54.816999",
+      "api_duration_seconds": 5.715193748474121,
+      "usage": {
+        "input_tokens": 6031,
+        "output_tokens": 719,
+        "total_tokens": 6750
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: GeometricObject.move() missing 1 required positional argument: 'origin'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:02.228975",
+      "api_duration_seconds": 7.261459112167358,
+      "usage": {
+        "input_tokens": 6779,
+        "output_tokens": 949,
+        "total_tokens": 7728
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: GeometricObject.move() missing 1 required positional argument: 'origin'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 17954,
+    "output_tokens": 2526,
+    "total_tokens": 20480
+  }
+}

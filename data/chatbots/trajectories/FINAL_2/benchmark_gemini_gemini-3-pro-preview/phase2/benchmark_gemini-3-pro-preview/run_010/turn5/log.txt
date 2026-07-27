@@ -1,0 +1,124 @@
+Turn 5 Response:
+
+The previous design captured the general connectivity but mismatched the aspect ratios and line widths of the target device. The visual analysis of the target image vs. the current output highlights the following corrections:
+
+1.  **Output Waveguide Width:** The output straight sections in the previous code appeared too thin (0.6um). In the target image, the straight waveguides have a visual weight comparable to the gaps between them. I have increased the `out_tip_width` to **0.85um** to better match this ratio.
+2.  **MMI Body Width:** The previous body was slightly too wide, leaving large empty shoulders on the sides. The target shows a compact MMI body where the outer waveguides are close to the edge. I reduced the body width to **9.2um**.
+3.  **Output Arm Lengths:** The target arms are quite slender and tall. I have slightly increased the straight section length to **6.0um** to match the elongated "bottle" profile.
+
+Here is the refined script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def mmi_1x4_vertical_refined():
+    """
+    Vertical 1x4 MMI component refined to match target geometry.
+    
+    Corrections:
+    - Increased output waveguide width (0.85um) in straight section to balance line/space ratio.
+    - Reduced MMI body width (9.2um) to create tighter margins matching the target.
+    - Elongated output straight sections to match the tall aspect ratio of the target's output arms.
+    """
+    c = gf.Component()
+    
+    # Layer definition
+    layer_wg = (1, 0)
+
+    # --- Geometric Parameters ---
+    
+    # 1. MMI Body
+    # Rectangular interference region. 
+    # Width reduced slightly to 9.2 to tighten the margins around the output array.
+    body_width = 9.2
+    body_height = 5.0
+    
+    # 2. Output Arms (Top)
+    # The target features a specific "bottle" shape:
+    # - Wide base (almost touching)
+    # - Long linear taper
+    # - Straight extension
+    out_pitch = 2.0      # Center-to-center spacing
+    out_base_width = 1.8 # Wide base leaves ~0.2um gap between arms at the MMI interface
+    out_tip_width = 0.85 # Increased width for straight section (was 0.6).
+                         # This creates a more balanced line/space ratio in the upper section.
+    out_taper_len = 6.0  # Length of the tapered section
+    out_straight_len = 6.0 # Extended straight section to match target profile
+    
+    # 3. Input Taper (Bottom)
+    # Wide-based input taper
+    in_base_width = 2.4
+    in_tip_width = 0.6
+    in_taper_len = 2.5
+
+    # --- Construction ---
+
+    # 1. Place Body
+    # Centered at (0,0)
+    body = c << gf.components.rectangle(
+        size=(body_width, body_height),
+        layer=layer_wg,
+        centered=True
+    )
+
+    # 2. Build and Place Output Arms
+    # Create a reusable sub-component for the arm (Taper + Straight)
+    arm = gf.Component()
+    
+    # Taper section
+    taper = arm << gf.components.taper(
+        length=out_taper_len,
+        width1=out_base_width,
+        width2=out_tip_width,
+        layer=layer_wg
+    )
+    
+    # Straight section
+    straight = arm << gf.components.taper(
+        length=out_straight_len,
+        width1=out_tip_width,
+        width2=out_tip_width,
+        layer=layer_wg
+    )
+    # Connect straight section to the narrow end of the taper
+    straight.connect("o1", taper.ports["o2"])
+    
+    # Expose the base port for placement
+    arm.add_port("base", port=taper.ports["o1"])
+
+    # Array placement of 4 arms
+    n_outputs = 4
+    # Calculate centered x-offsets: -1.5*pitch, -0.5*pitch, 0.5*pitch, 1.5*pitch
+    indices = [i - (n_outputs - 1) / 2 for i in range(n_outputs)]
+    
+    for i in indices:
+        x_pos = i * out_pitch
+        ref = c << arm
+        
+        # Rotate 90 degrees to point UP (+y)
+        ref.rotate(90)
+        
+        # Move to the top edge of the body
+        ref.move((x_pos, body_height / 2))
+
+    # 3. Build and Place Input Taper
+    taper_in = c << gf.components.taper(
+        length=in_taper_len,
+        width1=in_base_width,
+        width2=in_tip_width,
+        layer=layer_wg
+    )
+    
+    # Rotate -90 degrees to point DOWN (-y)
+    # The taper origin (width1) attaches to the body
+    taper_in.rotate(-90)
+    taper_in.move((0, -body_height / 2))
+
+    return c
+
+if __name__ == "__main__":
+    device = mmi_1x4_vertical_refined()
+    device.write_gds("mmi_1x4_refined.gds")
+    device.show()
+```

@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:25:15.906554",
+      "api_duration_seconds": 66.34110713005066,
+      "usage": {
+        "input_tokens": 3721,
+        "output_tokens": 1709,
+        "total_tokens": 11618
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_8/benchmark_gemini_gemini-2.5-pro/phase2/benchmark_gemini-2-5-pro/run_001/turn3/generated_component.py\", line 96, in <module>\n    device = create_device()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfacto",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:26:23.645387",
+      "api_duration_seconds": 26.722465991973877,
+      "usage": {
+        "input_tokens": 5980,
+        "output_tokens": 1372,
+        "total_tokens": 8980
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: GeometricObject.move() missing 1 required positional argument: 'origin'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:26:51.638593",
+      "api_duration_seconds": 32.386953830718994,
+      "usage": {
+        "input_tokens": 7383,
+        "output_tokens": 1372,
+        "total_tokens": 10944
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 17084,
+    "output_tokens": 4453,
+    "total_tokens": 31542
+  }
+}

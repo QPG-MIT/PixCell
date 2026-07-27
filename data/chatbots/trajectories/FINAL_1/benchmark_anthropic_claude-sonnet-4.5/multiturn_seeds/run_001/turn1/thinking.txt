@@ -1,0 +1,101 @@
+Looking at the image, I can see what appears to be three wavy/tapered strips or ribbons that run horizontally across the image. They seem to have varying widths - they start narrower on the left and become wider with some undulation as they move to the right.
+
+From the footprint constraint, the device is 40.0 μm wide and 1.7 μm tall.
+
+Let me analyze the shapes more carefully:
+1. There appear to be 3 horizontal strips/ribbons
+2. They are roughly parallel but have some wave-like undulations
+3. The strips seem to taper - starting narrower on the left and getting wider on the right
+4. The strips have smooth, flowing edges with some wave patterns
+
+Given the footprint of 40 μm × 1.7 μm, and looking at 3 strips, each strip would be roughly 1.7/3 ≈ 0.57 μm in vertical extent (including gaps).
+
+The best approach here would be to use the Path system in GDSFactory to create these waveguiding structures with varying widths. I can:
+1. Create paths that have slight undulations
+2. Extrude them with varying widths to create the tapered, wavy effect
+
+Looking more carefully at the image:
+- The top strip seems to start narrow, get wider in the middle-right area
+- The middle strip is more uniform but still has some width variation
+- The bottom strip starts narrow and gets much wider toward the right end
+
+I'll use the Path system with smooth curves and varying cross-sections to recreate this. The key will be to create paths with some vertical undulation and then extrude them with varying widths along their length.
+
+Let me create a script that:
+1. Creates 3 paths with slight vertical waves
+2. Extrudes them with varying widths to match the visual appearance
+3. Positions them vertically to fit within the 1.7 μm height
+
+Actually, looking at the image more carefully, I can see:
+
+
+- Three ribbon-like structures flowing horizontally with width variations along their length
+- Each has smooth, organic curves rather than sharp edges
+- The width changes gradually from left to right
+
+I'll need to use width functions or transitions to achieve this effect. The Path system with varying width parameters along the path length should work well here. I can define each ribbon as a path and then apply width variations to create the tapered appearance.
+
+For the implementation, I'll set up three separate ribbon paths with different vertical offsets. Each path will have slight undulations to create the organic feel, and I'll apply width arrays that change along the path length to get the desired tapering effect. I need to reconsider the approach since varying widths along paths in GDSFactory requires careful handling. Looking at the visual structure, the ribbons appear to have smooth flowing curves with tapered or undulating widths, mostly oriented horizontally.
+
+A more practical strategy is to construct custom polygon geometries directly or use offset operations to achieve the width variations. Let me implement this with explicit coordinate arrays:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def wavy_ribbons():
+    c = gf.Component()
+    
+    # Parameters
+    length = 40.0
+    total_height = 1.7
+    
+    n_points = 200
+    x = np.linspace(0, length, n_points)
+    
+    # Create three ribbon shapes
+    # Top ribbon
+    y_center_1 = 0.6
+    width_1 = 0.12 + 0.08 * np.exp((x - 20) / 10)  # Gets wider toward right
+    y_top_1 = y_center_1 + 0.05 * np.sin(2 * np.pi * x / 8) + width_1 / 2
+    y
+
+_bot_1 = y_center_1 + 0.05 * np.sin(2 * np.pi * x / 8) - width_1 / 2
+    
+    # Create polygon for this ribbon
+    points_top = list(zip(x, y_top_1))
+    points_bot = list(zip(x[::-1], y_bot_1[::-1]))
+    polygon_1 = points_top + points_bot
+    
+    c.add_polygon(polygon_1, layer=(1, 0))
+    
+    # Middle ribbon
+    y_center_2 = 0.0
+    width_2 = 0.15 + 0.0 * x  # Roughly constant
+    y_top_2 = y_center_2 + width_2 / 2
+    y_bot_2 = y_center_2 - width_2 / 2
+    
+    points_top = list(zip(x, y_top_2))
+    points_bot = list(zip(x[::-1], y_bot_2[::-1]))
+    polygon_2 = points_top + points_bot
+    
+    c.add_polygon(polygon_2, layer=(1, 0))
+    
+    # Bottom ribbon
+    y_center_3 = -0.6
+    width_3 = 0.12 + 0.15 * (x / length)  # Gets wider toward right
+    y_top_3 = y_center_3 + 0.04 * np.sin(2 * np.pi * x / 12) + width_3 / 2
+    y_bot_3 = y_center_3 + 0.04 * np.sin(2 * np.pi * x / 12) - width_3 / 2
+
+The middle ribbon stays centered at zero with a constant width, forming a horizontal band. For the bottom ribbon, I'm setting it lower at -0.6 and making it progressively wider as it extends rightward, with a sinusoidal undulation applied to both edges.
+
+    points_top = list(zip(x, y_top_3))
+    points_bot = list(zip(x[::-1], y_bot_3[::-1]))
+    polygon_3 = points_top + points_bot
+    
+    c.add_polygon(polygon_3, layer=(1, 0))
+    
+    return c
+
+Each ribbon gets converted to a closed polygon by combining the top edge points with the reversed bottom edge points, then added to the cell. The approach of defining independent center lines and width variations for each ribbon should produce the organic, flowing appearance with proper spacing between them.

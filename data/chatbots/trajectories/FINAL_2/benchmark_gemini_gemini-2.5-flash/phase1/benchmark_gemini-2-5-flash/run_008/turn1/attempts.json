@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.885713",
+      "api_duration_seconds": 71.85077619552612,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 2999,
+        "total_tokens": 17480
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: taper() got an unexpected keyword argument 'port_type'. Did you mean 'port_types'?",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:23.319247",
+      "api_duration_seconds": 10.344400882720947,
+      "usage": {
+        "input_tokens": 5380,
+        "output_tokens": 1807,
+        "total_tokens": 7592
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'method' object is not subscriptable",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:40.648458",
+      "api_duration_seconds": 53.16489887237549,
+      "usage": {
+        "input_tokens": 7211,
+        "output_tokens": 2263,
+        "total_tokens": 18428
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<3 lines>...\n    )\nValueError: Cellname temp_chimney_placement_container already exists in the layout/KCLayout. Please make sure the cellname is unique or pass `allow_duplicate` when creating the library",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14936,
+    "output_tokens": 7069,
+    "total_tokens": 43500
+  }
+}

@@ -1,0 +1,96 @@
+Turn 5 Response:
+
+Based on your feedback and the analysis of the target image, I have refined the proportions and spacing for the device silhouette.
+
+### Key Refinements in Turn 5:
+1.  **Clustering of Top Pillars**: In the target image, the four top pillars are grouped more closely toward the center rather than being spread across the entire width. I've adjusted the x-positions to create larger "shoulders" on the main body.
+2.  **Revised Pillar Proportions**: 
+    - The top pillars now have a longer, more gradual taper at the base (2.2um) and a shorter straight tip (1.3um) to better match the "chimney" look.
+    - The tip width has been narrowed to 0.8um for a sharper appearance.
+3.  **Vertical Balance**: The body height is set to 5.5um, with the top pillars at 3.5um and the bottom at 1.0um, maintaining the exact **10um total height footprint**.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_device_silhouette_v5():
+    """
+    Refined device silhouette with improved pillar clustering and tapering.
+    Total Footprint: 25um (Width) x 10um (Height).
+    
+    Proportions:
+    - Main Body: 25um x 5.5um
+    - Top Pillars (4): 3.5um total height (2.2um taper + 1.3um straight)
+    - Bottom Pillar (1): 1.0um total height (0.8um taper + 0.2um straight)
+    """
+    layer = (1, 0)
+    
+    # 1. Main Body
+    body_w = 25.0
+    body_h = 5.5
+    body = gf.components.rectangle(size=(body_w, body_h), layer=layer, centered=True)
+    
+    # 2. Top Pillar Template
+    # We increase the taper length relative to the straight part to match the source
+    tp_taper_len = 2.2
+    tp_straight_len = 1.3
+    tp_w1 = 2.8  # Base width (connecting to body)
+    tp_w2 = 0.8  # Narrow tip width
+    
+    tp_temp = gf.Component("tp_temp")
+    t1 = tp_temp << gf.components.taper(length=tp_taper_len, width1=tp_w1, width2=tp_w2, layer=layer)
+    s1 = tp_temp << gf.components.straight(length=tp_straight_len, 
+                                           cross_section=gf.cross_section.cross_section(width=tp_w2, layer=layer))
+    s1.connect("o1", t1.ports["o2"])
+    
+    # 3. Bottom Pillar Template
+    bp_taper_len = 0.8
+    bp_straight_len = 0.2
+    bp_w1 = 2.6
+    bp_w2 = 1.4
+    
+    bp_temp = gf.Component("bp_temp")
+    t2 = bp_temp << gf.components.taper(length=bp_taper_len, width1=bp_w1, width2=bp_w2, layer=layer)
+    s2 = bp_temp << gf.components.straight(length=bp_straight_len, 
+                                           cross_section=gf.cross_section.cross_section(width=bp_w2, layer=layer))
+    s2.connect("o1", t2.ports["o2"])
+    
+    # 4. Assembly
+    final_geo = body
+    
+    # Clustering positions closer to center for larger "shoulders"
+    # Positions are: [-6.5, -2.1, 2.1, 6.5]
+    top_x_positions = [-6.5, -2.1, 2.1, 6.5]
+    for x in top_x_positions:
+        p_container = gf.Component()
+        ref = p_container << tp_temp
+        ref.rotate(90)
+        # Move base to the top edge of the body (y = 2.75)
+        ref.move((x, body_h / 2))
+        final_geo = gf.boolean(A=final_geo, B=p_container, operation="or", layer=layer)
+        
+    # Place 1 centered bottom pillar
+    bot_container = gf.Component()
+    b_ref = bot_container << bp_temp
+    b_ref.rotate(-90)
+    # Move base to the bottom edge of the body (y = -2.75)
+    b_ref.move((0, -body_h / 2))
+    final_geo = gf.boolean(A=final_geo, B=bot_container, operation="or", layer=layer)
+    
+    final_geo.name = "device_v5"
+    return final_geo
+
+if __name__ == "__main__":
+    c = create_device_silhouette_v5()
+    
+    # Verification of Footprint:
+    # Width: body_w = 25um
+    # Height: 
+    #   Bottom Tip: -2.75 - 1.0 = -3.75
+    #   Top Tip: +2.75 + 3.5 = +6.25
+    #   Total Height = 6.25 - (-3.75) = 10um
+    
+    filename = "device_silhouette_v5.gds"
+    c.write_gds(filename)
+    print(f"Success! File saved as: {filename}")
+```

@@ -1,0 +1,121 @@
+Turn 4 Response:
+
+Looking at the target image and comparing it with the current output, I can see several key differences that need to be addressed:
+
+1. The target shows a single racetrack resonator with two straight coupling waveguides running parallel to the straight sections of the racetrack, not separate rectangular coupling regions.
+
+2. The coupling regions in the target are integrated into the waveguide structure, not separate rectangles.
+
+3. The current code creates a racetrack with 180° arcs and straight sections, but the target appears to have more gradual, elliptical curves.
+
+4. The current code has separate coupling waveguides with tapers, but the target shows a more integrated design where the coupling waveguides are positioned parallel to the racetrack's straight sections.
+
+5. The target has a more streamlined, continuous waveguide structure without the rectangular coupling regions I've added.
+
+Let me revise the code to better match the target image:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreate_device():
+    c = gf.Component()
+    
+    # Define layer
+    layer = (1, 0)
+    
+    # Create cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=layer)
+    
+    # Create the main racetrack resonator with smoother curves
+    # Using a path with elliptical arcs for a more natural shape
+    path = gf.Path()
+    path.append(gf.path.arc(radius=1.2, angle=180))  # Left semicircle
+    path.append(gf.path.straight(length=3.0))        # Top straight section
+    path.append(gf.path.arc(radius=1.2, angle=180))  # Right semicircle
+    path.append(gf.path.straight(length=3.0))        # Bottom straight section
+    
+    # Create the racetrack resonator
+    racetrack = gf.path.extrude(path, cross_section=xs)
+    racetrack_ref = c << racetrack
+    racetrack_ref.move((-1.5, 0))  # Center the racetrack
+    
+    # Create the coupling waveguides (parallel to the racetrack's straight sections)
+    # Top coupling waveguide
+    top_waveguide_path = gf.Path()
+    top_waveguide_path.append(gf.path.straight(length=3.0))
+    top_waveguide = gf.path.extrude(top_waveguide_path, cross_section=xs)
+    top_waveguide_ref = c << top_waveguide
+    top_waveguide_ref.move((0, 0.7))  # Position above the racetrack
+    
+    # Bottom coupling waveguide
+    bottom_waveguide_path = gf.Path()
+    bottom_waveguide_path.append(gf.path.straight(length=3.0))
+    bottom_waveguide = gf.path.extrude(bottom_waveguide_path, cross_section=xs)
+    bottom_waveguide_ref = c << bottom_waveguide
+    bottom_waveguide_ref.move((0, -0.7))  # Position below the racetrack
+    
+    # Add tapered sections for smooth transition at the ends
+    taper_length = 0.5
+    
+    # Left taper for top waveguide
+    left_taper_top = gf.components.taper(
+        length=taper_length, 
+        width1=0.5, 
+        width2=0.3
+    )
+    left_taper_top_ref = c << left_taper_top
+    left_taper_top_ref.rotate(180)
+    left_taper_top_ref.move((-2.0, 0.7))
+    
+    # Right taper for top waveguide
+    right_taper_top = gf.components.taper(
+        length=taper_length, 
+        width1=0.5, 
+        width2=0.3
+    )
+    right_taper_top_ref = c << right_taper_top
+    right_taper_top_ref.move((2.0, 0.7))
+    
+    # Left taper for bottom waveguide
+    left_taper_bottom = gf.components.taper(
+        length=taper_length, 
+        width1=0.5, 
+        width2=0.3
+    )
+    left_taper_bottom_ref = c << left_taper_bottom
+    left_taper_bottom_ref.rotate(180)
+    left_taper_bottom_ref.move((-2.0, -0.7))
+    
+    # Right taper for bottom waveguide
+    right_taper_bottom = gf.components.taper(
+        length=taper_length, 
+        width1=0.5, 
+        width2=0.3
+    )
+    right_taper_bottom_ref = c << right_taper_bottom
+    right_taper_bottom_ref.move((2.0, -0.7))
+    
+    # Add ports for connectivity
+    c.add_port("racetrack_top", port=racetrack_ref.ports["o1"])
+    c.add_port("racetrack_bottom", port=racetrack_ref.ports["o2"])
+    c.add_port("top_in", port=top_waveguide_ref.ports["o1"])
+    c.add_port("top_out", port=top_waveguide_ref.ports["o2"])
+    c.add_port("bottom_in", port=bottom_waveguide_ref.ports["o1"])
+    c.add_port("bottom_out", port=bottom_waveguide_ref.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = recreate_device()
+device.write_gds("recreated_device.gds")
+```
+
+This revised code:
+1. Removes the separate rectangular coupling regions that were not present in the target image
+2. Adjusts the racetrack dimensions to better match the target's proportions
+3. Positions the coupling waveguides parallel to the racetrack's straight sections
+4. Adds ports for connectivity
+5. Maintains the tapered sections at the ends for smooth transitions
+
+The key change is eliminating the rectangular coupling regions and relying on the natural coupling that occurs when waveguides are positioned close to each other, which is what the target image shows.

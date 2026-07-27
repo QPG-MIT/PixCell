@@ -1,0 +1,50 @@
+import gdsfactory as gf
+
+@gf.cell
+def petal_arm():
+    """
+    Creates one petal arm (elliptical lobe + rectangular stub).
+    Constructs the geometry as a component, then performs the boolean
+    to return a single, merged shape.
+    """
+    # 1. Create independent components
+    petal = gf.components.ellipse(radii=(1.5, 0.6), layer=(1, 0))
+    stub = gf.components.rectangle(size=(0.5, 0.4), layer=(1, 0), centered=True)
+    
+    # 2. Use a temporary component to position the stub
+    # This prevents 'locking' errors because we aren't modifying the stub reference directly
+    temp_c = gf.Component()
+    temp_c << petal
+    s_ref = temp_c << stub
+    s_ref.movex(1.75) 
+    
+    # 3. Perform boolean merge to get a unified polygon
+    # We pass the components of the temporary assembly to the boolean
+    return gf.boolean(petal, s_ref, operation="or", layer=(1, 0))
+
+@gf.cell
+def clover_cross():
+    """
+    Assembles 4 petal arms and a center hub.
+    """
+    c = gf.Component()
+    
+    # 1. Create the center hub
+    hub = gf.components.circle(radius=0.6, layer=(1, 0))
+    c << hub
+    
+    # 2. Add 4 rotated petal arms
+    for i in range(4):
+        # Create a reference
+        arm_ref = c << petal_arm()
+        arm_ref.rotate(i * 90)
+    
+    return c
+
+# Create the device
+device = clover_cross()
+
+# Visualize and save
+# The geometry is now clean and assembled without modifying locked cells
+device.show()
+device.write_gds("clover_cross.gds")

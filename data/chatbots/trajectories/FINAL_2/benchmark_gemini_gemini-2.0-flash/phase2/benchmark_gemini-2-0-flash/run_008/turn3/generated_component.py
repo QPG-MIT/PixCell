@@ -1,0 +1,93 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component("my_device")
+
+    # Define key parameters based on the image analysis
+    base_width = 30
+    base_height = 10
+    stub_height = 4
+    stub_width = 4
+    pillar_width = 2
+    pillar_full_height = 10
+    pillar_taper_height = 4
+    pillar_height = pillar_full_height - pillar_taper_height
+    left_pillar_spacing = 6
+    right_pillar_spacing = 6
+    taper_offset = pillar_width / 2 # Adjust this value as needed
+
+    # Helper function for creating trapezoid pillar
+    def create_trapezoid_pillar(width, height, taper_height, layer=(1, 0)):
+        points = [
+            (-width / 2 - taper_offset, -height / 2),
+            (width / 2 + taper_offset, -height / 2),
+            (width / 2, height / 2),
+            (-width / 2, height / 2),
+        ]
+        return gf.components.polygon(points=points, layer=layer)
+
+    # 1. Main Rectangle
+    main_rect = gf.components.rectangle(size=(base_width, base_height), layer=(1, 0))
+    main_ref = c << main_rect
+
+    # 2. Bottom Stub
+    stub = gf.components.rectangle(size=(stub_width, stub_height), layer=(1, 0))
+    stub_ref = c << stub
+    stub_ref.movex(base_width / 2 - stub_width / 2)  # Centered
+    stub_ref.movey(-base_height / 2 - stub_height / 2) # Below the main rect
+
+    # 3. Pillars (Left)
+    #The error from before still arises from here
+    # Pillar1 = create_trapezoid_pillar(pillar_width, pillar_height, pillar_taper_height, layer=(1, 0))
+    # pillar1_ref = c << pillar1
+    # pillar1_ref.movex(-base_width/2 - pillar_width/2 - taper_offset)
+    # pillar1_ref.movey(base_height/2 + pillar_height/2)
+
+    # pillar2 = create_trapezoid_pillar(pillar_width, pillar_height, pillar_taper_height, layer=(1, 0))
+    # pillar2_ref = c << pillar2
+    # pillar2_ref.movex(-base_width/2 - pillar_width/2 - taper_offset + left_pillar_spacing)
+    # pillar2_ref.movey(base_height/2 + pillar_height/2)
+
+    # 4. Pillars (Right)
+    # pillar3 = create_trapezoid_pillar(pillar_width, pillar_height, pillar_taper_height, layer=(1, 0))
+    # pillar3_ref = c << pillar3
+    # pillar3_ref.movex(base_width/2 + pillar_width/2 + taper_offset - right_pillar_spacing)
+    # pillar3_ref.movey(base_height/2 + pillar_height/2)
+
+    # pillar4 = create_trapezoid_pillar(pillar_width, pillar_height, pillar_taper_height, layer=(1, 0))
+    # pillar4_ref = c << pillar4
+    # pillar4_ref.movex(base_width/2 + pillar_width/2 + taper_offset)
+    # pillar4_ref.movey(base_height/2 + pillar_height/2)
+
+    #Fixed trapezoid pillars (left)
+    points1 = [(-2,-5), (2,-5), (1,5), (-1,5)]
+    pillar1 = gf.components.polygon(points=points1, layer=(1,0))
+    pillar1_ref = c << pillar1
+    pillar1_ref.movex(-base_width/2 + pillar_width/2 + taper_offset)
+    pillar1_ref.movey(base_height/2 + pillar_height/2)
+
+    points2 = [(-2,-5), (2,-5), (1,5), (-1,5)]
+    pillar2 = gf.components.polygon(points=points2, layer=(1,0))
+    pillar2_ref = c << pillar2
+    pillar2_ref.movex(-base_width/2 + pillar_width/2 + left_pillar_spacing + taper_offset)
+    pillar2_ref.movey(base_height/2 + pillar_height/2)
+    
+    #Fixed trapezoid pillars (right)
+    points3 = [(-2,-5), (2,-5), (1,5), (-1,5)]
+    pillar3 = gf.components.polygon(points=points3, layer=(1,0))
+    pillar3_ref = c << pillar3
+    pillar3_ref.movex(base_width/2 - pillar_width/2 - right_pillar_spacing - taper_offset)
+    pillar3_ref.movey(base_height/2 + pillar_height/2)
+
+    points4 = [(-2,-5), (2,-5), (1,5), (-1,5)]
+    pillar4 = gf.components.polygon(points=points4, layer=(1,0))
+    pillar4_ref = c << pillar4
+    pillar4_ref.movex(base_width/2 - pillar_width/2 - taper_offset)
+    pillar4_ref.movey(base_height/2 + pillar_height/2)
+    
+    return c
+
+device = my_device()
+device.show()
+device.write_gds("my_device.gds")

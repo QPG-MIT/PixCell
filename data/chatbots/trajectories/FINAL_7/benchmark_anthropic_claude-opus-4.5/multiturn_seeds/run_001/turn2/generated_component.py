@@ -1,0 +1,222 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def chain_link_device():
+    """
+    Chain-link resonator with pill-shaped boundary and 
+    two internal segmented bars with outlined rectangular sections.
+    """
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Device dimensions - more elongated horizontally
+    total_width = 5.5
+    total_height = 3.0
+    
+    # Outer ring parameters
+    ring_thickness = 0.25
+    
+    # Create stadium shape using path extrusion for outer ring
+    # Stadium = straight section + two semicircular ends
+    straight_length = total_width - total_height  # Length of straight section
+    radius = total_height / 2
+    
+    # Create outer stadium path (centerline of the ring)
+    outer_path = gf.Path()
+    # Start from right end, go counterclockwise
+    # Right semicircle
+    outer_path += gf.path.arc(radius=radius - ring_thickness/2, angle=180)
+    # Top straight
+    outer_path += gf.path.straight(length=straight_length)
+    # Left semicircle  
+    outer_path += gf.path.arc(radius=radius - ring_thickness/2, angle=180)
+    # Bottom straight (back to start)
+    outer_path += gf.path.straight(length=straight_length)
+    
+    # Actually, let me use boolean approach for cleaner stadium
+    def make_stadium_points(width, height, n_points=100):
+        """Generate points for a stadium/capsule shape."""
+        points = []
+        rect_half_width = max(0, (width - height) / 2)
+        r = height / 2
+        
+        # Right semicircle (bottom to top)
+        for angle in np.linspace(-np.pi/2, np.pi/2, n_points//2):
+            x = rect_half_width + r * np.cos(angle)
+            y = r * np.sin(angle)
+            points.append((x, y))
+        
+        # Left semicircle (top to bottom)
+        for angle in np.linspace(np.pi/2, 3*np.pi/2, n_points//2):
+            x = -rect_half_width + r * np.cos(angle)
+            y = r * np.sin(angle)
+            points.append((x, y))
+        
+        return points
+    
+    # Create outer stadium shape
+    outer_points = make_stadium_points(total_width, total_height)
+    outer_stadium = gf.Component()
+    outer_stadium.add_polygon(outer_points, layer=layer)
+    
+    # Create inner stadium for hollow center
+    inner_width = total_width - 2 * ring_thickness
+    inner_height = total_height - 2 * ring_thickness
+    inner_points = make_stadium_points(inner_width, inner_height)
+    inner_stadium = gf.Component()
+    inner_stadium.add_polygon(inner_points, layer=layer)
+    
+    # Create outer ring by boolean subtraction
+    outer_ring = gf.boolean(outer_stadium, inner_stadium, operation="not", layer=layer)
+    c << outer_ring
+    
+    # Internal bar structure parameters
+    wall_thickness = 0.08  # Thickness of bar outlines
+    bar_height = 0.35  # Height of each bar
+    n_segments = 3  # Number of rectangular windows per bar
+    segment_width = 0.55  # Width of each rectangular window
+    segment_gap = 0.12  # Gap between segments (vertical dividers)
+    
+    # Calculate usable internal width (inside the ring)
+    inner_radius = (inner_height) / 2
+    inner_straight = inner_width - inner_height
+    
+    # Vertical positioning of bars
+    bar_spacing = 0.15  # Gap between the two bars
+    bar_y_top = (bar_spacing/2 + bar_height/2)
+    bar_y_bottom = -(bar_spacing/2 + bar_height/2)
+    
+    # Total width of segmented section
+    total_seg_width = n_segments * segment_width + (n_segments - 1) * segment_gap
+    
+    def create_segmented_bar(bar_y):
+        """Create a horizontal bar with outlined rectangular segments."""
+        bar = gf.Component()
+        
+        # Calculate extension lengths to reach curved walls
+        # The bars should connect to where the curved wall is at bar height
+        y_offset = abs(bar_y)
+        # Find x position where inner stadium wall intersects with bar
+        # For semicircle: x = sqrt(r^2 - y^2) relative to center of semicircle
+        x_at_bar = np.sqrt(max(0, inner_radius**2 - (bar_height/2 + bar_spacing/2)**2))
+        
+        # Position where straight section ends
+        straight_end_x = inner_straight / 2
+        
+        # Left extension from curved wall to first segment
+        left_start_x = -(straight_end_x + x_at_bar * 0.7)
+        # Right extension from last segment to curved wall
+        right_end_x = (straight_end_x + x_at_bar * 0.7)
+        
+        # First segment starts here
+        first_seg_center = -total_seg_width/2 + segment_width/2
+        last_seg_center = total_seg_width/2 - segment_width/2
+        
+        # Create rectangular segments with hollow centers
+        for i in range(n_segments):
+            x_pos = first_seg_center + i * (segment_width + segment_gap)
+            
+            # Outer rectangle
+            outer_rect = gf.components.rectangle(
+                size=(segment_width, bar_height),
+                layer=layer,
+                centered=True
+            )
+            
+            # Inner rectangle (hollow)
+            inner_rect = gf.components.rectangle(
+                size=(segment_width - 2*wall_thickness, bar_height - 2*wall_thickness),
+                layer=layer,
+                centered=True
+            )
+            
+            # Create frame
+            segment_frame = gf.boolean(outer_rect, inner_rect, operation="not", layer=layer)
+            seg_ref = bar << segment_frame
+            seg_ref.move((x_pos, 0))
+        
+        # Add horizontal connecting lines between segments
+        for i in range(n_segments - 1):
+            x_center = first_seg_center + segment_width/2 + segment_gap/2 + i * (segment_width + segment_gap)
+            
+            # Top connecting line
+            top_conn = gf.components.rectangle(
+                size=(segment_gap, wall_thickness),
+                layer=layer,
+                centered=True
+            )
+            tc_ref = bar << top_conn
+            tc_ref.move((x_center, bar_height/2 - wall_thickness/2))
+            
+            # Bottom connecting line
+            bot_conn = gf.components.rectangle(
+                size=(segment_gap, wall_thickness),
+                layer=layer,
+                centered=True
+            )
+            bc_ref = bar << bot_conn
+            bc_ref.move((x_center, -bar_height/2 + wall_thickness/2))
+        
+        # Left extension lines (to curved wall)
+        left_ext_length = abs(first_seg_center - segment_width/2 - left_start_x)
+        
+        left_top = gf.components.rectangle(
+            size=(left_ext_length, wall_thickness),
+            layer=layer,
+            centered=False
+        )
+        lt_ref = bar << left_top
+        lt_ref.move((left_start_x, bar_height/2 - wall_thickness))
+        
+        left_bot = gf.components.rectangle(
+            size=(left_ext_length, wall_thickness),
+            layer=layer,
+            centered=False
+        )
+        lb_ref = bar << left_bot
+        lb_ref.move((left_start_x, -bar_height/2))
+        
+        # Right extension lines (to curved wall)
+        right_ext_length = abs(right_end_x - (last_seg_center + segment_width/2))
+        
+        right_top = gf.components.rectangle(
+            size=(right_ext_length, wall_thickness),
+            layer=layer,
+            centered=False
+        )
+        rt_ref = bar << right_top
+        rt_ref.move((last_seg_center + segment_width/2, bar_height/2 - wall_thickness))
+        
+        right_bot = gf.components.rectangle(
+            size=(right_ext_length, wall_thickness),
+            layer=layer,
+            centered=False
+        )
+        rb_ref = bar << right_bot
+        rb_ref.move((last_seg_center + segment_width/2, -bar_height/2))
+        
+        return bar
+    
+    # Create and position top bar
+    top_bar = create_segmented_bar(bar_y_top)
+    top_ref = c << top_bar
+    top_ref.move((0, bar_y_top))
+    
+    # Create and position bottom bar
+    bottom_bar = create_segmented_bar(bar_y_bottom)
+    bottom_ref = c << bottom_bar
+    bottom_ref.move((0, bar_y_bottom))
+    
+    return c
+
+
+if __name__ == "__main__":
+    # Create the device
+    device = chain_link_device()
+    
+    # Save to GDS file
+    device.write_gds("chain_link_device.gds")
+    print("Device saved to chain_link_device.gds")
+    print(f"Device bounding box: {device.bbox}")
+    print(f"Device size: {device.bbox[1][0] - device.bbox[0][0]:.2f} x {device.bbox[1][1] - device.bbox[0][1]:.2f}")

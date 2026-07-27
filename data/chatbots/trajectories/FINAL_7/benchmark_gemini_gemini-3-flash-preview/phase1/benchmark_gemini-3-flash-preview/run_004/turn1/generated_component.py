@@ -1,0 +1,71 @@
+import gdsfactory as gf
+
+@gf.cell
+def racetrack_mzi_device():
+    """
+    Recreates the device geometry from the provided image.
+    The device is an outer racetrack frame containing two symmetric arms
+    with rectangular modulation blocks.
+    """
+    c = gf.Component()
+
+    # --- Dimensions based on [3.0, 5.5] footprint ---
+    # Total Width = 5.5, Total Height = 3.0
+    total_width = 5.5
+    total_height = 3.0
+    
+    # 1. Outer Racetrack Frame
+    frame_thickness = 0.5
+    l_straight = 2.5
+    r_outer = total_height / 2
+    r_centerline = r_outer - (frame_thickness / 2)
+    
+    # Construct the frame path
+    p_frame = gf.path.straight(length=l_straight)
+    p_frame += gf.path.arc(radius=r_centerline, angle=180)
+    p_frame += gf.path.straight(length=l_straight)
+    p_frame += gf.path.arc(radius=r_centerline, angle=180)
+    
+    # Extrude path
+    xs_frame = gf.cross_section.cross_section(width=frame_thickness, layer=(1, 0))
+    frame_comp = gf.path.extrude(p_frame, cross_section=xs_frame)
+    
+    # Add reference and center it
+    frame_ref = c << frame_comp
+    frame_ref.center = (0, 0)
+
+    # 2. Inner Branching Arms
+    arm_width = 0.18
+    y_offset = 0.55  # Vertical separation from center
+    xs_arm = gf.cross_section.cross_section(width=arm_width, layer=(1, 0))
+    
+    # Define waypoints (Trunk -> Diagonal -> Horizontal -> Diagonal -> Trunk)
+    pts_top = [(-1.25, 0), (-1.0, 0), (-0.6, y_offset), (0.6, y_offset), (1.0, 0), (1.25, 0)]
+    pts_bot = [(-1.25, 0), (-1.0, 0), (-0.6, -y_offset), (0.6, -y_offset), (1.0, 0), (1.25, 0)]
+    
+    # Extrude smoothed paths
+    c << gf.path.extrude(gf.path.smooth(pts_top, radius=0.2), cross_section=xs_arm)
+    c << gf.path.extrude(gf.path.smooth(pts_bot, radius=0.2), cross_section=xs_arm)
+
+    # 3. Modulation Blocks (Rectangles)
+    block_size = (0.5, 0.4)
+    block_x_positions = [-0.35, 0.35]
+    
+    # Create the rectangle component once
+    rect = gf.components.rectangle(size=block_size, layer=(1, 0), centered=True)
+    
+    for x in block_x_positions:
+        # Top arm blocks: Add reference then move the reference
+        r_top = c << rect
+        r_top.move((x, y_offset))
+        
+        # Bottom arm blocks: Add reference then move the reference
+        r_bot = c << rect
+        r_bot.move((x, -y_offset))
+
+    return c
+
+if __name__ == "__main__":
+    device = racetrack_mzi_device()
+    device.write_gds("racetrack_device.gds")
+    device.show()

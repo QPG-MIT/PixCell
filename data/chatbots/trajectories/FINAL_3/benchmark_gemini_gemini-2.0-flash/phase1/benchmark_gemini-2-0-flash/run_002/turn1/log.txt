@@ -1,0 +1,89 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import bend_euler, straight
+from gdsfactory.cross_section import strip
+from gdsfactory.routing.add_fiber_array import add_fiber_array
+
+
+@gf.cell
+def mach_zehnder_interferometer(
+    length_arm: float = 10.0,
+    length_straight: float = 5.0,
+    gap: float = 0.2,
+    radius: float = 5.0,
+    cross_section=strip,
+    **kwargs,
+) -> gf.Component:
+    """Mach Zehnder interferometer (MZI).
+
+    Args:
+        length_arm: length of the MZI arm.
+        length_straight: length of the straight waveguide.
+        gap: gap between the two straights.
+        radius: bend radius.
+        cross_section: cross_section function.
+        kwargs: cross_section settings.
+
+    """
+    c = gf.Component()
+    xs = gf.get_cross_section(cross_section, **kwargs)
+    width = xs.width
+
+    # Define basic building blocks
+    splitter = gf.components.coupler_straight(
+        length=length_straight, gap=gap, cross_section=xs
+    )
+    bend = bend_euler(radius=radius, cross_section=xs)
+    straight_wg = straight(length=length_arm, cross_section=xs)
+
+    # Add splitter
+    splitter1 = c << splitter
+    splitter2 = c << splitter
+    splitter2.mirror()
+    splitter2.move((0, 0))
+    # Add bends
+    bend1 = c << bend
+    bend2 = c << bend
+    bend3 = c << bend
+    bend4 = c << bend
+
+    # Add straight waveguides
+    straight1 = c << straight_wg
+    straight2 = c << straight_wg
+
+    # Connect components
+    bend1.connect("o1", splitter1.ports["o2"])
+    straight1.connect("o1", bend1.ports["o2"])
+    bend2.connect("o1", splitter1.ports["o3"])
+    straight2.connect("o1", bend2.ports["o2"])
+
+    bend3.connect("o1", straight1.ports["o2"])
+    bend4.connect("o1", straight2.ports["o2"])
+
+    splitter2.connect("o1", bend3.ports["o2"])
+    splitter2.connect("o4", bend4.ports["o2"])
+
+    # Add ports
+    c.add_port("o1", port=splitter1.ports["o1"])
+    c.add_port("o2", port=splitter2.ports["o2"])
+    c.add_port("o3", port=splitter1.ports["o4"])
+    c.add_port("o4", port=splitter2.ports["o3"])
+
+    return c
+
+# Example usage
+if __name__ == "__main__":
+    mzi = mach_zehnder_interferometer(length_arm=50, length_straight=10, gap=0.2)
+    # mzi.show()  # Display the component
+    mzi.write_gds("mzi.gds")  # Write the component to a GDS file
+    # fa = add_fiber_array(mzi)
+    # fa.show()
+```
+
+**Reasoning for the fix:**
+
+The original script only displayed the component using `mzi.show()`, but it didn't explicitly save the component to a GDS file.  The problem description requires a GDS file to be produced.
+
+To generate a GDS file, I added the line `mzi.write_gds("mzi.gds")`. This line calls the `write_gds()` method on the `mzi` component, which creates a GDS file named "mzi.gds" in the same directory as the script. I commented out the `mzi.show()` call because the `show()` function is to display the layout interactively, not to generate a GDS file.  The task requires the latter.

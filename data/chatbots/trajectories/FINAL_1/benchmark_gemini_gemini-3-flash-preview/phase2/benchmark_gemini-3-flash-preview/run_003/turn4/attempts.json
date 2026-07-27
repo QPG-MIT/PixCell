@@ -1,0 +1,53 @@
+{
+  "turn": 4,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:24:22.578947",
+      "api_duration_seconds": 69.24562311172485,
+      "usage": {
+        "input_tokens": 5187,
+        "output_tokens": 1297,
+        "total_tokens": 14208
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:25:33.201210",
+      "api_duration_seconds": 39.82419991493225,
+      "usage": {
+        "input_tokens": 6515,
+        "output_tokens": 1367,
+        "total_tokens": 11706
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:26:14.317319",
+      "api_duration_seconds": 26.701677083969116,
+      "usage": {
+        "input_tokens": 8347,
+        "output_tokens": 1495,
+        "total_tokens": 12547
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'method' object is not subscriptable",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 20049,
+    "output_tokens": 4159,
+    "total_tokens": 38461
+  }
+}

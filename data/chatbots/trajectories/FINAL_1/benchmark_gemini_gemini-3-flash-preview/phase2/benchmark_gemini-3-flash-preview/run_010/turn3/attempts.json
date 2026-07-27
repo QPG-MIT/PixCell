@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:27:39.447542",
+      "api_duration_seconds": 24.967522859573364,
+      "usage": {
+        "input_tokens": 5356,
+        "output_tokens": 1247,
+        "total_tokens": 8410
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:28:06.386421",
+      "api_duration_seconds": 48.61520004272461,
+      "usage": {
+        "input_tokens": 6629,
+        "output_tokens": 1395,
+        "total_tokens": 12959
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports Unnamed_3_0_0[\"o1\"] and Port \"o2\" (\"300\"/\"500\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:28:56.534054",
+      "api_duration_seconds": 38.607978105545044,
+      "usage": {
+        "input_tokens": 8080,
+        "output_tokens": 1416,
+        "total_tokens": 13098
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 20065,
+    "output_tokens": 4058,
+    "total_tokens": 34467
+  }
+}

@@ -1,0 +1,116 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_recreation_refined():
+    """
+    Recreates the waveguide array geometry.
+    - Footprint: 120um x 4um
+    - Structure: 
+        - Central bundle: 5 straight waveguides.
+        - Top/Bottom bundles: 4 waveguides each, flaring outwards at the edges.
+    - Primitive: 'bend_s' is used for the flaring sections to create smooth transitions.
+    """
+    c = gf.Component()
+    
+    # ---------------------------
+    # 1. Dimensions & Constraints
+    # ---------------------------
+    # Total device footprint is 120 x 4 um
+    L_total = 120.0
+    L_straight_mid = 40.0 # Length of the parallel straight section in the middle
+    L_bend = (L_total - L_straight_mid) / 2.0 # Length of the fan-out sections (40.0 um)
+    
+    # Waveguide parameters for dense packing (13 lines in 4um)
+    width = 0.15
+    pitch = 0.25
+    xs = gf.cross_section.strip(width=width)
+    
+    # Bundle counts
+    n_center = 5
+    n_side = 4
+    
+    # ---------------------------
+    # 2. Central Bundle Construction
+    # ---------------------------
+    # The central bundle consists of 5 straight waveguides spanning the full length.
+    for i in range(n_center):
+        # Calculate y-position centered around y=0
+        y_idx = i - (n_center - 1) / 2
+        y_pos = y_idx * pitch
+        
+        wg = c << gf.components.straight(length=L_total, cross_section=xs)
+        wg.x = 0
+        wg.y = y_pos
+
+    # ---------------------------
+    # 3. Top Bundle Construction
+    # ---------------------------
+    # Calculates vertical offsets to ensure fan-out fits within y=2.0 limit
+    
+    # Starting Y position (just above central bundle)
+    gap_min = 0.15
+    y_center_top_edge = ((n_center - 1) / 2) * pitch + width/2
+    y_top_first_center = y_center_top_edge + gap_min + width/2
+    
+    # Calculate required flare (dy) to reach the edge of the footprint
+    # The outermost waveguide should reach close to y = 2.0
+    y_top_last_straight = y_top_first_center + (n_side - 1) * pitch
+    y_limit_top = 2.0 - width/2 - 0.05 # 0.05 margin from edge
+    dy_flare = y_limit_top - y_top_last_straight # Vertical shift for S-bends
+    
+    for i in range(n_side):
+        # Local offset within the bundle
+        y_local = i * pitch
+        y_start = y_top_first_center + y_local
+        
+        # A. Middle Straight Section
+        wg_mid = c << gf.components.straight(length=L_straight_mid, cross_section=xs)
+        wg_mid.x = 0
+        wg_mid.y = y_start
+        
+        # B. Right S-Bend (Flare UP and RIGHT)
+        # Connects to the East port (o2) of the straight section
+        sb_r = c << gf.components.bend_s(size=(L_bend, dy_flare), cross_section=xs)
+        sb_r.connect("o1", wg_mid.ports["o2"])
+        
+        # C. Left S-Bend (Flare UP and LEFT)
+        # We need a bend that flares UP as we go LEFT.
+        # Connecting a bend_s to the West port (o1) rotates it 180 degrees.
+        # A bend with size (L, -dy) rotated 180 degrees results in geometric shift (-L, +dy).
+        sb_l = c << gf.components.bend_s(size=(L_bend, -dy_flare), cross_section=xs)
+        sb_l.connect("o1", wg_mid.ports["o1"])
+
+    # ---------------------------
+    # 4. Bottom Bundle Construction
+    # ---------------------------
+    # Mirrored logic for the bottom bundle (Negative Y positions, Flare DOWN)
+    
+    y_bot_first_center = -y_top_first_center # Mirror start position
+    
+    for i in range(n_side):
+        # Going downwards (-i)
+        y_local = -i * pitch
+        y_start = y_bot_first_center + y_local
+        
+        # A. Middle Straight Section
+        wg_mid = c << gf.components.straight(length=L_straight_mid, cross_section=xs)
+        wg_mid.x = 0
+        wg_mid.y = y_start
+        
+        # B. Right S-Bend (Flare DOWN and RIGHT)
+        # Flare is negative (-dy_flare)
+        sb_r = c << gf.components.bend_s(size=(L_bend, -dy_flare), cross_section=xs)
+        sb_r.connect("o1", wg_mid.ports["o2"])
+        
+        # C. Left S-Bend (Flare DOWN and LEFT)
+        # We need flare DOWN as we go LEFT.
+        # Connect to West port (rotates 180).
+        # Need base bend (L, +dy). Rotated 180 -> (-L, -dy).
+        sb_l = c << gf.components.bend_s(size=(L_bend, dy_flare), cross_section=xs)
+        sb_l.connect("o1", wg_mid.ports["o1"])
+
+    return c
+
+# Create and save the GDS
+device = device_recreation_refined()
+device.write_gds("device_recreation.gds")

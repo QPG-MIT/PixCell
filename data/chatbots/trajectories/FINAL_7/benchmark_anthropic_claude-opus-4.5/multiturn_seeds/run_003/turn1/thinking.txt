@@ -1,0 +1,249 @@
+Looking at this image, I can see a device that appears to be:
+
+1. An outer rounded rectangle (stadium/obround shape) - thick black border
+2. Inside it, there's a white space
+3. In the center, there are two horizontal elements that look like waveguides with rectangular features (possibly resistors or capacitors in the waveguide path)
+
+The device appears to be some kind of racetrack or ring resonator structure with:
+- An outer stadium/obround boundary
+- Two parallel horizontal waveguide sections in the middle
+- Each horizontal section has rectangular pads/elements along it
+
+Looking more carefully:
+- The outer shape is a stadium (rectangle with semicircular ends)
+- Inside there's a hollow area
+- There are two parallel horizontal bars/waveguides going through the center
+- Each waveguide has 3 rectangular segments with gaps between them
+
+Given the footprint constraint of [3.0, 5.5] μm, this is a very small device.
+
+Let me think about how to construct this:
+
+1. Create the outer stadium shape (hollow)
+2. Create the inner waveguide structures with the rectangular elements
+
+Actually, looking at it again:
+- The outer shape is definitely a stadium/racetrack (rounded ends)
+- There's a white (hollow) interior
+- Two horizontal lines with rectangular boxes on them traverse the center
+
+The two horizontal features look like:
+- Horizontal waveguides with periodic rectangular wider sections
+- They span from one curved end to the other
+
+Let me design this:
+
+1. Outer boundary: A thick stadium ring (outer stadium minus inner stadium)
+2. Two horizontal waveguides with rectangular pads/segments
+
+For the stadium shape, I can use:
+- Create an outer rounded rectangle
+- Create an inner rounded rectangle
+- Boolean subtract to get the ring
+
+For the horizontal elements:
+- Each element appears to be a thin line with 3 rectangular segments
+- The rectangles have gaps between them
+
+Wait, looking more carefully at the image:
+- The outer ring is clear
+
+
+- The two parallel horizontal bars each contain multiple rectangular sections that are solid black with white gaps separating them. The top bar appears to have 3 rectangles while the bottom has 2, and each rectangle contains small white openings or windows inside. These internal white spaces might represent coupling regions or openings in the waveguide structure.
+
+Given the dimensions of 3.0 x 5.5 μm, this is likely a micro-resonator or filter device where the outer ring forms the main boundary and the internal bar structures serve as heating elements or coupling regions. I'll construct this using gdsfactory by defining the outer ring, then adding the two horizontal bar elements with their segmented rectangles and window openings. _length, total_height), layer=layer, centered=True)
+    
+    # Add semicircular ends to create stadium shape
+    left_circle = gf.components.circle(radius=outer_radius, layer=layer)
+    right_circle = gf.components.circle(radius=outer_radius, layer=layer)
+    
+    # Position circles at the ends
+    left_circle.move((-straight_length/2, 0))
+    right_circle.move((straight_length/2, 0))
+    
+    # Combine into outer stadium boundary
+    c.add_ref(rect_outer)
+    c.add_ref(left_circle)
+    c.add_ref(right_circle)
+    
+    # Create inner cavity by offsetting inward
+    # This forms the ring structure with the specified thickness
+    
+    # Add internal rectangular segments for the upper and lower rows
+    # Upper row: 3 segments with windows
+    # Lower row: 2 segments with windows
+
+I'm setting up the outer stadium perimeter with rounded ends, then I'll carve out the inner structure. The approach uses basic geometric components positioned to form the stadium shape, and I'll create the internal segmented structure with windows by defining rectangular regions in the upper and lower portions. _right = gf.components.circle(radius=inner_radius, layer=layer)
+    
+    c2 = gf.Component()
+    r2 = c2 << rect_inner
+    cil = c2 << circle_inner_left
+    cir = c2 << circle_inner_right
+    cil.move((-inner_straight/2, 0))
+    cir.move((inner_straight/2, 0))
+    inner_stadium = c2.flatten()
+    
+    # Boolean subtract to get ring
+    stadium_ring = gf.boolean(outer_stadium, inner_stadium, operation="not", layer=layer)
+    c << stadium_ring
+    
+    # Now add the internal bar structures...
+
+I'm realizing this approach is becoming unwieldy. Maybe I should leverage the offset function instead, or reconsider the overall strategy for building the stadium ring geometry.
+
+Looking more carefully at the structure, I can see the outer black ring forms a stadium shape, and inside there are two horizontal bars with rectangular cutouts. Each bar extends to the curved ends and contains window-like openings.
+
+A cleaner approach would be to define the device parameters first—using the 5.5 x 3.0 footprint with a 0.3 ring thickness—then construct the outer stadium using offset operations on a base filled stadium shape. _r.move((straight/2, 0))
+    outer_shape = temp1
+    
+    # Inner stadium 
+    inner_radius = radius - ring_width
+    inner_h = total_height - 2*ring_width
+    inner_rect = gf.components.rectangle(size=(straight, inner_h), layer=layer, centered=True)
+    inner_left = gf.components.circle(radius=inner_radius, layer=layer)
+    inner_right = gf.components.circle(radius=inner_radius, layer=layer)
+    
+    temp2 = gf.Component()
+    temp2 << inner_rect
+    ref_il = temp2 << inner_left
+    ref_ir = temp2 << inner_right
+    ref_il.move((-straight/2, 0))
+    ref_ir.move((straight/2, 0))
+
+Now I need to construct the inner stadium shape by calculating the reduced dimensions—subtracting the ring width from both the radius and height. I'll assemble this the same way as the outer shape, positioning the circles at the ends of the rectangle to form the complete inner boundary.
+
+Once I have both the outer and inner stadium shapes, I can use a boolean "not" operation to cut out the interior and create the ring. Then I need to add the internal bar structures—there appear to be two horizontal elements with rectangular segments and windows, where the upper bar has 3 segments and the lower has 2. The overall device dimensions are roughly 5.5 units wide, suggesting a horizontally-oriented layout.
+
+Looking at the proportions, the ring thickness should be around 0.3-0.4 units, the internal bars about 0.4-0.5 units tall, and they should be spaced roughly 0.4-0.5 units from the center. Each rectangular cell in the bars appears to have a hollow center. I'll write a cleaner function that takes these parameters—width, height, ring thickness, bar thickness, and bar spacing—to construct this more systematically.
+
+The stadium shape forms the outer boundary, created by combining a central rectangle with semicircles on each end. The function builds this by calculating the radius as half the height and the straight section as the width minus the height, then positioning circular and rectangular components to form the complete stadium geometry.
+
+A boolean operation subtracts the inner stadium from the outer one to create the ring structure. The bars are then positioned at specific y-coordinates determined by the bar spacing and thickness parameters, with the upper bar starting at bar_y_top.
+
+Looking at the geometry more carefully, the internal structure consists of two horizontal bars—one above and one below the center—each containing a series of rectangular cells with hollow centers. These bars span most of the width and connect to the curved stadium ends on both sides, forming a unified shape. The top bar has three cells while the bottom has two, creating an asymmetrical internal pattern.
+
+I'll take a more direct approach by constructing the geometry as paths rather than trying to decompose it further. The simplest method is to build the stadium outline directly using gdsfactory, then add the internal rectangular divisions. I need to define the overall footprint (5.5 × 3.0 μm), set the ring thickness to 0.35 μm, and calculate the stadium geometry from the height and width parameters. The stadium consists of two semicircular ends connected by straight segments, so the straight section length equals the total width minus the height.
+
+I'll create a helper function that generates a stadium shape by combining a rectangle with two circles positioned at the ends. Then I'll use boolean operations to subtract an inner stadium from the outer one to form the ring. After establishing the ring structure, I need to add the internal bars—two horizontal sections with rectangular cells arranged inside them, where each bar has a height of 0.4 μm and starts at specific positions.
+
+The bars extend slightly into the curved regions, with the top bar positioned at y=0.35 and the bottom at y=-0.35. A function will handle creating each bar by calculating the total width needed for all cells and their spacing, then iterating through to place each cell at the correct x-position.
+
+For each cell, I'm creating a hollow rectangular frame by taking the outer rectangle and subtracting an inner window using a boolean "not" operation. The window dimensions account for the frame width on all sides. Each cell gets positioned and moved to its calculated location along the bar.
+
+Now I'm reconsidering the approach—it seems overly complex. Looking back at the target image, I see a thick outer stadium ring with two internal horizontal structures made of rectangular frame segments connected together. I should build this more directly using gdsfactory, starting with the main dimensions (5.5 × 3.0 footprint) and creating the stadium ring with a 0.32 thickness, then constructing the internal rectangular segments and their connections. 2*ring_thickness, layer)
+    ring = gf.boolean(outer, inner, operation="not", layer=layer)
+    c << ring
+    
+    For the internal bars, I need to create two horizontal structures based on the image—one with 3 cells positioned near y=0.42 and another with 2 cells at y=-0.42. Each cell has a width of 0.65 and height of 0.38, with frame thickness of 0.08. I'll define a helper function to generate these cell bars with the specified number of cells, positioning, and dimensions. = bar_comp << cell_frame
+            ref.move((x, y_position))
+        
+        # Add connecting bars on left and right
+        left_bar_x = -(n_cells * cell_w) / 2 - bar_extension / 2
+        right_bar_x = (n_cells * cell_w) / 2 + bar_extension / 2
+        
+        left_conn = bar_comp << gf.components.rectangle(
+            size=(bar_extension, cell_h), layer=layer, centered=True
+        )
+        left_conn.move((left_bar_x, y_position))
+        
+        right_conn = bar_comp << gf.components.rectangle(
+            size=(bar_extension, cell_h), layer=layer, centered=True
+        )
+        right_conn.move((right_bar_x, y_position))
+
+Then I'm positioning each cell frame within the component and adding rectangular bars to the left and right sides that extend beyond the cell array to create connecting elements.
+
+After that, I calculate the extension needed to span from the stadium's curved edges through the cells, then create top and bottom bars using the helper function with the appropriate parameters before adding them to the main component and returning it. Finally, I instantiate the device and write it to a GDS file, though I realize I need to reconsider how the bars actually connect through the curved geometry.
+
+Looking more carefully at the structure: the outer ring forms the boundary, the top bar contains 3 rectangular openings arranged horizontally with shared walls between them, and the bottom bar has 2 similar openings. Rather than separate cells, these are internal divisions within continuous bars that span from one curved end to the other. The bars themselves are long rectangles with vertical partitions creating the window pattern.
+
+Setting up the implementation with layer definitions and establishing the core dimensions. Creating a stadium shape function that combines a rectangle with semicircular ends to form the curved boundaries. The ring is then generated by taking a boolean difference between the outer stadium and an inset version, with the thickness controlled by the ring parameter.
+
+For the internal structure, I'm defining bars with configurable windows. The bar creation function calculates the total width needed for the window sections and positions each window symmetrically around the center point.
+
+Looking at the actual structure more carefully, I realize the approach needs adjustment. The image shows an outer stadium-shaped ring with two horizontal beams inside—a top beam with 3 cells and a bottom beam with 2 cells. Each cell has a black frame outline with a white interior. Let me reconsider the construction method using boolean operations to properly cut the windows from the bars.
+
+The overall dimensions are 5.5 units wide by 3.0 units tall. The outer ring has a thickness of 0.32 units. To build the stadium shape, I'll create a rectangular middle section and add circular end caps on both sides. The left cap needs to be positioned at the negative x-offset of the straight section length, while the right cap mirrors this on the opposite side.
+
+For the ring structure, I subtract the inner stadium from the outer stadium using a boolean "not" operation. The inner dimensions are calculated by reducing both width and height by twice the ring thickness. After creating this ring geometry, I'll add internal bars to the component.
+
+The bars are positioned horizontally with specific parameters: each has a height of 0.4 units and a frame thickness of 0.08 units around the windows. The windows themselves are 0.55 units wide with a calculated height that accounts for the frame. I'm setting up two bar configurations—a top bar with 3 windows centered at y=0.45 and a bottom bar with 2 windows at y=-0.45. A helper function will generate each bar with its hollow rectangular cells based on the number of windows, their dimensions, and the total length available.
+
+The function creates a solid rectangular bar first, then iteratively cuts out window openings. For each window, I calculate its x-position relative to the bar's center, accounting for the spacing between cells, and subtract it from the solid bar to create the hollow effect.
+
+Rather than managing complex boolean operations on intermediate components, I'm simplifying the approach by using gdsfactory's built-in boolean operations directly. The new strategy defines the overall dimensions—a 5.5 by 3.0 footprint—and constructs the chain link geometry more straightforwardly.
+
+I'm creating a helper function to generate stadium shapes (rectangles with semicircular ends) by combining a central rectangle with circles at each end, then merging them with a boolean OR operation. For the ring structure, I'll generate both an outer stadium shape and an inner one with reduced dimensions to create the hollow ring effect through subtraction.
+
+The internal bar structures use specific dimensions: bars are 0.42 units tall with 0.09-unit frames, creating windows of 0.52 width. The bars span nearly the full width minus the ring thickness and a small gap. The top bar contains 3 windows with spacing determined by the window width plus frame thickness. I'm creating the top bar as a solid rectangle, then subtracting window cutouts positioned symmetrically across its length.
+
+For the bottom section, I'm setting up a similar structure with 2 windows instead of 3, positioned at y = -0.45. The same boolean operation will carve out the window openings from the solid bar.
+
+Then I'm creating the device by writing it to a GDS file and reconsidering the implementation to ensure I'm using the gdsfactory functions correctly. The approach involves defining the overall dimensions (5.5 x 3.0 footprint) and working through the geometric construction more systematically.
+
+I'm building the outer stadium shape by combining a rectangle with two circles positioned at the ends, then creating an inner stadium by subtracting the ring thickness from the dimensions. The inner component uses a smaller rectangle and circles with reduced radius to form the hollow center.
+
+Once both stadium shapes are defined, I perform a boolean "not" operation to create the ring by subtracting the inner from the outer. Then I'm setting up the internal bar structure with specific dimensions—the bar height is 0.42, frame thickness is 0.085, and window width is 0.55, which determines the cell pitch. The bar spans across the interior width of the stadium.
+
+For the top bar, I create a solid rectangle at y-position 0.44, then subtract three window cutouts spaced by the cell pitch to form the perforated pattern. I'm using another boolean operation to remove the holes from the solid bar.
+
+For the bottom bar positioned at -0.44, I follow a similar approach but with two window cutouts instead, offset by half the cell pitch to create a staggered arrangement. The same boolean subtraction technique applies to carve out the holes from the solid base.
+
+After completing the bottom bar assembly and adding it to the main component, the function returns the finished device. The code then instantiates this device and exports it as a GDS file. However, I'm reconsidering how the move operations work with gdsfactory references—when using `<<` to add components, the returned reference can be repositioned, but for boolean operations I may need to handle positioning differently. A cleaner approach would involve creating a stadium shape utility function that generates an obround geometry using a radius-based construction.
+
+The stadium function combines a centered rectangle with two circles positioned at each end to form the obround profile. Then there's a bar-with-windows component that creates a horizontal bar structure with multiple window cutouts spaced along its length. raction to create the bar with window cutouts. The result is added to the component and returned.
+
+Next, there's a chain link device function that sets up a component with specific layer parameters. It defines device dimensions (width of 5.5, height of 3.0) and a ring thickness of 0.30. A stadium-shaped ring is created by performing a boolean subtraction between outer and inner stadium shapes, then this ring is added to the component. The function continues by establishing bar parameters with a height of 0.42.
+
+The frame thickness is set to 0.085 with a cell pitch of 0.7, and the bar length is calculated as W - H + 0.3. Two bars with window cutouts are created—one with 3 windows positioned at y=0.44 and another with 2 windows at y=-0.44. Both are added to the component before it's returned. Finally, the device is generated and written to a GDS file.
+
+However, there's a concern about using @gf.cell on helper functions since caching could introduce unexpected behavior, and applying transformations after boolean operations might not work as intended. A cleaner approach would be to restructure the code to avoid these potential issues.
+
+Building the outer stadium shape by combining a centered rectangle with two circles positioned at the ends. Then constructing the inner stadium similarly, using the same straight section length but with reduced radius and height based on the ring thickness.
+
+The ring itself is created by subtracting the inner stadium from the outer one. For the internal bars, I'm setting up dimensions for windows and frames—each window has a specific height with frame borders, and the cells are spaced based on window width plus frame thickness on both sides. The bars extend slightly beyond the stadium width to reach into the curved sections, with the top bar configured to hold three windows. bottom_y = -0.45
+    
+    bottom_bar_shape = gf.Component()
+    b1 = bottom_bar_shape << gf.components.rectangle(size=(bar_length, bar_height), layer=layer, centered=True)
+    b1.move((0, bottom_y))
+    
+    bottom_windows = gf.Component()
+    for i in range(2):
+        x = (i - 0.5) * cell_pitch
+        bw = bottom_windows << gf.components.rectangle(size=(window_width, window_height), layer=layer, centered=True)
+        bw.move((x, bottom_y))
+    
+    bottom_bar_result = gf.boolean(bottom_bar_shape, bottom_windows, operation="not", layer=layer)
+    c << bottom_bar_result
+    
+    return c
+
+# Create and save the device
+device = chain_link_device()
+device.write_gds("chain_link_device.gds")
+
+The structure builds up systematically: the outer stadium shape with inner cutout forms the ring, then the top and bottom bars get their window patterns subtracted to create the frame structure. The dimensions work together—ring thickness of 0.30 μm, bar height of 0.40 μm, frame width of 0.08 μm, and window width of 0.55 μm—to produce the intended chain link geometry.
+
+Positioning the top bar at y=0.45 μm and bottom bar at y=-0.45 μm centers them vertically. The bars should connect smoothly into the curved sections of the ring, extending from one side's inner edge to the other. Looking more carefully at the target image, the bars appear to taper into the curved regions rather than extending as full rectangles all the way across.
+
+Setting up the device with a 5.5 × 3.0 μm footprint, I'll define the stadium geometry where the ring thickness is 0.28 μm. The stadium shape consists of a central rectangular section with semicircular caps on each end. For the outer boundary, I create a rectangle for the middle section and circles for the curved ends, then subtract an inner stadium shape to form the ring itself.
+
+Next, I'm building the internal bar structures with a height of 0.38 μm and frame width of 0.075 μm, which gives a window height of 0.23 μm. The window width is 0.50 μm with a cell pitch of 0.65 μm, and the bar extends across most of the inner region.
+
+For the top bar positioned at y = 0.42, I create a solid rectangle and subtract three evenly-spaced windows using a boolean operation to form the final bar structure.
+
+Now for the bottom bar at y = -0.42, I follow the same approach but with two windows instead, offsetting them by 0.5 * cell_pitch to center them properly. After applying the boolean subtraction, I add this bar to the component and return the completed device.
+
+To finalize, I instantiate the device and write it to a GDS file.
+
+For the outer stadium ring, I create a component with a centered rectangle for the straight section, then add circles at each end positioned at the appropriate distances. The inner stadium follows the same pattern but with reduced dimensions accounting for the ring thickness—the radius shrinks by the thickness value, and the height is reduced by twice the thickness on both sides.
+
+I then use a boolean subtraction operation to cut the inner shape from the outer shape, creating the ring geometry. Next, I'm setting up the internal bar structures by defining the bar height, frame width, and calculating the window height as the bar height minus twice the frame width. The window width and cell pitch are specified, with the bar extending across the full width of the stadium.
+
+The bar length is calculated as the stadium width plus roughly 2.94 units (accounting for the inner radius scaled by 0.7). For the top bar positioned at y=0.42, I create a solid rectangular component spanning the full bar length, then subtract three window cutouts spaced by the cell pitch. The top bar is being constructed by combining these solid and hole components.
+
+For the bottom bar at y=-0.42, I follow a similar approach: a solid rectangle with two window openings positioned at half-cell-pitch offsets. The bottom bar component is being assembled using the same boolean subtraction method.
+
+Finally, the device is returned and exported to a GDS file. The dimensions check out—total width of 5.5 μm, height of 3.0 μm, with ring thickness at 0.28 μm and stadium radius at 1.5 μm. The internal bars have 0.38 μm height with 0.075 μm frame width and 0.23 μm window height.
+
+The window width spans 0.50 μm with a 0.65 μm cell pitch, giving a bar length of approximately 4.2 μm. The top bar sits at y = 0.42 μm with windows positioned at x = -0.65, 0, and 0.65, while the bottom bar at y = -0.42 μm has windows at x = -0.325 and 0.325. This arrangement should effectively replicate the chain link structure.

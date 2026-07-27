@@ -1,0 +1,162 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_heater_structure():
+    """
+    Recreates the heater/modulator structure with corrected taper geometry
+    to match the 'chamfered' look and preserve the central void shape.
+    """
+    # 1. Define Parameters
+    # --------------------
+    layer_main = (1, 0)
+    
+    # Outer Dimensions
+    width_total = 5.5
+    height_total = 3.0
+    
+    # Ring Geometry
+    # "Chunky" look suggests a slightly wider ring trace.
+    ring_width = 0.55
+    radius_outer = height_total / 2.0             # 1.5 um
+    radius_center = radius_outer - ring_width/2.0
+    straight_length = width_total - height_total  # 2.5 um
+    
+    # Inner Arm Geometry
+    # Y-offset determines the gap between the two arms.
+    arm_y_offset = 0.62
+    
+    pad_width = 0.75
+    pad_height = 0.52
+    
+    # Bridge geometry
+    bridge_width = 0.25
+    bridge_height = 0.30 
+    
+    # Holes (Windows)
+    hole_width = 0.45
+    hole_height = 0.25
+
+    # 2. Create Positive Geometry (The Black Areas)
+    # ---------------------------------------------
+    c_pos = gf.Component("Positive_Mask")
+
+    # A. Racetrack Ring
+    # Constructed using paths for smooth adiabatic-like curvature if needed, 
+    # but circular arcs match the reference image's geometric style.
+    p = gf.Path()
+    p.append(gf.path.straight(length=straight_length))
+    p.append(gf.path.arc(radius=radius_center, angle=180))
+    p.append(gf.path.straight(length=straight_length))
+    p.append(gf.path.arc(radius=radius_center, angle=180))
+    
+    xs_ring = gf.cross_section.cross_section(width=ring_width, layer=layer_main)
+    ring = c_pos << gf.path.extrude(p, cross_section=xs_ring)
+    ring.center = (0, 0)
+
+    # B. Inner Arms (Pads + Bridge + Custom Tapers)
+    pad_shape = gf.components.rectangle(size=(pad_width, pad_height), layer=layer_main, centered=True)
+    bridge_shape = gf.components.rectangle(size=(bridge_width + 0.1, bridge_height), layer=layer_main, centered=True)
+    
+    def add_arm_pos(y_pos, mirror=False):
+        """
+        Adds one horizontal arm assembly.
+        y_pos: Vertical center of the arm.
+        mirror: If True, flips the taper geometry vertically (for the bottom arm).
+        """
+        # Calculate X positions
+        x_pad_center_offset = pad_width/2 + bridge_width/2
+        
+        # 1. Pads
+        pl = c_pos << pad_shape
+        pl.move((-x_pad_center_offset, y_pos))
+        pr = c_pos << pad_shape
+        pr.move((x_pad_center_offset, y_pos))
+        
+        # 2. Bridge (Center connection)
+        br = c_pos << bridge_shape
+        br.move((0, y_pos))
+        
+        # 3. Connections to Ring (The "Tapers")
+        # We define a custom polygon that connects the pad corner to the ring wall.
+        
+        # Geometry constants for the arm
+        x_pad_edge = x_pad_center_offset + pad_width/2
+        y_pad_top = y_pos + pad_height/2
+        y_pad_bot = y_pos - pad_height/2
+        
+        # Taper Targets
+        # Outer Edge: Angles up to meet the ring wall.
+        # Ring inner wall Y is approx radius_outer - width = 1.5 - 0.55 = 0.95.
+        # We overshoot slightly into the ring to ensure overlap.
+        y_target_outer = 1.0 if not mirror else -1.0
+        
+        # Inner Edge: Stays roughly horizontal or tapers slightly to preserve the central void.
+        # In the previous bad render, this went to y=0.18. Here we keep it near y=0.35.
+        y_target_inner = (y_pos - 0.15) if not mirror else (y_pos + 0.15)
+
+        # X End: Deep inside the ring curve to ensure a seamless boolean merge.
+        x_end = straight_length/2 + 0.8 # approx 2.05
+        
+        # Define vertices for the right-side connector
+        # Logic: Start at pad corners, flare to target heights at x_end.
+        if not mirror: # Top Arm
+            pts_right = [
+                (x_pad_edge, y_pad_top),       # Top-Left (at Pad)
+                (x_pad_edge, y_pad_bot),       # Bottom-Left (at Pad)
+                (x_end, y_target_inner),       # Bottom-Right (Target in ring)
+                (x_end, y_target_outer)        # Top-Right (Target in ring)
+            ]
+        else: # Bottom Arm (Mirrored logic)
+            pts_right = [
+                (x_pad_edge, y_pad_bot),       # Bottom-Left (at Pad)
+                (x_pad_edge, y_pad_top),       # Top-Left (at Pad)
+                (x_end, y_target_inner),       # Top-Right (Target in ring)
+                (x_end, y_target_outer)        # Bottom-Right (Target in ring)
+            ]
+            
+        c_pos.add_polygon(pts_right, layer=layer_main)
+        
+        # Left Taper Polygon (Mirrored X)
+        pts_left = [(-x, y) for x, y in pts_right]
+        c_pos.add_polygon(pts_left, layer=layer_main)
+
+    # Add Top Arm
+    add_arm_pos(arm_y_offset, mirror=False)
+    # Add Bottom Arm
+    add_arm_pos(-arm_y_offset, mirror=True)
+
+    # 3. Create Negative Geometry (Holes)
+    # -----------------------------------
+    c_neg = gf.Component("Negative_Mask")
+    hole_shape = gf.components.rectangle(size=(hole_width, hole_height), layer=layer_main, centered=True)
+
+    def add_arm_holes(y_pos):
+        x_pad_center_offset = pad_width/2 + bridge_width/2
+        # Left Hole
+        hl = c_neg << hole_shape
+        hl.move((-x_pad_center_offset, y_pos))
+        # Right Hole
+        hr = c_neg << hole_shape
+        hr.move((x_pad_center_offset, y_pos))
+        
+    add_arm_holes(arm_y_offset)
+    add_arm_holes(-arm_y_offset)
+
+    # 4. Final Boolean Operation
+    # --------------------------
+    c_final = gf.boolean(A=c_pos, B=c_neg, operation="not", layer=layer_main)
+    
+    # 5. Add Ports
+    c_final.add_port("o1", center=(-width_total/2, 0), width=ring_width, orientation=180, layer=layer_main)
+    c_final.add_port("o2", center=(width_total/2, 0), width=ring_width, orientation=0, layer=layer_main)
+    
+    return c_final
+
+# Generate and verify
+if __name__ == "__main__":
+    device = device_heater_structure()
+    device.show()
+    device.write_gds("heater_structure_v3.gds")
+    
+    print(f"Device Name: {device.name}")
+    print(f"Size: {device.dx:.2f} x {device.dy:.2f} um")

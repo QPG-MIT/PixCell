@@ -1,0 +1,112 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_quatrefoil():
+    """
+    Recreates the quatrefoil-shaped device geometry with improved proportions based on feedback.
+    
+    Adjustments from previous iteration:
+    - Reduced petal minor radius (0.38 -> 0.32) to create slimmer, less bulbous petals.
+    - Reduced center overlap (0.15 -> 0.08) to create a sharper, more pinched intersection at the center.
+    - Maintained stick dimensions and overall footprint.
+    """
+    # 1. Define Design Parameters
+    # Footprint constraint: 4.7 x 4.7 um
+    total_footprint = 4.7
+    half_fp = total_footprint / 2  # 2.35 um from center to edge
+    
+    # Stick (stub) dimensions
+    # Target shows very thin, short connectors
+    stick_length = 0.45
+    stick_width = 0.12
+    
+    # Stick placement:
+    # Outer edge at 2.35. Center at 2.35 - 0.45/2.
+    stick_center_pos = half_fp - (stick_length / 2)
+    # Inner edge of stick is at 2.35 - 0.45 = 1.9
+    
+    # Petal Geometry
+    # The petal needs to overlap the stick's inner edge (1.9) slightly for connectivity.
+    petal_tip_pos = 1.95  # 0.05um overlap
+    
+    # Control the thickness of the center intersection. 
+    # Smaller overlap = thinner "waist" at the center.
+    center_overlap = 0.08 # Reduced to sharpen center
+    
+    # Calculate Ellipse Dimensions based on positions
+    # Total length of one petal ellipse = Tip Position + Center Overlap
+    petal_total_len = petal_tip_pos + center_overlap 
+    petal_r_major = petal_total_len / 2              
+    
+    # Shift = Center of ellipse relative to device center
+    petal_shift = petal_tip_pos - petal_r_major      
+    
+    # Minor radius: Controls the slenderness.
+    petal_r_minor = 0.32 # Reduced for slimmer look
+    
+    layer = (1, 0)
+
+    # 2. Create Primitives
+    # Temporary staging component
+    c_temp = gf.Component("temp_assembly")
+    
+    # Primitives
+    e_vert = gf.components.ellipse(radii=(petal_r_minor, petal_r_major), layer=layer)
+    e_horiz = gf.components.ellipse(radii=(petal_r_major, petal_r_minor), layer=layer)
+    
+    r_horiz = gf.components.rectangle(size=(stick_length, stick_width), layer=layer, centered=True)
+    r_vert = gf.components.rectangle(size=(stick_width, stick_length), layer=layer, centered=True)
+
+    # 3. Assemble References
+    
+    # -- Petals --
+    # North
+    p_n = c_temp << e_vert
+    p_n.movey(petal_shift)
+    
+    # South
+    p_s = c_temp << e_vert
+    p_s.movey(-petal_shift)
+    
+    # East
+    p_e = c_temp << e_horiz
+    p_e.movex(petal_shift)
+    
+    # West
+    p_w = c_temp << e_horiz
+    p_w.movex(-petal_shift)
+    
+    # -- Sticks --
+    # North Stick
+    s_n = c_temp << r_vert
+    s_n.movey(stick_center_pos)
+    
+    # South Stick
+    s_s = c_temp << r_vert
+    s_s.movey(-stick_center_pos)
+    
+    # East Stick
+    s_e = c_temp << r_horiz
+    s_e.movex(stick_center_pos)
+    
+    # West Stick
+    s_w = c_temp << r_horiz
+    s_w.movex(-stick_center_pos)
+
+    # 4. Boolean Operation
+    # Flatten the assembly into a single clean polygon
+    c_final = gf.boolean(c_temp, c_temp, operation='or', layer=layer)
+    
+    # 5. Add Ports
+    c_final.add_port("o1", center=(-half_fp, 0), width=stick_width, orientation=180, layer=layer)
+    c_final.add_port("o2", center=(half_fp, 0), width=stick_width, orientation=0, layer=layer)
+    c_final.add_port("o3", center=(0, half_fp), width=stick_width, orientation=90, layer=layer)
+    c_final.add_port("o4", center=(0, -half_fp), width=stick_width, orientation=270, layer=layer)
+    
+    c_final.name = "quatrefoil_device"
+    return c_final
+
+if __name__ == "__main__":
+    component = device_quatrefoil()
+    component.show()
+    component.write_gds("quatrefoil_device.gds")

@@ -1,0 +1,186 @@
+Looking at the image, I can see a black silhouette that appears to be:
+- A rectangular box/crate shape at the bottom
+- Four bottle-like shapes (necks) protruding from the top of the box
+- A small triangular or V-shaped notch at the bottom center of the box
+
+This looks like a stylized icon of bottles in a crate or carrier, or it could be interpreted as some kind of industrial/factory symbol with chimneys.
+
+Given the footprint constraint of [25, 10] μm, I need to create this shape within approximately 25 μm width and 10 μm height.
+
+Let me break down the design:
+
+1. Main rectangular body at the bottom
+2. Four bottle necks on top (they look like tapered rectangles)
+3. A small V-notch or triangle pointing downward at the bottom center
+
+Looking more carefully:
+- The bottles appear to have narrow necks that widen toward the base
+- There are 4 bottles evenly spaced
+- The rectangular box contains the lower portions of the bottles
+- There's a small triangular notch at the bottom center (like a speech bubble pointer or a carrier handle notch)
+
+Let me design this:
+
+Footprint: 25 μm x 10 μm
+
+The image shows:
+- The overall width seems to be dominated by the box width
+- The height includes both the box and the bottle necks sticking out
+
+Looking at proportions:
+- The box appears to be roughly square-ish, maybe a bit wider than tall
+- The bottle necks extend about 40-50% additional height above the box
+- The V-notch at bottom is small
+
+Let me estimate:
+- If total footprint is 25x10, the design needs to fit within that
+- Box width: ~20-22 μm
+- Box height: ~5-6 μm  
+- Bottle neck height above box: ~3-4 μm
+- Each bottle neck width at top: ~2 μm
+
+
+- Bottle neck width at base: ~3 μm
+- V-notch: small triangle at bottom center
+
+The aspect ratio of the image suggests the width is significantly larger than the height, which aligns with the 25x10 constraint. I need to fit the four bottle necks and the crate body within these dimensions while maintaining the proportions shown in the silhouette.
+
+For the design, I'll use a 20 μm wide box with 4 μm height as the base structure, then extend four tapered necks upward about 5 μm to reach the total 10 μm height. The V-notch at the bottom will be roughly 1 μm deep and 2 μm wide. I can construct this by creating the main rectangular body, adding the four tapered bottle shapes, and subtracting the notch geometry. The bottles should be positioned evenly across the width—roughly at 2.5, 8.5, 14, and 19.5 μm—to create the balanced appearance in the reference image. -7.5, -2.5, 2.5, and 7.5 for the four bottle positions. Now I'll write out the code to implement this design using gdsfactory, starting with the component setup and defining the key parameters like box dimensions (20 μm wide, 4 μm tall), bottle proportions (2 μm neck width, 4 μm base width), and the notch details (2 μm wide, 1 μm deep). The main box forms the crate base, with bottles positioned at calculated intervals. Now I'll create trapezoid shapes for each bottle, with the wider base at the box top and narrower neck extending upward. For each x-position, I calculate the bottom and top y-coordinates, then define the four corner points of the trapezoid—wider at the base and tapered toward the neck. Each bottle gets added as a polygon to a component.
+
+After creating all the bottle shapes, I append them to a list. Then I define a triangular notch at the bottom center of the box using three points that form a V-shape pointing downward. I create a separate component for this notch polygon. To assemble the final design, I start with the box and iteratively merge each bottle using a boolean OR operation to combine them. The notch appears to be integrated into the overall design rather than subtracted from it. Looking more carefully at the image, the V-shape at the bottom is filled in black, indicating it's a solid protrusion rather than a cutout. This means I should add the triangle geometry instead of subtracting it.
+
+Now I'm setting up the component with specific design parameters. The bottle structure needs to fit within the 25x10 μm footprint, so I'm defining dimensions for the main box (20 μm wide, 4 μm tall), the bottle neck (4.5 μm height, 1.5 μm top width), the base (3.5 μm wide), and the notch detail (2 μm wide, 1.2 μm tall). These stack to approximately 9.7 μm total height, leaving room within the constraints.
+
+For positioning, I'm calculating offsets to center the design properly. The shape has concave regions between the bottles, so I can't represent it as a single polygon—I'll need to use boolean operations to combine the box with the bottle geometry and the notch protrusion.
+
+Starting with a rectangle for the base box, then creating four trapezoid bottles at x-positions -7.5, -2.5, 2.5, and 7.5. Each trapezoid has a wider base and narrower top to form the bottle neck shape, with the bottom edge aligned to the box top and the top extending upward by the neck height.
+
+The box itself is drawn as a polygon with four corners, and a triangular notch pointing downward is added at the bottom center to create the carrying indentation.
+
+After constructing the geometry, the function returns the cell and writes it to a GDS file. Checking the dimensions: the total height comes to about 9.7 μm (combining the notch depth, box height, and bottle neck), which fits comfortably within the 25 × 10 μm constraint. However, reconsidering the actual proportions from the reference image, the shape appears roughly square or slightly wider than tall, which conflicts with the footprint's width-to-height ratio of 2.5:1. This suggests the design needs adjustment to better match the actual aspect ratio shown.
+
+Recalculating with the constraint that total height should be 10 μm: the box could be 5 μm tall, bottles extend 4 μm above it, and a 1 μm notch sits below, totaling exactly 10 μm. The box width of 22 μm stays within the 25 μm limit, with the bottles positioned within this width. Looking more closely at the bottle arrangement, there appear to be 4 bottles distributed evenly across the box with consistent spacing between them.
+
+Working through the spacing math: if each bottle base is roughly 4 μm wide with 1.5 μm gaps between them, that accounts for 16 μm of bottles and 4.5 μm of gaps, leaving about 1.5 μm total margin at the edges (0.75 μm on each side). This allows me to calculate the center positions of each bottle relative to the box edges.
+
+Starting from the left edge at -11 μm (half the box width), adding the margin and half a bottle width gives the first bottle center at -8.25 μm. Each subsequent bottle is spaced 5.5 μm apart (4 μm bottle width plus 1.5 μm gap), placing them at -2.75, 2.75, and 8.25 μm respectively. Now I'll implement this in code, setting up the basic component structure with the box dimensions and beginning to define the bottle geometry parameters. (x - bottle_top_width/2, box_height/2 + bottle_neck_height),  # top-left
+            (x + bottle_top_width/2, box_height/2 + bottle_neck_height),  # top-right
+            (x + bottle_base_width/2, box_height/2),  # bottom-right
+        ]
+        c.add_polygon(points, layer=layer)
+
+The code then creates a triangular notch at the bottom center of the box, with the point extending downward by the notch_height amount. Finally, the function returns.
+
+The main execution block instantiates the device and writes it to a GDS file. I should verify the vertical alignment—the box is centered at y=0 spanning from -2.5 to 2.5, the bottle necks extend upward to 6.5, and the notch extends down to -3.5, giving a total span of 10 micrometers.
+
+Looking at the design more carefully, the bottles should have flat tops with tapered sides that narrow linearly toward the neck. For the spacing, with a 22 micrometer box width and four bottles at 4 micrometers each, that leaves 6 micrometers for gaps and margins across five total divisions, or about 1.2 micrometers per gap. The bottle centers need to be positioned accordingly to match the reference image. gaps of 1.2 μm each.
+
+Looking at the image more carefully, the edge gaps appear smaller than the internal spacing. Let me adjust: if edge gaps are 0.5 μm and internal gaps are (22 - 16 - 1) / 3 ≈ 1.67 μm, then the bottle centers would be at -8.5 for the first bottle and -2 for the second.
+
+Continuing this pattern, the remaining bottles position at approximately 2.84 and 8.51, which rounds to a symmetric arrangement of [-8.5, -2.8, 2.8, 8.5]. However, examining the image again suggests the bottles might actually contact at their bases where they meet the box, with visible gaps only appearing in the neck region above the box surface.
+
+Looking more closely, the white space between bottles occurs where the necks taper, while the wider shoulder portions of adjacent bottles nearly touch or merge together. The box itself appears to have an irregular top edge that rises where bottles are positioned and dips into the gaps between them, suggesting the bottles are integrated shapes extending down into the box rather than sitting on top of it. The V-shaped white spaces visible between the necks are the primary gaps in this configuration.
+
+Now I'm setting up the design parameters: the box will be 22.0 × 4.5 μm, with bottle necks rising 4.5 μm and tapering from a 4.2 μm base width to a 1.8 μm top width. A notch of 2.0 × 1.0 μm will define the crate's rim, bringing the total height to approximately 10 μm to fit the 25 × 10 μm footprint.
+
+For the bottle placement, I'm spacing four bottles evenly across the 22 μm width at 5.5 μm intervals, positioning their centers at x = -8.25, -2.75, 2.75, and 8.25 μm. The main rectangular box forms the crate's base, with vertices calculated from the half-widths and half-heights.
+
+Then I add four trapezoid-shaped bottle necks at each x position, where the base of each trapezoid sits on top of the box and tapers inward as it extends upward by the neck height, creating the characteristic bottle shape.
+
+Finally, I create a downward-pointing triangle at the bottom center of the crate to form the notch, using the notch width and height parameters, then return the completed device. The function writes the GDS file when executed as the main script.
+
+Looking more carefully at the proportions in the image, the bottle necks appear to take up roughly half the total height, with the box occupying the other half and a small notch at the base. For a 10 μm total height, I'd allocate about 4 μm for the box, leaving 6 μm for the necks, with the notch being roughly 0.5-1 μm deep.
+
+The V-shaped gaps between bottles are narrow where the necks meet the box and widen toward the top, which I can achieve by tapering the bottle necks from wider at the base to narrower at the top. Let me refine the design with these proportions and create the tapered bottle geometry in code. .5]
+    
+    # Main box
+    c.add_polygon([
+        (-box_width/2, -box_height/2),
+        (-box_width/2, box_height/2),
+        (box_width/2, box_height/2),
+        (box_width/2, -box_height/2),
+    ], layer=layer)
+    
+    # Bottle necks
+    for x in bottle_x:
+        points = [
+            (x - bottle_base_width/2, box_height/2),
+            (x - bottle_top_width/2, box_height/2 + bottle_neck_height),
+            (x + bottle_top_width/2, box_height/2 + bottle_neck_height),
+            (x + bottle_base_width/2, box_height/2),
+        ]
+
+Now I'm drawing the rectangular container and then iterating through each bottle position to create the neck geometry that tapers from the wider base to the narrower top.
+
+Then I add the polygon for each neck, create a triangular notch at the bottom center of the crate, and return the completed cell. Finally, the script generates the GDS file when run directly. With the specified bottle width and x-positions, the bottles are evenly spaced across the crate. At the top, there are consistent 3.0 μm gaps between adjacent bottles, which matches the V-shaped spacing visible in the reference image. Let me finalize and verify the complete design by implementing it in code.
+
+The component will have a footprint of approximately 22 x 10 μm. I'm setting up the core parameters: a 22 μm wide rectangular base with 4.0 μm height, bottle necks extending 5.0 μm upward, tapering from 5.0 μm width at the base to 2.0 μm at the top, and a small 2.5 x 1.0 μm triangular notch at the bottom center. The four bottles are positioned at x-coordinates of -7.5, -2.5, 2.5, and 7.5 μm to create even spacing. I'll start constructing the main rectangular box with vertices beginning at the bottom-left corner. _height/2),
+        (notch_width/2, -box_height/2),
+        (0, -box_height/2 - notch_height)
+    ]
+    c.add_polygon(notch_vertices, layer=layer)
+    
+    return c
+
+The structure creates a compact device with the four tapered bottle shapes positioned symmetrically within the rectangular crate boundary, and the downward-pointing triangular notch at the base serves as a distinctive feature. The final step saves the completed design to a GDS file for fabrication. The flat tops of the trapezoids match the bottle design in the image, and the straight-sided necks align with what's shown. The downward-pointing triangular notch at the bottom is also accounted for in my design.
+
+Now I'll write out the complete implementation with the rectangular crate base, four tapered bottle necks, and the triangular notch, keeping everything within the 25 x 10 μm footprint. (box_width/2, box_height/2),
+        (box_width/2, -box_height/2),
+    ]
+    c.add_polygon(box_vertices, layer=layer)
+    
+    # Create four bottle necks as tapered trapezoids
+    for x_pos in bottle_positions:
+        bottle_vertices = [
+            (x_pos - bottle_base_width/2, box_height/2),              # bottom-left
+            (x_pos - bottle_top_width/2, box_height/2 + bottle_neck_height),   # top-left
+            (x_pos + bottle_top_width/2, box_height/2 + bottle_neck_height),   # top-right
+            (x_pos + bottle_base_width/2, box_height/2),
+
+The box polygon is added to the component, then I'm iterating through each bottle position to construct tapered trapezoid shapes for the necks. Each trapezoid narrows from the base width to the top width as it extends upward from the box surface.
+
+A triangular notch pointing downward is created at the bottom center of the crate using three vertices, then the device is written to a GDS file.
+
+Let me verify the dimensions work out correctly. The total height spans from the notch tip at y = -3 to the bottle tops at y = 7, giving 10 μm total. The width extends from x = -11 to x = 11, maintaining the 22 μm specification.
+
+Now checking against the reference image—the box proportions seem quite elongated at roughly 5.5:1 width-to-height ratio, while the bottles extend about 125% above it and the notch takes up a quarter of the box height. The visual balance appears off compared to what I'm seeing in the reference, so I should reconsider whether these proportions actually match the intended design.
+
+The footprint constraint of 25 × 10 μm gives a 2.5:1 aspect ratio, but the image itself suggests something closer to 1:1 or 1.2:1. I could either scale down the design to match the visual proportions more closely, or treat the footprint as a maximum boundary rather than a target to fill completely.
+
+Looking more carefully at the image, the box does appear wider than it is tall—perhaps around 2:1 to 3:1. If I use the full 10 μm height and scale the width proportionally based on what I see, that would better capture the actual geometry while respecting the constraint.
+
+Let me work through the proportions: if the box is roughly 3:1 (width to height) and the bottles extend above it by about the same height as the box itself, plus a small notch below, I can fit this within the bounds. A box of 18 μm wide by 3.5 μm tall, with bottles extending 4.5 μm above and a 0.8 μm notch below, gives me a total height of 8.8 μm and width of 18 μm—both within the 25×10 limit.
+
+Looking more carefully at the proportions, I could also try a 4:1 width-to-height ratio for the box at 20 μm wide by 5 μm tall, with bottle necks at 4 μm and a 1 μm notch, which totals exactly 10 μm in height and 20 μm in width. This second approach fits the constraints perfectly and maintains better visual proportions.
+
+Now I'm setting up the actual implementation with specific design parameters: the box dimensions, bottle neck and top widths, notch dimensions, and positioning the four bottles evenly across the crate width.
+
+For the bottle placement, I need to space them so they fit within the 20 μm box width while maintaining small gaps between them. Positioning them at -7.5, -2.5, 2.5, and 7.5 μm centers gives each 4.5 μm wide bottle edges that stay within bounds with roughly 0.5 μm gaps at the base.
+
+Now I'm drawing the main rectangular crate as a polygon with vertices at the corners, then adding four bottle necks as tapered trapezoids that extend upward from the box top, with each neck narrowing from the base width to a smaller top width.
+
+Below the crate, I'm creating a triangular notch centered at the bottom by defining three vertices that form a point extending downward. Finally, the device is returned and written to a GDS file when the script runs.
+
+Checking the bottle layout: they're positioned at x-coordinates of -7.5, -2.5, 2.5, and 7.5, with each bottle's base spanning 4.5 μm. This creates consistent 0.5 μm gaps between adjacent bottles and maintains 0.75 μm margins from the crate edges.
+
+At the top where bottles taper inward, the gaps expand significantly to 3.2 μm between each pair—this explains the V-shaped spacing visible in the image.
+
+The overall structure fits within the 25 × 10 μm footprint, with the base gaps compressed to 0.5 μm and widening progressively toward the bottle openings. Now I'll implement this design in code, creating the crate foundation and four tapered bottle shapes with a small triangular stake detail. c.add_polygon([
+        (-box_width/2, -box_height/2),
+        (-box_width/2, box_height/2),
+        (box_width/2, box_height/2),
+        (box_width/2, -box_height/2),
+    ], layer=layer)
+    
+    # Create four bottle neck trapezoids
+    for x in bottle_x_positions:
+        c.add_polygon([
+            (x - bottle_base_width/2, box_height/2),
+            (x - bottle_top_width/2, box_height/2 + bottle_neck_height),
+            (x + bottle_top_width/2, box_height/2 + bottle_neck_height),
+            (x + bottle_base_width/2, box_height/2),
+        ], layer=layer)
+
+Now I'm drawing the rectangular base, then adding four trapezoidal bottle necks at the specified x-positions, each tapering from the wider base to the narrower top.
+
+Then I need to add a triangular notch at the bottom center of the crate to complete the design. Finally, I'll return the cell and save it as a GDS file when the script runs.

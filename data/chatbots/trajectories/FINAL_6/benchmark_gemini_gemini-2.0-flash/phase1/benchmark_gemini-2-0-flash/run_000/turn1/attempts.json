@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.223000",
+      "api_duration_seconds": 4.816178321838379,
+      "usage": {
+        "input_tokens": 3894,
+        "output_tokens": 495,
+        "total_tokens": 4389
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o1' is not a valid port name or index. Available ports: ['e1', 'e2', 'e3', 'e4']\"\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_6/benchmark_gemini_gemini-2.0-flash/phase1/benchmark_gemini-2-0-flash/run_000/turn1/generated_component.py\", line 45, in <module>\n    c = cross_with_petals()\n  File \"/Users/",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:15.750955",
+      "api_duration_seconds": 5.999218940734863,
+      "usage": {
+        "input_tokens": 4947,
+        "output_tokens": 848,
+        "total_tokens": 5795
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:23.187212",
+      "api_duration_seconds": 5.191742897033691,
+      "usage": {
+        "input_tokens": 5825,
+        "output_tokens": 673,
+        "total_tokens": 6498
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14666,
+    "output_tokens": 2016,
+    "total_tokens": 16682
+  }
+}

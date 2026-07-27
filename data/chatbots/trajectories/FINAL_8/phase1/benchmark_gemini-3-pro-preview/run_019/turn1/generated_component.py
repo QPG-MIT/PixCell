@@ -1,0 +1,121 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def grating_coupler_device():
+    """
+    Recreation of the multi-rail directional coupler structure.
+    Footprint: 120um x 4um
+    """
+    c = gf.Component()
+    
+    # ==========================================
+    # Parameters
+    # ==========================================
+    length = 120.0
+    height_limit = 4.0
+    
+    # Geometry parameters estimated from image analysis
+    rail_width = 0.12
+    gap = 0.08
+    outer_rail_width = 0.6
+    
+    # ==========================================
+    # 1. Central Bus (5 Continuous Rails)
+    # ==========================================
+    # The center consists of 5 parallel lines running the full length
+    num_center_rails = 5
+    
+    # Create a helper for a single rail to repeat
+    # We use rectangle primitive as they are simple geometric stripes
+    center_rail_geo = gf.components.rectangle(
+        size=(length, rail_width), 
+        layer=(1, 0), 
+        centered=True
+    )
+    
+    # Place the 5 central rails
+    # Calculate starting y to center the whole group at y=0
+    center_group_height = num_center_rails * rail_width + (num_center_rails - 1) * gap
+    start_y = -center_group_height / 2 + rail_width / 2
+    
+    for i in range(num_center_rails):
+        y_pos = start_y + i * (rail_width + gap)
+        ref = c << center_rail_geo
+        ref.movey(y_pos)
+
+    # ==========================================
+    # 2. Upper Coupling Assembly (Fins + Outer Rail)
+    # ==========================================
+    
+    # --- A. The Tapered Fins ---
+    # These are straight rails of decreasing length placed in the gap
+    # lengths estimated to create the "staircase" taper effect seen in the image
+    fin_lengths = [100.0, 70.0, 40.0] 
+    
+    # Calculate where the fins start (just above the center bus)
+    current_y = center_group_height / 2 + gap + rail_width/2
+    
+    for l in fin_lengths:
+        # Create fin
+        fin = c << gf.components.rectangle(
+            size=(l, rail_width), 
+            layer=(1, 0), 
+            centered=True
+        )
+        fin.movey(current_y)
+        # Increment Y position for the next rail
+        current_y += (rail_width + gap)
+
+    # --- B. The Outer Curved Waveguide ---
+    # This waveguide stays flat in the center above the fins, then curves up 
+    # to the edge of the 4um footprint limit.
+    
+    # Math: We use a polynomial path (x^4) to achieve the "flat bottom bucket" shape
+    # visible in the image, rather than a standard circular bend.
+    
+    # Start Y position for the outer rail (leaving a gap above the last fin)
+    y_min_outer = current_y + gap + outer_rail_width/2 - rail_width/2
+    y_max_outer = (height_limit / 2) - (outer_rail_width / 2) # Limit to 2.0um
+    
+    # Generate Path Points
+    x_vals = np.linspace(-length/2, length/2, 201)
+    
+    # Equation: y = y_min + (y_max - y_min) * (2*x / L)^4
+    # This creates a curve that is essentially flat for the center ~40um and rises sharply at ends
+    y_vals = y_min_outer + (y_max_outer - y_min_outer) * (np.abs(2 * x_vals / length))**6
+    
+    points = list(zip(x_vals, y_vals))
+    
+    # Create the path and extrude it
+    path = gf.Path(points)
+    xs = gf.cross_section.cross_section(width=outer_rail_width, layer=(1, 0))
+    outer_rail = c << gf.path.extrude(path, cross_section=xs)
+    
+    # ==========================================
+    # 3. Bottom Coupling Assembly (Mirror)
+    # ==========================================
+    # We simply duplicate the fins and outer rail, and mirror them across y=0
+    
+    # Re-add fins mirrored
+    current_y_mirror = -(center_group_height / 2 + gap + rail_width/2)
+    for l in fin_lengths:
+        fin = c << gf.components.rectangle(
+            size=(l, rail_width), 
+            layer=(1, 0), 
+            centered=True
+        )
+        fin.movey(current_y_mirror)
+        current_y_mirror -= (rail_width + gap)
+
+    # Re-add outer rail mirrored
+    # We can clone the top one and mirror it
+    outer_rail_bot = c << gf.path.extrude(path, cross_section=xs)
+    outer_rail_bot.mirror(p1=(0,0), p2=(1,0)) # Mirror across X-axis
+
+    return c
+
+# Generate and show
+component = grating_coupler_device()
+component.write_gds("reconstructed_device.gds")
+component.show()

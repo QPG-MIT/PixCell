@@ -1,0 +1,41 @@
+import gdsfactory as gf
+
+@gf.cell
+def wavy_coupler():
+    c = gf.Component()
+    length = 18.0
+    height = 3.0
+    w = 0.5
+    gap = 0.2
+    s = height - w  # Separation of centers at ends to fit bounding height
+    sep_middle = gap + w
+    dy = (s - sep_middle) / 2
+    dx = length / 2
+    xs = gf.cross_section.cross_section(width=w, layer=(1, 0))
+
+    # Lower waveguide: bend in + bend out
+    bend_lower_in = gf.components.bend_s(size=(dx, dy), cross_section=xs)
+    bend_lower_out = gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+    bli = c << bend_lower_in
+    blo = c << bend_lower_out
+    blo.connect("o1", bli.ports["o2"])
+
+    # Upper waveguide: bend in + bend out
+    bend_upper_in = gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+    bend_upper_out = gf.components.bend_s(size=(dx, dy), cross_section=xs)
+    bui = c << bend_upper_in
+    bui.move((0, s))
+    buo = c << bend_upper_out
+    buo.connect("o1", bui.ports["o2"])
+
+    # Expose ports (optional, but following assembly pattern)
+    c.add_port("o1", port=bli.ports["o1"])  # lower left
+    c.add_port("o2", port=bui.ports["o1"])  # upper left
+    c.add_port("o3", port=blo.ports["o2"])  # lower right
+    c.add_port("o4", port=buo.ports["o2"])  # upper right
+
+    return c
+
+# Create and save
+device = wavy_coupler()
+device.write_gds("my_device.gds")

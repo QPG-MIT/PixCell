@@ -1,0 +1,121 @@
+Turn 3 Response:
+
+Based on the visual analysis of the target image compared to the previous output, here is the refined design.
+
+**Key Changes:**
+1.  **Added Input/Output Straight Sections:** The target image clearly shows horizontal waveguide sections at the input and output ports before the bends begin. I have introduced `length_straight_io` (15µm) to replicate this.
+2.  **Increased Central Coupling Length:** The central straight region in the target appears more prominent, roughly one-third of the total device length. I increased this to 40µm.
+3.  **Shortened S-Bends:** To accommodate the extra straight sections within the fixed 120µm length, the S-bends are now more compact (25µm). This increases the steepness of the curves, matching the sharper transition seen in the reference image.
+4.  **Verified Proportions:** The longitudinal segmentation is now `15µm (IO) - 25µm (Bend) - 40µm (Couple) - 25µm (Bend) - 15µm (IO)`, totaling exactly 120µm.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_refined_v2():
+    """
+    Directional coupler with a 120um x 4um footprint.
+    Refined parameters to match visual proportions:
+    - Added straight input/output leads (15um).
+    - Compact S-bends (25um) for sharper transitions.
+    - Prominent central coupling region (40um).
+    """
+    c = gf.Component()
+
+    # --- Constraints ---
+    total_length = 120.0
+    total_height = 4.0
+
+    # --- Geometric Parameters ---
+    wg_width = 0.8
+    coupling_gap = 0.2
+    
+    # Longitudinal segmentation (Total = 120um)
+    # Split: Straight_IO -> Bend -> Straight_Couple -> Bend -> Straight_IO
+    # 15 + 25 + 40 + 25 + 15 = 120
+    length_io = 15.0
+    length_bend = 25.0
+    length_couple = 40.0
+
+    # --- Y-Axis Calculations ---
+    # Outer ports: Centered at +/- (2.0 - width/2) to fit within 4.0um height
+    y_io_top = (total_height / 2) - (wg_width / 2)      # +1.6
+    y_io_bot = -y_io_top                                # -1.6
+    
+    # Inner coupling: Centered at +/- (gap/2 + width/2)
+    y_couple_top = (coupling_gap / 2) + (wg_width / 2)  # +0.5
+    y_couple_bot = -y_couple_top                        # -0.5
+    
+    # Vertical offset for the S-bends
+    dy = y_io_top - y_couple_top                        # 1.1
+
+    # Cross-section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Component Definitions ---
+    # 1. Straights
+    s_io = gf.components.straight(length=length_io, cross_section=xs)
+    s_couple = gf.components.straight(length=length_couple, cross_section=xs)
+    
+    # 2. S-Bends
+    # Bend Down: Moves from High Y to Low Y (dy is negative)
+    bend_down = gf.components.bend_s(size=(length_bend, -dy), cross_section=xs)
+    # Bend Up: Moves from Low Y to High Y (dy is positive)
+    bend_up = gf.components.bend_s(size=(length_bend, dy), cross_section=xs)
+
+    # --- Assembly (Left to Right) ---
+    
+    # -- Top Arm --
+    # 1. Input Straight
+    top_in = c << s_io
+    top_in.move((0, y_io_top))
+    
+    # 2. Input Bend (Down)
+    top_bend_in = c << bend_down
+    top_bend_in.connect("o1", top_in.ports["o2"])
+    
+    # 3. Coupling Straight
+    top_mid = c << s_couple
+    top_mid.connect("o1", top_bend_in.ports["o2"])
+    
+    # 4. Output Bend (Up)
+    top_bend_out = c << bend_up
+    top_bend_out.connect("o1", top_mid.ports["o2"])
+    
+    # 5. Output Straight
+    top_out = c << s_io
+    top_out.connect("o1", top_bend_out.ports["o2"])
+
+    # -- Bottom Arm --
+    # 1. Input Straight
+    bot_in = c << s_io
+    bot_in.move((0, y_io_bot))
+    
+    # 2. Input Bend (Up)
+    bot_bend_in = c << bend_up
+    bot_bend_in.connect("o1", bot_in.ports["o2"])
+    
+    # 3. Coupling Straight
+    bot_mid = c << s_couple
+    bot_mid.connect("o1", bot_bend_in.ports["o2"])
+    
+    # 4. Output Bend (Down)
+    bot_bend_out = c << bend_down
+    bot_bend_out.connect("o1", bot_mid.ports["o2"])
+    
+    # 5. Output Straight
+    bot_out = c << s_io
+    bot_out.connect("o1", bot_bend_out.ports["o2"])
+
+    # --- Ports ---
+    c.add_port("o1", port=bot_in.ports["o1"])
+    c.add_port("o2", port=top_in.ports["o1"])
+    c.add_port("o3", port=top_out.ports["o2"])
+    c.add_port("o4", port=bot_out.ports["o2"])
+
+    return c
+
+# Generate and save
+device = directional_coupler_refined_v2()
+device.write_gds("directional_coupler_refined_v2.gds")
+```

@@ -1,0 +1,207 @@
+Turn 1 Response:
+
+The `ValueError: min_bend_radius < CrossSection.radius_min` typically occurs when a bend or a path segment with a tight radius is created, but the `CrossSection` definition used for that element has a default `radius_min` (which is often `10.0` for optical waveguides) that is larger than the actual bend radius.
+
+Even though `xs_main` was updated with `radius_min=None`, the `xs_zero_width` cross-section used in `gf.path.transition` still defaulted to `radius_min=10.0`. When `extrude_transition` is called, it might implicitly check the `radius_min` of all cross-sections involved in the transition, or the resulting geometry's minimum radius against the largest `radius_min` it finds.
+
+The fix is to explicitly set `radius_min=None` for `xs_zero_width` as well, ensuring that all relevant cross-sections allow for arbitrarily small bend radii if the design intends to use them.
+
+Here's the corrected script:
+
+```python
+import gdsfactory as gf
+from gdsfactory.typings import CrossSectionSpec, ComponentSpec
+
+@gf.cell
+def custom_device(
+    bar_width: float = 0.1,
+    central_line_width: float = 0.05,
+    grating_period: float = 0.1,
+    grating_fill_factor: float = 0.5,
+    grating_bar_height: float = 0.08,
+    taper_left_x_length: float = 2.0, # Horizontal length of the final tapered point of the horn
+    taper_left_curve_radius: float = 0.5, # Radius of the Euler bend leading to the taper
+    outer_straight_right_length: float = 3.0, # Horizontal length of the straight waveguide at the top-right/bottom-right
+    layer: tuple = (1, 0),
+) -> gf.Component:
+    c = gf.Component("custom_device")
+    total_width = 18.24
+    total_height = 0.7
+
+    # Cross-sections
+    # FIX: Set radius_min to None for xs_main and xs_zero_width to allow for tight bends.
+    xs_main = gf.cross_section.cross_section(width=bar_width, layer=layer, radius_min=None)
+    xs_central = gf.cross_section.cross_section(width=central_line_width, layer=layer)
+    xs_zero_width = gf.cross_section.cross_section(width=0, layer=layer, radius_min=None) # Corrected here
+
+    # Calculate vertical positions for upper structure
+    # Based on total_height 0.7, bar_width 0.1, central_line_width 0.05
+    # Assuming a small gap (0.025) between the central line and the inner waveguide.
+    gap_central_to_inner = 0.025 
+
+    y_inner_bar_center = central_line_width / 2 + gap_central_to_inner + bar_width / 2
+    y_outer_bar_center = total_height / 2 - bar_width / 2
+    bend_radius_midline = (y_outer_bar_center - y_inner_bar_center) / 2
+
+    # Calculate horizontal dimensions based on total_width (18.24)
+    # The total width is composed of:
+    # 1. Left horn (taper_left_x_length + taper_left_curve_radius)
+    # 2. Grating length
+    # 3. Right bend (bend_radius_midline)
+    # 4. Outer straight right (outer_straight_right_length)
+    
+    horn_full_x_span = taper_left_x_length + taper_left_curve_radius 
+    
+    # Grating length derived to fill the remaining horizontal space
+    grating_length_raw = total_width - horn_full_x_span - bend_radius_midline - outer_straight_right_length
+    
+    # Ensure grating_length is a multiple of grating_period for cleaner grating
+    num_grating_bars = int(grating_length_raw / grating_period)
+    grating_length = num_grating_bars * grating_period
+    
+    # Recalculate if there's a tiny floating point difference
+    # This ensures the total width is exactly 18.24
+    # (This can lead to tiny adjustments in outer_straight_right_length if grating_length was adjusted,
+    # but for simplicity, we keep outer_straight_right_length fixed as given by parameter)
+
+    # 1. Central Line
+    center_line = c << gf.components.straight(length=total_width, cross_section=xs_central)
+    center_line.center = (total_width / 2, 0)
+
+    # --- Upper Half Construction ---
+    c_upper_half = gf.Component("upper_half_assembly")
+
+    # 1. Grating Section (inner horizontal bar with teeth)
+    grating_section_comp = gf.Component("grating_section_core")
+    main_grating_wg = grating_section_comp << gf.components.straight(length=grating_length, cross_section=xs_main)
+    main_grating_wg.center = (0, 0) # Local center for the sub-component
+
+    grating_bar_width_actual = grating_fill_factor * grating_period
+    for i in range(num_grating_bars):
+        rect = gf.components.rectangle(
+            size=(grating_bar_width_actual, grating_bar_height), layer=layer, centered=True
+        )
+        rect_ref = grating_section_comp << rect
+        rect_ref.center = (
+            main_grating_wg.xmin + (i + 0.5) * grating_period, # +0.5 to center bar within its period
+            -bar_width / 2 - grating_bar_height / 2, # Place bars below the main waveguide for upper half
+        )
+    
+    grating_section_comp.add_port("o1", port=main_grating_wg.ports["o1"])
+    grating_section_comp.add_port("o2", port=main_grating_wg.ports["o2"])
+
+    grating_ref = c_upper_half << grating_section_comp
+    # Position the grating_ref's o1 such that the horn section starts at x=0
+    grating_ref.movex(horn_full_x_span)
+
+    # 2. Right U-bend and Outer Straight Section
+    bend_right_comp = gf.components.bend_euler(
+        radius=bend_radius_midline, angle=180, cross_section=xs_main
+    )
+    bend_right_ref = c_upper_half << bend_right_comp
+    bend_right_ref.connect("o1", grating_ref.ports["o2"])
+
+    outer_straight_right = gf.components.straight(
+        length=outer_straight_right_length, cross_section=xs_main
+    )
+    outer_straight_right_ref = c_upper_half << outer_straight_right
+    outer_straight_right_ref.connect("o1", bend_right_ref.ports["o2"])
+
+    # 3. Left Horn Section (tapered and curved)
+    # Path starting from connection to grating (wide end) and going towards the tip (narrow end)
+    p_horn_to_tip = gf.Path()
+    # Path segments for the horn:
+    # 1. Straight segment leading to the curve (length = radius for 90 degree turn)
+    p_horn_to_tip.append(gf.path.straight(length=taper_left_curve_radius)) 
+    # 2. Euler curve (90 degrees, turning "upwards" for the upper half)
+    p_horn_to_tip.append(gf.path.euler(radius=taper_left_curve_radius, angle=90, p=0.5, cross_section=xs_main))
+    # 3. Straight segment for the final pointy tip
+    p_horn_to_tip.append(gf.path.straight(length=taper_left_x_length)) 
+
+    # Transition from full width (bar_width) to zero width (tip)
+    xst_horn_revised = gf.path.transition(
+        cross_section1=xs_main,       # Start with width bar_width
+        cross_section2=xs_zero_width, # End with width 0
+        width_type='sine'             # Smooth tapering profile
+    )
+    
+    full_horn_comp_revised = gf.path.extrude_transition(p_horn_to_tip, xst_horn_revised)
+    
+    # Connect the wide end of the horn (port "o1" of the extruded path) to the grating's left port
+    full_horn_ref = c_upper_half << full_horn_comp_revised
+    full_horn_ref.connect("o1", grating_ref.ports["o1"])
+
+    # Position the entire upper half assembly
+    c_upper_half.movey(y_inner_bar_center)
+
+    c << c_upper_half
+
+    # --- Lower Half Construction (mirror of upper half) ---
+    c_lower_half = gf.Component("lower_half_assembly")
+    
+    # 1. Grating Section (inner horizontal bar with teeth)
+    grating_section_comp_lower = gf.Component("grating_section_core_lower")
+    main_grating_wg_lower = grating_section_comp_lower << gf.components.straight(length=grating_length, cross_section=xs_main)
+    main_grating_wg_lower.center = (0, 0)
+
+    for i in range(num_grating_bars):
+        rect = gf.components.rectangle(
+            size=(grating_bar_width_actual, grating_bar_height), layer=layer, centered=True
+        )
+        rect_ref = grating_section_comp_lower << rect
+        rect_ref.center = (
+            main_grating_wg_lower.xmin + (i + 0.5) * grating_period,
+            bar_width / 2 + grating_bar_height / 2, # Place bars *above* the main waveguide for lower half
+        )
+    grating_section_comp_lower.add_port("o1", port=main_grating_wg_lower.ports["o1"])
+    grating_section_comp_lower.add_port("o2", port=main_grating_wg_lower.ports["o2"])
+
+    grating_ref_lower = c_lower_half << grating_section_comp_lower
+    grating_ref_lower.movex(horn_full_x_span)
+
+    # 2. Right U-bend and Outer Straight Section (lower)
+    bend_right_comp_lower = gf.components.bend_euler(
+        radius=bend_radius_midline, angle=180, cross_section=xs_main
+    )
+    bend_right_ref_lower = c_lower_half << bend_right_comp_lower
+    bend_right_ref_lower.connect("o1", grating_ref_lower.ports["o2"])
+    bend_right_ref_lower.mirror() # Mirror to make it bend downwards (180 deg Euler bend's o2 points opposite to o1. Mirroring makes it flip vertically)
+
+    outer_straight_right_lower = gf.components.straight(
+        length=outer_straight_right_length, cross_section=xs_main
+    )
+    outer_straight_right_ref_lower = c_lower_half << outer_straight_right_lower
+    outer_straight_right_ref_lower.connect("o1", bend_right_ref_lower.ports["o2"])
+
+    # 3. Left Horn Section (lower, tapered and curved)
+    p_horn_to_tip_lower = gf.Path()
+    p_horn_to_tip_lower.append(gf.path.straight(length=taper_left_curve_radius))
+    # Euler curve (90 degrees, turning "downwards" for the lower half)
+    p_horn_to_tip_lower.append(gf.path.euler(radius=taper_left_curve_radius, angle=-90, p=0.5, cross_section=xs_main))
+    p_horn_to_tip_lower.append(gf.path.straight(length=taper_left_x_length))
+    
+    xst_horn_revised_lower = gf.path.transition(
+        cross_section1=xs_main, 
+        cross_section2=xs_zero_width, 
+        width_type='sine'
+    )
+    full_horn_comp_revised_lower = gf.path.extrude_transition(p_horn_to_tip_lower, xst_horn_revised_lower)
+    
+    full_horn_ref_lower = c_lower_half << full_horn_comp_revised_lower
+    full_horn_ref_lower.connect("o1", grating_ref_lower.ports["o1"])
+
+    c_lower_half.movey(-y_inner_bar_center)
+
+    c << c_lower_half
+
+    return c
+
+# Create the device and view/save
+if __name__ == "__main__":
+    device = custom_device()
+    device.show()
+
+    # Verify footprint
+    print(f"Device size: {device.size}")
+    # Expected: [18.24, 0.7] (or very close, slight floating point variations are possible)
+```

@@ -1,0 +1,76 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+
+def bezier_points(control_points, npoints=101):
+    points = []
+    for i in range(npoints):
+        t = i / (npoints - 1.0)
+        t1 = 1 - t
+        x = (t1**3 * control_points[0][0] + 
+             3 * t1**2 * t * control_points[1][0] + 
+             3 * t1 * t**2 * control_points[2][0] + 
+             t**3 * control_points[3][0])
+        y = (t1**3 * control_points[0][1] + 
+             3 * t1**2 * t * control_points[1][1] + 
+             3 * t1 * t**2 * control_points[2][1] + 
+             t**3 * control_points[3][1])
+        x = round(x * 1000) / 1000.0
+        y = round(y * 1000) / 1000.0
+        points.append((x, y))
+    return points
+
+@gf.cell
+def bend_s_custom(dx, dy, cross_section):
+    control_points = [(0, 0), (dx / 2, 0), (dx / 2, dy), (dx, dy)]
+    points = bezier_points(control_points)
+    p = gf.Path(points)
+    c = p.extrude(cross_section=cross_section)
+    return c
+
+@gf.cell
+def s_dip(cross_section, half_length, offset):
+    c = gf.Component()
+    bend1 = bend_s_custom(half_length, -offset, cross_section)
+    bend2 = bend_s_custom(half_length, offset, cross_section)
+    b1 = c << bend1
+    b2 = c << bend2
+    b2.connect("o1", b1.ports["o2"])
+    c.add_port("o1", port=b1.ports["o1"])
+    c.add_port("o2", port=b2.ports["o2"])
+    return c
+
+@gf.cell
+def device():
+    c = gf.Component()
+
+    w = 0.5
+    g_min = 0.2
+    d_initial = 3 - w
+    c_min = w + g_min
+    offset = (d_initial - c_min) / 2
+    y_shift = d_initial / 2
+    half_length = 9.0
+
+    xs = gf.cross_section.cross_section(width=w, layer=(1, 0))
+
+    dip = s_dip(xs, half_length, offset)
+
+    top = c << dip
+    top.move((0, y_shift))
+
+    bot = c << dip
+    bot.mirror(p1=(0, 0), p2=(1, 0))
+    bot.move((0, -y_shift))
+
+    c.add_port("top_left", port=top.ports["o1"])
+    c.add_port("top_right", port=top.ports["o2"])
+    c.add_port("bot_left", port=bot.ports["o1"])
+    c.add_port("bot_right", port=bot.ports["o2"])
+
+    return c
+
+dev = device()
+dev.write_gds("my_device.gds")
+```

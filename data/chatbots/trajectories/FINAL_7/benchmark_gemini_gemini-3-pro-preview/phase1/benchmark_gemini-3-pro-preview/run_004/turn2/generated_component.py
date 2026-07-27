@@ -1,0 +1,133 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_structure():
+    """
+    Constructs a racetrack resonator with variable arm width and internal slots.
+    
+    Geometry breakdown:
+    1. Outer Hull: Fixed stadium shape (5.5um x 3.0um).
+    2. Inner Void: A 'bulging' polygon. It is wide in the middle (creating thin arms)
+       and tapers down at the ends to meet the inner radius of the bends (creating thick bends).
+    3. Slots: Rectangular cutouts placed within the thin arm sections.
+    """
+    c = gf.Component()
+
+    # --- Dimensions ---
+    # Footprint constraint: 3.0um x 5.5um
+    height = 3.0
+    width = 5.5
+    
+    # Derived outer geometry
+    r_outer = height / 2.0        # 1.5um
+    l_straight = width - 2 * r_outer  # 2.5um (length of the straight section)
+    layer = (1, 0)
+
+    # --- Internal Geometry Parameters ---
+    # The bends appear thick in the image, implying a small inner radius.
+    r_inner = 0.5
+    
+    # The straight arms appear thin and bowed outwards.
+    # We define the arm width in the straight section to be ~0.45um.
+    arm_width_straight = 0.45
+    
+    # Calculate the height of the central void based on arm width
+    # Void Height = Total Height - 2 * Arm Width
+    void_h_center = height - 2 * arm_width_straight  # ~2.1um
+    
+    # Void height at the ends matches the diameter of the inner bend circle
+    void_h_ends = 2 * r_inner  # 1.0um
+    
+    # Length of the wide central section and the taper transition
+    l_wide = 1.4
+    l_taper = (l_straight - l_wide) / 2.0  # ~0.55um
+
+    # --- 1. Create Outer Hull (Solid Stadium) ---
+    outer = gf.Component()
+    
+    # Central rectangular body
+    outer_rect = outer << gf.components.rectangle(
+        size=(l_straight, height), 
+        layer=layer, 
+        centered=True
+    )
+    
+    # End caps (circles)
+    c_right = outer << gf.components.circle(radius=r_outer, layer=layer)
+    c_right.movex(l_straight / 2.0)
+    
+    c_left = outer << gf.components.circle(radius=r_outer, layer=layer)
+    c_left.movex(-l_straight / 2.0)
+
+    # --- 2. Create Inner Void (The Negative Space) ---
+    void = gf.Component()
+    
+    # 2a. Central wide rectangle (defines the gap between straight arms)
+    void_center = void << gf.components.rectangle(
+        size=(l_wide, void_h_center),
+        layer=layer,
+        centered=True
+    )
+    
+    # 2b. Tapers (transition from wide central gap to narrow bend gap)
+    taper = gf.components.taper(
+        length=l_taper,
+        width1=void_h_center,
+        width2=void_h_ends,
+        layer=layer
+    )
+    
+    # Place Right Taper
+    t_right = void << taper
+    t_right.movex(l_wide / 2.0)
+    
+    # Place Left Taper (mirrored)
+    t_left = void << taper
+    t_left.mirror()
+    t_left.movex(-l_wide / 2.0)
+    
+    # 2c. Inner Bend Circles (The holes inside the curved ends)
+    circ_inner_right = void << gf.components.circle(radius=r_inner, layer=layer)
+    circ_inner_right.movex(l_straight / 2.0)
+    
+    circ_inner_left = void << gf.components.circle(radius=r_inner, layer=layer)
+    circ_inner_left.movex(-l_straight / 2.0)
+
+    # --- 3. Create Arm Slots (Holes in the arms) ---
+    slots = gf.Component()
+    
+    slot_len = 0.4
+    slot_h = 0.2
+    
+    # Calculate Y position: Centered relative to the arm width
+    # Arm spans from y = void_h_center/2 (1.05) to y = height/2 (1.5)
+    # y_center = (1.05 + 1.5) / 2 = 1.275
+    y_pos = (void_h_center/2.0 + height/2.0) / 2.0
+    
+    # Calculate X positions: symmetrically spaced
+    x_offset = 0.35
+    
+    # Place 4 slots (Top-Left, Top-Right, Bot-Left, Bot-Right)
+    for y_sign in [-1, 1]:
+        for x_sign in [-1, 1]:
+            s = slots << gf.components.rectangle(
+                size=(slot_len, slot_h), 
+                layer=layer, 
+                centered=True
+            )
+            s.move((x_sign * x_offset, y_sign * y_pos))
+
+    # --- 4. Boolean Assembly ---
+    # Combine the Void geometry and the Slots into a single "negative" mask
+    negatives = gf.boolean(void, slots, operation="or", layer=layer)
+    
+    # Subtract the negatives from the Outer Hull to create the final device
+    final_shape = gf.boolean(outer, negatives, operation="not", layer=layer)
+    
+    c << final_shape
+    return c
+
+if __name__ == "__main__":
+    device = device_structure()
+    device.write_gds("complex_resonator.gds")
+    device.show()

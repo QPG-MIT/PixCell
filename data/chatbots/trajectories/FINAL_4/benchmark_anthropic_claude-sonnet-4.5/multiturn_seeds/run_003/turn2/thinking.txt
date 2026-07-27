@@ -1,0 +1,81 @@
+Looking at the two images:
+
+1. **Original target (first image in the first message)**: Shows two wavy bands that are more curved/bulging, with the waves being more pronounced. The bands appear to have:
+   - Narrower ends
+   - Wider middle sections (more elliptical/lens-like)
+   - The waves seem to go in opposite directions (one band curves up while the other curves down)
+   - The width variation is more dramatic
+
+2. **Current output**: Shows two wavy bands but they:
+   - Have less dramatic width variation
+   - The wave curvature is less pronounced
+   - They seem to be more similar in shape to each other
+
+Key differences to fix:
+- The width variation needs to be more dramatic (thinner ends, much thicker middle)
+- The two bands should have opposing wave patterns (one curves up, one curves down)
+- The amplitude of the wave needs to be larger
+- The bands might need to be wider overall
+
+Let me revise the code:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def wavy_bands(
+    length: float = 18.0,
+    spacing: float = 1.2,
+    min_width: float = 0.2,
+    max_width: float = 1.2,
+    wave_amplitude: float = 0.3,
+    layer: tuple = (1, 0)
+) -> gf.Component:
+    """
+    Create two horizontal wavy bands with varying width.
+    
+    Args:
+        length: Total horizontal length in microns
+        spacing: Vertical spacing between the two bands
+        min_width: Minimum width of each band at the ends
+        max_width: Maximum width of each band in the middle
+        wave_amplitude: Amplitude of the wave oscillation
+        layer: GDS layer specification
+    """
+    c = gf.Component()
+    
+    # Number of points for smooth variation
+    num_points = 200
+    x_coords = np.linspace(0, length, num_points)
+    
+    # Create width variation function - more dramatic lens shape
+    # Use a smoother function that peaks in the middle
+    normalized_x = (x_coords - length/2) / (length/2)  # -1 to 1
+    widths = min_width + (max_width - min_width) * (1 - normalized_x**2)
+    
+    # Create two bands with opposing wave patterns
+    for idx, band_offset in enumerate([spacing / 2, -spacing / 2]):
+        top_points = []
+        bottom_points = []
+        
+        # Generate wave pattern - alternate direction for each band
+        wave_direction = 1 if idx == 0 else -1
+        y_wave = wave_direction * wave_amplitude * np.sin(2 * np.pi * x_coords / length)
+        
+        # Build the polygon points for each band
+        for i, x in enumerate(x_coords):
+            half_width = widths[i] / 2
+            y_center = band_offset + y_wave[i]
+            
+            top_points.append([x, y_center + half_width])
+            bottom_points.append([x, y_center - half_width])
+        
+        # Close the polygon by reversing bottom points
+        polygon_points = top_points + bottom_points[::-1]
+        c.add_polygon(polygon_points, layer=layer)
+    
+    return c
+```
+
+This approach creates the lens-shaped width variation using a parabolic function that's widest at the center and tapers toward the ends. The two bands oscillate in opposite directions—one curves upward while the other curves downward—giving them the contrasting wave patterns visible in the target image.

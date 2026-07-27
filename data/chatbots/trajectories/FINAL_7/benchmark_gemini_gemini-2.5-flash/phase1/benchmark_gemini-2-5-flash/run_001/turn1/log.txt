@@ -1,0 +1,119 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def racetrack_filter_device():
+    c = gf.Component("racetrack_filter_device")
+    layer = (1, 0) # Use layer (1, 0) for all geometry
+
+    # Device footprint dimensions
+    W_total = 3.0  # Total width of the device
+    H_total = 5.5  # Total height of the device
+
+    # --- 1. Define the overall black outer shape (solid racetrack) ---
+    R_outer = W_total / 2
+    L_straight_y_outer = H_total - 2 * R_outer
+
+    # Create the rectangular core of the racetrack, centered at (0,0)
+    # The `centered=True` argument ensures it's initially at (0,0)
+    rect_outer_core = gf.components.rectangle(size=(W_total, L_straight_y_outer), layer=layer, centered=True)
+
+    # Create the top semicircle
+    # GDSFactory primitives like gf.components.circle return a cached component definition.
+    # To move or transform such a component, we should instantiate it as a reference
+    # within a new, temporary component and then move that reference.
+    comp_circ_outer_top = gf.Component("comp_circ_outer_top_moved")
+    circ_ref_top = comp_circ_outer_top << gf.components.circle(radius=R_outer, layer=layer)
+    # Move the reference within its temporary container component
+    circ_ref_top.center = (0, L_straight_y_outer / 2 + R_outer)
+
+    # Create the bottom semicircle
+    comp_circ_outer_bottom = gf.Component("comp_circ_outer_bottom_moved")
+    circ_ref_bottom = comp_circ_outer_bottom << gf.components.circle(radius=R_outer, layer=layer)
+    # Move the reference within its temporary container component
+    circ_ref_bottom.center = (0, -(L_straight_y_outer / 2 + R_outer))
+
+    # Union the rectangular core and the two (now correctly positioned) semicircles
+    # We pass the temporary components `comp_circ_outer_top` and `comp_circ_outer_bottom`
+    # to the boolean operation, as they now contain the moved circle geometry.
+    S_black_outer = gf.boolean(rect_outer_core, comp_circ_outer_top, "or", layer=layer)
+    S_black_outer = gf.boolean(S_black_outer, comp_circ_outer_bottom, "or", layer=layer)
+
+
+    # --- 2. Define all white regions to be subtracted (`S_white_total`) ---
+
+    # 2.1. Inner boundary of the outer ring (defines the main inner void)
+    wall_thickness = 0.25
+    # FIX: gf.geometry.offset is not found. Use gf.offset directly.
+    inner_boundary_white = gf.offset(S_black_outer, distance=-wall_thickness, layer=layer)
+
+    # 2.2. Central horizontal white channel
+    H_channel = 1.0
+    W_channel = 2.8
+    center_channel_white = gf.components.rectangle(size=(W_channel, H_channel), layer=layer, centered=True)
+
+    # 2.3. Four small rectangular white holes
+    W_hole = 0.3
+    H_hole = 0.5
+    x_hole_offset = 0.7
+    gap_to_hole = 0.2
+    y_hole_offset = (H_channel / 2) + gap_to_hole + (H_hole / 2)
+
+    # Apply the same wrapping and moving strategy for each small rectangular hole
+    # to avoid modifying locked primitive definitions.
+
+    # Create the top-left hole
+    comp_hole_tl = gf.Component("comp_hole_tl_moved")
+    ref_hole_tl = comp_hole_tl << gf.components.rectangle(size=(W_hole, H_hole), layer=layer, centered=True)
+    ref_hole_tl.center = (-x_hole_offset, y_hole_offset)
+
+    # Create the top-right hole
+    comp_hole_tr = gf.Component("comp_hole_tr_moved")
+    ref_hole_tr = comp_hole_tr << gf.components.rectangle(size=(W_hole, H_hole), layer=layer, centered=True)
+    ref_hole_tr.center = (x_hole_offset, y_hole_offset)
+
+    # Create the bottom-left hole
+    comp_hole_bl = gf.Component("comp_hole_bl_moved")
+    ref_hole_bl = comp_hole_bl << gf.components.rectangle(size=(W_hole, H_hole), layer=layer, centered=True)
+    ref_hole_bl.center = (-x_hole_offset, -y_hole_offset)
+
+    # Create the bottom-right hole
+    comp_hole_br = gf.Component("comp_hole_br_moved")
+    ref_hole_br = comp_hole_br << gf.components.rectangle(size=(W_hole, H_hole), layer=layer, centered=True)
+    ref_hole_br.center = (x_hole_offset, -y_hole_offset)
+
+    # Union all four holes into a single component
+    # Pass the temporary components containing the moved rectangles to the boolean operations.
+    all_holes_white_temp1 = gf.boolean(comp_hole_tl, comp_hole_tr, "or", layer=layer)
+    all_holes_white = gf.boolean(all_holes_white_temp1, gf.boolean(comp_hole_bl, comp_hole_br, "or", layer=layer), "or", layer=layer)
+
+    # 2.4. Union all white components (inner boundary, central channel, and all holes)
+    S_white_temp = gf.boolean(inner_boundary_white, center_channel_white, "or", layer=layer)
+    S_white_total = gf.boolean(S_white_temp, all_holes_white, "or", layer=layer)
+
+    # --- 3. Subtract the combined white regions from the black outer shape ---
+    final_device = gf.boolean(S_black_outer, S_white_total, "not", layer=layer)
+
+    # Add the final device geometry to the main component
+    c.add_ref(final_device)
+    return c
+
+if __name__ == "__main__":
+    # Create the device component
+    device = racetrack_filter_device()
+
+    # Verify the footprint (size of the bounding box)
+    bbox = device.bbox
+    actual_width = bbox[2] - bbox[0]
+    actual_height = bbox[3] - bbox[1]
+    print(f"Device Footprint (W, H): ({actual_width:.1f}, {actual_height:.1f}) µm")
+    # Expected: (3.0, 5.5) µm
+
+    # Show the component using GDSFactory's viewer
+    device.show()
+
+    # Optional: Write the device to a GDSII file
+    # device.write_gds("racetrack_filter_device.gds")
+```

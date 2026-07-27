@@ -1,0 +1,89 @@
+Turn 3 Response:
+
+To better match the curved, bracket-like structure in your target image, we need to move away from straight rectangular "wings" and construct the side rails using curved primitives (`bend_euler`).
+
+The structure in the image consists of:
+1.  **Central Stack**: 5 horizontal straight waveguides.
+2.  **Side Rails (Brackets)**: Two symmetric structures on the left and right, each composed of two Euler bends and a straight connecting segment to form the "C" (bracket) shape.
+
+Here is the updated code to generate this geometry:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_device():
+    c = gf.Component()
+    
+    # Parameters
+    # We use a slightly thicker width for the rails to create visual contrast
+    rail_width = 1.0
+    line_width = 0.4
+    bar_length = 80.0
+    pitch = 4.0
+    bend_radius = 15.0
+    rail_straight_length = 10.0 # Vertical straight segment between bends
+    
+    # Cross sections
+    xs_rail = gf.cross_section.cross_section(width=rail_width, layer=(1, 0))
+    xs_line = gf.cross_section.cross_section(width=line_width, layer=(1, 0))
+    
+    # 1. Create the Central Stack (5 lines)
+    for i in range(5):
+        y_pos = (i - 2) * pitch
+        line = c << gf.components.straight(length=bar_length, cross_section=xs_line)
+        line.movey(y_pos)
+        
+    # 2. Construct the Bracket Side Rails
+    # We need a left and right bracket. Let's make a function for one side.
+    @gf.cell
+    def create_bracket(mirror=False):
+        b = gf.Component()
+        
+        # Bottom bend
+        bot = b << gf.components.bend_euler(radius=bend_radius, angle=90, cross_section=xs_rail)
+        
+        # Straight vertical part
+        vert = b << gf.components.straight(length=rail_straight_length, cross_section=xs_rail)
+        vert.connect("o1", bot.ports["o2"])
+        
+        # Top bend
+        top = b << gf.components.bend_euler(radius=bend_radius, angle=90, cross_section=xs_rail)
+        top.connect("o1", vert.ports["o2"])
+        
+        # Add ports to the bracket ends for easy alignment
+        b.add_port("bottom", port=bot.ports["o1"])
+        b.add_port("top", port=top.ports["o2"])
+        
+        # Rotate/Mirror if needed
+        if mirror:
+            b.mirror(p1=(0,0), p2=(0,1))
+            
+        return b
+
+    # 3. Assemble the brackets around the center
+    # Left bracket
+    left_bracket = c << create_bracket(mirror=False)
+    # Position: Align the center of the vertical straight part with the center of the stack
+    left_bracket.movex(-(bar_length / 2 + bend_radius))
+    left_bracket.movey(-(rail_straight_length / 2 + bend_radius))
+    
+    # Right bracket
+    right_bracket = c << create_bracket(mirror=True)
+    right_bracket.movex((bar_length / 2 + bend_radius))
+    right_bracket.movey(-(rail_straight_length / 2 + bend_radius))
+    
+    c.flatten()
+    return c
+
+if __name__ == "__main__":
+    c = create_device()
+    c.write_gds("device_curved.gds")
+    # c.show() # Uncomment to open in KLayout
+```
+
+### Key Changes Made:
+*   **Curved Rails**: Instead of using simple rectangular blocks for the sides, I created a `create_bracket` helper function. This function assembles two `bend_euler` components connected by a `straight` segment. This creates the smooth, curved "bracket" look seen in the target image.
+*   **Separation of Concerns**: The central lines are created with one cross-section (`line_width`), while the rails use a distinct cross-section (`rail_width`), giving them the thicker appearance visible in the original image.
+*   **Procedural Alignment**: By calculating positions based on `bar_length` and `bend_radius`, the rails perfectly frame the horizontal lines. 
+*   **Refined Geometry**: The symmetry is now handled by the `mirror` argument, ensuring the right side is a perfect reflection of the left.

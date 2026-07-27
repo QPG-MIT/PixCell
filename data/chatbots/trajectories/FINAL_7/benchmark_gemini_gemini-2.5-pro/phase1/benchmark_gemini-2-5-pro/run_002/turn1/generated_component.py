@@ -1,0 +1,143 @@
+import gdsfactory as gf
+
+@gf.cell
+def racetrack_solid(length: float, height: float, layer: tuple) -> gf.Component:
+    """
+    Creates a solid racetrack shape from a rectangle and two circles using boolean union.
+    This function correctly handles locked primitive cells by moving references to them
+    instead of the cells themselves.
+
+    Args:
+        length: The total length of the racetrack.
+        height: The total height of the racetrack.
+        layer: The GDS layer for the shape.
+
+    Returns:
+        A component containing the solid racetrack geometry.
+    """
+    # A temporary component is needed to hold and transform the references.
+    c_for_refs = gf.Component("temp_holder_for_refs")
+    radius = height / 2.0
+
+    if length < 2 * radius:
+        raise ValueError("Racetrack length must be at least twice the height.")
+
+    straight_length = length - 2 * radius
+
+    # Define the primitive shapes
+    center_rect = gf.components.rectangle(
+        size=(straight_length, height), layer=layer, centered=True
+    )
+    end_circle = gf.components.circle(radius=radius, layer=layer)
+
+    # Create references to the circle and position them correctly.
+    # The boolean function can operate on these moved ComponentReferences.
+    ref_left = c_for_refs << end_circle
+    ref_left.movex(-straight_length / 2.0)
+
+    ref_right = c_for_refs << end_circle
+    ref_right.movex(straight_length / 2.0)
+
+    # Perform sequential boolean unions.
+    # Start with the rectangle, then union the left and right moved references.
+    racetrack_with_left_end = gf.boolean(
+        A=center_rect, B=ref_left, operation="or", layer=layer
+    )
+    racetrack_final = gf.boolean(
+        A=racetrack_with_left_end, B=ref_right, operation="or", layer=layer
+    )
+    
+    return racetrack_final
+
+
+@gf.cell
+def create_device():
+    """
+    Creates the specified device using a subtractive boolean approach.
+    A solid racetrack is defined, and the internal features are cut out.
+    """
+    # --- 1. Define Device Parameters ---
+    # Overall dimensions from the footprint constraint
+    footprint_x = 5.5
+    footprint_y = 3.0
+    layer = (1, 0)
+
+    # --- 2. Create the Base Solid Shape ---
+    # Call the corrected helper function to create a solid racetrack primitive.
+    base_solid = racetrack_solid(
+        length=footprint_x,
+        height=footprint_y,
+        layer=layer
+    )
+
+    # --- 3. Create a Component to Hold All Cutout Geometries ---
+    cutouts = gf.Component("cutouts")
+
+    # --- 3a. Design the Large Central Cutout ---
+    # Internal dimensions are estimated from visual proportions.
+    central_gap_height = 0.6
+    arm_height = 0.7
+    central_taper_end_width = 2 * arm_height + central_gap_height
+    
+    central_straight_length = 1.5
+    central_taper_length = 0.5
+
+    # Assemble the central cutout shape from parametric primitives.
+    central_cutout_shape = gf.Component("central_tapered_cutout")
+    center_rect = central_cutout_shape << gf.components.rectangle(
+        size=(central_straight_length, central_gap_height),
+        layer=layer,
+        centered=True
+    )
+    taper_primitive = gf.components.taper(
+        length=central_taper_length,
+        width1=central_gap_height,
+        width2=central_taper_end_width,
+        layer=layer
+    )
+    taper_left = central_cutout_shape << taper_primitive
+    taper_left.mirror()
+    taper_left.connect("o1", center_rect.ports["o1"])
+
+    taper_right = central_cutout_shape << taper_primitive
+    taper_right.connect("o1", center_rect.ports["o2"])
+
+    cutouts.add_ref(central_cutout_shape)
+
+    # --- 3b. Design the Four Small Rectangular Window Cutouts ---
+    window_width = 0.6
+    window_height = 0.4
+    window_gap_x = 0.3
+    
+    window_cell = gf.components.rectangle(
+        size=(window_width, window_height),
+        layer=layer,
+        centered=True
+    )
+    
+    spacing_x = window_width + window_gap_x
+    spacing_y = central_gap_height + arm_height
+    
+    window_array = cutouts.add_array(
+        component=window_cell,
+        columns=2,
+        rows=2,
+        spacing=(spacing_x, spacing_y)
+    )
+    window_array.center = (0, 0)
+    
+    # --- 4. Perform the Boolean Subtraction ---
+    final_device = gf.boolean(
+        A=base_solid, 
+        B=cutouts, 
+        operation="not", 
+        layer=layer
+    )
+    
+    return final_device
+
+# --- Main execution block for testing and visualization ---
+if __name__ == "__main__":
+    device = create_device()
+    device.show()
+    print(f"Generated device footprint: {device.size}")

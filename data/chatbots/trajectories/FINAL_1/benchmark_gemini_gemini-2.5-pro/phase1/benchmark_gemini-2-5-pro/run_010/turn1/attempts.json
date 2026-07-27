@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:59.846886",
+      "api_duration_seconds": 92.519455909729,
+      "usage": {
+        "input_tokens": 2348,
+        "output_tokens": 1424,
+        "total_tokens": 14866
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:33.868540",
+      "api_duration_seconds": 23.341997861862183,
+      "usage": {
+        "input_tokens": 3803,
+        "output_tokens": 1144,
+        "total_tokens": 6549
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: unhashable type: 'Transition'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:58.556315",
+      "api_duration_seconds": 27.75995111465454,
+      "usage": {
+        "input_tokens": 4971,
+        "output_tokens": 1147,
+        "total_tokens": 8661
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\"cross_section name is required\")\nValueError: cross_section name is required",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11122,
+    "output_tokens": 3715,
+    "total_tokens": 30076
+  }
+}

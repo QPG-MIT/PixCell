@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.235351",
+      "api_duration_seconds": 229.04398012161255,
+      "usage": {
+        "input_tokens": 3171,
+        "output_tokens": 1555,
+        "total_tokens": 26104
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Width of symmetrical cross sections must have be a multiple of 2 dbu. This could cause cross sections and extrusions to become unsymmetrical otherwise. [type=value_error, input_value={'width': 1, 'enclosure':...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the followin",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:14:05.540293",
+      "api_duration_seconds": 113.99096083641052,
+      "usage": {
+        "input_tokens": 5231,
+        "output_tokens": 1336,
+        "total_tokens": 18001
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:16:00.775409",
+      "api_duration_seconds": 139.9936511516571,
+      "usage": {
+        "input_tokens": 6598,
+        "output_tokens": 1352,
+        "total_tokens": 22064
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'method' object is not subscriptable",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15000,
+    "output_tokens": 4243,
+    "total_tokens": 66169
+  }
+}

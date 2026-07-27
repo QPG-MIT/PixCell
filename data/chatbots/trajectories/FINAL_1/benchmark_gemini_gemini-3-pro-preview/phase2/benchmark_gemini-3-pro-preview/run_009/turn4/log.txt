@@ -1,0 +1,131 @@
+Turn 4 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def trident_mode_converter():
+    """
+    Generates a trident-shaped mode converter.
+    
+    Improvements:
+    1. Corrected Taper Length: The central taper now ends *before* the outer waveguides fully merge.
+       This prevents the taper from cutting through the output waveguide and creates the correct "sharp tip" geometry.
+    2. Explicit Output Section: Added a straight output section after the merge point to match the target footprint and shape.
+    3. Tuned Geometry: Adjusted straight/bend ratios to match the visual proportions of the target image.
+    """
+    c = gf.Component()
+
+    # --- Geometric Parameters ---
+    length_total = 40.0
+    
+    # Section lengths
+    # Defines the longitudinal segmentation: Input Straight -> Adiabatic Bend/Merge -> Output Straight
+    length_straight_in = 6.0
+    length_straight_out = 9.0
+    length_bend = length_total - length_straight_in - length_straight_out # 25.0
+    
+    # Widths
+    width_outer = 0.5
+    width_inner = 0.3
+    
+    # Y-positions
+    # Input: Centers at +/- 0.6. 
+    # Gap check: Inner edge 0.35, Center edge 0.15 -> Gap 0.2. Matches visual gap.
+    y_in_offset = 0.6
+    
+    # Output: Centers at +/- 0.25. 
+    # With width 0.5, the inner edges are at +/- 0.0. They touch perfectly to form a 1.0um waveguide.
+    y_out_offset = 0.25
+    
+    layer_wg = (1, 0)
+    xs_outer = gf.cross_section.cross_section(width=width_outer, layer=layer_wg)
+    xs_inner = gf.cross_section.cross_section(width=width_inner, layer=layer_wg)
+
+    # --- 1. Center Arm ---
+    # Straight input section
+    center_in = c << gf.components.straight(
+        length=length_straight_in, 
+        cross_section=xs_inner
+    )
+    center_in.movey(0)
+    
+    # Taper section
+    # Crucial Fix: Taper ends slightly before the outer arms merge (length_bend - 1.0).
+    # This leaves a small gap region before the solid output waveguide starts.
+    taper_length = length_bend - 1.0 
+    center_taper = c << gf.components.taper(
+        length=taper_length,
+        width1=width_inner,
+        width2=0.0,
+        layer=layer_wg
+    )
+    center_taper.connect("o1", center_in.ports["o2"])
+
+    # --- 2. Top Arm ---
+    # Straight input
+    top_in = c << gf.components.straight(
+        length=length_straight_in, 
+        cross_section=xs_outer
+    )
+    top_in.movey(y_in_offset)
+    
+    # S-Bend (Adiabatic transition)
+    dy_top = y_out_offset - y_in_offset
+    top_bend = c << gf.components.bend_s(
+        size=(length_bend, dy_top), 
+        cross_section=xs_outer
+    )
+    top_bend.connect("o1", top_in.ports["o2"])
+    
+    # Straight output (Merged part)
+    top_out = c << gf.components.straight(
+        length=length_straight_out, 
+        cross_section=xs_outer
+    )
+    top_out.connect("o1", top_bend.ports["o2"])
+
+    # --- 3. Bottom Arm ---
+    # Straight input
+    bot_in = c << gf.components.straight(
+        length=length_straight_in, 
+        cross_section=xs_outer
+    )
+    bot_in.movey(-y_in_offset)
+    
+    # S-Bend
+    dy_bot = -y_out_offset - (-y_in_offset)
+    bot_bend = c << gf.components.bend_s(
+        size=(length_bend, dy_bot), 
+        cross_section=xs_outer
+    )
+    bot_bend.connect("o1", bot_in.ports["o2"])
+    
+    # Straight output (Merged part)
+    bot_out = c << gf.components.straight(
+        length=length_straight_out, 
+        cross_section=xs_outer
+    )
+    bot_out.connect("o1", bot_bend.ports["o2"])
+
+    # --- Ports ---
+    c.add_port("o1_top", port=top_in.ports["o1"])
+    c.add_port("o1_mid", port=center_in.ports["o1"])
+    c.add_port("o1_bot", port=bot_in.ports["o1"])
+    
+    # Combined output port at the end of the straight output section
+    c.add_port(
+        "o2",
+        center=(length_total, 0),
+        width=width_outer * 2,
+        orientation=0,
+        layer=layer_wg
+    )
+
+    return c
+
+if __name__ == "__main__":
+    device = trident_mode_converter()
+    device.show()
+    device.write_gds("trident_converter_final.gds")
+```

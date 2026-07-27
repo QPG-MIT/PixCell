@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:14.543988",
+      "api_duration_seconds": 31.099700927734375,
+      "usage": {
+        "input_tokens": 3182,
+        "output_tokens": 673,
+        "total_tokens": 9079
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: taper_gdsfactorypcomponentsptapersptaper_L40_W0p1_W0p6__788efb29_-52_598_A4p999999999999992, Cell name: taper_gdsfactorypcomponentsptapersptaper_L40_W0p1_W0p6__788efb29\nInstance name: taper_gdsfactorypcomponentsptapersptaper_L40_W0p1_W0p6__788efb29_-",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:10:47.093255",
+      "api_duration_seconds": 12.814850091934204,
+      "usage": {
+        "input_tokens": 4115,
+        "output_tokens": 639,
+        "total_tokens": 6624
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:11:01.472664",
+      "api_duration_seconds": 33.10063195228577,
+      "usage": {
+        "input_tokens": 5261,
+        "output_tokens": 843,
+        "total_tokens": 11598
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12558,
+    "output_tokens": 2155,
+    "total_tokens": 27301
+  }
+}

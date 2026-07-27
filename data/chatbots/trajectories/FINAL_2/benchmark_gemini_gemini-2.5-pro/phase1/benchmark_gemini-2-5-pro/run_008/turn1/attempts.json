@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.461482",
+      "api_duration_seconds": 93.2350058555603,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 1295,
+        "total_tokens": 14661
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTInstance.connect() got an unexpected keyword argument 'destination'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:44.195485",
+      "api_duration_seconds": 21.081140995025635,
+      "usage": {
+        "input_tokens": 3670,
+        "output_tokens": 1090,
+        "total_tokens": 6324
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o1' is not a valid port name or index. Available ports: ['e1', 'e2', 'e3', 'e4']\"",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:06.713970",
+      "api_duration_seconds": 18.302398920059204,
+      "usage": {
+        "input_tokens": 4830,
+        "output_tokens": 1201,
+        "total_tokens": 6822
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortTypeMismatchError: Type mismatch between the ports rectangle_gdsfactorypcomponentspshapesprectangle_S2p25__0fac1058_0_0[\"e3\"] and Port \"o2\" (electrical/optical)",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10845,
+    "output_tokens": 3586,
+    "total_tokens": 27807
+  }
+}

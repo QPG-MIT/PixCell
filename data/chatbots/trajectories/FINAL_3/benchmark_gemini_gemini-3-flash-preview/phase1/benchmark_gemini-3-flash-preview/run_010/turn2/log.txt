@@ -1,0 +1,83 @@
+Turn 2 Response:
+
+The issue in the previous render was caused by the S-bend transitions being connected in a way that forced the waveguides to cross over each other to reach their target ports. 
+
+To match the original image, we need the top inputs to stay above the interaction region and the bottom inputs to stay below. This requires defining the S-bends with explicit directions (positive or negative vertical offsets) rather than relying on mirrors that might interact unpredictably with the `connect` logic.
+
+The following script uses a **negative dy** for the top-left bend to ensure it moves from a high input position **down** to the coupler, preventing any crossing. I have also adjusted the waveguide width to **0.8 μm** and the gap to **0.2 μm** to better match the visual proportions of your original image.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_final():
+    """
+    Recreates the directional coupler with a 120x4 um footprint.
+    Fixes the crossing issue by explicitly defining S-bend directions.
+    """
+    c = gf.Component("directional_coupler_recreated")
+    
+    # 1. Dimensions for [120, 4] footprint
+    width = 0.8        # Thicker waveguide for better visual match
+    gap = 0.2          # Narrow interaction gap
+    length_mid = 60.0  # Interaction region length
+    dx = 30.0          # Transition length (30 + 60 + 30 = 120)
+    
+    # Calculation for 4um height:
+    # Interaction centers are at +/- (0.4 + 0.1) = +/- 0.5 um
+    # We want top edge at 2.0 -> center of input at 2.0 - 0.4 = 1.6 um
+    # Required vertical shift (dy) = 1.6 - 0.5 = 1.1 um
+    dy = 1.1
+    
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    # 2. Central Coupling Region
+    # Ports: o1(top-left), o2(bot-left), o3(bot-right), o4(top-right)
+    coupler = c << gf.components.coupler_straight(
+        length=length_mid, 
+        gap=gap, 
+        cross_section=xs
+    )
+    
+    # 3. Transitions (S-Bends)
+    # Top-Left: Moves from y=1.6 DOWN to y=0.5. Needs negative dy in the S-bend.
+    tl = c << gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+    tl.connect("o2", coupler.ports["o1"])
+    
+    # Bottom-Left: Moves from y=-1.6 UP to y=-0.5. Needs positive dy.
+    bl = c << gf.components.bend_s(size=(dx, dy), cross_section=xs)
+    bl.connect("o2", coupler.ports["o2"])
+    
+    # Top-Right: Moves from y=0.5 UP to y=1.6. Needs positive dy.
+    tr = c << gf.components.bend_s(size=(dx, dy), cross_section=xs)
+    tr.connect("o1", coupler.ports["o4"])
+    
+    # Bottom-Right: Moves from y=-0.5 DOWN to y=-1.6. Needs negative dy.
+    br = c << gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+    br.connect("o1", coupler.ports["o3"])
+    
+    # 4. Add External Ports
+    c.add_port("o1", port=tl.ports["o1"])
+    c.add_port("o2", port=bl.ports["o1"])
+    c.add_port("o3", port=tr.ports["o2"])
+    c.add_port("o4", port=br.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler_final()
+    
+    # Save to GDS
+    device.write_gds("corrected_coupler.gds")
+    
+    # Verify footprint
+    print(f"Final footprint: {device.xsize:.1f} um x {device.ysize:.1f} um")
+    
+    # Show the result
+    device.show()
+```
+
+### Why this fixes the problem:
+1.  **Explicit Vertical Offsets**: By setting `size=(dx, -dy)` for the top-left bend, we tell the S-bend to move downwards. When we connect its right port (`o2`) to the top port of the coupler, its left port (`o1`) is automatically placed at the correct higher elevation without needing to flip or mirror the component.
+2.  **Port Alignment**: This configuration ensures the top input connects to the top coupler arm and the bottom input to the bottom coupler arm, removing the "bowtie" crossing seen in your render.
+3.  **Proportional Matching**: The increased waveguide width (0.8 μm) and tight gap (0.2 μm) better capture the aesthetic of the target image while staying exactly within the 4 μm total height limit.

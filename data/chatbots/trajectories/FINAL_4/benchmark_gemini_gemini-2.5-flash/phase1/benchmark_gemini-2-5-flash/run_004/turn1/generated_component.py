@@ -1,0 +1,119 @@
+import gdsfactory as gf
+from gdsfactory.typings import CrossSectionSpec
+
+@gf.cell
+def wavy_double_line(
+    band_width: float = 0.5,
+    min_gap: float = 0.3, # Minimum gap between the inner edges of the bands (at x=total_width/2)
+    max_gap: float = 1.0, # Maximum gap between the inner edges of the bands (at x=0, x=total_width)
+    intermediate_y_ratio: float = 0.5, # Ratio (0 to 1) for intermediate points' vertical position.
+                                       # 0 means y_intermediate == y_mid, 1 means y_intermediate == y_end.
+    smooth_radius: float = 3.0, # Radius for smoothing corners in gf.path.smooth
+    cross_section: CrossSectionSpec = "strip" # Type of cross-section to use for the bands
+) -> gf.Component:
+    """
+    Creates a component with two symmetrical wavy lines, resembling the provided image.
+
+    The lines are generated using gf.path.smooth with carefully chosen control points
+    to achieve the desired smooth, undulating shape.
+
+    Args:
+        band_width: The width of each black line/band.
+        min_gap: The minimum gap between the inner edges of the two bands (at the center).
+        max_gap: The maximum gap between the inner edges of the two bands (at the ends).
+        intermediate_y_ratio: A value between 0 and 1 that controls the vertical position
+                              of the intermediate points (x=0.25*width, x=0.75*width).
+                              0 means intermediate points are at the min_gap height,
+                              1 means intermediate points are at the max_gap height.
+                              0.5 is a good default for the provided image.
+        smooth_radius: The radius used by `gf.path.smooth` to create the curved segments.
+                       A larger radius creates gentler curves.
+        cross_section: Specification for the cross-section of the bands (e.g., "strip" or a custom CrossSection object).
+    """
+    c = gf.Component("wavy_double_line")
+
+    # 1. Define Core Parameters from device footprint and visual analysis
+    total_width = 18.0
+    total_height = 3.0
+    center_y = total_height / 2.0 # Horizontal centerline for mirroring
+
+    # Define the cross-section for the bands
+    # gf.get_cross_section is a powerful function that can handle both string names
+    # and existing CrossSection objects, allowing parameters like 'width' to be overridden.
+    xs = gf.get_cross_section(cross_section, width=band_width)
+
+
+    # 2. Calculate Centerline Points for the Top Band
+    # Y-coordinate of the top band's centerline at x=0 and x=total_width (ends)
+    # This is when the gap between bands is max_gap.
+    y_top_end = center_y + max_gap / 2.0 + band_width / 2.0
+    # y_top_end = 1.5 + 1.0/2 + 0.5/2 = 1.5 + 0.5 + 0.25 = 2.25
+
+    # Y-coordinate of the top band's centerline at x=total_width/2 (middle)
+    # This is when the gap between bands is min_gap.
+    y_top_mid = center_y + min_gap / 2.0 + band_width / 2.0
+    # y_top_mid = 1.5 + 0.3/2 + 0.5/2 = 1.5 + 0.15 + 0.25 = 1.9
+
+    # Y-coordinate of the top band's centerline at x=total_width*0.25 and x=total_width*0.75
+    # Interpolated between y_top_mid and y_top_end based on the ratio.
+    # The image implies y_top_mid < y_top_intermediate < y_top_end for the top line.
+    y_top_intermediate = y_top_mid + (y_top_end - y_top_mid) * intermediate_y_ratio
+    # With intermediate_y_ratio=0.5: 1.9 + (2.25 - 1.9) * 0.5 = 1.9 + 0.35 * 0.5 = 2.075
+
+    points_top_center = [
+        (0, y_top_end),                            # Start point (x=0)
+        (total_width * 0.25, y_top_intermediate),  # First intermediate point (x=4.5)
+        (total_width * 0.5, y_top_mid),            # Middle point (x=9)
+        (total_width * 0.75, y_top_intermediate),  # Second intermediate point (x=13.5)
+        (total_width, y_top_end)                   # End point (x=18)
+    ]
+
+    # 3. Generate Top Band
+    path_top_centerline = gf.path.smooth(
+        points=points_top_center,
+        radius=smooth_radius # Controls the curvature radius at the "corners"
+    )
+    # Extrude the path to create the physical waveguide/band
+    top_band_ref = c << gf.path.extrude(path_top_centerline, cross_section=xs)
+
+    # 4. Generate Bottom Band by mirroring the top band's points
+    points_bottom_center = []
+    for x, y_top in points_top_center:
+        # Mirroring across center_y: y_bottom = total_height - y_top
+        y_bottom = total_height - y_top
+        points_bottom_center.append((x, y_bottom))
+
+    path_bottom_centerline = gf.path.smooth(
+        points=points_bottom_center,
+        radius=smooth_radius
+    )
+    bottom_band_ref = c << gf.path.extrude(path_bottom_centerline, cross_section=xs)
+
+    # 5. Add Ports to the Component for external connections
+    # `extrude` automatically creates 'o1' (start) and 'o2' (end) ports on the path
+    c.add_port("top_o1", port=top_band_ref.ports["o1"])
+    c.add_port("top_o2", port=top_band_ref.ports["o2"])
+    c.add_port("bot_o1", port=bottom_band_ref.ports["o1"])
+    c.add_port("bot_o2", port=bottom_band_ref.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Create the component with default parameters
+    component = wavy_double_line()
+    component.show() # Display the component (requires KLayout installed and configured)
+
+    # Verify the footprint of the generated geometry
+    # FIX: Use component.dbbox to get the KLayout.db.DBox object
+    # which has .width() and .height() methods.
+    dbbox = component.dbbox
+    actual_width = dbbox.width()
+    actual_height = dbbox.height()
+    print(f"Generated geometry width: {actual_width:.2f} µm")
+    print(f"Generated geometry height: {actual_height:.2f} µm")
+    # The actual geometry will be 18.00 µm wide.
+    # The actual geometry will be (y_top_end + band_width/2) - (y_bottom_end - band_width/2) tall.
+    # Using default values: (2.25 + 0.25) - (0.75 - 0.25) = 2.5 - 0.5 = 2.0 µm tall.
+    # This 2.0 µm tall geometry is centered within the 3.0 µm footprint,
+    # leaving 0.5 µm white space at the top (from y=2.5 to y=3.0) and bottom (from y=0.0 to y=0.5),
+    # matching the appearance in the provided image and fitting the [18, 3] µm constraint.

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.922577",
+      "api_duration_seconds": 121.82566905021667,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 1473,
+        "total_tokens": 13956
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:13.201911",
+      "api_duration_seconds": 15.218494892120361,
+      "usage": {
+        "input_tokens": 3854,
+        "output_tokens": 1150,
+        "total_tokens": 5073
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:35.296142",
+      "api_duration_seconds": 17.501332998275757,
+      "usage": {
+        "input_tokens": 5478,
+        "output_tokens": 1155,
+        "total_tokens": 6913
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'SizeInfo' object has no attribute 'size'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11681,
+    "output_tokens": 3778,
+    "total_tokens": 25942
+  }
+}

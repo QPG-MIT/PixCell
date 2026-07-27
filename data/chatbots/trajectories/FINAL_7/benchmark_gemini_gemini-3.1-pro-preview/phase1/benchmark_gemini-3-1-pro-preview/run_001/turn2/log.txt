@@ -1,0 +1,93 @@
+Turn 2 Response:
+
+Based on the heavily distorted generated image you shared, it's clear the previous approach—using `gf.Path` for the outer track and manual placement to create holes—resulted in broken geometry, misaligned loops, and incorrect scaling. 
+
+To fix this completely, we should switch to **Constructive Solid Geometry (Boolean operations)**. By explicitly defining the solid outlines and subtracting precise holes using `gf.boolean`, we guarantee mathematically perfect shapes, avoid path-closure artifacts, and firmly lock the outer boundaries to exactly `3.0 x 5.5`.
+
+Here is the corrected and fully robust script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def stadium_track():
+    """Builds the outer stadium ring using robust boolean operations."""
+    layer = (1, 0)
+    
+    # 1. Create the solid outer stadium shape
+    outer = gf.Component("outer_stadium")
+    outer << gf.components.rectangle(size=(2.5, 3.0), centered=True, layer=layer)
+    ref_l = outer << gf.components.circle(radius=1.5, layer=layer)
+    ref_l.movex(-1.25)
+    ref_r = outer << gf.components.circle(radius=1.5, layer=layer)
+    ref_r.movex(1.25)
+    
+    # 2. Create the inner hole shape to subtract
+    inner = gf.Component("inner_stadium")
+    inner << gf.components.rectangle(size=(2.5, 2.0), centered=True, layer=layer)
+    ref_lin = inner << gf.components.circle(radius=1.0, layer=layer)
+    ref_lin.movex(-1.25)
+    ref_rin = inner << gf.components.circle(radius=1.0, layer=layer)
+    ref_rin.movex(1.25)
+    
+    # 3. Subtract inner from outer to get the hollow track
+    return gf.boolean(outer, inner, operation='not', layer=layer)
+
+@gf.cell
+def hollow_block():
+    """Builds the central rectangular blocks with double hollow cutouts."""
+    layer = (1, 0)
+    
+    # Base solid block
+    solid = gf.Component("block_solid")
+    solid << gf.components.rectangle(size=(2.0, 0.4), centered=True, layer=layer)
+    
+    # Two rectangular cutouts
+    holes = gf.Component("block_holes")
+    ref_h1 = holes << gf.components.rectangle(size=(0.7, 0.2), centered=True, layer=layer)
+    ref_h1.movex(-0.45)
+    ref_h2 = holes << gf.components.rectangle(size=(0.7, 0.2), centered=True, layer=layer)
+    ref_h2.movex(0.45)
+    
+    # Subtraction generates perfect walls and divider
+    return gf.boolean(solid, holes, operation='not', layer=layer)
+
+@gf.cell
+def device():
+    """Assembles the final component."""
+    c = gf.Component("MZI_device")
+    layer = (1, 0)
+    
+    # 1. Add Outer Stadium
+    c << stadium_track()
+    
+    # 2. Add Central Hollow Blocks
+    block = hollow_block()
+    ref_btop = c << block
+    ref_btop.movey(0.4)  # Moves block to top arm height
+    ref_bbot = c << block
+    ref_bbot.movey(-0.4) # Moves block to bottom arm height
+    
+    # 3. Route Internal MZI Arms
+    xs_arm = gf.cross_section.cross_section(width=0.2, layer=layer)
+    
+    # Extrude Left-side Split Arms (paths extend slightly past boundaries for solid junctions)
+    p_lt = gf.Path([(-2.3, 0), (-1.85, 0), (-1.35, 0.4), (-0.9, 0.4)])
+    c << gf.path.extrude(p_lt, cross_section=xs_arm)
+    
+    p_lb = gf.Path([(-2.3, 0), (-1.85, 0), (-1.35, -0.4), (-0.9, -0.4)])
+    c << gf.path.extrude(p_lb, cross_section=xs_arm)
+    
+    # Extrude Right-side Split Arms
+    p_rt = gf.Path([(2.3, 0), (1.85, 0), (1.35, 0.4), (0.9, 0.4)])
+    c << gf.path.extrude(p_rt, cross_section=xs_arm)
+    
+    p_rb = gf.Path([(2.3, 0), (1.85, 0), (1.35, -0.4), (0.9, -0.4)])
+    c << gf.path.extrude(p_rb, cross_section=xs_arm)
+    
+    return c
+
+if __name__ == "__main__":
+    c = device()
+    c.write_gds("device.gds")
+```

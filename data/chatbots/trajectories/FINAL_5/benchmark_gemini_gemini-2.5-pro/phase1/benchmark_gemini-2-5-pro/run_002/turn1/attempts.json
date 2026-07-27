@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:10.021998",
+      "api_duration_seconds": 148.83474397659302,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 1537,
+        "total_tokens": 17294
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 2.0 < CrossSection.radius_min 5.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:40.268963",
+      "api_duration_seconds": 29.991448879241943,
+      "usage": {
+        "input_tokens": 3930,
+        "output_tokens": 1705,
+        "total_tokens": 7153
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:11.711176",
+      "api_duration_seconds": 28.11184310913086,
+      "usage": {
+        "input_tokens": 6140,
+        "output_tokens": 1746,
+        "total_tokens": 9021
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/gdsfactory/components/tapers/taper.py:55: UserWarning: {'width': 0.25} ignored for cross_section 'xs_bf8488a7'\n  x = gf.get_cross_section(cross_section, width=width_max)\n/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/cachetools/_cached.py:178: UserWarning: bend_euler angle should be 90 or 180. Got -30. Use bend_euler_all_angle instead.\n  v = func(*args, **kwargs)\n/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/sit",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12419,
+    "output_tokens": 4988,
+    "total_tokens": 33468
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:55:12.691385",
+      "api_duration_seconds": 107.8560061454773,
+      "usage": {
+        "input_tokens": 3182,
+        "output_tokens": 1322,
+        "total_tokens": 13675
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:57:01.870712",
+      "api_duration_seconds": 35.82646298408508,
+      "usage": {
+        "input_tokens": 4530,
+        "output_tokens": 1182,
+        "total_tokens": 7961
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:57:38.933669",
+      "api_duration_seconds": 56.04901099205017,
+      "usage": {
+        "input_tokens": 5743,
+        "output_tokens": 1303,
+        "total_tokens": 11334
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: Unnamed_2_20000_425_A359p98763099647863, Cell name: Unnamed_2\nInstance name: Unnamed_2_20000_-425_A0p012369003521521144_M, Cell name: Unnamed_2",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13455,
+    "output_tokens": 3807,
+    "total_tokens": 32970
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:10:29.018560",
+      "api_duration_seconds": 338.841632604599,
+      "usage": {
+        "input_tokens": 3483,
+        "output_tokens": 11819,
+        "total_tokens": 15302
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 7.665 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:16:10.415428",
+      "api_duration_seconds": 592.231449842453,
+      "usage": {
+        "input_tokens": 3983,
+        "output_tokens": 21590,
+        "total_tokens": 25573
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: bend_s() got an unexpected keyword argument 'allow_min_radius'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:26:03.915767",
+      "api_duration_seconds": 281.23719120025635,
+      "usage": {
+        "input_tokens": 4492,
+        "output_tokens": 10522,
+        "total_tokens": 15014
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\"euler() requires a radius argument\")\nValueError: euler() requires a radius argument",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11958,
+    "output_tokens": 43931,
+    "total_tokens": 55889
+  }
+}

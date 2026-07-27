@@ -1,0 +1,91 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import bend_euler, straight
+from gdsfactory.cross_section import strip
+
+@gf.cell
+def mach_zehnder_interferometer(
+    length_arm: float = 60.0,
+    length_coupler: float = 20.0,
+    gap: float = 0.2,
+    bend_radius: float = 10.0,
+    cross_section=strip,
+) -> gf.Component:
+    """
+    Mach-Zehnder interferometer (MZI) with two couplers and two arms.
+
+    Args:
+        length_arm: length of the MZI arm.
+        length_coupler: length of the directional coupler.
+        gap: gap between the coupler waveguides.
+        bend_radius: bend radius of the bends.
+        cross_section: cross_section of the waveguides.
+    """
+
+    c = gf.Component("mzi")
+    xs = cross_section
+
+    # Create the two 50/50 couplers
+    coupler1 = c << gf.components.coupler_straight(length=length_coupler, gap=gap, cross_section=xs)
+    coupler2 = c << gf.components.coupler_straight(length=length_coupler, gap=gap, cross_section=xs)
+    coupler2.mirror()  # Mirror the second coupler for layout efficiency
+
+    # Place the first coupler
+    coupler1.move((0, 0))
+
+    # Create the bends
+    bend1 = c << bend_euler(radius=bend_radius, cross_section=xs)
+    bend2 = c << bend_euler(radius=bend_radius, cross_section=xs)
+    bend3 = c << bend_euler(radius=bend_radius, cross_section=xs)
+    bend4 = c << bend_euler(radius=bend_radius, cross_section=xs)
+
+    # Rotate the bends
+    bend2.rotate(90)
+    bend3.rotate(-90)
+    bend4.rotate(180)
+
+    # Add straights
+    straight_arm1 = c << straight(length=length_arm, cross_section=xs)
+    straight_arm2 = c << straight(length=length_arm, cross_section=xs)
+
+    # Connect components
+
+    # First coupler to the top bends
+    bend1.connect("o1", coupler1.ports["o2"])
+    bend4.connect("o1", coupler1.ports["o4"])
+
+    # Top bends to arms
+    straight_arm1.connect("o1", bend1.ports["o2"])
+    straight_arm2.connect("o1", bend4.ports["o2"])
+
+    # Arms to second coupler bottom
+    bend2.connect("o1", straight_arm1.ports["o2"])
+    bend3.connect("o1", straight_arm2.ports["o2"])
+
+    # Second coupler
+    coupler2.connect("o2", bend2.ports["o2"])
+    coupler2.connect("o4", bend3.ports["o2"])
+
+
+    c.add_port("o1", port=coupler1.ports["o1"])
+    c.add_port("o2", port=coupler1.ports["o3"])
+    c.add_port("o3", port=coupler2.ports["o1"])
+    c.add_port("o4", port=coupler2.ports["o3"])
+
+
+    return c
+
+
+if __name__ == "__main__":
+    c = mach_zehnder_interferometer(length_arm=60, length_coupler=20) # Adjust length_arm to control the total device length (footprint)
+    c.show()
+    # gf.show(c) # alternative way to show the component, this might be preferred.
+```
+
+Reasoning for the fix:
+
+The error `TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'` indicates that the `show()` method of the `ProtoTKCell` class (which is likely the class of the component `c`) does not accept the keyword argument `show_ports`.
+
+The fix is to simply remove the `show_ports=True` argument from the `c.show()` call. If visualizing ports is still desired an alternative such as `gf.show(c)` will automatically render the component and associated ports.

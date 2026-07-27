@@ -1,0 +1,65 @@
+# Recreates the pictured 3‑prong fork using only parametric GDSFactory functions.
+# Footprint ~ (40.0 um, 1.7 um)
+
+import gdsfactory as gf
+
+
+@gf.cell
+def three_prong_fork():
+    L_total = 40.0
+
+    # Output (right) overall height
+    W_trunk = 1.7
+
+    # Build two outer arms that form the fork body
+    W_arm = W_trunk / 2.0          # so the union of both gives W_trunk
+    y_offset = 0.25                # vertical offset of the straight-taper part
+    dx_sbend = 10.0                # x-length of the S-bend section
+    L_taper_outer = 24.0
+    L_right = max(0.0, L_total - (L_taper_outer + dx_sbend))
+    xs_arm = gf.cross_section.strip(width=W_arm, layer=(1, 0))
+
+    def arm(sign=+1) -> gf.Component:
+        """One outer arm (sign=+1 top, sign=-1 bottom)."""
+        c = gf.Component()
+        # straight linear taper
+        t = c << gf.components.taper(
+            length=L_taper_outer, width1=0.02, width2=W_arm, layer=(1, 0)
+        )
+        t.move((0, sign * y_offset))
+
+        # S-bend to reach the final offset so both arms together form W_trunk
+        dy = sign * (W_trunk / 4.0 - y_offset)
+        sb = c << gf.components.bend_s(size=(dx_sbend, dy), cross_section=xs_arm)
+        sb.connect("o1", t.ports["o2"])
+
+        # short output straight to reach total device length
+        st = c << gf.components.straight(length=L_right, cross_section=xs_arm)
+        st.connect("o1", sb.ports["o2"])
+
+        return c
+
+    top_arm = arm(+1)
+    bottom_arm = arm(-1)
+
+    # Middle bar that tapers to a tip before the fork merges
+    W_mid = 0.6
+    L_bar = 6.0
+    L_mid_taper = 14.0
+    xs_mid = gf.cross_section.strip(width=W_mid, layer=(1, 0))
+
+    mid = gf.Component()
+    bar = mid << gf.components.straight(length=L_bar, cross_section=xs_mid)
+    tip = mid << gf.components.taper(length=L_mid_taper, width1=W_mid, width2=0.02, layer=(1, 0))
+    tip.connect("o1", bar.ports["o2"])
+
+    # Boolean union to get a single solid device
+    tmp = gf.boolean(top_arm, bottom_arm, operation="or", layer=(1, 0))
+    device = gf.boolean(tmp, mid, operation="or", layer=(1, 0))
+    return device
+
+
+if __name__ == "__main__":
+    c = three_prong_fork()
+    c.write_gds("three_prong_fork.gds")
+    c.show()

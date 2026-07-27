@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.991497",
+      "api_duration_seconds": 138.0436930656433,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 4123,
+        "total_tokens": 28908
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 2 validation errors for CrossSection\nlayer\n  Extra inputs are not permitted [type=extra_forbidden, input_value=(1, 0), input_type=tuple]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:29.573163",
+      "api_duration_seconds": 18.625529050827026,
+      "usage": {
+        "input_tokens": 6618,
+        "output_tokens": 3002,
+        "total_tokens": 9997
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'Path' object has no attribute 'smooth'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:49.697338",
+      "api_duration_seconds": 17.363917112350464,
+      "usage": {
+        "input_tokens": 9647,
+        "output_tokens": 2985,
+        "total_tokens": 13018
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'method' object is not subscriptable",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 18614,
+    "output_tokens": 10110,
+    "total_tokens": 51923
+  }
+}

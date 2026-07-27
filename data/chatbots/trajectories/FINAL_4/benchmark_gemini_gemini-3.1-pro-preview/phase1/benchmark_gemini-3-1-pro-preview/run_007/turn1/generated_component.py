@@ -1,0 +1,71 @@
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler() -> gf.Component:
+    """
+    Creates a symmetric directional coupler matching the 18x3 footprint.
+    Built by assembling S-bends and straight waveguide primitives.
+    """
+    c = gf.Component("symmetric_coupler")
+
+    # --- Design Parameters ---
+    total_length = 18.0
+    width = 1.0
+    coupling_length = 2.0
+    gap = 0.2
+    
+    # Calculate bend dimensions to hit the total length
+    dx = (total_length - coupling_length) / 2.0  # Length of the S-bends (8.0 um)
+    
+    # Y-axis centers to fit exactly within a 3.0 um height bound
+    # Centers at +/- 1.0 with a width of 1.0 gives limits of +1.5 to -1.5 (total height = 3.0)
+    y_port = 1.0                             
+    y_center = (gap / 2.0) + (width / 2.0)   
+    
+    # Vertical shifts for the S-bends
+    dy_top = y_center - y_port               
+    dy_bot = -y_center - (-y_port)           
+
+    # --- Create Primitives ---
+    # Define the cross-section
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+
+    # Create the reusable primitive segments
+    straight_mid = gf.components.straight(length=coupling_length, cross_section=xs)
+    bend_down = gf.components.bend_s(size=(dx, dy_top), cross_section=xs)  
+    bend_up = gf.components.bend_s(size=(dx, dy_bot), cross_section=xs)    
+
+    # --- Top Arm Assembly ---
+    # Add references to the component
+    t_in = c << bend_down
+    t_str = c << straight_mid
+    t_out = c << bend_up
+
+    # Position the starting port, then daisy-chain connect the rest
+    t_in.movey(y_port)
+    t_str.connect("o1", t_in.ports["o2"])
+    t_out.connect("o1", t_str.ports["o2"])
+
+    # --- Bottom Arm Assembly ---
+    # Add references to the component
+    b_in = c << bend_up
+    b_str = c << straight_mid
+    b_out = c << bend_down
+
+    # Position the starting port, then daisy-chain connect the rest
+    b_in.movey(-y_port)
+    b_str.connect("o1", b_in.ports["o2"])
+    b_out.connect("o1", b_str.ports["o2"])
+
+    # --- Expose External Ports ---
+    c.add_port("o1", port=t_in.ports["o1"])   
+    c.add_port("o2", port=b_in.ports["o1"])   
+    c.add_port("o3", port=t_out.ports["o2"])  
+    c.add_port("o4", port=b_out.ports["o2"])  
+
+    return c
+
+if __name__ == "__main__":
+    # Generate and explicitly save the layout
+    device = symmetric_coupler()
+    device.write_gds("symmetric_coupler.gds")

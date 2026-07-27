@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.495086",
+      "api_duration_seconds": 47.35108780860901,
+      "usage": {
+        "input_tokens": 2344,
+        "output_tokens": 1678,
+        "total_tokens": 12064
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function wavy_bands.<loc...callable at 0x12c67d120>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:00.167645",
+      "api_duration_seconds": 11.767630100250244,
+      "usage": {
+        "input_tokens": 4131,
+        "output_tokens": 1468,
+        "total_tokens": 6522
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 2 validation errors for CrossSection\ncross_section\n  Extra inputs are not permitted [type=extra_forbidden, input_value=CrossSection(sections=(Se...None, bbox_offsets=None), input_type=CrossSection]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=<function wavy_bands.<loc...callable at 0x12d47d080>, input_type=function]\n    For further inform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:13.509371",
+      "api_duration_seconds": 19.16515302658081,
+      "usage": {
+        "input_tokens": 5778,
+        "output_tokens": 1306,
+        "total_tokens": 9890
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: wavy_bands.<locals>.get_varying_cross_section_at_t() missing 1 required positional argument: 't'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12253,
+    "output_tokens": 4452,
+    "total_tokens": 28476
+  }
+}

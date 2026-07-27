@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:55:12.730495",
+      "api_duration_seconds": 224.32137274742126,
+      "usage": {
+        "input_tokens": 3170,
+        "output_tokens": 1582,
+        "total_tokens": 24447
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:58:58.355811",
+      "api_duration_seconds": 68.4080159664154,
+      "usage": {
+        "input_tokens": 4778,
+        "output_tokens": 1409,
+        "total_tokens": 11000
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports straight_gdsfactorypcomponentspwaveguidespstraight_L0p3_71b9e094_0_0[\"o1\"] and Port \"o2\" (\"500\"/\"1100\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:00:08.054072",
+      "api_duration_seconds": 86.75381207466125,
+      "usage": {
+        "input_tokens": 6266,
+        "output_tokens": 1738,
+        "total_tokens": 14985
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.25 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14214,
+    "output_tokens": 4729,
+    "total_tokens": 50432
+  }
+}

@@ -1,0 +1,132 @@
+import gdsfactory as gf
+import numpy as np
+
+def get_cosine_s_bend_path(length, height, n=100):
+    """
+    Generates a generic S-bend path using a cosine profile.
+    Snaps points to 1nm grid (3 decimal places) to help with alignment.
+    """
+    x = np.linspace(0, length, n)
+    # Cosine S-bend function: y(x) = H/2 * (1 - cos(pi * x / L))
+    y = (height / 2) * (1 - np.cos(np.pi * x / length))
+    
+    # Snap to 1nm grid to minimize floating point errors
+    x = np.round(x, 3)
+    y = np.round(y, 3)
+    
+    points = np.column_stack((x, y))
+    return gf.Path(points)
+
+@gf.cell
+def device_120x4():
+    """
+    Recreation of the 4-waveguide coupler device.
+    Constraint: 120um x 4um footprint.
+    """
+    c = gf.Component()
+
+    # --- Parameters ---
+    # Overall Dimensions
+    L_total = 120.0
+    H_total = 4.0
+    
+    # Longitudinal segmentation
+    L_center_straight = 40.0
+    L_bend = (L_total - L_center_straight) / 2  # 40.0
+
+    # Cross-sectional dimensions (Widths & Gaps)
+    # Designed to fit exactly within 4um height with high contrast
+    w_inner = 0.3          # Width of inner waveguides
+    w_outer_narrow = 0.3   # Width of outer waveguides in coupling region
+    w_outer_wide = 1.3     # Width of wide blocks at the edges
+    gap = 0.2              # Gap between waveguides
+    
+    # --- Y-Coordinate Calculations ---
+    # 1. Inner Waveguides (Fixed Straights)
+    # Center -> Gap/2 -> WG/2
+    y_inner = (gap / 2) + (w_inner / 2)
+    
+    # 2. Outer Waveguides (Variable)
+    # Position in the center (coupling region):
+    y_outer_narrow = (y_inner + w_inner/2) + gap + (w_outer_narrow/2)
+    
+    # Position at the edges (wide input/output):
+    # Align top edge of wide WG to H_total/2 (2.0)
+    y_outer_wide = (H_total / 2) - (w_outer_wide / 2)
+    
+    # Vertical shift for the S-bend
+    dy_bend = y_outer_wide - y_outer_narrow
+
+    # --- Geometry Construction ---
+
+    # 1. Inner Waveguides (Straight)
+    xs_inner = gf.cross_section.strip(width=w_inner)
+    
+    wg_inner_top = c << gf.components.straight(length=L_total, cross_section=xs_inner)
+    wg_inner_top.move((-L_total/2, y_inner))
+    
+    wg_inner_bot = c << gf.components.straight(length=L_total, cross_section=xs_inner)
+    wg_inner_bot.move((-L_total/2, -y_inner))
+
+
+    # 2. Outer Top Arm
+    # A. Center Straight Section
+    xs_outer_narrow = gf.cross_section.strip(width=w_outer_narrow)
+    xs_outer_wide = gf.cross_section.strip(width=w_outer_wide)
+
+    wg_outer_top_center = c << gf.components.straight(length=L_center_straight, cross_section=xs_outer_narrow)
+    wg_outer_top_center.move((-L_center_straight/2, y_outer_narrow))
+
+    # B. Left Tapered S-Bend (Wide -> Narrow)
+    # Path goes Down (-dy) from Start
+    path_down = get_cosine_s_bend_path(length=L_bend, height=-dy_bend)
+    
+    trans_wide_to_narrow = gf.path.transition(
+        cross_section1=xs_outer_wide,
+        cross_section2=xs_outer_narrow,
+        width_type='sine'
+    )
+    
+    bend_top_left = c << gf.path.extrude_transition(path_down, trans_wide_to_narrow)
+    # Connect bend output (o2) to center straight input (o1)
+    bend_top_left.connect("o2", wg_outer_top_center.ports["o1"])
+
+    # C. Right Tapered S-Bend (Narrow -> Wide)
+    # Path goes Up (+dy) from Start
+    path_up = get_cosine_s_bend_path(length=L_bend, height=dy_bend)
+    
+    trans_narrow_to_wide = gf.path.transition(
+        cross_section1=xs_outer_narrow,
+        cross_section2=xs_outer_wide,
+        width_type='sine'
+    )
+    
+    bend_top_right = c << gf.path.extrude_transition(path_up, trans_narrow_to_wide)
+    # Connect bend input (o1) to center straight output (o2)
+    bend_top_right.connect("o1", wg_outer_top_center.ports["o2"])
+
+
+    # 3. Outer Bottom Arm (Mirrored)
+    # Center Straight
+    wg_outer_bot_center = c << gf.components.straight(length=L_center_straight, cross_section=xs_outer_narrow)
+    wg_outer_bot_center.move((-L_center_straight/2, -y_outer_narrow))
+
+    # Bottom Left Bend (Mirror of Top Left)
+    bend_bot_left = c << gf.path.extrude_transition(path_down, trans_wide_to_narrow)
+    bend_bot_left.mirror(p1=(0,0), p2=(1,0)) # Mirror across X-axis
+    bend_bot_left.connect("o2", wg_outer_bot_center.ports["o1"])
+    
+    # Bottom Right Bend (Mirror of Top Right)
+    bend_bot_right = c << gf.path.extrude_transition(path_up, trans_narrow_to_wide)
+    bend_bot_right.mirror(p1=(0,0), p2=(1,0)) # Mirror across X-axis
+    bend_bot_right.connect("o1", wg_outer_bot_center.ports["o2"])
+
+    # --- Fix Off-Grid Errors ---
+    # Flattening the component merges all references into a single cell 
+    # and snaps all vertices to the grid, resolving the ValueError.
+    c_flat = c.flatten()
+    return c_flat
+
+if __name__ == "__main__":
+    device = device_120x4()
+    device.show()

@@ -1,0 +1,39 @@
+{
+  "turn": 2,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:57:27.650344",
+      "api_duration_seconds": 69.00744867324829,
+      "usage": {
+        "input_tokens": 5414,
+        "output_tokens": 820,
+        "total_tokens": 11736
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function star_geometry_s..._profile at 0x16fa78f40>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:58:38.616124",
+      "api_duration_seconds": 73.32180380821228,
+      "usage": {
+        "input_tokens": 6343,
+        "output_tokens": 1028,
+        "total_tokens": 12839
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11757,
+    "output_tokens": 1848,
+    "total_tokens": 24575
+  }
+}

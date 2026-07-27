@@ -1,0 +1,78 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def generate_recreated_device():
+    """
+    Refined recreation of the four-petal device using a 'lens' (almond) shape 
+    to achieve sharp tips at both ends of each petal, matching the target 
+    image's characteristic geometry.
+    """
+    c = gf.Component("recreated_device_v5")
+    layer = (1, 0)
+    
+    # 1. Dimensions based on 4.7um x 4.7um footprint
+    total_span = 4.7
+    half_len = total_span / 2.0
+    
+    # 2. Stub/Cross Parameters
+    # The stubs are thin rectangular extensions at the tips.
+    stub_width = 0.14  
+    cross_base = gf.components.cross(length=total_span, width=stub_width, layer=layer)
+    
+    # 3. Create a "Lens" (Pointed Oval) Petal
+    # Intersection of two circles creates a shape with sharp points.
+    def create_lens(length_full, width_full, layer):
+        p = gf.Component()
+        rx = length_full / 2.0
+        ry = width_full / 2.0
+        # Formula for circle radius R and center offset d to create a lens of specific L, W
+        # R^2 = rx^2 + (R - ry)^2  => R^2 = rx^2 + R^2 - 2*R*ry + ry^2 => 2*R*ry = rx^2 + ry^2
+        R = (rx**2 + ry**2) / (2 * ry)
+        d = R - ry
+        
+        c1 = gf.components.circle(radius=R, layer=layer)
+        c2 = gf.components.circle(radius=R, layer=layer)
+        
+        # Intersection of two circles offset by 'd' along the y-axis
+        ref1 = p << c1
+        ref1.movey(d)
+        ref2 = p << c2
+        ref2.movey(-d)
+        
+        lens = gf.boolean(A=ref1, B=ref2, operation="and", layer=layer)
+        return lens
+
+    # Petal proportions: approx 1.75um long, 0.75um wide
+    petal_len = 1.76
+    petal_wid = 0.82
+    petal_single = create_lens(length_full=petal_len, width_full=petal_wid, layer=layer)
+    
+    # 4. Assemble Petals
+    # We place the petals such that their inner points meet at the origin.
+    petal_group = gf.Component("petal_assembly")
+    
+    # Offsetting by half length so the "tip" of the lens is at (0,0)
+    offset = petal_len / 2.0 - 0.02 # Tiny overlap to ensure connectivity
+    
+    for angle in [0, 90, 180, 270]:
+        ref = petal_group << petal_single
+        ref.rotate(angle)
+        # Move the centered lens so its end is at center
+        dx = offset * np.cos(np.radians(angle))
+        dy = offset * np.sin(np.radians(angle))
+        ref.move((dx, dy))
+        
+    # 5. Final Geometry
+    # Combine the sharp-tipped petals with the thin cross stubs.
+    final_geom = gf.boolean(A=petal_group, B=cross_base, operation="or", layer=layer)
+    
+    c << final_geom
+    
+    # Verify Footprint: Total span is defined by the cross_base (4.7um)
+    return c
+
+if __name__ == "__main__":
+    device = generate_recreated_device()
+    device.write_gds("device.gds")
+    # device.show()

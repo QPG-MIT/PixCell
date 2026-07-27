@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.454510",
+      "api_duration_seconds": 81.79893469810486,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 1454,
+        "total_tokens": 13085
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:38.286738",
+      "api_duration_seconds": 67.31985878944397,
+      "usage": {
+        "input_tokens": 3818,
+        "output_tokens": 1264,
+        "total_tokens": 12570
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortTypeMismatchError: Type mismatch between the ports rectangle_gdsfactorypcomponentspshapesprectangle_S2_2_L_d5212e44_0_0[\"e3\"] and Port \"o2\" (electrical/optical)",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:47.232291",
+      "api_duration_seconds": 21.245383739471436,
+      "usage": {
+        "input_tokens": 5159,
+        "output_tokens": 1348,
+        "total_tokens": 7525
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'geometry'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11322,
+    "output_tokens": 4066,
+    "total_tokens": 33180
+  }
+}

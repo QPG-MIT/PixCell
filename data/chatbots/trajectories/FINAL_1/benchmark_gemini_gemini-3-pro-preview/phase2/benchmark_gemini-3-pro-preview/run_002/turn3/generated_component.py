@@ -1,0 +1,114 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_design():
+    """
+    Trident Spot-Size Converter / Inverse Taper Coupler.
+    
+    Features:
+    - Central waveguide tapers to a point (terminates).
+    - Two side arms start as sharp tips close to the center and expand outwards.
+    - Output is two parallel waveguides with a specific footprint.
+    
+    Constraints:
+    - Footprint: 40.0 um x 1.7 um
+    """
+    c = gf.Component()
+
+    # =========================================================================
+    # 1. Geometry Parameters
+    # =========================================================================
+    
+    # Global Dimensions
+    L_total = 40.0
+    L_transition = 25.0       # Length of the tapered/bending section
+    L_exit = L_total - L_transition # Length of the straight output section
+    
+    footprint_height = 1.7    # Outer edge to outer edge distance at output
+    layer_wg = (1, 0)
+
+    # Waveguide Widths
+    w_center_in = 0.5         # Input width of central waveguide
+    w_center_tip = 0.05       # Tip width of central waveguide (terminates)
+    
+    w_arm_in = 0.05           # Input width of side arms (sharp tip)
+    w_arm_out = 0.5           # Output width of side arms
+    
+    gap_in = 0.1              # Initial gap between central waveguide and side arms
+
+    # Y-Position Calculations
+    # -----------------------
+    # Output: Arms are pushed to the edges of the 1.7um footprint.
+    # Top arm center Y = (Total Height / 2) - (Arm Width / 2)
+    y_arm_out = (footprint_height / 2) - (w_arm_out / 2)
+    
+    # Input: Arms are tightly packed against the central waveguide.
+    # Top arm center Y = (Center Width / 2) + Gap + (Arm Width / 2)
+    y_arm_in = (w_center_in / 2) + gap_in + (w_arm_in / 2)
+
+    # =========================================================================
+    # 2. Build Central Taper
+    # =========================================================================
+    
+    # The central waveguide is a simple linear taper
+    taper = c << gf.components.taper(
+        length=L_transition,
+        width1=w_center_in,
+        width2=w_center_tip,
+        layer=layer_wg
+    )
+    taper.move((0, 0))
+
+    # =========================================================================
+    # 3. Build Side Arms (S-Bend Transition + Straight Exit)
+    # =========================================================================
+
+    def create_side_arm():
+        arm = gf.Component()
+        
+        # --- Part A: Transition (S-Bend & Expansion) ---
+        # We generate a path that moves from y_arm_in to y_arm_out using a cosine profile
+        n_points = 101
+        t = np.linspace(0, 1, n_points)
+        x_pts = t * L_transition
+        
+        # Cosine S-bend formula: y(t) = start + (end - start) * (1 - cos(pi*t))/2
+        y_pts = y_arm_in + (y_arm_out - y_arm_in) * (0.5 * (1 - np.cos(np.pi * t)))
+        
+        path_points = np.column_stack((x_pts, y_pts))
+        p_trans = gf.Path(path_points)
+        
+        # Define cross-sections for the start and end of the transition
+        xs_in = gf.cross_section.cross_section(width=w_arm_in, layer=layer_wg)
+        xs_out = gf.cross_section.cross_section(width=w_arm_out, layer=layer_wg)
+        
+        # Create a transition that interpolates width linearly along the path
+        transition = gf.path.transition(xs_in, xs_out, width_type='linear')
+        
+        # Extrude the transition
+        ref_trans = arm << gf.path.extrude_transition(p_trans, transition)
+        
+        # --- Part B: Straight Exit ---
+        # Add the straight waveguide section at the output
+        p_exit = gf.path.straight(length=L_exit)
+        ref_exit = arm << gf.path.extrude(p_exit, cross_section=xs_out)
+        
+        # Connect the straight exit to the end of the transition
+        ref_exit.connect("o1", ref_trans.ports["o2"])
+        
+        return arm
+
+    # Instantiate Top Arm
+    top_arm_comp = create_side_arm()
+    c << top_arm_comp
+    
+    # Instantiate Bottom Arm (Mirror of Top Arm)
+    bot_ref = c << top_arm_comp
+    bot_ref.mirror(p1=(0,0), p2=(1,0))
+
+    return c
+
+if __name__ == "__main__":
+    device = device_design()
+    device.write_gds("trident_coupler.gds")

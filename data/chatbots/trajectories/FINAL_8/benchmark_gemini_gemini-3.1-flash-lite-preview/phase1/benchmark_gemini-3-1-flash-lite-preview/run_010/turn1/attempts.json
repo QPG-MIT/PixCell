@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.194426",
+      "api_duration_seconds": 53.129112005233765,
+      "usage": {
+        "input_tokens": 3155,
+        "output_tokens": 1125,
+        "total_tokens": 7893
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_8/benchmark_gemini_gemini-3.1-flash-lite-preview/phase1/benchmark_gemini-3-1-flash-lite-preview/run_010/turn1/generated_component.py\", line 78, in <module>\n    device = device_structure()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/li",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:11:09.899250",
+      "api_duration_seconds": 21.450984954833984,
+      "usage": {
+        "input_tokens": 4821,
+        "output_tokens": 926,
+        "total_tokens": 7766
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:11:32.940498",
+      "api_duration_seconds": 18.383501768112183,
+      "usage": {
+        "input_tokens": 5766,
+        "output_tokens": 996,
+        "total_tokens": 9053
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13742,
+    "output_tokens": 3047,
+    "total_tokens": 24712
+  }
+}

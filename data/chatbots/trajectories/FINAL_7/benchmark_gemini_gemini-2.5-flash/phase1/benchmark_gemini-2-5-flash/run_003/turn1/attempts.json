@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.909108",
+      "api_duration_seconds": 110.57367706298828,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 2886,
+        "total_tokens": 27379
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o1' is not a valid port name or index. Available ports: ['e1', 'e2', 'e3', 'e4']\"\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_7/benchmark_gemini_gemini-2.5-flash/phase1/benchmark_gemini-2-5-flash/run_003/turn1/generated_component.py\", line 108, in <module>\n    device = create_device_from_image()\n  ",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:03.154757",
+      "api_duration_seconds": 16.094175815582275,
+      "usage": {
+        "input_tokens": 5788,
+        "output_tokens": 2211,
+        "total_tokens": 9764
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortTypeMismatchError: Type mismatch between the ports taper_gdsfactorypcomponentsptapersptaper_L0p4_W1_W0p5_L_e3515100_0_0[\"o2\"] and Port \"e1\" (optical/electrical)",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:20.919531",
+      "api_duration_seconds": 41.5057008266449,
+      "usage": {
+        "input_tokens": 8082,
+        "output_tokens": 2341,
+        "total_tokens": 19124
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.8 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16217,
+    "output_tokens": 7438,
+    "total_tokens": 56267
+  }
+}

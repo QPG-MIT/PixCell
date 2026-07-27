@@ -1,0 +1,181 @@
+Looking at the image, I can see a black silhouette that appears to be:
+- 4 bottle-like shapes (necks) at the top
+- A rectangular box/crate holding them
+- A small triangular/arrow point at the bottom (like a speech bubble pointer or a stake)
+
+The overall shape looks like a wine bottle carrier/crate with 4 bottles, and a pointed bottom (like a garden stake or speech bubble indicator).
+
+Let me analyze the dimensions more carefully:
+- The footprint constraint is [25, 10] μm - so 25 μm wide and 10 μm tall (or vice versa)
+- Looking at the image proportions, it seems wider than tall if we consider just the main rectangular portion
+- But with the bottles on top and point on bottom, the height is significant
+
+Actually, looking again at the shape:
+1. There are 4 bottle necks at the top - they taper from wider at top to narrower at bottom where they meet the box
+2. A rectangular box in the middle
+3. A small triangular point/arrow at the bottom center
+
+The gaps between bottles create the visual of individual bottle necks.
+
+Let me think about how to construct this:
+
+Option 1: Build using boolean operations
+- Create the main rectangular box
+- Create 4 tapered shapes for bottle necks
+- Create the bottom triangle/arrow
+- Union them all together
+
+Option 2: Use paths and polygons
+- Define the outline as a polygon
+
+Let me estimate proportions from the image:
+- The box appears to be roughly square or slightly wider than tall
+- The bottle necks extend above the box by maybe 60-70% of the box height
+- The bottom point extends down by maybe 10-15% of the box height
+- The bottles are evenly spaced
+- Each bottle neck tapers - wider at top, narrower where it meets the box
+
+Given the footprint [25, 10] - 25 μm x 10 μm
+- This is quite wide and short
+
+
+- The overall device should fit within this constraint
+
+The width dominates the design, so I need to allocate the 25 μm primarily to the box width, with the 10 μm covering the total height of bottles, box, and point combined. The rectangular body forms the main structure, with four tapered prongs extending upward and a single point projecting downward.
+
+Proportionally, the box width appears roughly 1.2 times its height. The bottle necks take up about 60% of the box height, and the V-notch at the bottom adds another dimension. For a 25×10 footprint, I could set the box at 20 μm wide by 5 μm tall, extend the bottles 4 μm upward, and have the point drop 1 μm down, totaling approximately 10 μm in height. This keeps everything within the bounding box while maintaining the visual proportions I see in the image. 1:1 or slightly wider than tall, with the overall height reaching about 1.5-1.8x the width when including the bottles and bottom point. Given the 25x10 μm footprint constraint, I should consider if this means 10 μm wide by 25 μm tall instead. But the image clearly shows a wider-than-tall device, so I'll design based on the visual proportions and adjust as needed.
+
+Starting with the actual implementation: I'll set up a basic structure with a 20 μm wide rectangular box and 10 μm height as the foundation, then add the bottle elements on top. _spacing * (i + 1)
+        
+        # Create bottle as a polygon (trapezoid)
+        bottle_points = [
+            (x_pos - bottle_bottom_width/2, box_height/2),  # bottom left
+            (x_pos + bottle_bottom_width/2, box_height/2),  # bottom right
+            (x_pos + bottle_top_width/2, box_height/2 + bottle_height),  # top right
+            (x_pos - bottle_top_width/2, box_height/2 + bottle_height),  # top left
+        ]
+        c.add_polygon(bottle_points, layer=layer)
+    
+    # Create bottom point (triangle)
+    point_points = [
+        (-point_width/2, -box_height/2),  # left
+        (point_width/2, -box_height/2),  # right
+        (0, -box_height/2 - point_height),  # bottom tip
+    ]
+    c.add_polygon(point_points, layer=layer)
+    
+    return c
+
+For each bottle, I'm calculating its horizontal position based on the spacing formula, then defining the four corners of a trapezoid that widens toward the top. After adding all bottles, I create a triangular point at the bottom center of the box.
+
+Looking at the actual image, the bottles taper differently than what I've coded—they're narrower at the top (neck opening) and wider where they meet the box. I need to reverse the width values so the bottles expand downward instead of upward.
+
+Examining the silhouette more carefully, the white gaps between bottles form V-shapes pointing downward, which confirms the bottles are wider at their base and narrow toward the top opening.
+
+Now I need to reconsider the [25, 10] footprint dimensions. The image appears taller than it is wide overall, so perhaps the footprint should be interpreted as width=10 and height=25 rather than the other way around. Let me verify this against the actual aspect ratio. (1, 0)
+
+# Design for 10 μm wide, total ~25 μm tall
+
+# Main box dimensions
+box_width = 10  # μm
+box_height = 8  # μm
+
+# Bottle parameters - 4 bottles
+num_bottles = 4
+bottle_height = 6  # height above the box
+bottle_top_width = 1.5  # width at the top opening
+bottle_gap = 0.5  # gap between bottles at top
+
+# Calculate spacing
+# Total width at top = 4 * bottle_top_width + 3 * gaps should be less than box_width
+# Let's distribute evenly
+
+bottle_spacing = box_width / num_bottles  # center-to-center spacing
+
+Now I'm setting up the layer definition and establishing the base container dimensions. The four bottles will sit on top of the rectangular box, with each bottle having a narrower opening at the top. I'm calculating the center-to-center spacing to distribute them evenly across the 10 μm width.
+
+For the bottle geometry, I'll make them wider at the bottom where they connect to the box and taper toward the top opening. The bottom width uses 90% of the spacing to leave small gaps between adjacent bottles. I also need to define the pointed base that extends below the box, which will be about 1.5 μm wide and 2 μm tall.
+
+Now I'm constructing the bottles as trapezoid polygons positioned across the box width, with each one's corners calculated based on its center position and the top/bottom width parameters. Then I'll add the downward-pointing triangle at the base of the container.
+
+Looking back at the reference image more carefully, I notice the bottles have nearly vertical sides rather than a strong taper, and there are clear gaps between each bottle extending all the way down. The negative space between them forms V-shaped channels that widen toward the bottom where they meet the box. I should reconsider how the bottle geometry actually maps to what's shown—the necks appear as distinct separate shapes positioned close together at the base with spacing between them throughout their height. Let me trace the outline more carefully, starting from the top left bottle with its flat top and slightly angled sides.
+
+Actually, examining the white space between the bottles reveals they're wider at the top and gradually narrow as they descend, with the V-shaped gaps closing inward. This means the bottles taper toward the bottom where they merge into the solid rectangular base.
+
+For the 25x10 footprint dimensions, I'm reconsidering the proportions. The overall shape appears roughly 1.3:1 in height-to-width ratio rather than the 2.5:1 that 25x10 would suggest. This could mean the footprint represents either a landscape orientation (25 wide, 10 tall) or that the entire device should fit within those bounds rather than fill them exactly.
+
+Looking at the actual proportions in the image, the rectangular body is nearly square, with the bottles and point extending the total height to about 1.7 times the box height. If I work with a 12 μm wide box and 10 μm tall box, then add 7 μm for the bottle necks and 1.5 μm for the bottom point, I get approximately 12 x 18.5 μm total—which seems more aligned with what I'm seeing visually.
+
+The challenge is fitting this into a 25 x 10 μm constraint. I could stretch it horizontally to 20 μm wide with an 8 μm tall box and 5 μm bottles, giving 20 x 14 μm, but that still exceeds the height limit. Even compressing the box to just 4 μm tall to reach exactly 10 μm total height would make the bottles disproportionately large compared to the container itself. I think prioritizing visual accuracy over strict dimensional constraints makes more sense here.
+
+I'll design the crate based on what the image actually shows. The main box should be around 18 μm wide by 12 μm tall, with 4 bottles positioned inside. Each bottle has a narrow neck about 9 μm tall and a wider top section roughly 3 μm across. Spacing them evenly across the box width gives roughly 4.5 μm per bottle slot.
+
+The key detail is that bottles have visible gaps between them at the top but sit closer together at the bottom where they meet the box, with only small 0.5 μm gaps creating the V-shaped separations. The bottom point of each bottle extends about 2.5 μm below the box with a 3 μm base width.
+
+For the geometry, I'm creating the main rectangular box first, then adding four trapezoid shapes for the bottle necks positioned at regular intervals across the width. _height/2 - point_height),
+    ]
+    c.add_polygon(point_points, layer=layer)
+    
+    return c
+
+device = bottle_crate()
+device.write_gds("bottle_crate.gds")
+
+Looking back at the bottle geometry, I need to reconsider the neck orientation. The leftmost bottle has a vertical left edge but the right side tapers inward toward the center. The rightmost follows the opposite pattern—vertical right edge with the left side angling in. The middle two bottles both narrow slightly as they extend upward. This suggests the bottles are actually narrower at the top, not wider.
+
+Reconsidering the structure: the outer bottles likely have their outer edges aligned with the box perimeter while their inner edges converge. The inner bottles taper on both sides. This arrangement creates distinct neck openings at the top with visible gaps between them, while maintaining a fairly continuous outer profile with the box edges. The overall shape is a rectangular base with four trapezoidal bottle protrusions stacked on top, each narrowing toward its opening. the gaps narrowing as you go up means the bottles must be getting wider toward the top to maintain roughly the same total width. At the box level, larger gaps between bottles indicate they're narrower there, while at the top, smaller gaps combined with the constraint that the outer bottles align with the box edges means each bottle expands outward as it rises. This creates a tapered bottle shape—wider at the top, narrower at the bottom. The structure consists of four trapezoid shapes positioned on top of a rectangular base, with each trapezoid wider at the top and narrower where it meets the box. There's also a small triangular point extending below.
+
+For the dimensions, I need to consider the aspect ratio shown in the image—it appears roughly 1.3-1.5 times taller than it is wide. Given a footprint of [25, 10], I could orient this as either 25 wide by 10 tall (which would be very compressed) or flip it to 10 wide by 25 tall to better match the portrait-like proportions. The second option seems more faithful to what I'm seeing: a 10-unit-wide box with 10 units of height, trapezoids extending 10 units upward, and a 2.5-unit triangular base below.
+
+This gives a total height of about 22.5 micrometers, which fits reasonably within the constraints. Rather than overthinking the exact footprint interpretation, I'll design it to visually match the image and note the approximate dimensions.
+
+Setting up the bottle crate with a 20 micrometer width and 5 micrometer box height. I'm placing 4 bottles with 4 micrometer heights and 2.5 micrometer top widths, spacing them evenly across the box width. The bottle bases are about 4.4 micrometers wide with 0.6 micrometer gaps at the box edges. I'll create the main rectangular base and then add trapezoid shapes for each bottle neck positioned at regular intervals.
+
+For each bottle, I'm defining corner points that form a trapezoid—wider at the bottom where it meets the box and narrower at the top. After adding all four bottles, I'm creating a small triangular point at the bottom center of the crate. Finally, I instantiate the complete bottle crate component.
+
+Now I'm writing the design to a GDS file and reconsidering the proportions. The initial 20 x 10 μm dimensions feel too compressed compared to the reference image, so I'm starting fresh with a design that better captures the visual proportions while staying reasonably close to the target footprint. I'm setting up a new component with a more generous width around 18 μm and adjusting the height accordingly to match the image's aspect ratio.
+
+For the bottle arrangement, I'm planning 4 bottles spaced evenly across the width, each with a tapered profile that narrows from the base to the top. The bottles will have a V-shaped gap between them at the bottom (around 0.5 μm) that widens slightly at the top (1.0 μm gap), creating that characteristic crate appearance. I'm also adding a pointed stake-like feature at the bottom with a width of about 2.5 μm to complete the carrier structure.
+
+Now I need to construct the actual geometry. First, I'll create the main rectangular crate body, then iterate through each bottle position to build the trapezoidal neck shapes. For each bottle, I'm calculating its center position along the width and defining the four corner points that form the trapezoid, starting from the bottom-left corner and moving counterclockwise.
+
+After the bottles are added, I'll create the triangular point at the bottom of the carrier by defining three vertices: two at the base of the rectangle and one apex point below. Finally, the function returns the completed component and exports it to a GDS file.
+
+For the dimensions, I need to reconsider the scaling. The current layout (18 × 10 μm box with 8 μm bottle extensions and 2 μm point) totals 20 μm in height, which exceeds the target 25 × 10 footprint. I'll redistribute the proportions so the point takes 0.5 μm, the box 5 μm, and the bottles 4.5 μm to stay within the 10 μm height constraint.
+
+Now I'm setting up the component with scaled dimensions: a 20 μm wide box at 5 μm height, four bottles with 2.2 μm top width, a 1 μm tall point, and 0.4 μm gaps between bottles. The bottles are positioned at regular 5 μm intervals across the box width, and I'm iterating through each bottle position to place the neck geometry. device = bottle_carrier()
+device.write_gds("bottle_carrier.gds")
+
+The total dimensions work out to 20 x 10 μm, which fits within the 25 x 10 constraint. Reconsidering the proportions against the reference image, the bottles occupy roughly 60-80% of the box height, and at 80% (4/5 ratio) that aligns well. Breaking down the visual hierarchy: the rectangular box takes up about 40-45% of total height, bottles account for 50-55%, and the bottom point comprises the remaining 5-10%. For a 10 μm total height, this translates to approximately 4-4.5 μm for the box, 5-5.5 μm for the bottles, with minimal height for the point. footprint constraint is [25, 10] μm. The main body will be a rectangular crate approximately 22 μm wide by 11 μm tall. Four bottle necks extend upward, each 9 μm in height with a 3 μm width at the top. The bottles are spaced 5.5 μm apart center-to-center, with V-shaped gaps of about 0.6 μm between them at the box level, widening as they extend downward.
+
+I'll construct the rectangular base using a standard rectangle component, then add four trapezoidal bottle shapes positioned at regular intervals. Each trapezoid narrows from the wider bottom width (spacing minus gap) up to the narrower top. There's also a triangular point or stake at the bottom with a 2.5 μm base and 2.0 μm depth. The bottle polygons are defined with vertices starting from the bottom-left corner, moving counter-clockwise around each shape. device = bottle_carrier()
+    device.write_gds("bottle_carrier.gds")
+    print(f"Device bounding box: {device.size}")
+
+The output shows approximately 22 x 22 μm, which is larger than the target 25x10 footprint. I'm reconsidering whether to strictly match the footprint or prioritize the visual appearance from the image. Let me take another look at the shape to see if I'm interpreting it correctly—particularly the four protruding bottle neck shapes at the top, the solid rectangular body in the middle, and the small triangular point at the bottom.
+
+The bottle necks appear to be wider at their openings and narrow as they connect to the main box, with small gaps between adjacent bottles. The outer edges of the leftmost and rightmost bottles seem to align with the box edges, creating a unified silhouette. Given this interpretation, I'll write code that captures these proportions while keeping the overall dimensions reasonable.
+
+Setting up a GDScript component with a box approximately 22 units wide and 9 units tall to contain 4 bottles. Each bottle has a flat top opening around 2.8 units wide that tapers down to roughly 2.3 units where it meets the box, with 0.5-unit gaps between them. The stake point at the bottom will be about 2 units wide.
+
+Now adding the rectangular crate as the base container, then iterating through each of the four bottle positions to create trapezoid shapes that narrow toward the box and widen upward to form the bottle necks. For each bottle, calculating its horizontal center position and defining the four corner points of the trapezoid geometry.
+
+Then adding a triangular point at the bottom by defining three vertices that form a downward-pointing shape, which gives the carrier its distinctive profile. Finally returning the completed component and writing it out to a GDS file. The total height calculation shows 17.8 μm when combining the box height, bottle height, and point height.
+
+Looking at the dimensions more carefully, a 22 × 17.8 μm device doesn't match the target 25 × 10 footprint proportions. Rather than forcing exact numbers, I should focus on fitting the design within the 25 × 10 constraint while preserving the visual structure from the reference image. This means scaling the current dimensions by roughly 0.56 in the vertical direction to bring the height down to approximately 10 μm.
+
+Breaking down the scaled proportions: the central rectangular section would occupy about 4.5-5 μm, the bottle-shaped elements roughly 4-4.5 μm, and the pointed base around 0.5-1 μm of the total 10 μm height.
+
+For the 22 μm width, I'm planning 4 bottles with each taking up about 5.5 μm at the base and tapering to 3 μm at the top. Now I'll implement this in code with a box width of 20 μm, bottle height of 4 μm, and bottle top width of 2.2 μm, spacing them evenly across the available width.
+
+The gap between bottles is set to 0.4 μm, giving each bottle a base width of 4.6 μm. I'm adding a pointed tip that's 2 μm wide and 1 μm tall, which brings the total height to exactly 10 μm. The main crate is drawn as a rectangle, then I'm iterating through each bottle position to create the trapezoid shape that widens at the base and narrows toward the top before coming to a point. I should add documentation to explain what this device does and how it's structured. The function creates a bottle carrier with a rectangular crate body, four trapezoidal bottle shapes on top, and a triangular point at the bottom—all constrained to fit within the 25 x 10 μm footprint. The docstring should clarify the design features and dimensions being used.
+
+Now I'm setting up the dimensional parameters: the crate is 20 μm wide by 5 μm tall, with four bottles spaced evenly across it. Each bottle neck tapers from 2.2 μm at the top to a narrower width at the bottom (determined by the spacing minus a 0.4 μm gap), and extends 4 μm above the crate. The bottom stake is 2 μm wide and 1 μm tall, keeping the overall device within the specified footprint constraints.
+
+For the geometry, I'm creating the main rectangular crate centered at the origin, then iterating through each of the four bottles to define their trapezoidal neck shapes. Each bottle's x-position is calculated based on its index and spacing, with vertices defined counter-clockwise starting from the bottom-left corner. / 2 - point_height),       # bottom apex
+    ]
+    c.add_polygon(point_polygon, layer=layer)
+    
+    return c
+
+The main execution block generates the device, writes it to a GDS file, and prints the bounding box dimensions for verification. The final structure combines the rectangular base, bottle shapes, and triangular stake point into a complete carrier design. at -7.5 and +7.5. The leftmost bottle extends to -9.8 μm and the rightmost to +9.8 μm, both within the ±10 μm box boundaries. The total width remains 20 μm, and combined with the 10 μm height, this fits the required footprint.

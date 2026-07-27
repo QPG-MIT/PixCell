@@ -1,0 +1,83 @@
+import gdsfactory as gf
+
+@gf.cell
+def chain_link_device():
+    """
+    Constructs the device by combining the outer frame, 
+    two inner bars, and four bridging connectors.
+    """
+    c = gf.Component()
+    
+    # 1. Parameters
+    width = 3.0
+    height = 5.5
+    thickness = 0.3
+    radius = 1.0
+    bar_len = 1.6
+    connector_width = 0.3
+    connector_height = 0.5 # Distance between bar and frame
+    
+    # 2. Outer Frame (Path Extrusion)
+    # Using a standard racetrack path
+    path = gf.Path()
+    path.append(gf.path.straight(length=height - 2 * radius))
+    path.append(gf.path.arc(radius=radius, angle=90))
+    path.append(gf.path.straight(length=width - 2 * radius))
+    path.append(gf.path.arc(radius=radius, angle=90))
+    path.append(gf.path.straight(length=height - 2 * radius))
+    path.append(gf.path.arc(radius=radius, angle=90))
+    path.append(gf.path.straight(length=width - 2 * radius))
+    path.append(gf.path.arc(radius=radius, angle=90))
+    
+    xs = gf.cross_section.cross_section(width=thickness, layer=(1, 0))
+    frame = gf.path.extrude(path, cross_section=xs)
+    
+    # 3. Inner Bars
+    bar = gf.components.rectangle(size=(bar_len, thickness), layer=(1, 0))
+    bar_top = c << bar
+    bar_top.movey(0.7)
+    
+    bar_bottom = c << bar
+    bar_bottom.movey(-0.7)
+    
+    # 4. Connectors (The "Bridges")
+    # We create small rectangles to bridge the gap between the bars and the outer frame
+    connector = gf.components.rectangle(size=(0.3, 0.4), layer=(1, 0))
+    
+    # Place 4 connectors (left-top, right-top, left-bottom, right-bottom)
+    c1 = c << connector
+    c1.move((-0.8, 0.5))
+    
+    c2 = c << connector
+    c2.move((0.5, 0.5))
+    
+    c3 = c << connector
+    c3.move((-0.8, -0.9))
+    
+    c4 = c << connector
+    c4.move((0.5, -0.9))
+    
+    # 5. Final Assembly (Boolean Merge)
+    # Add the frame as a reference, then use boolean to merge everything
+    frame_ref = c << frame
+    
+    # Merge all parts into one layer
+    # Note: We rely on the boolean logic to weld overlapping parts
+    device = gf.boolean(
+        c, 
+        frame_ref, 
+        operation="or", 
+        layer=(1, 0)
+    )
+    
+    # Clear the temporary component and return the merged device
+    c.clear()
+    c << device
+    
+    return c
+
+if __name__ == "__main__":
+    device = chain_link_device()
+    device.write_gds("chain_link_device.gds")
+    device.show()
+    print("GDS file 'chain_link_device.gds' produced successfully.")

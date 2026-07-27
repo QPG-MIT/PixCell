@@ -1,0 +1,5 @@
+The error is saying that a 'method' object is not subscriptable. This means I'm trying to use square brackets on a method. Looking at the code, the issue is likely with `device.bbox`. 
+
+In gdsfactory, `bbox` might be a method that needs to be called, not a property. Let me fix this by calling it as a method: `device.bbox()` instead of `device.bbox`.
+
+Let me also check the rest of the code for any other potential issues.

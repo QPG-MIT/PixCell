@@ -1,0 +1,49 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.832550",
+      "api_duration_seconds": 0.0,
+      "usage": null,
+      "success": false,
+      "failure_type": "api_error",
+      "error_message": "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The service is currently unavailable.', 'status': 'UNAVAILABLE'}}",
+      "code_extracted": false
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:42.899130",
+      "api_duration_seconds": 9.102357864379883,
+      "usage": {
+        "input_tokens": 4928,
+        "output_tokens": 1074,
+        "total_tokens": 6002
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.5 < CrossSection.radius_min 5.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:53.419551",
+      "api_duration_seconds": 8.187598943710327,
+      "usage": {
+        "input_tokens": 6044,
+        "output_tokens": 1282,
+        "total_tokens": 7326
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10972,
+    "output_tokens": 2356,
+    "total_tokens": 13328
+  }
+}

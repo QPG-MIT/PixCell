@@ -1,0 +1,67 @@
+import gdsfactory as gf
+
+@gf.cell
+def y_branch_combiner():
+    """
+    Y-branch combiner device - two inputs merging to one output
+    with spreading S-bends and central coupling waveguide.
+    
+    Target footprint: 40 x 1.7 um
+    """
+    c = gf.Component()
+    
+    # Parameters
+    wg_width = 0.35
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+    
+    # Vertical positions (from center)
+    y_input = 0.35      # Input arm position
+    y_spread = 0.675    # Maximum spread position (gives ~1.7um total height)
+    
+    # Section lengths (total = 40 um)
+    L_in = 5.0          # Input straight section
+    L_bend_out = 7.0    # Outward spreading bend
+    L_coupling = 12.0   # Parallel coupling region
+    L_bend_in = 10.0    # Inward converging bend
+    L_out = 6.0         # Output straight section
+    
+    # X coordinate positions
+    x1 = L_in
+    x2 = x1 + L_bend_out
+    x3 = x2 + L_coupling
+    x4 = x3 + L_bend_in
+    
+    # === TOP ARM PATH ===
+    top_pts = [
+        (0, y_input),       # Input start
+        (x1, y_input),      # End of input straight
+        (x2, y_spread),     # Peak of outward spread
+        (x3, y_spread),     # End of coupling parallel section
+        (x4, 0),            # Merge at center
+    ]
+    top_path = gf.path.smooth(points=top_pts, radius=4.0)
+    c << gf.path.extrude(top_path, cross_section=xs)
+    
+    # === BOTTOM ARM PATH (symmetric mirror) ===
+    bot_pts = [(x, -y) for x, y in top_pts]
+    bot_path = gf.path.smooth(points=bot_pts, radius=4.0)
+    c << gf.path.extrude(bot_path, cross_section=xs)
+    
+    # === CENTRAL COUPLING WAVEGUIDE ===
+    central_start = x1 + 2
+    central_length = L_bend_out + L_coupling - 4
+    central = c << gf.components.straight(length=central_length, cross_section=xs)
+    central.move((central_start, 0))
+    
+    # === OUTPUT WAVEGUIDE ===
+    output = c << gf.components.straight(length=L_out, cross_section=xs)
+    output.move((x4, 0))
+    
+    return c
+
+
+# Generate and save the device
+if __name__ == "__main__":
+    device = y_branch_combiner()
+    device.write_gds("y_branch_combiner.gds")

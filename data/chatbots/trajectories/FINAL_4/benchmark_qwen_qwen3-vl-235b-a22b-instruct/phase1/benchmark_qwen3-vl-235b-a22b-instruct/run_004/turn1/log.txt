@@ -1,0 +1,47 @@
+Turn 1 Response:
+
+Looking at the image, I can see two parallel waveguides that form an S-bend shape, with a narrow gap between them in the middle section. This appears to be a directional coupler with S-bend transitions.
+
+The footprint constraint is 18μm × 3μm, which suggests the device is relatively compact.
+
+To recreate this geometry using GDSFactory parametric functions:
+
+1. I'll create a cross-section for the waveguides
+2. Use the `bend_s` component to create the S-bend shape for each waveguide
+3. Position them with a small gap between them
+4. The S-bend will naturally create the narrowing in the middle and widening at the ends
+
+Here's the Python script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def s_bend_coupler():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create first S-bend waveguide
+    s_bend1 = c << gf.components.bend_s(size=(18, 3), cross_section=xs)
+    s_bend1.move((0, 0))
+    
+    # Create second S-bend waveguide (mirror of first)
+    s_bend2 = c << gf.components.bend_s(size=(18, 3), cross_section=xs)
+    s_bend2.move((0, -0.5))  # Position below first with small gap
+    
+    # Add ports for connectivity
+    c.add_port("o1", port=s_bend1.ports["o1"])
+    c.add_port("o2", port=s_bend1.ports["o2"])
+    c.add_port("o3", port=s_bend2.ports["o1"])
+    c.add_port("o4", port=s_bend2.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = s_bend_coupler()
+device.write_gds("s_bend_coupler.gds")
+```
+
+This script creates two S-bend waveguides positioned with a small gap between them, which matches the geometry shown in the image. The S-bend component naturally creates the curved shape with wider ends and narrower middle section. The footprint constraint of 18μm × 3μm is respected by setting the size parameter of the bend_s component accordingly.

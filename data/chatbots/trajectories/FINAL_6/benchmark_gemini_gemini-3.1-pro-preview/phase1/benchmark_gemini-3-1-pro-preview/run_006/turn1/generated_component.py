@@ -1,0 +1,80 @@
+import gdsfactory as gf
+
+@gf.cell
+def crossing_star() -> gf.Component:
+    """
+    Creates a parametric star crossing device matching the provided footprint
+    and visual proportions. Built using elliptical petals and straight waveguide
+    tips, merged via boolean operations.
+    """
+    # ------------------------------------------------------------------
+    # Dimensions derived to exactly match the 4.7 x 4.7 um footprint
+    # ------------------------------------------------------------------
+    # Total footprint is 4.7 um, so the max extent from origin is 2.35 um
+    
+    # Straight waveguide segment at the tips
+    wg_length = 0.5
+    wg_width = 0.2
+    # Centering the 0.5 length wg at 2.1 makes it span from 1.85 to 2.35.
+    # Max extent = 2.35, matching exactly half of 4.7 footprint.
+    wg_center = 2.1  
+    
+    # Elliptical "petals" forming the adiabatic transition and central hub
+    ellipse_rx = 1.05
+    ellipse_ry = 0.4
+    # Centering at 1.0 makes the ellipse span from -0.05 to 2.05.
+    # - Overlaps the origin by 0.05 to ensure a solid central connection hub.
+    # - Overlaps the straight waveguide (starts at 1.85) to ensure a smooth transition.
+    ellipse_center = 1.0  
+
+    # 1. Create the base parametric primitives
+    petal = gf.components.ellipse(radii=(ellipse_rx, ellipse_ry), layer=(1, 0))
+    wg = gf.components.rectangle(size=(wg_length, wg_width), centered=True, layer=(1, 0))
+
+    # 2. Build the horizontal bar (East-West arms)
+    bar_h = gf.Component("horizontal_bar")
+    
+    # Right arm (East)
+    p_r = bar_h << petal
+    p_r.movex(ellipse_center)
+    w_r = bar_h << wg
+    w_r.movex(wg_center)
+    
+    # Left arm (West)
+    p_l = bar_h << petal
+    p_l.movex(-ellipse_center)
+    w_l = bar_h << wg
+    w_l.movex(-wg_center)
+
+    # 3. Build the vertical bar (North-South arms)
+    bar_v = gf.Component("vertical_bar")
+    
+    # Top arm (North)
+    p_t = bar_v << petal
+    p_t.rotate(90)
+    p_t.movey(ellipse_center)
+    w_t = bar_v << wg
+    w_t.rotate(90)
+    w_t.movey(wg_center)
+    
+    # Bottom arm (South)
+    p_b = bar_v << petal
+    p_b.rotate(90)
+    p_b.movey(-ellipse_center)
+    w_b = bar_v << wg
+    w_b.rotate(90)
+    w_b.movey(-wg_center)
+
+    # 4. Compose using Boolean operations
+    # Merge the horizontal and vertical bars into a single, unified continuous polygon.
+    # This automatically handles the overlapping centers and waveguide/petal intersections.
+    final_comp = gf.boolean(A=bar_h, B=bar_v, operation="or", layer=(1, 0))
+
+    return final_comp
+
+if __name__ == "__main__":
+    # Create the component
+    c = crossing_star()
+    
+    # Export to GDS file (this resolves the 'No GDS file produced' error)
+    c.write_gds("crossing_star.gds")

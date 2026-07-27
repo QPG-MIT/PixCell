@@ -1,0 +1,168 @@
+Looking at the two images:
+
+1. **Original target (first image)**: Shows a structure where:
+   - Two waveguides start relatively close together on the LEFT side
+   - They diverge/spread apart in the middle section
+   - Then converge back together on the RIGHT side
+   - The waveguides appear to cross over each other (one goes from top-left to bottom-right, the other from bottom-left to top-right)
+
+2. **My rendered result (second image)**: Shows:
+   - Two waveguides that start apart on the left
+   - Converge toward the right
+   - This is the OPPOSITE of what's needed - I had it backwards
+
+Looking more carefully at the original:
+- The TOP waveguide starts at the top-left, curves DOWN in the middle, then back UP to exit at top-right
+- The BOTTOM waveguide starts at bottom-left, curves UP in the middle, then back DOWN to exit at bottom-right
+- They appear to cross/swap positions in the middle (like an X pattern)
+
+Wait, let me look again more carefully at the original image:
+- There's a waveguide that goes from upper-left, stays relatively straight but curves slightly, exits at upper-right
+- There's a waveguide that goes from lower-left, angles UP significantly in the middle, then exits... 
+- Actually it looks like the waveguides CROSS in the middle - one goes from top-left to bottom-right area, and one goes from bottom-left to top-right area
+
+Looking at the structure:
+- Left side: Two waveguides close together at the left edge
+- Middle: They spread apart and seem to swap vertical positions
+- Right side: Two waveguides close together at the right edge, but swapped from their input positions
+
+This is a waveguide crossing or X-coupler structure!
+
+Let me re-examine:
+- Upper left input → travels and curves down → exits at lower right (or upper right after crossing back)
+
+
+- Lower left input → travels and curves up → exits at upper right (or lower right after crossing back)
+
+The original shows two waveguides forming an X crossing pattern where one path goes diagonally from top-left to bottom-right while the other goes from bottom-left to top-right, with straight sections following the crossing on the right side.
+
+The first waveguide enters at top-left, travels diagonally downward, then uses an S-bend to transition into a straight section exiting at the bottom-right. The second enters at bottom-left, moves diagonally upward, applies an S-bend for straightening, and exits at the top-right. The crossing point maintains wide separation between the paths while both ends show close spacing, with smooth S-bends handling the transitions between diagonal and straight segments. = [
+        (0, -y_inner),     # Start bottom-left
+        (5, -y_inner),     # Short straight
+        (20, y_outer),     # Cross to top
+        (35, y_inner),     # S-bend back
+        (40, y_inner)      # Exit top-right
+    ]
+
+I'll create smooth paths using the radius parameter to generate curved waveguides from these point sequences. Then extrude both paths with the cross-section to form the actual waveguide structures, and add them to the component.
+
+The rendered output doesn't match the original—the waveguides should actually cross rather than just converge. Looking at the footprint constraints of 40 × 1.7 μm, I need to reconsider the geometry to ensure the paths properly intersect within those bounds.
+
+At the input and output edges, the waveguides sit close together, then diverge significantly through the middle section before reconverging. I'll adjust the spacing parameters: keeping them 0.25 μm apart at the edges where they're bundled, and allowing them to spread up to 0.75 μm separation at the crossing point in the center.
+
+For the actual routing, waveguide 1 enters at the top-left, dips down through the middle crossing region, then exits at the bottom-right. Waveguide 2 mirrors this path—entering at the bottom-left, rising up through the center, and exiting at the top-right. This creates the crossing geometry within the 40 × 1.7 footprint.
+
+I'm using `gf.path.smooth()` with a 5-unit radius to generate smooth curves through the control points, then `gf.path.extrude()` applies the cross-section to create the actual waveguide geometry. Both waveguides get added to the component and returned.
+
+But examining the original image more closely, the top waveguide actually stays mostly elevated with just a gentle S-curve, not a dramatic dip. The bottom waveguide similarly maintains its level with minimal vertical movement. I need to reconsider the control point positions to better match this subtle crossing behavior rather than the exaggerated crossing I've defined. The crossing occurs because the top waveguide dips downward on the left side while the bottom one rises through the middle section, causing them to intersect and swap vertical positions. This creates a specific output pattern: the waveguides begin closely spaced at the inputs, cross in the middle region, then diverge significantly at the outputs—spreading from roughly 0.6-0.8 μm center spacing to approximately 1.4-1.6 μm based on the 40 × 1.7 μm footprint dimensions. The two waveguides start adjacent to each other on the left, with one curving upward and the other downward to create this crossing and spreading effect. d RIGHT, ending at UPPER position. The lower waveguide enters from the LEFT at a lower position, curves UP dramatically through the middle section, and continues toward the RIGHT, ending at the LOWER position. The two paths cross in the middle area where the bottom one rises above and the top one dips down, effectively swapping their vertical positions—so the top-left connects to bottom-right while the bottom-left connects to top-right.
+
+I'm setting up a crossing pattern in code using gdsfactory. I'll define a component with waveguides that have the proper width and layer specifications, then create the crossing geometry with the appropriate curves and intersections. [
+        (0, -y_left),       # Start bottom-left
+        (8, -y_left),       # Short straight section
+        (20, 0),            # Cross through center (same point!)
+        (32, y_right),      # Continue to top
+        (40, y_right)       # End top-right
+    ]
+
+I'll create smooth paths for both waveguides using an 8-unit radius, then extrude them with the cross-section and add both references to the component.
+
+Looking at the original design more carefully, I notice the waveguides form an X pattern where they cross in the middle, but my current output shows them converging instead. The key issue is that both paths need to intersect at the center point while maintaining the symmetric spacing on either side—the inputs are spread apart on the left, they cross over each other around the middle, and then separate again on the right with similar spacing.
+
+The original shows smooth S-bend transitions leading into and out of the crossing region, with the upper waveguide dipping downward through the intersection while the lower one rises upward, creating that crossing geometry. I need to construct the path so both waveguides have these complementary curves that allow them to physically cross each other's paths. # Waveguide 2: lower-left → rises up → dips back → lower-right
+    # It crosses ABOVE the other waveguide
+    points_2 = [
+        (0, -y_edge),        # Start lower-left
+        (5, -y_edge),        # Initial straight
+        (15, y_cross),       # Rise up (crossing region)
+        (25, y_cross),       # Continue in crossing region
+        (35, -y_edge),       # Dip back down
+        (40, -y_edge)        # End lower-right
+    ]
+    
+    path1 = gf.path.smooth(points=points_1, radius=5)
+    path2 = gf.path.smooth(points=points_2, radius=5)
+    
+    wg1 = gf.path.extrude(path1, cross_section=xs)
+    wg2 = gf.path.extrude(path2, cross_section=xs)
+
+Both paths are smoothed with a 5-unit radius to create curved transitions, then extruded using the cross-section to form the actual waveguide structures.
+
+Adding both waveguides to the cell and returning it completes the component. But wait—this approach creates guides that return to their starting heights rather than swapping positions. Looking more carefully at the geometry, the waveguides actually cross diagonally in an X pattern, with one going from upper-left to lower-right and the other from lower-left to upper-right, meaning they exchange vertical positions between input and output.
+
+Tracing the paths: waveguide A enters at +y and exits at -y, while waveguide B enters at -y and exits at +y. The crossing happens at the center, and after crossing, each waveguide includes an S-bend to transition back to horizontal alignment before the output section. I need to construct the paths to account for this crossing geometry and the subsequent straightening curves. (0, -y_input),      # Start bottom-left
+        (10, -y_input),     # Straight input section
+        (30, y_output),     # Cross to top side
+        (40, y_output)      # End top-right
+    ]
+    
+    # Use larger radius for smoother curves
+    path1 = gf.path.smooth(points=points_1, radius=8)
+    path2 = gf.path.smooth(points=points_2, radius=8)
+
+I'll create smooth paths with an 8-unit radius for both waveguides to ensure gentle curves at the crossing points. Then I'll extrude each path using the cross-section and add both references to the component.
+
+The dimensions need adjustment—with a 1.7 µm vertical footprint and ~0.15 µm waveguide width, positioning each guide at y = 0.75 places the outer edges near ±0.825 µm, fitting within the constraint. The 40 µm horizontal span allows sufficient distance for the input sections and smooth transitions through the crossing region.
+
+Setting up the waveguide paths: the first guide enters from the top-left, transitions diagonally through the crossing, and exits at the bottom-right, while the second guide mirrors this trajectory from bottom-left to top-right. Input and output straight sections of 5 µm each provide stable connection points before and after the crossing geometry.
+
+Creating smooth curved paths with a 10 µm bend radius to connect the waypoints for both waveguides.
+
+Then extruding each path with the cross-section to form the actual waveguide structures, adding them to the component, and finally mapping the input and output ports from the waveguide references to the component's external ports. _crossing():
+    c = gf.Component()
+    
+    # Top waveguide: dips down in middle then returns to original height
+    top_points = [
+        (0, 2),
+        (2, 2),
+        (4, 0),  # dips down
+        (6, 2),
+        (8, 2)
+    ]
+    
+    # Bottom waveguide: rises up in middle then returns to original height
+    bottom_points = [
+        (0, -2),
+        (2, -2),
+        (4, 0),  # rises up
+        (6, -2),
+        (8, -2)
+    ]
+    
+    top_wg = c << gf.components.straight(length=8, width=0.5)
+    top_wg.rotate(90)
+    
+    # Create paths with bends
+    top_path = gf.Path(top_points)
+    top_wg = c << gf.components.bend_s(radius=2, width=0.5)
+    
+    bottom_path = gf.Path(bottom_points)
+    bottom_wg = c << gf.components.bend_s(radius=2, width=0.5)
+    
+    return c
+
+device = waveguide_x_crossing()
+device.write_gds("waveguide_x_crossing.gds")
+```
+
+Looking at the geometry more carefully, both waveguides maintain their original vertical positions at entry and exit—they just temporarily cross paths in the middle. The top one dips down while the bottom one rises up, creating the X intersection, then each returns to its starting height. I need to use S-bend components or path routing to create these curved trajectories that allow the crossing without position swapping. radius=6)
+    path2 = gf.path.smooth(points=points_2, radius=6)
+    
+    wg1 = gf.path.extrude(path1, cross_section=xs)
+    wg2 = gf.path.extrude(path2, cross_section=xs)
+    
+    c.add_ref(wg1)
+    c.add_ref(wg2)
+    
+    return c
+
+Looking back at the original image more carefully, the two waveguides don't actually have symmetric curves. The top one makes a gentle dip downward through the crossing region, while the bottom one has a more pronounced arc upward. I need to adjust the y-coordinates to reflect this difference in curvature magnitude.
+
+The spacing also changes across the structure - the waveguides start at a moderate distance apart on the left, reach maximum separation at the crossing point, then converge to a tighter spacing on the right side. This creates a "closing" effect from input to output.
+
+I'm setting up the geometry with specific y-coordinates: input spacing at 0.5, output spacing at 0.25, and the crossing amplitudes with the top waveguide dipping to -0.3 and the bottom rising to 0.6. The top waveguide path begins at the input position and will follow a curved trajectory through the crossing region.
+
+The top waveguide traces from the left input, maintains its initial height for the first segment, dips down through the crossing zone between x=15 and x=25, then rises back up to the tighter output spacing on the right. The bottom waveguide mirrors this behavior but inverted—it starts at the negative input position, rises dramatically through the crossing region to meet the top waveguide's crossing amplitude, then drops back down to the negative output spacing.
+
+Both paths get smoothed with a 5-unit radius to create gentle curves, then extruded using the cross-section definition to form actual waveguide structures. These are added to the component and returned as the final result.
+
+Looking back at the target image more carefully, I see two waveguides that cross in the middle forming an X pattern. On the left they're separated vertically, on the right they're also separated vertically, but they swap positions through the crossing. The top waveguide dips down to cross under the bottom one, then rises back up to its original height. The bottom waveguide rises up to cross over the top one, then returns to its original position. This requires each path to execute an S-bend pair—one S-bend to move toward the crossing point and another to move back to the original vertical position.

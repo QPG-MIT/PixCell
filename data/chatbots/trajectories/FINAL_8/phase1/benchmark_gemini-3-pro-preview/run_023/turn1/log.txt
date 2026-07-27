@@ -1,0 +1,145 @@
+Turn 1 Response:
+
+Based on the analysis of the image and the provided GDSFactory parametric catalog, here is the reconstruction strategy and the corresponding Python script.
+
+### Analysis
+The device appears to be a **Directional Coupler with a Segmented/Grating Bus**, often used for mode conversion or specific filtering applications.
+
+1.  **Symmetry**: The device is symmetric across the X-axis (top/bottom) and Y-axis (left/right).
+2.  **Components**:
+    *   **Central Region**: A stack of parallel, straight waveguides running the full length of the device. Visual inspection suggests 4 distinct lines.
+    *   **Outer Rails**: Two thicker waveguides that flank the central region. They feature an interaction length (straight section) in the middle and bend outwards at the input/output ports (S-bends).
+3.  **Constraints**:
+    *   **Footprint**: $120 \mu m \times 4 \mu m$.
+    *   **Geometry**: The outer rails must bend within the 4µm height limit while maintaining close proximity to the central bus in the middle.
+
+### Reconstruction Strategy
+We will use the following primitives from the catalog:
+1.  `gf.components.straight`: For the central parallel lines and the straight interaction region of the outer rails.
+2.  `gf.components.bend_s`: To create the adiabatic "flare out" of the outer rails at the ends.
+3.  `gf.cross_section.cross_section`: To define the specific widths for the thin inner lines and thick outer rails.
+
+### Python Script
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_reconstruction():
+    """
+    Recreation of the directional coupler device based on visual analysis
+    and footprint constraints (120um x 4um).
+    """
+    c = gf.Component()
+
+    # --- Parameters ---
+    # Global Dimensions
+    total_length = 120.0
+    total_height_limit = 4.0
+    
+    # Longitudinal Geometry
+    # Split length into: Bend_In + Straight_Interaction + Bend_Out
+    bend_length = 15.0
+    straight_length = total_length - (2 * bend_length) # 90.0um
+    
+    # Cross-sectional Geometry (Y-axis)
+    # Central Bus (4 thin lines)
+    n_inner_lines = 4
+    inner_width = 0.15
+    inner_gap = 0.15
+    
+    # Outer Rails
+    rail_width = 0.5
+    rail_gap = 0.2  # Gap between central bus and outer rail
+    
+    # Calculate Y-offsets
+    # Height of the central bus stack
+    bus_stack_height = (n_inner_lines * inner_width) + ((n_inner_lines - 1) * inner_gap)
+    
+    # Y position for the center of the outer rails (straight section)
+    # Center = (Half bus height) + gap + (half rail width)
+    y_rail_center_abs = (bus_stack_height / 2) + rail_gap + (rail_width / 2)
+    
+    # Bend offset (dy)
+    # How far the rails flare out at the ends. 
+    # Must fit within 4um total height (+/- 2um).
+    # Current top edge = y_rail_center_abs + rail_width/2
+    # Limit = 2.0. Available space = 2.0 - Current top edge.
+    current_top_edge = y_rail_center_abs + (rail_width / 2)
+    max_dy = (total_height_limit / 2) - current_top_edge - 0.1 # 0.1 margin
+    dy = max_dy 
+
+    # --- Cross Sections ---
+    xs_inner = gf.cross_section.cross_section(width=inner_width, layer=(1, 0))
+    xs_rail = gf.cross_section.cross_section(width=rail_width, layer=(1, 0))
+
+    # --- Construction: 1. Central Bus ---
+    # Create 4 parallel straight lines running the full length
+    for i in range(n_inner_lines):
+        # Calculate y-offset to center the group around y=0
+        y = -bus_stack_height/2 + (inner_width/2) + i*(inner_width + inner_gap)
+        
+        wg = c << gf.components.straight(length=total_length, cross_section=xs_inner)
+        wg.x = 0 # Center lengthwise
+        wg.y = y
+
+    # --- Construction: 2. Top Rail ---
+    # Structure: Bend_S (Left) -> Straight (Middle) -> Bend_S (Right)
+    
+    # Middle Straight Section
+    top_straight = c << gf.components.straight(length=straight_length, cross_section=xs_rail)
+    top_straight.x = 0
+    top_straight.y = y_rail_center_abs
+    
+    # Left Bend (Flares out to the left)
+    # We use bend_s. size=(length, dy).
+    # To flare UP to the left, we need to connect from high Y to low Y.
+    # bend_s logic: start (0,0) -> end (L, dy). 
+    # We want to connect the END of the bend to the START of the straight.
+    # To come from above, we need a negative dy relative to the connection point.
+    top_bend_left = c << gf.components.bend_s(size=(bend_length, -dy), cross_section=xs_rail)
+    top_bend_left.connect("o2", top_straight.ports["o1"])
+    
+    # Right Bend (Flares out to the right)
+    # Connect start of bend to end of straight.
+    # To flare UP to the right, we need positive dy.
+    top_bend_right = c << gf.components.bend_s(size=(bend_length, dy), cross_section=xs_rail)
+    top_bend_right.connect("o1", top_straight.ports["o2"])
+
+    # --- Construction: 3. Bottom Rail ---
+    # Symmetric to top rail. We can mirror the top components or build explicitly.
+    # Building explicitly to ensure port connectivity is clean.
+    
+    # Middle Straight Section
+    bot_straight = c << gf.components.straight(length=straight_length, cross_section=xs_rail)
+    bot_straight.x = 0
+    bot_straight.y = -y_rail_center_abs
+    
+    # Left Bend (Flares out/down to the left)
+    # Connecting to straight start. Needs to come from lower Y.
+    # bend_s with positive dy (relative to start) -> o2 is higher than o1.
+    # If we connect o2 to straight, o1 is lower.
+    bot_bend_left = c << gf.components.bend_s(size=(bend_length, dy), cross_section=xs_rail)
+    bot_bend_left.connect("o2", bot_straight.ports["o1"])
+    
+    # Right Bend (Flares out/down to the right)
+    # Connecting to straight end. Needs to go to lower Y.
+    # Negative dy.
+    bot_bend_right = c << gf.components.bend_s(size=(bend_length, -dy), cross_section=xs_rail)
+    bot_bend_right.connect("o1", bot_straight.ports["o2"])
+
+    # --- Add Ports ---
+    # Exposing the main IO ports of the outer rails
+    c.add_port("o1", port=top_bend_left.ports["o1"])
+    c.add_port("o2", port=bot_bend_left.ports["o1"])
+    c.add_port("o3", port=top_bend_right.ports["o2"])
+    c.add_port("o4", port=bot_bend_right.ports["o2"])
+
+    return c
+
+# Generate and save
+if __name__ == "__main__":
+    device = device_reconstruction()
+    device.show() # Views in KLayout if installed
+    device.write_gds("reconstructed_coupler.gds")
+```

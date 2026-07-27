@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.893795",
+      "api_duration_seconds": 52.6402702331543,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 2572,
+        "total_tokens": 13715
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:04.182073",
+      "api_duration_seconds": 43.613446950912476,
+      "usage": {
+        "input_tokens": 5427,
+        "output_tokens": 1951,
+        "total_tokens": 15703
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'int' object has no attribute 'x'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:49.185591",
+      "api_duration_seconds": 23.928339958190918,
+      "usage": {
+        "input_tokens": 7405,
+        "output_tokens": 1902,
+        "total_tokens": 13128
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ellipse() got an unexpected keyword argument 'centered'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15179,
+    "output_tokens": 6425,
+    "total_tokens": 42546
+  }
+}

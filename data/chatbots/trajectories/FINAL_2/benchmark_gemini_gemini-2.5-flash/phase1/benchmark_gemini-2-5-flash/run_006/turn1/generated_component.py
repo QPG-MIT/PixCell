@@ -1,0 +1,169 @@
+import gdsfactory as gf
+from gdsfactory.typings import CrossSectionSpec
+
+@gf.cell
+def custom_device():
+    """
+    Recreates the geometry from the provided image using GDSFactory parametric functions.
+    The device is designed to fit within a 25x10 um footprint and is centered at (0,0).
+    """
+    c = gf.Component("custom_device")
+
+    # Define a default layer for the entire device
+    device_layer = (1, 0)
+    
+    # --- 1. Dimensions based on 25x10um footprint ---
+    # The device will be centered at (0,0) and span from x=-12.5 to 12.5, y=-5 to 5.
+    
+    # Main Rectangle (the broad base of the structure)
+    rect_height = 5.0
+    rect_width = 24.0 # Fits within 25um (1um total margin, 0.5um on each side)
+    
+    # Pillars (four structures on top of the main rectangle)
+    pillar_taper_height = 1.5
+    pillar_straight_height = 1.5
+    pillar_total_height = pillar_taper_height + pillar_straight_height # Sums to 3.0 um
+    
+    pillar_base_width = 3.0 # Width at the base of the pillar (connecting to main rect)
+    pillar_top_width = 1.5  # Width of the straight section at the top of the pillar
+    
+    num_pillars = 4
+    pillar_x_spacing = 6.0 # Center-to-center distance between pillars
+    
+    # V-cutout (the notch at the bottom center of the main rectangle)
+    v_width = 3.0
+    v_depth = 2.0
+    
+    # --- 2. Calculate Y-coordinates for placement ---
+    # The device overall spans from y = -5.0 to y = 5.0.
+    
+    y_v_tip = -5.0  # Lowest point of the V-cutout (and the device)
+    
+    # Bottom edge of the main rectangle (and top edge of the V-cutout)
+    y_rect_bottom = y_v_tip + v_depth # -5.0 + 2.0 = -3.0
+    
+    # Top edge of the main rectangle (and bottom edge of the pillars)
+    y_rect_top = y_rect_bottom + rect_height # -3.0 + 5.0 = 2.0
+    
+    # Top edge of the pillars (highest point of the device)
+    y_pillars_top = y_rect_top + pillar_total_height # 2.0 + 3.0 = 5.0
+
+    # Sanity check: Total device height = y_pillars_top - y_v_tip = 5.0 - (-5.0) = 10.0 um. Correct.
+
+    # --- 3. Calculate X-coordinates for pillar placement ---
+    # The device overall spans from x = -12.5 to x = 12.5.
+    # The main rectangle spans from x = -rect_width/2 to rect_width/2 = -12.0 to 12.0.
+    
+    # Calculate the x-offset for the first pillar to ensure the array is horizontally centered
+    total_pillar_span_x = (num_pillars - 1) * pillar_x_spacing # 3 * 6.0 = 18.0 um
+    first_pillar_x_center = -total_pillar_span_x / 2 # -9.0 um
+    
+    # --- 4. Define a Sub-Component for a Single Pillar Unit ---
+
+    @gf.cell
+    def create_single_pillar_unit(base_width, top_width, taper_height, straight_height, layer):
+        """
+        Creates one pillar unit, with its bottom-center at (0,0).
+        Consists of a tapered base and a straight rectangular top.
+        """
+        p_unit = gf.Component("single_pillar_unit")
+        
+        # Tapered part of the pillar
+        taper_comp = gf.components.taper(
+            length=taper_height,    # This will be the height after rotation
+            width1=base_width,      # Width at the bottom
+            width2=top_width,       # Width at the top
+            layer=layer
+        )
+        taper_ref = p_unit << taper_comp # Add as reference to p_unit
+        taper_ref.rotate(90) # Rotate the reference, which is allowed
+        # After rotation, the taper's bottom-center is at (0,0) and it extends upwards.
+        
+        # Straight rectangular part on top of the taper
+        straight_comp = gf.components.rectangle(
+            size=(top_width, straight_height), # Dimensions of the top rectangle
+            layer=layer,
+            centered=True # Default center is (0,0) for the rectangle
+        )
+        straight_ref = p_unit << straight_comp # Add as reference to p_unit
+        # Move the straight_ref so its bottom edge aligns with the top of the taper
+        straight_ref.movey(taper_height + straight_height / 2)
+        
+        return p_unit
+    
+    # Instantiate the single pillar unit template
+    single_pillar_template = create_single_pillar_unit(
+        pillar_base_width, pillar_top_width,
+        pillar_taper_height, pillar_straight_height,
+        device_layer
+    )
+    
+    # --- 5. Assemble the final device using boolean operations ---
+    
+    # List to collect all positive (black) geometries for unioning
+    components_to_union = []
+    
+    # Add the main rectangle to the list
+    main_rect_primitive = gf.components.rectangle(
+        size=(rect_width, rect_height),
+        layer=device_layer,
+        centered=True
+    )
+    # Create a new, temporary component to hold and move this rectangle
+    temp_main_rect_container = gf.Component("main_rect_container")
+    main_rect_ref = temp_main_rect_container << main_rect_primitive
+    # Move the reference within its container. This is allowed.
+    main_rect_ref.movey(y_rect_bottom + rect_height / 2)
+    components_to_union.append(temp_main_rect_container) # Add the container (with the moved ref) to the list
+    
+    # Add the four pillars to the list
+    for i in range(num_pillars):
+        # FIX: Use the .copy() method of the Component object itself
+        pillar_instance = single_pillar_template.copy()
+        # Position the pillar so its bottom-center is at (calculated x, y_rect_top)
+        pillar_instance.move(
+            (first_pillar_x_center + i * pillar_x_spacing, y_rect_top)
+        )
+        components_to_union.append(pillar_instance)
+    
+    # Perform the union operation on all positive components
+    positive_shape_union = gf.boolean(
+        A=components_to_union,
+        operation="or",
+        layer=device_layer
+    )
+    
+    # Create the V-cutout component
+    v_cutout_primitive = gf.components.triangle(
+        x=v_width, # Base width of the V
+        y=v_depth, # Height of the V
+        layer=device_layer
+    )
+    # FIX: Similar to the main rectangle, create a new component to hold and move the V-cutout primitive
+    v_cutout_comp = gf.Component("v_cutout_component")
+    v_cutout_ref = v_cutout_comp << v_cutout_primitive
+    v_cutout_ref.rotate(180) # Rotate the reference
+    v_cutout_ref.movey(y_rect_bottom - v_depth / 2)
+    
+    # Perform the boolean subtraction
+    final_device_comp = gf.boolean(
+        A=positive_shape_union,
+        B=v_cutout_comp,
+        operation="not",
+        layer=device_layer
+    )
+    
+    # Add the final combined geometry (which is itself a Component) to the main component 'c'
+    c.add_ref(final_device_comp)
+    
+    return c
+
+if __name__ == "__main__":
+    device = custom_device()
+    device.show() # Visualize the component
+    
+    # Print the bounding box to verify footprint compliance
+    print(f"Device bounds: {device.dbound()}")
+    # Expected output for bounds: BoundingBox(xmin=-12.0, ymin=-5.0, xmax=12.0, ymax=5.0)
+    # This confirms a width of 24.0 (within 25.0) and a height of 10.0, centered at (0,0).
+    device.write_gds("custom_device.gds")

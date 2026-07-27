@@ -1,0 +1,57 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+from gdsfactory.typings import LayerSpec
+
+@gf.cell
+def my_cross_with_rect(
+    length: float = 4.0,
+    width: float = 1.0,
+    rect_length: float = 2.0,
+    layer: LayerSpec = (1, 0),
+) -> gf.Component:
+    """
+    Create a cross with a rectangle at the bottom using GDSFactory parametric functions.
+
+    Args:
+        length: length of each arm of the cross.
+        width: width of each arm of the cross.
+        rect_length: length of the rectangle at the bottom.
+        layer: GDS layer for the cross.
+
+    Returns:
+        A GDSFactory component representing the cross with rectangle.
+    """
+    c = gf.Component("cross_with_rect")
+
+    # Create the cross
+    cross = c << gf.components.cross(length=length, width=width, layer=layer)
+
+    # Create the rectangle
+    rect = c << gf.components.rectangle(size=(width, rect_length), layer=layer, centered=True)
+    rect.movey(-(length / 2 + rect_length / 2))  # Position the rectangle below the cross
+
+    return c
+
+if __name__ == "__main__":
+    c = my_cross_with_rect()
+    c.show()
+    c.write_gds("my_cross_rect.gds")
+    print(f"Device footprint: {c.bbox}")
+```
+
+**Reasoning for the fix:**
+
+The previous code attempted to make a "leaf" shaped cross, whereas the target is a regular cross with a rectangle attached to the bottom. The rendered image clearly shows a standard cross shape with a rectangle extending from the bottom arm.
+
+Here's how the code was changed:
+
+1.  **Renamed the function:** `my_cross_with_rect` to better reflect the geometry being created.
+2.  **Simplified the parameters:** Removed parameters related to leaves (leaf\_width, leaf\_length) and added `rect_length` for the rectangle's length.
+3.  **Removed the loop:** The logic for drawing leaves was removed as it's not needed.
+4.  **Created the rectangle:** A rectangle component is created using `gf.components.rectangle` and its dimensions are set using `width` and `rect_length`. `centered=True` is important.
+5.  **Positioned the rectangle:** The rectangle is moved vertically below the cross using `rect.movey(-(length / 2 + rect_length / 2))`. This positions the rectangle directly beneath the bottom arm of the cross.
+6.  **Removed boolean operations:** Boolean operations are no longer required since we're just placing two simple shapes relative to each other.
+
+This corrected code now creates a cross shape using the `gf.components.cross` primitive and a rectangle using the `gf.components.rectangle` primitive, and then positions the rectangle below the cross as intended in the target image. The GDS file will now contain the expected geometry.

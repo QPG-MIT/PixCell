@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:09:26.757169",
+      "api_duration_seconds": 562.6142508983612,
+      "usage": {
+        "input_tokens": 3485,
+        "output_tokens": 18689,
+        "total_tokens": 22174
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:18:50.609211",
+      "api_duration_seconds": 224.91173195838928,
+      "usage": {
+        "input_tokens": 3987,
+        "output_tokens": 7806,
+        "total_tokens": 11793
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: bend_s_custom_D9_D0p9_CSxs_9400d77f_9000_-900_A359p77006101435654, Cell name: bend_s_custom_D9_D0p9_CSxs_9400d77f",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:22:36.726951",
+      "api_duration_seconds": 101.73495769500732,
+      "usage": {
+        "input_tokens": 4779,
+        "output_tokens": 3871,
+        "total_tokens": 8650
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12251,
+    "output_tokens": 30366,
+    "total_tokens": 42617
+  }
+}

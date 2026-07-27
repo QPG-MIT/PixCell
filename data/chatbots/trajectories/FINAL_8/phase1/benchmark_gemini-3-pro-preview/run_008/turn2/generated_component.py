@@ -1,0 +1,105 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def multi_bus_coupler_v2():
+    c = gf.Component("Multi_Bus_Coupler_Corrected")
+
+    # 1. Dimensional Parameters
+    # To match the "thick block, thin line" look:
+    rail_width = 0.25   # Thick black lines
+    rail_gap = 0.08     # Thin white lines
+    
+    # 2. Define Cross-Sections
+    
+    # --- Center Bus (4 distinct rails) ---
+    # Total width approx: 4*0.25 + 3*0.08 = 1.24 um
+    n_center = 4
+    pitch = rail_width + rail_gap
+    # Calculate offsets to center the group around y=0
+    center_width = n_center * rail_width + (n_center - 1) * rail_gap
+    offsets_center = np.arange(n_center) * pitch - (center_width - rail_width) / 2
+    
+    sections_center = [
+        gf.Section(width=rail_width, offset=off, layer=(1, 0)) 
+        for off in offsets_center
+    ]
+    xs_center = gf.CrossSection(sections=sections_center)
+
+    # --- Outer Busses (Top/Bottom) ---
+    # These look like massive blocks with slots. 
+    # Counting gaps in original image: 5 gaps -> 6 rails.
+    n_outer = 6
+    outer_width = n_outer * rail_width + (n_outer - 1) * rail_gap
+    offsets_outer = np.arange(n_outer) * pitch - (outer_width - rail_width) / 2
+    
+    sections_outer = [
+        gf.Section(width=rail_width, offset=off, layer=(1, 0)) 
+        for off in offsets_outer
+    ]
+    xs_outer = gf.CrossSection(sections=sections_outer)
+
+    # 3. Path Generation
+    L_total = 120.0
+    L_flat = 40.0       # Interaction length in the middle
+    
+    # Vertical positioning
+    # We want the *inner edge* of the outer bus to come close to the *outer edge* of the center bus.
+    coupling_gap = 0.15 # Distance between the two solid masses
+    
+    # Calculate the Y-center for the outer bus in the coupling region
+    # Center_Top_Edge = center_width / 2
+    # Outer_Bottom_Edge_Relative = -outer_width / 2
+    # Target Y = Center_Top_Edge + coupling_gap + (outer_width / 2)
+    y_coupling_center = (center_width / 2) + coupling_gap + (outer_width / 2)
+    
+    # How far it bends away
+    dy_bend = 0.8 # Vertical displacement of the S-bend
+    
+    # Generate the smooth S-bend path manually
+    # Profile: High -> Bend Down -> Flat -> Bend Up -> High
+    num_points = 600
+    x = np.linspace(-L_total/2, L_total/2, num_points)
+    y = np.zeros_like(x)
+    
+    # Transition x-coordinates
+    x_transition = L_flat / 2
+    L_bend_region = (L_total - L_flat) / 2
+    
+    for i, xi in enumerate(x):
+        abs_x = abs(xi)
+        if abs_x <= x_transition:
+            # Flat interaction region
+            y[i] = y_coupling_center
+        else:
+            # S-Bend region (Cosine shape)
+            # d goes from 0 (at transition) to 1 (at edge)
+            d = (abs_x - x_transition) / L_bend_region
+            
+            # Cosine function for smooth S-bend: 0 to 1
+            s = (1 - np.cos(np.pi * d)) / 2
+            
+            # Interpolate height
+            y[i] = y_coupling_center + dy_bend * s
+
+    # 4. Create Components
+    
+    # Center (Straight)
+    p_mid = gf.path.straight(length=L_total)
+    ref_mid = c << gf.path.extrude(p_mid, xs_center)
+    ref_mid.movex(-L_total / 2)
+
+    # Top (Curved, 6 rails)
+    p_top = gf.Path(np.column_stack((x, y)))
+    ref_top = c << gf.path.extrude(p_top, xs_outer)
+
+    # Bottom (Mirror of Top)
+    ref_bot = c << gf.path.extrude(p_top, xs_outer)
+    ref_bot.mirror(p1=(0, 0), p2=(1, 0))
+
+    return c
+
+if __name__ == "__main__":
+    device = multi_bus_coupler_v2()
+    device.write_gds("multi_bus_coupler_v2.gds")
+    device.show()

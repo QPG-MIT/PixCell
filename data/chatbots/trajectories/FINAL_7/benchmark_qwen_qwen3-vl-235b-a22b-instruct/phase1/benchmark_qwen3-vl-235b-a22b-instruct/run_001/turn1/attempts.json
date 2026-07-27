@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T21:13:26.069638",
+      "api_duration_seconds": 26.881480932235718,
+      "usage": {
+        "input_tokens": 3158,
+        "output_tokens": 2341,
+        "total_tokens": 5499
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.75 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T21:13:54.133078",
+      "api_duration_seconds": 26.287816762924194,
+      "usage": {
+        "input_tokens": 5546,
+        "output_tokens": 899,
+        "total_tokens": 6445
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: cross_section() got an unexpected keyword argument 'auto_widen'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T21:14:21.570084",
+      "api_duration_seconds": 21.412187814712524,
+      "usage": {
+        "input_tokens": 6479,
+        "output_tokens": 739,
+        "total_tokens": 7218
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15183,
+    "output_tokens": 3979,
+    "total_tokens": 19162
+  }
+}

@@ -1,0 +1,101 @@
+Turn 2 Response:
+
+Based on a careful comparison between the original image and the rendered output from the previous script, the main differences lie in the **proportions of the segments** and the **coupling gap**. 
+
+In the original image:
+1.  **Coupling Region:** The central parallel straight sections are much longer relative to the rest of the device.
+2.  **Input/Output:** The straight segments at the input and output ports are significantly shorter.
+3.  **S-Bends:** The transitions are steeper (shorter horizontal length, `dx`).
+4.  **Gap:** The gap between the waveguides in the center appears tighter.
+
+We can adjust these parameters to visually match the original image while strictly keeping the mathematical footprint at exactly `[120, 4]` µm. 
+
+Here is the revised code with redistributed lengths (shortened inputs, shortened bend lengths, and an elongated central coupling section) and a tighter gap:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_120x4_matched():
+    """
+    Parametric directional coupler built to precisely match the [120, 4] 
+    footprint while mirroring the segment proportions of the target image.
+    """
+    c = gf.Component("directional_coupler_matched")
+    
+    # 1. Standard waveguide cross-section
+    wg_width = 0.5
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # 2. Footprint Constraints & Mathematical Breakdown
+    # Total height = 4.0 um
+    # Distance between top and bottom port centers
+    dy_pitch = 4.0 - wg_width  # 3.5 um
+    
+    # Tighter gap to match the visual reference
+    gap = 0.1
+    coupler_y = (gap / 2) + (wg_width / 2)  # 0.3 um
+    
+    # S-bend vertical shift required to connect input pitch to coupling pitch
+    shift_y = (dy_pitch / 2) - coupler_y  # 1.45 um
+    
+    # NEW Horizontal length partitioning (Sums perfectly to 120)
+    # Redistributed to have shorter inputs/transitions and a longer coupling region
+    in_len = 10.0     # (Was 20) Shortened input straight
+    dx = 15.0         # (Was 20) Steeper S-bend horizontal transition
+    mid_len = 70.0    # (Was 40) Elongated central coupling straight
+    
+    # 3. Create Primitive Instances
+    straight_in_out = gf.components.straight(length=in_len, cross_section=xs)
+    straight_mid = gf.components.straight(length=mid_len, cross_section=xs)
+    
+    # S-bends for transitions
+    bend_s_down = gf.components.bend_s(size=(dx, -shift_y), cross_section=xs)
+    bend_s_up = gf.components.bend_s(size=(dx, shift_y), cross_section=xs)
+
+    # ==========================================
+    # 4. Assemble Top Arm
+    # ==========================================
+    st_in_t = c << straight_in_out
+    sbend_in_t = c << bend_s_down
+    st_mid_t = c << straight_mid
+    sbend_out_t = c << bend_s_up
+    st_out_t = c << straight_in_out
+
+    # Position start and chain connect
+    st_in_t.move((0, dy_pitch / 2))
+    sbend_in_t.connect("o1", st_in_t.ports["o2"])
+    st_mid_t.connect("o1", sbend_in_t.ports["o2"])
+    sbend_out_t.connect("o1", st_mid_t.ports["o2"])
+    st_out_t.connect("o1", sbend_out_t.ports["o2"])
+
+    # ==========================================
+    # 5. Assemble Bottom Arm
+    # ==========================================
+    st_in_b = c << straight_in_out
+    sbend_in_b = c << bend_s_up
+    st_mid_b = c << straight_mid
+    sbend_out_b = c << bend_s_down
+    st_out_b = c << straight_in_out
+
+    # Position start and chain connect
+    st_in_b.move((0, -dy_pitch / 2))
+    sbend_in_b.connect("o1", st_in_b.ports["o2"])
+    st_mid_b.connect("o1", sbend_in_b.ports["o2"])
+    sbend_out_b.connect("o1", st_mid_b.ports["o2"])
+    st_out_b.connect("o1", sbend_out_b.ports["o2"])
+
+    # ==========================================
+    # 6. Expose External Ports
+    # ==========================================
+    c.add_port("o1", port=st_in_t.ports["o1"])
+    c.add_port("o2", port=st_in_b.ports["o1"])
+    c.add_port("o3", port=st_out_t.ports["o2"])
+    c.add_port("o4", port=st_out_b.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler_120x4_matched()
+    device.write_gds("directional_coupler_120x4.gds")
+```

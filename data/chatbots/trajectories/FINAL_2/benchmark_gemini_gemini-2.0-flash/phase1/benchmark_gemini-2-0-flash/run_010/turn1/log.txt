@@ -1,0 +1,77 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+from gdsfactory.components import straight
+from gdsfactory.components import taper
+
+@gf.cell
+def device():
+    c = gf.Component("device")
+    # Define parameters
+    total_width = 25
+    base_height = 6
+    bottom_height = 4
+    tip_width = 2
+    tip_height = 4
+    
+    # Main rectangle
+    rect = c << rectangle(size=(total_width, base_height), layer=(1, 0), centered=True)
+    rect.movex(-total_width/2)
+    rect.movey(-base_height/2)
+    
+    # Bottom rectangle
+    bottom_rect = c << rectangle(size=(tip_width, bottom_height), layer=(1, 0), centered=True)
+    bottom_rect.movex(-tip_width/2)
+    bottom_rect.movey(-(base_height + bottom_height)/2)
+    rect2 = c << rectangle(size=(total_width, base_height), layer=(1, 0), centered=True)
+    rect2.movex(-total_width/2)
+    rect2.movey(-base_height/2)
+    
+    bottom_rect2 = c << rectangle(size=(tip_width, bottom_height), layer=(1, 0), centered=True)
+    bottom_rect2.movex(-tip_width/2)
+    bottom_rect2.movey((base_height + bottom_height)/2)
+    
+    # Create the four tips
+    tip_width_base = 4 #Base of the top of the tip
+    tip_width_top = 2 #End of the top of the tip
+    height_top = 6 #Height from the start to end of the tip
+    space_width = 5 #space between tips
+    rect3 = c << rectangle(size=(total_width, base_height), layer=(1, 0), centered=True)
+    rect3.movex(-total_width/2)
+    rect3.movey(-base_height/2)
+    
+    #Positions of the taps relative to the rect
+    tip_start = -((3*space_width)/2 + tip_width_base/2)
+    
+    
+    taper1 = c << taper(length=tip_height, width1=tip_width_base, width2=tip_width_top)
+    taper1.movex(tip_start)
+    taper1.movey((base_height)/2)
+    
+    taper2 = c << taper(length=tip_height, width1=tip_width_base, width2=tip_width_top)
+    taper2.movex(tip_start + space_width)
+    taper2.movey((base_height)/2)
+    
+    taper3 = c << taper(length=tip_height, width1=tip_width_base, width2=tip_width_top)
+    taper3.movex(tip_start + 2*space_width)
+    taper3.movey((base_height)/2)
+    
+    taper4 = c << taper(length=tip_height, width1=tip_width_base, width2=tip_width_top)
+    taper4.movex(tip_start + 3*space_width)
+    taper4.movey((base_height)/2)
+
+    return c
+
+# Create and save
+device = device()
+device.show()
+device.write_gds("device.gds")
+```
+
+**Reasoning for the fix:**
+
+The error message `TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'` indicates that the `show()` method of the `ProtoTKCell` object (which is returned by `gf.Component` when used with a viewer) does not accept the `show_ports` argument.  
+
+In recent versions of GDSFactory, the `show_ports` argument is not used directly in the `show()` function.  Instead, ports are automatically displayed if they are defined. To fix the error, simply remove the `show_ports=True` argument from the `device.show()` call. The correct way to show the ports is to make sure that the ports are added to the Component during its creation.

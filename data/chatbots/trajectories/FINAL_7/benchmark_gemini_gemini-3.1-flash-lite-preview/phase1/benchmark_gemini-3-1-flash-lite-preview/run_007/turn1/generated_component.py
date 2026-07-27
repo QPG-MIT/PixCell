@@ -1,0 +1,56 @@
+import gdsfactory as gf
+
+# 1. Define the cross-section
+# We explicitly set min_bend_radius=0.1 to allow the tight 0.5 radius
+xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0), min_bend_radius=0.1)
+
+@gf.cell
+def double_bus_racetrack():
+    c = gf.Component()
+    
+    # Design Parameters
+    r = 0.5          # Bend radius
+    length = 2.0     # Straight length
+    gap = 0.2        # Gap between ring and bus
+    
+    # 2. Build the racetrack ring (outer loop)
+    # 2 straights + 4 bends
+    s_top = c << gf.components.straight(length=length, cross_section=xs)
+    s_bot = c << gf.components.straight(length=length, cross_section=xs)
+    
+    b_tl = c << gf.components.bend_euler(radius=r, angle=90, cross_section=xs)
+    b_tr = c << gf.components.bend_euler(radius=r, angle=90, cross_section=xs)
+    b_bl = c << gf.components.bend_euler(radius=r, angle=90, cross_section=xs)
+    b_br = c << gf.components.bend_euler(radius=r, angle=90, cross_section=xs)
+
+    # 3. Assemble the ring using ports
+    # Connect top half
+    b_tl.connect("o2", s_top.ports["o1"])
+    b_tr.connect("o1", s_top.ports["o2"])
+    
+    # Connect bottom half
+    b_bl.connect("o1", s_bot.ports["o1"])
+    b_br.connect("o2", s_bot.ports["o2"])
+    
+    # Close the loop
+    b_tl.connect("o1", b_bl.ports["o2"])
+    b_tr.connect("o2", b_br.ports["o1"])
+
+    # 4. Add the two bus waveguides
+    # Center the buses vertically relative to the ring
+    # total height of ring loop is 2 * radius (diameter)
+    bus_y_offset = r + gap + 0.25 # 0.25 is half the waveguide width
+    
+    bus_top = c << gf.components.straight(length=length + 2*r, cross_section=xs)
+    bus_bot = c << gf.components.straight(length=length + 2*r, cross_section=xs)
+    
+    bus_top.movey(bus_y_offset)
+    bus_bot.movey(-bus_y_offset)
+
+    return c
+
+# Generate the component
+device = double_bus_racetrack()
+
+# Save the geometry
+device.write_gds("racetrack_resonator.gds")

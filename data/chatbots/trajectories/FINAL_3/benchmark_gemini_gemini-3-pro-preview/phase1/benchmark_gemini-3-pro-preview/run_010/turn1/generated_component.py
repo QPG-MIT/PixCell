@@ -1,0 +1,95 @@
+import gdsfactory as gf
+
+@gf.cell
+def device():
+    """
+    Directional coupler device constructed from parametric primitives.
+    Total footprint: 120um x 4um.
+    """
+    c = gf.Component()
+    
+    # 1. Define Parameters
+    # Geometric constraints
+    L_total = 120.0
+    H_footprint = 4.0
+    wg_width = 0.5
+    
+    # Longitudinal sections
+    L_coupling = 40.0
+    L_bend = (L_total - L_coupling) / 2  # Result: 40.0
+    
+    # Vertical spacing
+    # Input/Output: Maximize separation within 4um footprint (4.0 - width)
+    y_input_sep = H_footprint - wg_width # 3.5 center-to-center
+    y_in_top = y_input_sep / 2           # 1.75
+    y_in_bot = -y_input_sep / 2          # -1.75
+    
+    # Coupling Region: Narrow gap
+    gap = 0.2
+    y_coup_sep = gap + wg_width          # 0.7 center-to-center
+    y_coup_top = y_coup_sep / 2          # 0.35
+    y_coup_bot = -y_coup_sep / 2         # -0.35
+    
+    # Calculate vertical displacement for S-bends
+    dy_top = y_coup_top - y_in_top       # 0.35 - 1.75 = -1.4 (Down)
+    dy_bot = y_coup_bot - y_in_bot       # -0.35 - (-1.75) = 1.4 (Up)
+
+    # Define Cross Section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # 2. Construct Top Arm (Input Bend -> Straight -> Output Bend)
+    # Input S-Bend (Top)
+    bend_in_top = c << gf.components.bend_s(
+        size=(L_bend, dy_top), 
+        cross_section=xs
+    )
+    bend_in_top.move((0, y_in_top)) # Place at start coordinates
+
+    # Coupling Straight (Top)
+    straight_top = c << gf.components.straight(
+        length=L_coupling, 
+        cross_section=xs
+    )
+    straight_top.connect("o1", bend_in_top.ports["o2"])
+
+    # Output S-Bend (Top) - goes back up (-dy_top)
+    bend_out_top = c << gf.components.bend_s(
+        size=(L_bend, -dy_top), 
+        cross_section=xs
+    )
+    bend_out_top.connect("o1", straight_top.ports["o2"])
+
+    # 3. Construct Bottom Arm (Input Bend -> Straight -> Output Bend)
+    # Input S-Bend (Bottom)
+    bend_in_bot = c << gf.components.bend_s(
+        size=(L_bend, dy_bot), 
+        cross_section=xs
+    )
+    bend_in_bot.move((0, y_in_bot)) # Place at start coordinates
+
+    # Coupling Straight (Bottom)
+    straight_bot = c << gf.components.straight(
+        length=L_coupling, 
+        cross_section=xs
+    )
+    straight_bot.connect("o1", bend_in_bot.ports["o2"])
+
+    # Output S-Bend (Bottom) - goes back down (-dy_bot)
+    bend_out_bot = c << gf.components.bend_s(
+        size=(L_bend, -dy_bot), 
+        cross_section=xs
+    )
+    bend_out_bot.connect("o1", straight_bot.ports["o2"])
+
+    # 4. Expose Ports
+    c.add_port("o1", port=bend_in_top.ports["o1"])
+    c.add_port("o2", port=bend_in_bot.ports["o1"])
+    c.add_port("o3", port=bend_out_top.ports["o2"])
+    c.add_port("o4", port=bend_out_bot.ports["o2"])
+
+    return c
+
+# Generate and save GDS
+if __name__ == "__main__":
+    d = device()
+    d.write_gds("directional_coupler.gds")

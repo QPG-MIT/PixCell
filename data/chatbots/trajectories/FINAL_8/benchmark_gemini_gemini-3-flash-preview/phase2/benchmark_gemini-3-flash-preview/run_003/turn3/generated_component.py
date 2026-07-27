@@ -1,0 +1,100 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def make_curved_horn(width_bottom=84.0, width_top=108.0, height=1.4, layer=(1, 0)):
+    """
+    Creates a flared horn section with curved side rails and internal horizontal bars.
+    """
+    c = gf.Component()
+    
+    # 1. Define the side profile curvature (parabolic flare)
+    def get_outer_half_width(y):
+        return (width_bottom / 2.0) + ((width_top - width_bottom) / 2.0) * (y / height)**2
+
+    rail_width = 2.5 
+    y_steps = np.linspace(0, height, 50)
+    
+    # Create points for left and right rails
+    pts_r = [(get_outer_half_width(y) - rail_width/2.0, y) for y in y_steps]
+    pts_l = [(-(get_outer_half_width(y) - rail_width/2.0), y) for y in y_steps]
+    
+    # Create paths and extrude them
+    path_r = gf.Path(pts_r)
+    path_l = gf.Path(pts_l)
+    
+    c << gf.path.extrude(path_r, width=rail_width, layer=layer)
+    c << gf.path.extrude(path_l, width=rail_width, layer=layer)
+    
+    # 2. Add Horizontal Bars
+    # 1 thick base bar, 4 thinner bars
+    bar_h_base = 0.45
+    bar_h_thin = 0.08
+    gap_h = 0.12
+    
+    current_y = 0.0
+    # First (thick) bar
+    y_mid_base = current_y + bar_h_base/2.0
+    inner_x_base = (get_outer_half_width(y_mid_base) - rail_width)
+    bar_base = c << gf.components.rectangle(size=(2 * inner_x_base, bar_h_base), layer=layer, centered=True)
+    bar_base.movey(y_mid_base)
+    
+    current_y += bar_h_base
+    
+    # Subsequent thin bars
+    for _ in range(4):
+        current_y += gap_h
+        y_mid = current_y + bar_h_thin/2.0
+        inner_x = (get_outer_half_width(y_mid) - rail_width)
+        bar = c << gf.components.rectangle(size=(2 * inner_x, bar_h_thin), layer=layer, centered=True)
+        bar.movey(y_mid)
+        current_y += bar_h_thin
+        
+    return c
+
+@gf.cell
+def recreate_device():
+    """
+    Assembles the device within the 120um x 4um footprint constraint.
+    """
+    c = gf.Component("fixed_accurate_device")
+    LAYER = (1, 0)
+    W_TOTAL = 120.0
+    
+    # --- 1. Central Section: 5 Long Straight Bars ---
+    bar_h = 0.08
+    gap_h = 0.1
+    for i in range(5):
+        y_pos = (i - 2) * (bar_h + gap_h)
+        # Fix: Assign to reference 'ref', then move the reference
+        ref = c << gf.components.rectangle(size=(W_TOTAL, bar_h), layer=LAYER, centered=True)
+        ref.movey(y_pos)
+        
+    # --- 2. Horn Sections (Top and Bottom) ---
+    # Total height is 4um, so range is [-2, 2].
+    # Horn height 1.4 + central section 0.8 leaves small buffer gaps.
+    HORN_HEIGHT = 1.45
+    Y_OFFSET = 0.55 # Distance from center to start of horn
+    
+    horn_comp = make_curved_horn(width_bottom=82.0, width_top=108.0, height=HORN_HEIGHT, layer=LAYER)
+    
+    # Add and move Top Horn reference
+    t_ref = c << horn_comp
+    t_ref.movey(Y_OFFSET)
+    
+    # Add, mirror, and move Bottom Horn reference
+    b_ref = c << horn_comp
+    b_ref.mirror_y()
+    b_ref.movey(-Y_OFFSET)
+    
+    return c
+
+if __name__ == "__main__":
+    device = recreate_device()
+    
+    # Verification
+    print(f"Final Footprint: {device.xsize:.2f}um (W) x {device.ysize:.2f}um (H)")
+    
+    # Save
+    device.write_gds("fixed_device.gds")
+    device.show()

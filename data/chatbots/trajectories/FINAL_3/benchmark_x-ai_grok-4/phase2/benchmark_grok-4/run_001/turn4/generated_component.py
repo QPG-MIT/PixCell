@@ -1,0 +1,66 @@
+import gdsfactory as gf
+
+def signed_bend_s(dx, dy, cross_section):
+    abs_dy = abs(dy)
+    bend = gf.components.bend_s(size=(dx, abs_dy), cross_section=cross_section)
+    if dy >= 0:
+        return bend
+    else:
+        c_temp = gf.Component()
+        ref = c_temp << bend
+        ref.mirror(p1=(0, 0), p2=(1, 0))
+        for port in ref.ports:
+            c_temp.add_port(port.name, port=port)
+        c_temp.absorb(ref)
+        return c_temp
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    w = 0.5
+    xs = gf.cross_section.cross_section(width=w, layer=(1, 0))
+
+    # Parameters
+    length = 80
+    gap = 0.2
+    dx = 20
+    sep_ends = 4 - w  # To match 4um height bounding box
+    inner_half = (gap + w) / 2
+    end_half = sep_ends / 2
+    shift_mag = end_half + inner_half
+
+    # Central coupler
+    coupler = gf.components.coupler_straight(length=length, gap=gap, cross_section=xs)
+    coup = c << coupler
+
+    # Left upper bend (connected to lower port for crossing)
+    bend_ul = signed_bend_s(dx, shift_mag, xs)
+    bul = c << bend_ul
+    bul.connect("o2", coup.ports["o3"])
+
+    # Left lower bend (connected to upper port for crossing)
+    bend_ll = signed_bend_s(dx, -shift_mag, xs)
+    bll = c << bend_ll
+    bll.connect("o2", coup.ports["o1"])
+
+    # Right upper bend (connected to lower port for crossing)
+    bend_ur = signed_bend_s(dx, -shift_mag, xs)
+    bur = c << bend_ur
+    bur.connect("o1", coup.ports["o4"])
+
+    # Right lower bend (connected to upper port for crossing)
+    bend_lr = signed_bend_s(dx, shift_mag, xs)
+    blr = c << bend_lr
+    blr.connect("o1", coup.ports["o2"])
+
+    # Expose external ports
+    c.add_port("o1", port=bul.ports["o1"])
+    c.add_port("o2", port=bur.ports["o2"])
+    c.add_port("o3", port=bll.ports["o1"])
+    c.add_port("o4", port=blr.ports["o2"])
+
+    return c
+
+# Create and save
+device = my_device()
+device.write_gds("my_device.gds")

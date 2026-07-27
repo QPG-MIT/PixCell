@@ -1,0 +1,129 @@
+import gdsfactory as gf
+
+@gf.cell
+def corrugated_hairpin(
+    length_straight: float = 10.74,
+    length_taper: float = 1.5,
+    radius: float = 3.0,
+    wg_width: float = 0.25,
+    corrugation_width: float = 0.25,
+    corrugation_period: float = 0.1432,
+    corrugation_dutycycle: float = 0.5,
+    layer: tuple[int, int] = (1, 0),
+) -> gf.Component:
+    """
+    Creates a single U-shaped waveguide with a corrugated inner arm and a tapered end.
+    The corrugations are added to the base hairpin shape using a boolean operation.
+    """
+    
+    # 1. Create the base hairpin shape as a component
+    base_hairpin = gf.Component("base_hairpin")
+    
+    # FIX: The CrossSection needs to be defined with a minimum bend radius
+    # that is less than or equal to the radius being used (3.0 um).
+    # We pass `min_bend_radius=radius` to override the default value of 10.0.
+    xs = gf.cross_section.cross_section(
+        width=wg_width, layer=layer, min_bend_radius=radius
+    )
+    
+    taper = base_hairpin << gf.components.taper(
+        length=length_taper, width1=0.01, width2=wg_width, cross_section=xs
+    )
+    straight = base_hairpin << gf.components.straight(
+        length=length_straight, cross_section=xs
+    )
+    # This bend will now be created with the modified cross_section that allows a 3.0 um radius.
+    bend = base_hairpin << gf.components.bend_euler180(radius=radius, cross_section=xs)
+
+    straight.connect("o1", taper.ports["o2"])
+    bend.connect("o1", straight.ports["o2"])
+
+    # 2. Create the grating as another component
+    grating = gf.Component("grating_teeth")
+    num_periods = int(length_straight / corrugation_period)
+    rect_width = corrugation_period * corrugation_dutycycle
+    rect = gf.components.rectangle(size=(rect_width, corrugation_width), layer=layer)
+    
+    grating_ref = grating.add_array(
+        component=rect, columns=num_periods, rows=1, spacing=(corrugation_period, 0)
+    )
+    
+    # Position the grating array to align with the bottom of the straight waveguide section
+    grating_ref.xmin = straight.xmin
+    grating_ref.ymax = straight.ymin
+    
+    # 3. Combine the base shape and the grating using a boolean 'or' operation
+    c = gf.boolean(A=base_hairpin, B=grating, operation="or", layer=layer)
+    return c
+
+@gf.cell
+def device() -> gf.Component:
+    """
+    Recreates the device from the image by assembling two mirrored corrugated hairpins
+    and a central line, with dimensions derived from the provided footprint.
+    """
+    c = gf.Component("bragg_coupler_resonator")
+
+    # Parameters derived from footprint [18.24, 0.7] and visual analysis
+    # Central region height = 2*wg_width + gap = 2*0.25 + 0.2 = 0.7 um
+    wg_width = 0.25
+    gap = 0.2
+    
+    # Total length = length_taper + length_straight + 2*radius = 1.5 + 10.74 + 6.0 = 18.24 um
+    radius = 3.0
+    length_straight = 10.74
+    length_taper = 1.5
+    
+    # Grating parameters estimated from image, ensuring they fit the straight length
+    num_periods = 75
+    corrugation_period = length_straight / num_periods
+    corrugation_dutycycle = 0.5
+    corrugation_width = 0.25
+    layer = (1, 0)
+
+    # Create the single hairpin unit with corrugations
+    hairpin_unit = corrugated_hairpin(
+        length_straight=length_straight,
+        length_taper=length_taper,
+        radius=radius,
+        wg_width=wg_width,
+        corrugation_width=corrugation_width,
+        corrugation_period=corrugation_period,
+        corrugation_dutycycle=corrugation_dutycycle,
+        layer=layer
+    )
+
+    # Instantiate and place top and bottom hairpins
+    h_top = c << hairpin_unit
+    h_bottom = c << hairpin_unit
+    
+    # Mirror the bottom one vertically across the x-axis
+    h_bottom.mirror(p1=(0, 0), p2=(1, 0))
+
+    # --- Position the two hairpins ---
+    # The origin of the hairpin component is at the start of the taper.
+    # Its straight corrugated section is located at a y-offset of -radius.
+    # We want the center of the top waveguide's straight section at y = (gap + wg_width) / 2.
+    y_top_origin = (gap + wg_width) / 2 + radius
+    
+    # The mirrored bottom hairpin has its corrugated section at y = +radius from its origin.
+    # We want its center at y = -(gap + wg_width) / 2.
+    y_bottom_origin = -(gap + wg_width) / 2 - radius
+
+    h_top.movey(y_top_origin)
+    h_bottom.movey(y_bottom_origin)
+
+    # Add the central dividing line seen in the image
+    center_line = c << gf.components.rectangle(
+        size=(length_straight, 0.05), layer=layer
+    )
+    # Center it in the middle of the straight section's length, at y=0
+    center_line.x = length_taper + length_straight / 2
+    center_line.y = 0
+    
+    return c
+
+if __name__ == "__main__":
+    my_device = device()
+    my_device.show()
+    my_device.write_gds("device.gds")

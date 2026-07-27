@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.907205",
+      "api_duration_seconds": 42.98323702812195,
+      "usage": {
+        "input_tokens": 5444,
+        "output_tokens": 1879,
+        "total_tokens": 7323
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o1' is not a valid port name or index. Available ports: ['e1', 'e2', 'e3', 'e4']\"\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_8/benchmark_gemini_gemini-2.0-flash/phase1/benchmark_gemini-2-0-flash/run_005/turn1/generated_component.py\", line 96, in <module>\n    device = create_device()\n  File \"/Users",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:54.386310",
+      "api_duration_seconds": 13.118823051452637,
+      "usage": {
+        "input_tokens": 7877,
+        "output_tokens": 1990,
+        "total_tokens": 9867
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTInstance.connect() got an unexpected keyword argument 'destination'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:09.124229",
+      "api_duration_seconds": 10.349165678024292,
+      "usage": {
+        "input_tokens": 9895,
+        "output_tokens": 1685,
+        "total_tokens": 11580
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports straight_gdsfactorypcomponentspwaveguidespstraight_L5_N_32b584f5_0_0[\"o2\"] and Port \"e1\" (\"500\"/\"1000\")",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 23216,
+    "output_tokens": 5554,
+    "total_tokens": 28770
+  }
+}

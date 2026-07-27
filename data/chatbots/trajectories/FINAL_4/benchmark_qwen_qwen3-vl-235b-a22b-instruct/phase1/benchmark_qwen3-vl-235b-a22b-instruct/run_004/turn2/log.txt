@@ -1,0 +1,117 @@
+Turn 2 Response:
+
+I see the issue now. The error is occurring because I need to properly define the cross-section with a layer. Let me fix this by ensuring the cross-section is properly defined:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def s_bend_coupler():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides with explicit layer
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create top S-bend waveguide
+    top_s_bend = gf.components.bend_s(size=(18, 3), cross_section=xs)
+    top_ref = c << top_s_bend
+    top_ref.move((0, 0.25))
+    
+    # Create bottom S-bend waveguide
+    bottom_s_bend = gf.components.bend_s(size=(18, 3), cross_section=xs)
+    bottom_ref = c << bottom_s_bend
+    bottom_ref.move((0, -0.25))
+    
+    # Add ports for connectivity
+    # Get the ports from the original components and add them to the main component
+    top_ports = top_s_bend.get_ports_list()
+    bottom_ports = bottom_s_bend.get_ports_list()
+    
+    # Add ports to the main component with proper positioning
+    if len(top_ports) >= 2:
+        c.add_port("o1", port=top_ports[0].move((0, 0.25)))
+        c.add_port("o2", port=top_ports[1].move((0, 0.25)))
+    if len(bottom_ports) >= 2:
+        c.add_port("o3", port=bottom_ports[0].move((0, -0.25)))
+        c.add_port("o4", port=bottom_ports[1].move((0, -0.25)))
+    
+    return c
+
+# Create and save the device
+device = s_bend_coupler()
+device.write_gds("s_bend_coupler.gds")
+```
+
+Actually, let me simplify this further and use a more direct approach that should work reliably:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def s_bend_coupler():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create top S-bend waveguide
+    top_s_bend = c << gf.components.bend_s(size=(18, 3), cross_section=xs)
+    top_s_bend.move((0, 0.25))
+    
+    # Create bottom S-bend waveguide
+    bottom_s_bend = c << gf.components.bend_s(size=(18, 3), cross_section=xs)
+    bottom_s_bend.move((0, -0.25))
+    
+    # Add ports for connectivity
+    # Since bend_s components have ports, let's add them directly
+    c.add_port("o1", port=top_s_bend.ports["o1"])
+    c.add_port("o2", port=top_s_bend.ports["o2"])
+    c.add_port("o3", port=bottom_s_bend.ports["o1"])
+    c.add_port("o4", port=bottom_s_bend.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = s_bend_coupler()
+device.write_gds("s_bend_coupler.gds")
+```
+
+I'm still concerned about the port access. Let me create a version that doesn't rely on port names:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def s_bend_coupler():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create top S-bend waveguide
+    top_s_bend = c << gf.components.bend_s(size=(18, 3), cross_section=xs)
+    top_s_bend.move((0, 0.25))
+    
+    # Create bottom S-bend waveguide
+    bottom_s_bend = c << gf.components.bend_s(size=(18, 3), cross_section=xs)
+    bottom_s_bend.move((0, -0.25))
+    
+    # Add ports for connectivity
+    # Get all ports from the components
+    top_ports = top_s_bend.get_ports_list()
+    bottom_ports = bottom_s_bend.get_ports_list()
+    
+    # Add ports to main component
+    if len(top_ports) >= 2:
+        c.add_port("o1", port=top_ports[0])
+        c.add_port("o2", port=top_ports[1])
+    if len(bottom_ports) >= 2:
+        c.add_port("o3", port=bottom_ports[0])
+        c.add_port("o4", port=bottom_ports[1])
+    
+    return c
+
+# Create and save the device
+device = s_bend_coupler()
+device.write_gds("s_bend_coupler.gds")
+```

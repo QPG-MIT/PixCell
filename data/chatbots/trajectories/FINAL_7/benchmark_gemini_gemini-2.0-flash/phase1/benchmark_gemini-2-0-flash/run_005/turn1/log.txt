@@ -1,0 +1,109 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+from gdsfactory.components import ellipse
+from gdsfactory.components import straight
+from gdsfactory.components import taper
+
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+
+    # Outer oval
+    ellipse_outer = c << ellipse(radii=(15, 7.5), layer=(1, 0))
+    ellipse_outer.move((0,0))
+
+    # Top middle rectangles
+    rect1 = c << rectangle(size=(2, 1), layer=(1, 0), centered=True)
+    rect2 = c << rectangle(size=(2, 1), layer=(1, 0), centered=True)
+    rect1.move((-1.5, 3))
+    rect2.move((1.5, 3))
+
+    # Bottom middle rectangles
+    rect3 = c << rectangle(size=(2, 1), layer=(1, 0), centered=True)
+    rect4 = c << rectangle(size=(2, 1), layer=(1, 0), centered=True)
+    rect3.move((-1.5, -3))
+    rect4.move((1.5, -3))
+    
+    # Top connecting structures
+    straight1 = c << straight(length=3, cross_section=gf.cross_section.cross_section(width=1, layer=(1, 0)))
+    straight2 = c << straight(length=3, cross_section=gf.cross_section.cross_section(width=1, layer=(1, 0)))
+    straight3 = c << straight(length=3, cross_section=gf.cross_section.cross_section(width=1, layer=(1, 0)))
+    straight4 = c << straight(length=3, cross_section=gf.cross_section.cross_section(width=1, layer=(1, 0)))
+
+    straight1.move((-7, 3))
+    straight2.move((7, 3))
+    straight3.move((-5, 3))
+    straight4.move((5, 3))
+
+    # Bottom connecting structures
+    straight5 = c << straight(length=3, cross_section=gf.cross_section.cross_section(width=1, layer=(1, 0)))
+    straight6 = c << straight(length=3, cross_section=gf.cross_section.cross_section(width=1, layer=(1, 0)))
+    straight7 = c << straight(length=3, cross_section=gf.cross_section.cross_section(width=1, layer=(1, 0)))
+    straight8 = c << straight(length=3, cross_section=gf.cross_section.cross_section(width=1, layer=(1, 0)))
+
+    straight5.move((-7, -3))
+    straight6.move((7, -3))
+    straight7.move((-5, -3))
+    straight8.move((5, -3))
+
+
+    # Inner horizontal structure.
+    straight9 = c << straight(length=14, cross_section=gf.cross_section.cross_section(width=1, layer=(1, 0)))
+    straight9.move((0, 0))
+
+    # Corner angled lines
+    taper1 = c << taper(length=2, width1=1, width2=0.5)
+    taper2 = c << taper(length=2, width1=1, width2=0.5)
+    taper3 = c << taper(length=2, width1=1, width2=0.5)
+    taper4 = c << taper(length=2, width1=1, width2=0.5)
+    
+    taper1.rotate(45)
+    taper2.rotate(-45)
+    taper3.rotate(135)
+    taper4.rotate(-135)
+
+    taper1.move((-7, 0))
+    taper2.move((7, 0))
+    taper3.move((-7, 0))
+    taper4.move((7, 0))
+
+
+    #Outer shape for boolean operation
+    rect10 = c << rectangle(size=(29, 16), layer=(1, 0), centered=True)
+    rect10.move((0, 0))
+
+    #Inner cut out shape for boolean
+    rect11 = c << rectangle(size=(25, 12), layer=(1, 0), centered=True)
+    rect11.move((0, 0))
+
+    outer_combined = gf.boolean(rect10, rect11, operation="not", layer=(1, 0))
+    outer_combined_ref = c << outer_combined
+    outer_combined_ref.move((0,0))
+    
+
+    # footprint
+    c.xmin = -1.5
+    c.xmax = 1.5
+    c.ymin = -2.75
+    c.ymax = 2.75
+
+    c.flatten()
+    return c
+
+
+device = my_device()
+device.show()
+device.write_gds("my_device.gds")
+```
+
+**Reasoning for the fix:**
+
+The error message "ValueError: Found off-grid instances, which is not allowed in most foundries" indicates that some of the components within the design are placed at coordinates that are not on the GDS grid. This often happens when rotations or movements involve non-integer values.
+
+The solution is to flatten the component hierarchy using `c.flatten()`. Flattening converts all instances into polygons at the top level of the cell, eliminating the possibility of off-grid placements due to hierarchical transformations. While it increases the file size and complexity, it resolves the off-grid issue and ensures that the GDS file is compatible with foundry requirements.
+
+Alternatively we could have added the decorator `@gf.cell(check_instances=False)` before the function definition. In this way, we instruct GDSFactory to ignore the check for off-grid instances. However, it is better to resolve the problem rather than ignoring it.

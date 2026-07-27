@@ -1,0 +1,39 @@
+{
+  "turn": 4,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T21:02:20.663301",
+      "api_duration_seconds": 27.115822076797485,
+      "usage": {
+        "input_tokens": 4582,
+        "output_tokens": 1111,
+        "total_tokens": 5693
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(component)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T21:02:49.102723",
+      "api_duration_seconds": 19.768381118774414,
+      "usage": {
+        "input_tokens": 5744,
+        "output_tokens": 867,
+        "total_tokens": 6611
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10326,
+    "output_tokens": 1978,
+    "total_tokens": 12304
+  }
+}

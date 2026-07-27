@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:45.853761",
+      "api_duration_seconds": 72.89423418045044,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 2784,
+        "total_tokens": 19450
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S2_0p6_b22f6061' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:00.174259",
+      "api_duration_seconds": 48.26349210739136,
+      "usage": {
+        "input_tokens": 5191,
+        "output_tokens": 2767,
+        "total_tokens": 17098
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'taper_gdsfactorypcomponentsptapersptaper_L1p5_W0p6_W0p2_5e7f178c' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:50.013089",
+      "api_duration_seconds": 40.06598496437073,
+      "usage": {
+        "input_tokens": 8025,
+        "output_tokens": 2892,
+        "total_tokens": 18404
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15563,
+    "output_tokens": 8443,
+    "total_tokens": 54952
+  }
+}

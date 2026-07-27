@@ -1,0 +1,109 @@
+Turn 1 Response:
+
+To recreate the device shown in the image, we need to analyze its geometric composition. The device consists of three main structures:
+1.  **A central bus:** A straight horizontal component consisting of 4 parallel waveguides (rails).
+2.  **A top coupler:** A curved component that brings a 4-rail bus close to the center for an interaction length, then flares out.
+3.  **A bottom coupler:** A mirrored version of the top component.
+
+The key to recreating the internal structure (the black blocks with thin white lines) is to define a custom `CrossSection` with 4 parallel solid sections ("rails"). We will then extrude this cross-section along the specific paths (straight and S-bends).
+
+Here is the python script using `gdsfactory`:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def multi_bus_coupler():
+    c = gf.Component("Multi_Bus_Coupler")
+
+    # 1. Define Parameters
+    # Footprint constraint: 120um x 4um
+    L_total = 120.0
+    
+    # Vertical Spacing Geometry
+    # The device fits within 4um height (-2.0 to 2.0)
+    # Bus geometry: 4 rails.
+    # Estimated dimensions to match image ratio:
+    rail_width = 0.18
+    rail_gap = 0.08
+    pitch = rail_width + rail_gap
+    n_rails = 4
+    
+    # Calculate total width of the 4-rail bus
+    # Width = 4*0.18 + 3*0.08 = 0.72 + 0.24 = 0.96 um
+    bus_width = n_rails * rail_width + (n_rails - 1) * rail_gap
+
+    # 2. Define Custom Cross Section (The 4-rail bus)
+    # We create a list of Sections, each representing one rail.
+    # Offsets are calculated relative to the center of the path.
+    offsets = np.arange(n_rails) * pitch - (bus_width - rail_width) / 2
+    
+    sections = [
+        gf.Section(width=rail_width, offset=off, layer=(1, 0)) 
+        for off in offsets
+    ]
+    xs_bus = gf.CrossSection(sections=sections)
+
+    # 3. Create the Middle Component (Straight)
+    # A simple straight path extruded with our 4-rail cross section.
+    p_mid = gf.path.straight(length=L_total)
+    
+    # Create reference and center it
+    ref_mid = c << gf.path.extrude(p_mid, xs_bus)
+    ref_mid.movex(-L_total / 2)
+
+    # 4. Create the Top Component (Curved)
+    # Logic: S-bend down -> Straight Interaction -> S-bend up
+    
+    # Y-positions derived from visual gaps and 4um constraint
+    # Center (y=0) has half-width ~0.48.
+    # Gap ~0.2.
+    # Top component inner edge starts at ~0.68.
+    # Top component center = 0.68 + 0.48 = 1.16.
+    y_interaction = 1.15
+    y_outer = 1.6  # Flaring out to fit within y=2.0 limit
+    
+    L_interaction = 40.0  # Length of the flat parallel region
+    L_bend = (L_total - L_interaction) / 2
+    
+    # Generate Path Points manually for precise S-bend control
+    num_points = 500
+    x = np.linspace(-L_total/2, L_total/2, num_points)
+    y = np.zeros_like(x)
+    
+    # Define transition boundary
+    x_trans = L_interaction / 2
+    
+    for i, xi in enumerate(x):
+        abs_x = abs(xi)
+        if abs_x <= x_trans:
+            # Flat interaction region
+            y[i] = y_interaction
+        else:
+            # S-bend region (Cosine profile)
+            # Normalize distance along the bend (0 to 1)
+            d_bend = abs_x - x_trans
+            t = d_bend / L_bend
+            
+            # Cosine interpolation: y goes from y_interaction to y_outer
+            # Shape function (0 to 1)
+            s = (1 - np.cos(np.pi * t)) / 2
+            y[i] = y_interaction + (y_outer - y_interaction) * s
+
+    # Create Path and Extrude
+    p_top = gf.Path(np.column_stack((x, y)))
+    ref_top = c << gf.path.extrude(p_top, xs_bus)
+
+    # 5. Create the Bottom Component
+    # Mirror the top component across the X-axis
+    ref_bot = c << gf.path.extrude(p_top, xs_bus)
+    ref_bot.mirror(p1=(0, 0), p2=(1, 0))
+
+    return c
+
+if __name__ == "__main__":
+    device = multi_bus_coupler()
+    device.write_gds("multi_bus_coupler.gds")
+    device.show()
+```

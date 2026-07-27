@@ -1,0 +1,104 @@
+Looking at this image, I can see a black silhouette that appears to be:
+- A rectangular base/box shape
+- Four bottle-like shapes (necks) protruding upward from the top
+- A small triangular/pointed shape protruding downward from the bottom center
+
+This looks like it could be some kind of multi-port device or perhaps a representation of bottles in a crate/carrier.
+
+Let me analyze the geometry more carefully:
+1. There's a large rectangular base
+2. From the top, there are 4 bottle-shaped protrusions (wider at bottom, narrowing to a neck)
+3. At the bottom center, there's a downward-pointing triangular protrusion
+
+Given the footprint constraint of [25, 10], this is 25 μm wide and 10 μm tall.
+
+Looking at the proportions in the image:
+- The main rectangle takes up roughly the bottom 2/3 of the height
+- The 4 bottle necks take up the top portion
+- The bottom triangle is small
+
+Let me think about how to construct this:
+
+1. Main rectangular body
+2. Four tapered/bottle shapes on top
+3. One triangular shape pointing down at the bottom
+
+For the bottle shapes, they appear to be wider at the base and taper to a narrow neck. The spaces between them create the gaps visible in the image.
+
+Actually, looking more carefully, the shapes look like:
+- 4 trapezoidal/tapered columns on top (like bottle necks)
+- A rectangular body
+- A small downward-pointing triangle at the bottom
+
+Let me construct this using boolean operations or by creating the geometry directly.
+
+Approach:
+1. Create a rectangle for the main body
+2. Create 4 tapered shapes (trapezoids) for the bottle necks
+3. Create a triangle pointing downward for the bottom
+4. Combine all using boolean OR operation
+
+Let me estimate the dimensions based on 25 x 10 μm footprint:
+
+
+- Main rectangle: roughly 20 wide x 5 tall
+- Each bottle neck: starting at ~4 wide tapering to ~2 wide at top, height ~4
+- Bottom triangle: small, centered
+
+The necks extend upward by about a third to half the height of the main box, and I need to account for how the overall geometry fits within the specified footprint.
+
+I'll set up the code structure with gdsfactory, defining the key dimensions: a 20-unit wide by 5-unit tall rectangular body, bottle necks that taper from about 3.5 units at the base to 2 units at the top with a height of 4 units, and spacing the 4 bottles roughly 5 units apart center-to-center. The small triangular feature at the bottom will be about 2 units wide and tall.
+
+The main body gets positioned as a centered rectangle, then I'll iterate through each bottle position to create tapered trapezoid shapes for the necks, calculating the x-center for each one based on dividing the box width equally among the four bottles. Each trapezoid's bottom edge sits on top of the main body, while the top edge narrows to create that characteristic tapered appearance.
+
+Below that, I'm adding a downward-pointing triangle at the base to complete the carrier structure. The function wraps up by returning the cell, and the main block writes everything to a GDS file. Looking more carefully at the reference image, I notice the bottle transitions appear smoother and more curved rather than using straight-edged trapezoids, suggesting I should explore using curved paths or spline-based geometry instead. - neck_base_width/2, box_height),
+            (x_center + neck_base_width/2, box_height),
+            (x_center + neck_top_width/2, box_height + neck_height),
+            (x_center - neck_top_width/2, box_height + neck_height),
+        ]
+        
+        neck = gf.components.polygon(points, layer=(1, 0))
+        c << neck
+    
+    # Create downward-pointing triangle
+    tri_points = [
+        (-tri_base/2, 0),
+        (tri_base/2, 0),
+        (0, -tri_height),
+    ]
+    
+    triangle = gf.components.polygon(tri_points, layer=(1, 0))
+    c << triangle
+    
+    return c
+```
+
+The code sets up a 20 × 4 µm rectangular base with four tapered necks rising 5 µm above it, each narrowing from 3 µm to 1.5 µm width. A 2.5 µm wide triangle points downward from the base, creating the complete silhouette. The necks are positioned evenly across the box width using trapezoid polygons to achieve the tapering effect. Looking more carefully at the proportions, the box should occupy roughly 40-50% of the total height, with the bottle necks extending significantly above it and a small triangle protruding below. If I set the total visible height to around 12 units, I'd allocate approximately 1.2 for the downward triangle, 4.8 for the main box, and 6 for the neck extensions. The main rectangle width should be about 85% of the total width, roughly 21 units, with the necks tapering as they rise.
+
+For the bottle structure itself, I need to space 4 necks evenly across the 21-unit width, giving each neck section about 5.25 units. The necks taper from a base width of roughly 3.2 down to a top width of 1.6, creating the characteristic bottle shape. The downward triangle at the base should be about 2.2 units wide and 1 unit tall to match the proportions I'm seeing.
+
+Now I'm setting up the actual geometry: positioning the rectangular box centered at the origin with its bottom at y=0, then iterating through each of the 4 bottle positions. For each neck, I'm calculating the x-center based on even spacing and creating a tapered polygon that connects the box top to the narrower neck opening above it.
+
+Then I'm adding the downward-pointing triangle at the bottom center. Looking back at the reference image, the bottles actually have slightly curved necks rather than straight trapezoids, but using polygonal approximations should work fine for this purpose.
+
+I need to verify the footprint constraint of [25, 10] μm. My current dimensions give a total height of about 11.3 μm, which exceeds the limit. I'll scale everything down by a factor of roughly 0.88 to fit: box_height becomes 4.0, neck_height becomes 4.8, and the triangle height drops to 1 μm.
+
+But reconsidering—the footprint might be more of a guideline than a hard limit. Looking at the image proportions, the shape is noticeably taller than it is wide, roughly 1.2 to 1.3 times the height relative to width. If the width is around 20 μm, I'd expect the height to be 24-26 μm. The [25, 10] specification seems inverted compared to what the image shows, so I should double-check my interpretation of which dimension is which.
+
+Actually, the footprint might refer to just the main body without the bottle extensions, or it could be a target to work toward rather than a strict constraint. The visual clearly shows a wider carrier base with bottles rising above it and a small pointer extending below. I'll use the footprint as a reference while matching the actual proportions I see in the image.
+
+Setting up the dimensions: the main crate body will be roughly 22 by 6 micrometers to stay within the [25, 10] footprint guide. Each of the 4 bottles has a tapered neck—wider at the base (3.5 μm) and narrower at the top (2.0 μm)—extending 6 μm upward. The pointer below is a small triangle with a 2 μm base and 1.5 μm height. I'll construct the rectangular crate body first, centered at the origin with its bottom edge at y=0, then add the bottle necks on top.
+
+For the necks, I'm spacing them evenly across the crate width and creating each as a trapezoid polygon. The trapezoid vertices go counter-clockwise starting from the bottom-left, with the wider base sitting on the crate body and the narrower top pointing upward. Finally, I'll add the downward-pointing triangle at the bottom. ) between the bottle necks creates the visual separation, and these gaps are triangular or V-shaped. My approach of creating the box and tapered necks should produce the right silhouette. I need to adjust the proportions though—the body appears much wider relative to its height, maybe a 4:1 ratio, and the bottle necks are quite tall, potentially matching or exceeding the body height. With four bottles across a width of 22, each section is about 5.5 units wide, so if the neck base is 3.5 wide, there's a visible 2-unit gap on each side. Looking more carefully at the image, the bottle bases actually seem to touch or nearly touch at their widest points.
+
+I'll set neck_base_width to 4.5 to leave minimal gaps and neck_top_width to 2.5, making the taper more pronounced. The triangular section at the bottom needs to be fairly narrow and pointed.
+
+Now I'm creating the actual geometry. I'll define the crate body as a 21 by 5.5 rectangle centered at the origin, then add four bottle necks spaced evenly across it. Each neck tapers from 4.2 units wide at the base to 2.3 units at the top, extending 5.5 units upward. Below the crate, I'm adding a pointer that's 1.8 units wide and 1.3 units deep. For each bottle, I'm calculating the center position and creating a trapezoid shape that forms the neck by connecting the wider base to the narrower top. 1. Main rectangular body: 21 × 5.5 um, centered at x=0
+2. 4 tapered bottle necks evenly spaced, each tapering from 4.2 um at base to 2.3 um at top, 5.5 um tall
+3. Downward pointing triangle: 1.8 um wide at base, 1.3 um deep
+
+The overall footprint comes to 21 um wide and 12.3 um tall (5.5 body + 5.5 necks + 1.3 triangle), which exceeds the 10 um height limit. I'll keep the current proportions since the visual representation matters more than strict adherence to the constraint.
+
+Actually, reviewing the footprint specification more carefully—it needs to fit within 25×10 um. My current design at 21×12.3 is close but overshoots the height. Scaling by a factor of 0.813 (10÷12.3) brings everything into spec: the body and necks each become 4.5 um, and the triangle pointer reduces to 1.0 um, totaling exactly 10 um in height while keeping the width at 21 um.
+
+I can push the body width to 22 um to better utilize the available space, then define the bottle geometry with a 4-bottle arrangement, each with a narrow neck tapering from 4.0 um to 2.2 um, and add the speech bubble pointer at the bottom. bottom section creates a downward-pointing triangle for the pointer using three vertices, then returns the completed component. Finally, the script instantiates the bottle crate device and exports it to a GDS file. I verify the total height spans correctly from -1.0 to 9.0 micrometers across all sections. 4 bottles with neck bases of 4.2 um tapering to 2.0 um tops, each 4.5 um tall. The pointer at the bottom spans 2.0 um wide and 1.0 um tall. The main body is positioned centered at the origin with its bottom edge at y=0. Four tapered necks are distributed evenly across the body width, with each neck's center calculated by dividing the total width into equal sections. The main block creates an instance of the device and exports it to a GDS file. The resulting output should display a rectangular crate base with four tapered bottle necks rising from it, triangular voids between each neck, and a small pointer at the bottom center.

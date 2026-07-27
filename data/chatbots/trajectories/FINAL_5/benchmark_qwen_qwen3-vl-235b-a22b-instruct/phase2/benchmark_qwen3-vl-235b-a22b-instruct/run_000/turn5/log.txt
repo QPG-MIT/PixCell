@@ -1,0 +1,141 @@
+Turn 5 Response:
+
+Looking at the target image versus the current output, I can see a fundamental mismatch in the device structure:
+
+**Target Image:**
+- Shows a simple directional coupler with two parallel waveguides
+- Has tapers on both ends (input and output)
+- No S-bends or complex routing
+- The device is straight and compact
+
+**Current Output:**
+- Shows complex S-bends and routing
+- Has grating-like structures (which weren't requested)
+- The overall structure is much more complex than needed
+
+The issue is that the current code is creating a much more complex device than what's shown in the target image. The target appears to be a simple directional coupler with tapers, not a complex routed structure.
+
+Here's the improved version that matches the target image:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_with_tapers():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0), radius=10.0)
+    
+    # Create the two straight waveguides for the directional coupler
+    # Top waveguide
+    wg1 = c << gf.components.straight(length=18.0, cross_section=xs)
+    wg1.move((0, 0.35))  # Position with gap from bottom waveguide
+    
+    # Bottom waveguide
+    wg2 = c << gf.components.straight(length=18.0, cross_section=xs)
+    wg2.move((0, -0.35))  # Position with gap from top waveguide
+    
+    # Create tapers at both ends
+    # Left tapers (input side)
+    taper_left_top = c << gf.components.taper(length=3.0, width1=0.5, width2=2.0)
+    taper_left_bottom = c << gf.components.taper(length=3.0, width1=0.5, width2=2.0)
+    
+    taper_left_top.move((-3.0, 0.35))
+    taper_left_bottom.move((-3.0, -0.35))
+    
+    # Right tapers (output side)
+    taper_right_top = c << gf.components.taper(length=3.0, width1=0.5, width2=2.0)
+    taper_right_bottom = c << gf.components.taper(length=3.0, width1=0.5, width2=2.0)
+    
+    taper_right_top.move((18.0, 0.35))
+    taper_right_bottom.move((18.0, -0.35))
+    
+    # Add ports for connectivity
+    c.add_port("o1", port=taper_left_top.ports["o1"])
+    c.add_port("o2", port=taper_left_bottom.ports["o1"])
+    c.add_port("o3", port=taper_right_top.ports["o2"])
+    c.add_port("o4", port=taper_right_bottom.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = directional_coupler_with_tapers()
+device.write_gds("directional_coupler_with_tapers.gds")
+```
+
+Wait, I need to reconsider. Looking at the target image again, it appears to show just one waveguide with a taper on one end, not a directional coupler. Let me revise:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def single_waveguide_with_taper():
+    c = gf.Component()
+    
+    # Define cross-section for waveguide
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0), radius=10.0)
+    
+    # Create the straight waveguide
+    wg = c << gf.components.straight(length=18.0, cross_section=xs)
+    wg.move((0, 0))
+    
+    # Create taper at one end
+    taper = c << gf.components.taper(length=3.0, width1=0.5, width2=2.0)
+    taper.move((-3.0, 0))
+    
+    # Add ports for connectivity
+    c.add_port("o1", port=taper.ports["o1"])
+    c.add_port("o2", port=wg.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = single_waveguide_with_taper()
+device.write_gds("single_waveguide_with_taper.gds")
+```
+
+Actually, looking at the target image more carefully, it appears to be a directional coupler with tapers on both ends. The current code is mostly correct, but the issue might be in how the components are connected or positioned. Let me provide a cleaner version:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_with_tapers():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0), radius=10.0)
+    
+    # Create the two straight waveguides for the directional coupler
+    wg1 = c << gf.components.straight(length=18.0, cross_section=xs)
+    wg2 = c << gf.components.straight(length=18.0, cross_section=xs)
+    
+    # Position the waveguides with a gap
+    wg1.move((0, 0.35))
+    wg2.move((0, -0.35))
+    
+    # Create tapers at both ends
+    taper_left_top = c << gf.components.taper(length=3.0, width1=0.5, width2=2.0)
+    taper_left_bottom = c << gf.components.taper(length=3.0, width1=0.5, width2=2.0)
+    taper_right_top = c << gf.components.taper(length=3.0, width1=0.5, width2=2.0)
+    taper_right_bottom = c << gf.components.taper(length=3.0, width1=0.5, width2=2.0)
+    
+    # Position the tapers
+    taper_left_top.move((-3.0, 0.35))
+    taper_left_bottom.move((-3.0, -0.35))
+    taper_right_top.move((18.0, 0.35))
+    taper_right_bottom.move((18.0, -0.35))
+    
+    # Add ports for connectivity
+    c.add_port("o1", port=taper_left_top.ports["o1"])
+    c.add_port("o2", port=taper_left_bottom.ports["o1"])
+    c.add_port("o3", port=taper_right_top.ports["o2"])
+    c.add_port("o4", port=taper_right_bottom.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = directional_coupler_with_tapers()
+device.write_gds("directional_coupler_with_tapers.gds")
+```

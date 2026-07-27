@@ -1,0 +1,112 @@
+Turn 1 Response:
+
+Of course. The error "No GDS file produced" happens because the final command to save the generated geometry to a file was commented out in the previous script. To fix this, the script needs to explicitly call the `write_gds()` method on the final component.
+
+I have uncommented this line and placed the execution logic inside a standard `if __name__ == "__main__":` block. This ensures the GDS file is generated when the script is run directly and also adds a confirmation message to the console.
+
+Here is the corrected and complete script that will produce the GDS file:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def single_wavy_waveguide(size: tuple[float, float] = (9.0, 0.75), cross_section="strip"):
+    """
+    Creates a single wavy waveguide composed of two S-bends.
+    The path starts at (0,0), dips down, and returns to y=0.
+
+    Args:
+        size: A tuple (dx, dy) defining the horizontal and vertical
+              displacement of one S-bend segment. dx is half the total length,
+              and dy is the total vertical deviation from the centerline.
+        cross_section: The cross_section to extrude the path.
+    """
+    c = gf.Component()
+    dx, dy = size
+
+    # The first S-bend goes from (0,0) down to (dx, -dy)
+    s_bend1 = gf.components.bend_s(size=(dx, -dy), cross_section=cross_section)
+    
+    # The second S-bend goes from (0,0) up to (dx, dy)
+    s_bend2 = gf.components.bend_s(size=(dx, dy), cross_section=cross_section)
+
+    # Add both S-bends as references to the component
+    ref1 = c << s_bend1
+    ref2 = c << s_bend2
+
+    # Connect the output of the first bend to the input of the second
+    ref2.connect("o1", ref1.ports["o2"])
+
+    # Expose the outer ports
+    c.add_port("o1", port=ref1.ports["o1"])
+    c.add_port("o2", port=ref2.ports["o2"])
+
+    return c
+
+@gf.cell
+def create_wavy_structure():
+    """
+    Recreates the wavy structure from the provided image using parametric GDSFactory functions.
+
+    The device consists of two symmetrical, wavy waveguides that come closer in the
+    center and separate at the ends, fitting within an 18x3 um footprint.
+
+    This is achieved by creating a single wavy waveguide component and then
+    placing two instances of it—one normal and one mirrored—to form the final
+    symmetric structure.
+    """
+    # 1. Define device parameters based on footprint and geometric analysis.
+    footprint_width = 18.0
+    footprint_height = 3.0
+
+    # Assume a plausible waveguide width and minimum gap.
+    waveguide_width = 0.5
+    min_gap = 0.5
+    
+    xs = gf.cross_section.cross_section(width=waveguide_width)
+
+    # 2. Calculate the geometric parameters for a single S-bend.
+    # The horizontal length of one S-bend is half the total device width.
+    dx = footprint_width / 2
+
+    # The vertical displacement (dy) is the change in the centerline's y-position
+    # from the end of the device to the center.
+    centerline_y_at_end = (footprint_height / 2) - (waveguide_width / 2)
+    centerline_y_at_center = (min_gap / 2) + (waveguide_width / 2)
+    dy = centerline_y_at_end - centerline_y_at_center
+
+    # 3. Instantiate the single wavy waveguide component with calculated parameters.
+    wavy_wg = single_wavy_waveguide(size=(dx, dy), cross_section=xs)
+
+    # 4. Assemble the final device from two instances of the wavy waveguide.
+    c = gf.Component("wavy_device")
+
+    # Add the top waveguide. It needs to be shifted up so its ends are at the correct height.
+    ref_top = c << wavy_wg
+    ref_top.movey(centerline_y_at_end)
+
+    # Add the bottom waveguide by referencing, mirroring, and then shifting it down.
+    ref_bottom = c << wavy_wg
+    ref_bottom.mirror(p1=(0, 0), p2=(1, 0)) # Mirror across the x-axis
+    ref_bottom.movey(-centerline_y_at_end)
+
+    # Center the entire device at the origin (0,0).
+    c.movex(-footprint_width / 2)
+    
+    return c
+
+# This block ensures the following code only runs when the script is executed directly
+if __name__ == "__main__":
+    # Create an instance of the final component.
+    device_to_save = create_wavy_structure()
+
+    # Save the GDS file to disk in the current directory.
+    # This line is now active and will produce the output file.
+    output_path = device_to_save.write_gds("wavy_device.gds")
+    
+    print(f"Successfully wrote GDS file to: {output_path}")
+
+    # To display the component if running in an interactive environment (like Jupyter):
+    # device_to_save.show()
+
+```

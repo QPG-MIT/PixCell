@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:15:54.279045",
+      "api_duration_seconds": 230.10707807540894,
+      "usage": {
+        "input_tokens": 6711,
+        "output_tokens": 1260,
+        "total_tokens": 31856
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')\nAttributeError: 'CrossSection' object has no attribute 'add'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:19:45.522589",
+      "api_duration_seconds": 190.01023888587952,
+      "usage": {
+        "input_tokens": 8024,
+        "output_tokens": 1398,
+        "total_tokens": 28996
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:22:56.669433",
+      "api_duration_seconds": 154.36765599250793,
+      "usage": {
+        "input_tokens": 9453,
+        "output_tokens": 1514,
+        "total_tokens": 26203
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 24188,
+    "output_tokens": 4172,
+    "total_tokens": 87055
+  }
+}

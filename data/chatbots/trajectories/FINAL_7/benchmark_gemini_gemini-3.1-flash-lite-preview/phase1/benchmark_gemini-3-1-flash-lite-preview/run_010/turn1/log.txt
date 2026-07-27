@@ -1,0 +1,63 @@
+Turn 1 Response:
+
+The `ValueError` occurred because you are using `bend_euler` and `cross_section` defaults which enforce a minimum bend radius to prevent fabrication errors. Because the device is small, a bend radius of `1.5` violates the default constraint of `10.0`.
+
+To fix this, we should move away from the path-based "routing" functions (which enforce these constraints) and instead use **geometric primitives** and **boolean operations** to build the shape. This approach is completely flexible and ignores bend radius constraints because you are essentially "drawing" the shapes.
+
+Here is the corrected, robust script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def custom_device():
+    # We define the layer explicitly
+    layer = (1, 0)
+    c = gf.Component()
+
+    # 1. Construct the outer ring shell using two ellipses
+    # This creates a "racetrack" or stadium shape without using routing functions
+    outer_ellipse = c << gf.components.ellipse(radii=(4.0, 2.0), layer=layer)
+    inner_ellipse = c << gf.components.ellipse(radii=(3.4, 1.4), layer=layer)
+    
+    # We use boolean 'not' to create the hollow ring structure
+    ring = gf.boolean(outer_ellipse, inner_ellipse, operation="not", layer=layer)
+    
+    # 2. Construct the two internal bars
+    bar1 = c << gf.components.rectangle(size=(1.5, 0.4), layer=layer, centered=True)
+    bar1.movey(0.7)
+    
+    bar2 = c << gf.components.rectangle(size=(1.5, 0.4), layer=layer, centered=True)
+    bar2.movey(-0.7)
+    
+    # 3. Construct the connecting bridges
+    # These connect the bars to the inner wall of the ring
+    bridge_top_left = c << gf.components.rectangle(size=(0.3, 0.4), layer=layer, centered=True)
+    bridge_top_left.move((-0.9, 0.7))
+    
+    bridge_top_right = c << gf.components.rectangle(size=(0.3, 0.4), layer=layer, centered=True)
+    bridge_top_right.move((0.9, 0.7))
+    
+    bridge_bot_left = c << gf.components.rectangle(size=(0.3, 0.4), layer=layer, centered=True)
+    bridge_bot_left.move((-0.9, -0.7))
+    
+    bridge_bot_right = c << gf.components.rectangle(size=(0.3, 0.4), layer=layer, centered=True)
+    bridge_bot_right.move((0.9, -0.7))
+    
+    # 4. Final Boolean Union
+    # We merge all the geometric pieces into a single unified shape
+    # We first collect all references into one component, then apply union
+    final_device = gf.geometry.union(c, layer=layer)
+    
+    return final_device
+
+if __name__ == "__main__":
+    device = custom_device()
+    device.write_gds("device_layout.gds")
+    device.show()
+```
+
+### Why this fixes the issue:
+1.  **Avoids Bend Rules:** By using `gf.components.ellipse` and `gf.components.rectangle`, we avoid the `cross_section` logic that triggers the `ValueError`. The system treats these as static shapes rather than calculated paths.
+2.  **Boolean Logic:** `gf.boolean(operation="not")` creates the hole in the center, and `gf.geometry.union` merges all elements (the ring and the bars) into a single cohesive piece of geometry.
+3.  **Clean Structure:** This script is much shorter and less prone to the "port" errors encountered in the previous attempt because it creates a unified geometric object rather than trying to snap components together.

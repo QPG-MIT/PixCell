@@ -1,0 +1,49 @@
+Turn 3 Response:
+
+Looking at the target image and the current output, I can see that there's a significant mismatch. The target image shows a single, smooth, curved waveguide arc (likely a 180-degree bend), while the current code generates a complex racetrack resonator with couplers and H-shaped connectors.
+
+The key issues are:
+1. The current code is creating a racetrack resonator (a complete loop) instead of a single arc
+2. It's including coupling waveguides and H-connectors that aren't in the target
+3. The target appears to be a simple, smooth 180-degree bend
+
+I need to simplify the code dramatically to match the target. The target looks like a single Euler bend or circular arc with a smooth, continuous curve.
+
+Here's my revised code:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def single_arc_bend():
+    c = gf.Component()
+    
+    # Define cross-section for the waveguide
+    xs = gf.cross_section.cross_section(
+        width=0.5, 
+        layer=(1, 0),
+        radius=1.0
+    )
+    
+    # Create a single 180-degree Euler bend
+    # This will create a smooth arc similar to the target image
+    bend = c << gf.components.bend_euler(radius=1.0, angle=180, cross_section=xs)
+    
+    # Add ports for connectivity
+    c.add_port("o1", port=bend.ports["o1"])
+    c.add_port("o2", port=bend.ports["o2"])
+    
+    return c
+
+# Create the device
+device = single_arc_bend()
+device.write_gds("single_arc_bend.gds")
+```
+
+This code:
+1. Creates a single Euler bend with 180-degree angle
+2. Uses the same cross-section parameters as before
+3. Exposes the two ports for connectivity
+4. Removes all the racetrack structure, couplers, and H-connectors that were creating the complex geometry
+
+The resulting shape should be a smooth, continuous arc that matches the target image much more closely. The Euler bend will provide the smooth curvature transition that appears in the target image.

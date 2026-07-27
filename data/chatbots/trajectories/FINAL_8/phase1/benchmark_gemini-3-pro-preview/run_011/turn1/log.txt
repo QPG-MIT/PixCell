@@ -1,0 +1,155 @@
+Turn 1 Response:
+
+To recreate the device shown in the image, we will use `gdsfactory`.
+
+### Analysis of the Geometry
+1.  **Structure**: The device consists of a central bundle of straight waveguides coupled to two outer bundles (top and bottom).
+2.  **Symmetry**: The device is symmetric across the X-axis (vertical center).
+3.  **Components**:
+    *   **Center**: A group of 5 straight, parallel waveguides running the full length.
+    *   **Top/Bottom**: "Bulk" shapes that act as couplers. Upon closer inspection of the white striations, these are composed of multiple parallel waveguides (approx 4-5) that curve outwards at the input and output ports (S-bends) and run parallel to the center in the middle (Straight).
+4.  **Constraints**:
+    *   Footprint: $120 \mu m \times 4 \mu m$.
+    *   This implies the waveguides are very narrow (sub-micron) to fit ~13-15 lines within a 4µm vertical height.
+
+### Implementation Strategy
+*   We will define a basic waveguide cross-section.
+*   We will calculate the vertical pitch (spacing) to fit the components within the 4µm height limit.
+*   **Center Bundle**: Created using `gf.components.straight`.
+*   **Outer Bundles**: Constructed in three segments:
+    1.  **Input Bend**: An S-bend (`gf.components.bend_s`) bringing the waveguides from the wider edge separation to the narrow coupling gap.
+    2.  **Coupling Region**: Straight waveguides parallel to the center.
+    3.  **Output Bend**: An S-bend taking the waveguides back out to the edge.
+
+Here is the complete Python script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def grating_coupler_device():
+    """
+    Recreation of the Contra-Directional Coupler / Grating Device.
+    Footprint constraint: 120um x 4um.
+    """
+    c = gf.Component()
+
+    # =======================================================================
+    # Parameters
+    # =======================================================================
+    # Dimensions derived to fit ~15 lines into 4um height
+    wg_width = 0.12
+    wg_gap = 0.12
+    pitch = wg_width + wg_gap
+    
+    # Longitudinal dimensions
+    total_length = 120.0
+    bend_length = 15.0
+    straight_length = total_length - (2 * bend_length) # Middle interaction region
+    
+    # Vertical organization
+    # We have 3 groups: Bottom Outer, Center, Top Outer
+    center_lines_count = 5
+    outer_lines_count = 5 # Represents the "bulk" blocks with slots
+    
+    # Gap between the center bundle and the outer bundles in the coupling region
+    coupling_gap = 0.25 
+
+    # Splay offset: How much the outer bundles move vertically at the ends
+    # We want the middle to be tight, and the ends to fill the 4um footprint.
+    dy_splay = 0.5 
+
+    # Create Cross Section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # =======================================================================
+    # 1. Center Bundle (Straight)
+    # =======================================================================
+    # These run straight through the center of the device
+    center_y_start = -((center_lines_count - 1) * pitch) / 2
+    
+    for i in range(center_lines_count):
+        y = center_y_start + i * pitch
+        wg = c << gf.components.straight(length=total_length, cross_section=xs)
+        wg.y = y
+
+    # =======================================================================
+    # 2. Outer Bundles (S-Bend -> Straight -> S-Bend)
+    # =======================================================================
+    
+    # Calculate the starting Y position for the Top Bundle in the middle (straight) section
+    # Top of center bundle + coupling gap + half line width
+    y_center_top_edge = center_y_start + (center_lines_count - 1) * pitch
+    y_top_bundle_start = y_center_top_edge + coupling_gap + wg_width/2 + wg_gap
+    
+    # Function to generate an outer bundle (Top or Bottom)
+    def add_outer_bundle(is_top=True):
+        direction = 1 if is_top else -1
+        
+        for i in range(outer_lines_count):
+            # Calculate Y position in the Straight Coupling Region
+            # If top: build up from y_top_bundle_start
+            # If bottom: mirror logic
+            if is_top:
+                y_pos_straight = y_top_bundle_start + i * pitch
+                dy = dy_splay # Move UP at the ends
+            else:
+                y_pos_straight = -(y_top_bundle_start + i * pitch)
+                dy = -dy_splay # Move DOWN at the ends
+
+            # --- Middle Straight Section ---
+            wg_straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+            wg_straight.x = 0 # Center horizontally
+            wg_straight.y = y_pos_straight
+
+            # --- Input Bend (Left) ---
+            # To create the flare out, we connect an S-bend to the left port.
+            # We want the port to start higher/lower (flare) and come IN to the straight.
+            # Using bend_s with size=(L, H). 
+            # If we connect to the West port (o1) of straight, a standard bend_s extends West.
+            # We need to calculate the correct vertical offset direction.
+            
+            # Left Bend Geometry:
+            # We want to go FROM (Left, Flared) TO (Middle, Compressed).
+            # Connecting to wg_straight.ports["o1"] (facing West):
+            # If Top: We want the bend to go Left and UP. 
+            # bend_s(size=(L, H)) connects (0,0) to (L, H).
+            # If we attach o1 to o1 (rotated 180), it draws to (-L, H') depending on mirror.
+            # Simple heuristic: Define bend, connect, check mirror.
+            
+            # For Top Left: Needs to go Left and Up.
+            # Using size=(bend_length, dy) with a mirror_y on connect will achieve the curve away.
+            # Actually, standard bend_s curves "up". If attached 180 deg, it curves "down" (y decreases as x decreases).
+            # So for Top Left (curve UP as x decreases), we need size=(L, -dy) attached 180?
+            # Let's rely on explicit port movement:
+            b_left = c << gf.components.bend_s(size=(bend_length, dy), cross_section=xs)
+            # Connect the "end" (o2) of the bend to the "start" (o1) of the straight
+            # This effectively places the bend to the left.
+            # If dy is positive, o2 is higher than o1.
+            # Connecting o2 to straight.o1 means the bend drops DOWN into the straight.
+            # This is exactly what we want for the Top Input (starts high, comes down).
+            b_left.connect("o2", wg_straight.ports["o1"])
+
+            # --- Output Bend (Right) ---
+            # Connect start (o1) of bend to end (o2) of straight.
+            # Top Right: Needs to go Right and Up.
+            # bend_s(size=(L, dy)) goes Right and Up.
+            b_right = c << gf.components.bend_s(size=(bend_length, dy), cross_section=xs)
+            b_right.connect("o1", wg_straight.ports["o2"])
+
+    # Generate Top Group
+    add_outer_bundle(is_top=True)
+    
+    # Generate Bottom Group
+    add_outer_bundle(is_top=False)
+
+    return c
+
+# =======================================================================
+# Build and Save
+# =======================================================================
+if __name__ == "__main__":
+    device = grating_coupler_device()
+    device.show() # View in KLayout
+    device.write_gds("grating_coupler.gds")
+```

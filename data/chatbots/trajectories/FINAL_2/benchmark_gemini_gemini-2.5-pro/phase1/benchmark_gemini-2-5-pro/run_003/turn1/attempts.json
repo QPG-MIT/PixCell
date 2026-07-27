@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.453033",
+      "api_duration_seconds": 72.650475025177,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 1266,
+        "total_tokens": 11856
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_2/benchmark_gemini_gemini-2.5-pro/phase1/benchmark_gemini-2-5-pro/run_003/turn1/generated_component.py\", line 85, in <module>\n    device = create_device()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfacto",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:23.749455",
+      "api_duration_seconds": 20.36057996749878,
+      "usage": {
+        "input_tokens": 4158,
+        "output_tokens": 1050,
+        "total_tokens": 6777
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: GeometricObject.move() missing 1 required positional argument: 'origin'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:45.572814",
+      "api_duration_seconds": 18.324622869491577,
+      "usage": {
+        "input_tokens": 5239,
+        "output_tokens": 1173,
+        "total_tokens": 7417
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'geometry'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11742,
+    "output_tokens": 3489,
+    "total_tokens": 26050
+  }
+}

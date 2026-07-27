@@ -1,0 +1,124 @@
+Turn 1 Response:
+
+To recreate the device shown in the image, we need to construct a "split-ring" or folded Mach-Zehnder-like resonator. The geometry consists of a racetrack-shaped outer boundary with a complex inner void that defines two parallel arms in the center, which merge into solid curved sections at the ends. Additionally, there are rectangular slots (holes) within the arms, visible in the crop images.
+
+Here is the parametric construction strategy:
+1.  **Outer Hull**: Create a solid "stadium" shape (rectangle with semi-circular ends) to define the maximum extent of the device (5.5um x 3.0um).
+2.  **Inner Void**: Create a central cutout to separate the top and bottom arms. This shape is a rectangle in the center that tapers to a point at both ends, creating the Y-branch merge transition into the bends.
+3.  **Arm Features**: Create four rectangular holes (two on the top arm, two on the bottom arm) to replicate the slotted/block features visible in the structure.
+4.  **Boolean Operation**: Subtract the Inner Void and the Holes from the Outer Hull.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_structure():
+    """
+    Recreates the specific racetrack resonator with split arms and internal slots
+    based on the provided image and footprint constraints.
+    """
+    c = gf.Component()
+
+    # --- Dimensions ---
+    # Footprint constraint: 3.0um x 5.5um
+    height = 3.0
+    width = 5.5
+    
+    # Derived geometry
+    radius = height / 2.0  # 1.5um
+    straight_length = width - 2 * radius  # 5.5 - 3.0 = 2.5um
+    
+    # Layer for the device
+    layer = (1, 0)
+
+    # --- 1. Create Outer Body (Solid Stadium) ---
+    # We build this by combining a central rectangle and two end circles.
+    outer_body = gf.Component()
+    
+    # Central rectangular body
+    center_rect = outer_body << gf.components.rectangle(
+        size=(straight_length, height), 
+        layer=layer, 
+        centered=True
+    )
+    
+    # End caps (circles)
+    right_circ = outer_body << gf.components.circle(radius=radius, layer=layer)
+    right_circ.movex(straight_length / 2.0)
+    
+    left_circ = outer_body << gf.components.circle(radius=radius, layer=layer)
+    left_circ.movex(-straight_length / 2.0)
+
+    # --- 2. Create Inner Void (Gap and Tapers) ---
+    # This separates the top and bottom arms and defines the merge point.
+    void_structure = gf.Component()
+    
+    # Parameters for the void
+    void_height = 1.4  # Defines the gap between arms. Leaves ~0.8um for each arm width.
+    taper_length = 0.9 # Length of the triangular merge section
+    
+    # Central rectangular gap
+    gap_rect = void_structure << gf.components.rectangle(
+        size=(straight_length, void_height), 
+        layer=layer, 
+        centered=True
+    )
+    
+    # Tapered ends (Triangles pointing outwards)
+    # Using taper with width2=0 creates a triangle.
+    taper = gf.components.taper(
+        length=taper_length, 
+        width1=void_height, 
+        width2=0, 
+        layer=layer
+    )
+    
+    right_taper = void_structure << taper
+    right_taper.movex(straight_length / 2.0)
+    
+    left_taper = void_structure << taper
+    left_taper.mirror()
+    left_taper.movex(-straight_length / 2.0)
+
+    # --- 3. Create Arm Slots (Holes) ---
+    # Rectangular cutouts on the arms as seen in the crop details.
+    slots_structure = gf.Component()
+    
+    slot_w = 0.5
+    slot_h = 0.3
+    slot_rect = gf.components.rectangle(size=(slot_w, slot_h), layer=layer, centered=True)
+    
+    # Calculate positions
+    # Y position: centered within the arm. 
+    # Arm spans from y=0.7 (void/2) to y=1.5 (outer/2). Center ~ 1.1.
+    arm_y_center = 1.1
+    # X positions: symmetrically spaced on the straight section
+    slot_spacing_x = 0.7
+    
+    positions = [
+        (slot_spacing_x, arm_y_center),   # Top Right
+        (-slot_spacing_x, arm_y_center),  # Top Left
+        (slot_spacing_x, -arm_y_center),  # Bottom Right
+        (-slot_spacing_x, -arm_y_center)  # Bottom Left
+    ]
+    
+    for x, y in positions:
+        s = slots_structure << slot_rect
+        s.move((x, y))
+
+    # --- 4. Boolean Operations ---
+    # Combine Void and Slots into a single "negative" mask
+    negatives = gf.boolean(void_structure, slots_structure, operation="or", layer=layer)
+    
+    # Subtract negatives from the Outer Body
+    final_shape = gf.boolean(outer_body, negatives, operation="not", layer=layer)
+    
+    c << final_shape
+    return c
+
+# Save and export
+if __name__ == "__main__":
+    device = device_structure()
+    device.write_gds("complex_resonator.gds")
+    device.show()
+```

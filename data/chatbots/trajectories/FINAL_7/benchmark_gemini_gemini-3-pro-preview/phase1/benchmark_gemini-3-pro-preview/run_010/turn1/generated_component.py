@@ -1,0 +1,111 @@
+import gdsfactory as gf
+
+@gf.cell
+def arm_with_holes(length=2.5, width=0.5, width_wide=1.1, taper_length=0.6):
+    """
+    Creates a straight waveguide arm with a widened center section 
+    containing two rectangular cutouts (holes).
+    """
+    # 1. Create the solid body (Taper -> Wide Straight -> Taper)
+    solid = gf.Component()
+    
+    # Define a cross_section for the wide part to ensure correct width and layer
+    # We use layer (1, 0) for all waveguide structures
+    xs_wide = gf.cross_section.cross_section(width=width_wide, layer=(1, 0))
+    
+    # Left Taper
+    # We rely on default layer (1, 0) for taper, or could pass cross_section if supported
+    t1 = solid << gf.components.taper(length=taper_length, width1=width, width2=width_wide)
+    
+    # Center Wide Section
+    # Use the wide cross_section here
+    L_wide = length - 2 * taper_length
+    mid = solid << gf.components.straight(length=L_wide, cross_section=xs_wide)
+    mid.connect("o1", t1.ports["o2"])
+    
+    # Right Taper
+    t2 = solid << gf.components.taper(length=taper_length, width1=width_wide, width2=width)
+    t2.connect("o1", mid.ports["o2"])
+    
+    # 2. Create the holes to subtract
+    holes = gf.Component()
+    
+    # Parameters for the holes
+    rim_thickness = 0.25
+    hole_height = width_wide - 2 * rim_thickness
+    bridge_width = 0.25  # The solid bar between the two holes
+    
+    # Calculate hole length to fit in the wide section with margins
+    margin = 0.1
+    available_len = L_wide - 2 * margin
+    hole_length = (available_len - bridge_width) / 2
+    
+    # Calculate geometric center of the wide section relative to origin
+    center_x = taper_length + L_wide / 2
+    
+    # Create Hole 1 (Left) - Rectangle accepts 'layer'
+    h1 = holes << gf.components.rectangle(size=(hole_length, hole_height), layer=(1, 0), centered=True)
+    h1.move((center_x - bridge_width/2 - hole_length/2, 0))
+    
+    # Create Hole 2 (Right)
+    h2 = holes << gf.components.rectangle(size=(hole_length, hole_height), layer=(1, 0), centered=True)
+    h2.move((center_x + bridge_width/2 + hole_length/2, 0))
+    
+    # 3. Perform Boolean Subtraction (Body - Holes)
+    # Boolean requires explicit layer for the output
+    arm = gf.boolean(A=solid, B=holes, operation="not", layer=(1, 0))
+    
+    # 4. Add ports (boolean components lose ports, so we re-add them)
+    arm.add_port("o1", center=(0, 0), orientation=180, width=width, layer=(1, 0))
+    arm.add_port("o2", center=(length, 0), orientation=0, width=width, layer=(1, 0))
+    
+    return arm
+
+@gf.cell
+def device_racetrack():
+    c = gf.Component()
+    
+    # Dimensions based on 3.0 x 5.5 um footprint constraint
+    w_wg = 0.5
+    
+    # Calculate Radius (R) from Height: H = 2*R + w
+    # 3.0 = 2*R + 0.5 -> 2.5 = 2*R -> R = 1.25
+    R = 1.25
+    
+    # Calculate Straight Length (L) from Width: W = 2*(R + w/2) + L 
+    # 5.5 = 3.0 + L -> L = 2.5
+    L_straight = 2.5
+    
+    # Define standard cross_section for bends
+    xs = gf.cross_section.cross_section(width=w_wg, layer=(1, 0))
+    
+    # Instantiate components
+    # The arm is custom built
+    arm = arm_with_holes(length=L_straight, width=w_wg)
+    # The bend uses the standard cross_section
+    bend = gf.components.bend_circular(radius=R, angle=180, cross_section=xs)
+    
+    # Assembly
+    # 1. Bottom Arm
+    bot_arm = c << arm
+    bot_arm.move((0, 0))
+    
+    # 2. Right Bend (Connects to bottom arm, curves Up)
+    right_bend = c << bend
+    right_bend.connect("o1", bot_arm.ports["o2"])
+    
+    # 3. Top Arm (Connects to right bend, placed on top)
+    top_arm = c << arm
+    top_arm.connect("o2", right_bend.ports["o2"])
+    
+    # 4. Left Bend (Connects to top arm, curves Down)
+    left_bend = c << bend
+    left_bend.connect("o1", top_arm.ports["o1"])
+    
+    return c
+
+# Generate and save
+if __name__ == "__main__":
+    device = device_racetrack()
+    device.show()
+    device.write_gds("racetrack_with_heaters.gds")

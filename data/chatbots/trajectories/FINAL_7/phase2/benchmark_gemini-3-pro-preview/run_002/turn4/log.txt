@@ -1,0 +1,130 @@
+Turn 4 Response:
+
+The previous render revealed that the central pads and the connecting arms were not integrated smoothly (appearing as separate blocks with "legs"), and the vertical spacing was too wide. The ring was also slightly too thin compared to the reference.
+
+This updated script addresses these visual discrepancies by:
+1.  **Matching Thicknesses**: The diagonal waveguide width (`0.5um`) is now set to match the height of the central pads (`0.5um`). This creates a seamless visual transition where the pad "becomes" the arm.
+2.  **Point Overlap**: The starting and ending points of the diagonal arms are moved *inside* the geometry of the pads and hubs. This eliminates the "notch" artifacts at the connection points.
+3.  **Tighter Vertical Spacing**: The central structures are moved closer together (`y=0.4` instead of `0.6`), reducing the central gap to match the "squinting eye" look of the target.
+4.  **Thicker Outer Ring**: Increased ring width to `0.8um` to match the heavy bold look of the original image.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def photonic_racetrack_mzi_refined():
+    """
+    High-fidelity recreation of the target device.
+    Key Improvements:
+    - Seamless transition between central pads and diagonal arms (matched widths).
+    - Tighter vertical integration (narrower gap).
+    - Bold outer ring.
+    - Robust boolean operations for window creation.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions & Parameters ---
+    width_total = 5.5
+    height_total = 3.0
+    layer_main = (1, 0)
+    
+    # Feature Dimensions (Tuned to visual density of target)
+    width_ring = 0.8       # Thicker ring
+    height_pad = 0.5       # Height of the central phase shifter block
+    width_arm = 0.5        # Matches pad height for seamless connection
+    
+    # Placement
+    pad_y_center = 0.4     # Closer vertical spacing (gap ~0.3um)
+    hub_x_center = 1.6     # Position of end blocks
+    
+    # Cross Sections
+    xs_ring = gf.cross_section.cross_section(width=width_ring, layer=layer_main)
+    xs_arm = gf.cross_section.cross_section(width=width_arm, layer=layer_main)
+
+    # --- 1. Construct Outer Racetrack ---
+    # Radius is derived from total height and ring width to ensure exact footprint
+    # R_center = (Height - Width)/2 = (3.0 - 0.8)/2 = 1.1
+    p_ring = gf.Path()
+    p_ring.append(gf.path.straight(length=2.5))
+    p_ring.append(gf.path.arc(radius=1.1, angle=-180))
+    p_ring.append(gf.path.straight(length=2.5))
+    p_ring.append(gf.path.arc(radius=1.1, angle=-180))
+    
+    ring = c << gf.path.extrude(p_ring, cross_section=xs_ring)
+    ring.move(origin=ring.center, destination=(0,0))
+
+    # --- 2. Construct Central Pads with Windows ---
+    def create_pad_structure():
+        # 1. Solid Body (Slightly wider to accommodate arm overlap)
+        c_body = gf.components.rectangle(size=(1.6, height_pad), layer=layer_main, centered=True)
+        
+        # 2. Windows (Grouped in a Component for robust boolean)
+        c_windows = gf.Component()
+        window_size = (0.55, 0.24) # Large windows, thin frames
+        spacing = 0.65
+        
+        w1 = c_windows << gf.components.rectangle(size=window_size, layer=layer_main, centered=True)
+        w1.movex(-spacing/2)
+        
+        w2 = c_windows << gf.components.rectangle(size=window_size, layer=layer_main, centered=True)
+        w2.movex(spacing/2)
+        
+        # 3. Boolean Subtract
+        return gf.boolean(A=c_body, B=c_windows, operation="not", layer=layer_main)
+
+    pad_template = create_pad_structure()
+    
+    # Place Top Pad
+    pad_top = c << pad_template
+    pad_top.move((0, pad_y_center))
+    
+    # Place Bottom Pad
+    pad_bot = c << pad_template
+    pad_bot.move((0, -pad_y_center))
+
+    # --- 3. Construct End Hubs ---
+    # Square blocks at the ends
+    hub_size = 0.65
+    hub_shape = gf.components.rectangle(size=(hub_size, hub_size), layer=layer_main, centered=True)
+    
+    hub_r = c << hub_shape
+    hub_r.move((hub_x_center, 0))
+    
+    hub_l = c << hub_shape
+    hub_l.move((-hub_x_center, 0))
+
+    # --- 4. Construct Seamless Connecting Arms ---
+    # To avoid "notches" at the joints, we overlap the path endpoints into the existing blocks.
+    
+    # Start point: Inside the central pad (Pad width 1.6 -> edge at 0.8)
+    x_start = 0.7 
+    
+    # End point: Inside the hub (Hub center 1.6, width 0.65 -> inner edge ~1.275)
+    x_end = 1.45
+    
+    # Y Targets: Merge slightly offset from 0 to avoid overlapping each other
+    y_target = 0.12
+    
+    # Right Side Arms
+    ptr = gf.Path([(x_start, pad_y_center), (x_end, y_target)])
+    c << gf.path.extrude(ptr, cross_section=xs_arm)
+    
+    pbr = gf.Path([(x_start, -pad_y_center), (x_end, -y_target)])
+    c << gf.path.extrude(pbr, cross_section=xs_arm)
+
+    # Left Side Arms
+    ptl = gf.Path([(-x_start, pad_y_center), (-x_end, y_target)])
+    c << gf.path.extrude(ptl, cross_section=xs_arm)
+    
+    pbl = gf.Path([(-x_start, -pad_y_center), (-x_end, -y_target)])
+    c << gf.path.extrude(pbl, cross_section=xs_arm)
+
+    return c
+
+if __name__ == "__main__":
+    device = photonic_racetrack_mzi_refined()
+    device.show() 
+    device.write_gds("photonic_device_refined.gds")
+    
+    print(f"Device Footprint: {device.dxsize:.2f} x {device.dysize:.2f} um")
+```

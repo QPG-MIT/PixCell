@@ -1,0 +1,235 @@
+import gdsfactory as gf
+from gdsfactory.typings import CrossSectionSpec, LayerSpec
+import numpy as np # Import numpy for Bezier curve calculation
+
+# Helper function to generate points for a Bezier curve
+def generate_bezier_points(control_points, num_points=50):
+    """
+    Generates points along a Bezier curve given control points.
+    Specifically implemented for a cubic Bezier curve (4 control points).
+
+    Args:
+        control_points: A list of (x, y) tuples representing the Bezier control points (P0, P1, P2, P3).
+        num_points: The number of points to generate along the curve.
+
+    Returns:
+        A list of (x, y) tuples representing the curve's path.
+    """
+    if len(control_points) != 4:
+        raise ValueError("This helper function only supports cubic Bezier curves (4 control points).")
+
+    t = np.linspace(0, 1, num_points)
+    curve_points = []
+    p0, p1, p2, p3 = control_points
+
+    # Cubic Bezier curve formula
+    # P(t) = (1-t)^3 P0 + 3(1-t)^2 t P1 + 3(1-t) t^2 P2 + t^3 P3
+    for val_t in t:
+        x = (
+            (1 - val_t)**3 * p0[0] +
+            3 * (1 - val_t)**2 * val_t * p1[0] +
+            3 * (1 - val_t) * val_t**2 * p2[0] +
+            val_t**3 * p3[0]
+        )
+        y = (
+            (1 - val_t)**3 * p0[1] +
+            3 * (1 - val_t)**2 * val_t * p1[1] +
+            3 * (1 - val_t) * val_t**2 * p2[1] +
+            val_t**3 * p3[1]
+        )
+        curve_points.append((x, y))
+        
+    return curve_points
+
+
+# Helper component for creating a single flared, tapered curve segment
+@gf.cell
+def flared_transition_segment(
+    start_xs: gf.CrossSection,
+    end_xs: gf.CrossSection,
+    dx: float,  # Horizontal displacement of the curve
+    dy: float,  # Vertical displacement of the curve
+    layer: LayerSpec,
+    num_points: int = 50, # Number of points to define the Bezier curve
+    transition_type: str = "sine", # Type of width transition: "sine", "linear", "smooth"
+) -> gf.Component:
+    """
+    Creates a single curved segment that transitions in width from start_xs to end_xs.
+    The centerline of the curve is defined by a Bezier curve to provide smooth C-shapes.
+
+    Args:
+        start_xs: The CrossSection at the start of the path.
+        end_xs: The CrossSection at the end of the path.
+        dx: The total horizontal displacement of the path.
+        dy: The total vertical displacement of the path (can be positive or negative).
+        layer: The GDS layer for the waveguide.
+        num_points: Number of points to define the Bezier curve.
+        transition_type: The method for width interpolation.
+    """
+    c = gf.Component()
+
+    # Define control points for a smooth C-shaped Bezier curve.
+    # The curve starts at (0,0) and ends at (dx, dy).
+    # Control points are chosen to provide horizontal tangents at the start and end.
+    # This creates a cubic Bezier curve (4 control points).
+    control_points = [
+        (0, 0),
+        (dx / 3, 0),       # First control point, enforces horizontal tangent at start
+        (2 * dx / 3, dy),  # Second control point, enforces horizontal tangent at end
+        (dx, dy)
+    ]
+    
+    # Generate points for the Bezier curve using our helper function
+    bezier_points = generate_bezier_points(control_points, num_points=num_points)
+
+    # Corrected: Create the Path object directly from the list of points
+    path = gf.Path(bezier_points)
+
+    # Create the transition object that defines how the cross-section changes along the path
+    transition_obj = gf.path.transition(start_xs, end_xs, width_type=transition_type)
+
+    # Extrude the path with the varying cross-section to create the geometry
+    flared_segment = gf.path.extrude_transition(path, transition_obj)
+    ref = c << flared_segment
+
+    # Add ports to the component for connection
+    c.add_port("o1", port=ref.ports[0]) # Start port
+    c.add_port("o2", port=ref.ports[1]) # End port
+
+    return c
+
+
+@gf.cell
+def custom_coupler_from_image(
+    wg_core_width: float = 0.5,       # Width of the central parallel waveguides
+    wg_port_width: float = 1.0,       # Width of the input/output ports
+    mid_gap: float = 0.2,             # Gap between waveguides in the central straight section
+    flared_bend_length: float = 20.0, # Horizontal length of each flared transition
+    mid_straight_length: float = 80.0, # Length of the central parallel straight section
+    layer: LayerSpec = (1, 0),
+    cross_section_factory: CrossSectionSpec = "strip",
+) -> gf.Component:
+    """
+    Recreates the geometry from the provided image using tapered, curved transitions.
+
+    Args:
+        wg_core_width: The width of the waveguides in the central parallel section.
+        wg_port_width: The width of the waveguides at the input/output ports.
+        mid_gap: The gap between the two waveguides in the central straight section.
+        flared_bend_length: The horizontal length occupied by each flared transition component.
+        mid_straight_length: The length of the straight section between the two S-bends.
+        layer: GDS layer for the waveguide.
+        cross_section_factory: The cross-section specification for the waveguides.
+    """
+    c = gf.Component("custom_coupler_from_image")
+
+    # Define cross-sections for the core and port regions
+    xs_core = gf.get_cross_section(cross_section_factory, width=wg_core_width, layer=layer)
+    xs_port = gf.get_cross_section(cross_section_factory, width=wg_port_width, layer=layer)
+
+    # Calculate y-coordinates for waveguide centers based on derived parameters
+    # The total device height is 4um. If wg_port_width is 1um, then max_y = 2.0, min_y = -2.0.
+    y_start_top = 2.0 - wg_port_width / 2      # Example: 2.0 - 0.5 = 1.5
+    y_start_bottom = -2.0 + wg_port_width / 2  # Example: -2.0 + 0.5 = -1.5
+
+    mid_spacing = wg_core_width + mid_gap     # Example: 0.5 + 0.2 = 0.7
+    y_mid_top = mid_spacing / 2               # Example: 0.7 / 2 = 0.35
+    y_mid_bottom = -mid_spacing / 2           # Example: -0.7 / 2 = -0.35
+
+    # Calculate the vertical displacement (dy) for each flared transition
+    # For top path:
+    dy_top_left = y_mid_top - y_start_top       # 0.35 - 1.5 = -1.15 (downward curve)
+    dy_top_right = y_start_top - y_mid_top      # 1.5 - 0.35 = 1.15  (upward curve)
+    # For bottom path:
+    dy_bottom_left = y_mid_bottom - y_start_bottom # -0.35 - (-1.5) = 1.15 (upward curve)
+    dy_bottom_right = y_start_bottom - y_mid_bottom # -1.5 - (-0.35) = -1.15 (downward curve)
+
+    # --- Top Path Construction ---
+    # Left flared bend: From wide (port) to narrow (core), curving downwards
+    ref_tfl = c << flared_transition_segment(
+        start_xs=xs_port,
+        end_xs=xs_core,
+        dx=flared_bend_length,
+        dy=dy_top_left, # Negative dy for downward curve
+        layer=layer,
+    )
+    # Position the start of this segment at the top-left port location
+    ref_tfl.movey(y_start_top)
+
+    # Middle straight section for the top path (narrow width)
+    straight_top = gf.components.straight(length=mid_straight_length, cross_section=xs_core)
+    ref_st = c << straight_top
+    ref_st.connect("o1", ref_tfl.ports["o2"]) # Connect to the end of the left flared bend
+
+    # Right flared bend: From narrow (core) to wide (port), curving upwards
+    ref_tfr = c << flared_transition_segment(
+        start_xs=xs_core,
+        end_xs=xs_port,
+        dx=flared_bend_length,
+        dy=dy_top_right, # Positive dy for upward curve
+        layer=layer,
+    )
+    ref_tfr.connect("o1", ref_st.ports["o2"]) # Connect to the end of the straight section
+
+    # --- Bottom Path Construction ---
+    # Left flared bend: From wide (port) to narrow (core), curving upwards
+    ref_bfl = c << flared_transition_segment(
+        start_xs=xs_port,
+        end_xs=xs_core,
+        dx=flared_bend_length,
+        dy=dy_bottom_left, # Positive dy for upward curve
+        layer=layer,
+    )
+    # Position the start of this segment at the bottom-left port location
+    ref_bfl.movey(y_start_bottom)
+
+    # Middle straight section for the bottom path (narrow width)
+    straight_bottom = gf.components.straight(length=mid_straight_length, cross_section=xs_core)
+    ref_sb = c << straight_bottom
+    ref_sb.connect("o1", ref_bfl.ports["o2"]) # Connect to the end of the left flared bend
+
+    # Right flared bend: From narrow (core) to wide (port), curving downwards
+    ref_bfr = c << flared_transition_segment(
+        start_xs=xs_core,
+        end_xs=xs_port,
+        dx=flared_bend_length,
+        dy=dy_bottom_right, # Negative dy for downward curve
+        layer=layer,
+    )
+    ref_bfr.connect("o1", ref_sb.ports["o2"]) # Connect to the end of the straight section
+
+    # --- Add Ports to the Top-Level Component ---
+    # Expose the input/output ports of the complete device
+    c.add_port("o1", port=ref_tfl.ports["o1"]) # Top Left input
+    c.add_port("o2", port=ref_bfl.ports["o1"]) # Bottom Left input
+    c.add_port("o3", port=ref_tfr.ports["o2"]) # Top Right output
+    c.add_port("o4", port=ref_bfr.ports["o2"]) # Bottom Right output
+
+    return c
+
+# --- Instantiate the component with the determined parameters ---
+# These parameters are chosen to match the given footprint of [120, 4] um
+# Total length = flared_bend_length + mid_straight_length + flared_bend_length = 20 + 80 + 20 = 120 um.
+# Total height = y_start_top - y_start_bottom + wg_port_width = 1.5 - (-1.5) + 1.0 = 3.0 + 1.0 = 4 um.
+coupler_device = custom_coupler_from_image(
+    wg_core_width=0.5,
+    wg_port_width=1.0,
+    mid_gap=0.2,
+    flared_bend_length=20.0,
+    mid_straight_length=80.0,
+    layer=(1, 0),
+    cross_section_factory="strip"
+)
+
+# Print footprint and ports to verify
+print(f"Device footprint: X={coupler_device.xsize} um, Y={coupler_device.ysize} um")
+print(f"Port o1 center: {coupler_device.ports['o1'].center}")
+print(f"Port o2 center: {coupler_device.ports['o2'].center}")
+print(f"Port o3 center: {coupler_device.ports['o3'].center}")
+print(f"Port o4 center: {coupler_device.ports['o4'].center}")
+
+# View the component (this will open a GDS viewer if configured, or save a GDS and png)
+gf.show(coupler_device)
+
+# Write to GDS
+coupler_device.write_gds("coupler_from_image.gds")

@@ -1,0 +1,99 @@
+import gdsfactory as gf
+
+def create_stadium(length, radius, layer=(1, 0)):
+    """Helper function to create a solid stadium shape from primitives."""
+    rect = gf.components.rectangle(size=(length, 2 * radius), centered=True, layer=layer)
+    circ = gf.components.circle(radius=radius, layer=layer)
+    
+    cap_left = gf.Component()
+    cap_left.add_ref(circ).move((-length / 2, 0))
+    
+    cap_right = gf.Component()
+    cap_right.add_ref(circ).move((length / 2, 0))
+    
+    # Boolean union to fuse them seamlessly
+    u1 = gf.boolean(rect, cap_left, operation='or', layer=layer)
+    stadium_comp = gf.boolean(u1, cap_right, operation='or', layer=layer)
+    return stadium_comp
+
+@gf.cell
+def racetrack_filter():
+    layer = (1, 0)
+    
+    # 1. Outer Dimensions based on the 3.0 x 5.5 footprint constraint
+    length = 2.5
+    radius_out = 1.5
+    radius_in = 1.1  # Provides a solid track width of 0.4
+    
+    outer_solid = create_stadium(length=length, radius=radius_out, layer=layer)
+    inner_void = create_stadium(length=length, radius=radius_in, layer=layer)
+    
+    # Create the outer hollow track ring
+    track = gf.boolean(outer_solid, inner_void, operation='not', layer=layer)
+
+    # 2. Define inner MZ arms using continuous paths to form the stems naturally
+    arm_width = 0.2
+    xs = gf.cross_section.cross_section(width=arm_width, layer=layer)
+    
+    # By running the paths parallel at y=0.1 and y=-0.1 from x=-2.35 to -1.5, 
+    # their 0.2 widths combine to form a solid 0.4 thick 'stem'. 
+    # When they angle away, they diverge from a mathematically perfect sharp point.
+    p_top = gf.Path([
+        (-2.35, 0.1), 
+        (-1.5, 0.1), 
+        (-0.8, 0.5), 
+        (0.8, 0.5), 
+        (1.5, 0.1), 
+        (2.35, 0.1)
+    ])
+    arm_top = gf.path.extrude(p_top, cross_section=xs)
+    
+    p_bot = gf.Path([
+        (-2.35, -0.1), 
+        (-1.5, -0.1), 
+        (-0.8, -0.5), 
+        (0.8, -0.5), 
+        (1.5, -0.1), 
+        (2.35, -0.1)
+    ])
+    arm_bot = gf.path.extrude(p_bot, cross_section=xs)
+    
+    # 3. Create the thicker external blocks for the central straight sections
+    block_w = 1.6
+    block_h = 0.4
+    block = gf.components.rectangle(size=(block_w, block_h), centered=True, layer=layer)
+    
+    b_top_ref = gf.Component()
+    b_top_ref.add_ref(block).move((0, 0.5))
+    
+    b_bot_ref = gf.Component()
+    b_bot_ref.add_ref(block).move((0, -0.5))
+    
+    # Sequentially merge arms and blocks with the track via boolean unions
+    solid_1 = gf.boolean(track, arm_top, operation='or', layer=layer)
+    solid_2 = gf.boolean(solid_1, arm_bot, operation='or', layer=layer)
+    solid_3 = gf.boolean(solid_2, b_top_ref, operation='or', layer=layer)
+    device_solid = gf.boolean(solid_3, b_bot_ref, operation='or', layer=layer)
+
+    # 4. Create internal cutouts to subtract from the blocks to make the 'chain links'
+    hole_w = 0.55
+    hole_h = 0.2
+    hole = gf.components.rectangle(size=(hole_w, hole_h), centered=True, layer=layer)
+    
+    holes_comp = gf.Component()
+    # Top block holes
+    holes_comp.add_ref(hole).move((-0.325, 0.5))
+    holes_comp.add_ref(hole).move((0.325, 0.5))
+    # Bottom block holes
+    holes_comp.add_ref(hole).move((-0.325, -0.5))
+    holes_comp.add_ref(hole).move((0.325, -0.5))
+
+    # Final boolean subtraction to hollow out the phase-shifter blocks internally
+    final_device = gf.boolean(device_solid, holes_comp, operation='not', layer=layer)
+
+    return final_device
+
+# Instantiate and export to GDS
+if __name__ == "__main__":
+    c = racetrack_filter()
+    c.write_gds("racetrack_filter.gds")

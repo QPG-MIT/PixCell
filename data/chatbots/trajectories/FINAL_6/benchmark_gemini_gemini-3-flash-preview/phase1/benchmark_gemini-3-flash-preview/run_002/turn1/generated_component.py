@@ -1,0 +1,69 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreated_device():
+    """
+    Recreates the cross-shaped petal device using parametric primitives.
+    Total Footprint: 4.7um x 4.7um
+    """
+    # 1. Define dimensions based on 4.7um total span
+    # Half span is 2.35um. We split this between the petal and the stub.
+    petal_major_r = 1.9          # Length of the elliptical part from center
+    stub_length = 0.45           # Length of the rectangular tip (1.9 + 0.45 = 2.35)
+    
+    petal_minor_r = 0.5          # Controls "fatness" of petals (1.0um total width)
+    stub_width = 0.3             # Width of the rectangular leads
+    
+    c = gf.Component("device_assembly")
+    layer = (1, 0)
+
+    # 2. Create the horizontal and vertical petals (Ellipses)
+    # gf.components.ellipse creates a centered ellipse
+    petal_h = gf.components.ellipse(radii=(petal_major_r, petal_minor_r), layer=layer)
+    petal_v = gf.components.ellipse(radii=(petal_minor_r, petal_major_r), layer=layer)
+    
+    c << petal_h
+    c << petal_v
+
+    # 3. Create and position the 4 stubs (Rectangles)
+    # Horizontal stub primitive
+    rect_h = gf.components.rectangle(size=(stub_length, stub_width), layer=layer, centered=True)
+    # Vertical stub primitive
+    rect_v = gf.components.rectangle(size=(stub_width, stub_length), layer=layer, centered=True)
+
+    # Calculate displacement for stubs (petal tip + half of stub length)
+    disp = petal_major_r + stub_length / 2
+
+    # Place stubs
+    s_right = c << rect_h
+    s_right.movex(disp)
+
+    s_left = c << rect_h
+    s_left.movex(-disp)
+
+    s_top = c << rect_v
+    s_top.movey(disp)
+
+    s_bottom = c << rect_v
+    s_bottom.movey(-disp)
+
+    # 4. Use a Boolean OR to merge all overlapping parts into a single silhouette
+    # This removes internal lines and creates a single clean polygon
+    final_component = gf.boolean(A=c, B=c, operation="or", layer=layer)
+    final_component.name = "recreated_device"
+    
+    return final_component
+
+if __name__ == "__main__":
+    # Create the component
+    device = recreated_device()
+    
+    # SAVE THE FILE
+    # This creates 'device_output.gds' in your current working directory
+    output_filename = "device_output.gds"
+    device.write_gds(output_filename)
+    
+    print(f"GDS file successfully created: {output_filename}")
+    
+    # Optional: view the device (requires KLayout installed)
+    # device.show()

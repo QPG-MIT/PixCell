@@ -1,0 +1,86 @@
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler_v5() -> gf.Component:
+    """
+    Symmetric coupler refined for Turn 5.
+    Adjusts proportions for a thinner, more elongated profile to match the 
+    delicate visual style of the target image.
+    
+    Total Footprint: 120 um x 4 um.
+    """
+    c = gf.Component("symmetric_coupler_v5")
+
+    # 1. Global Dimensions & Parameters
+    W_TOTAL = 120.0
+    H_TOTAL = 4.0
+    
+    # Thinner waveguides and a tighter gap create the correct visual weight
+    wg_width = 0.3
+    gap = 0.1 
+    
+    # Longitudinal distribution:
+    # Short ends and longer bends create a more natural "flow"
+    l_end = 5.0     
+    l_sbend = 25.0  
+    l_center = W_TOTAL - 2 * l_end - 2 * l_sbend # Result: 60.0 um
+    
+    # 2. Vertical Offset Calculations
+    # To hit exactly 4um total height: (y_outer * 2) + wg_width = 4.0
+    y_outer = (H_TOTAL - wg_width) / 2 # ~1.85 um
+    y_inner = (wg_width + gap) / 2     # ~0.20 um
+    dy = y_outer - y_inner             # Vertical shift for S-bend
+
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # 3. Component Assembly
+    
+    # Central Coupling Section (The "Waist")
+    mid = c << gf.components.coupler_straight(length=l_center, gap=gap, cross_section=xs)
+
+    # S-bends: Connecting the wide ends to the narrow center
+    # Left side
+    sb_tl = c << gf.components.bend_s(size=(l_sbend, -dy), cross_section=xs)
+    sb_tl.connect("o2", mid.ports["o2"])
+    
+    sb_bl = c << gf.components.bend_s(size=(l_sbend, dy), cross_section=xs)
+    sb_bl.connect("o2", mid.ports["o1"])
+    
+    # Right side
+    sb_tr = c << gf.components.bend_s(size=(l_sbend, dy), cross_section=xs)
+    sb_tr.connect("o1", mid.ports["o3"])
+    
+    sb_br = c << gf.components.bend_s(size=(l_sbend, -dy), cross_section=xs)
+    sb_br.connect("o1", mid.ports["o4"])
+
+    # Port Tails (Horizontal entry/exit segments)
+    st_tl = c << gf.components.straight(length=l_end, cross_section=xs)
+    st_tl.connect("o2", sb_tl.ports["o1"])
+    
+    st_bl = c << gf.components.straight(length=l_end, cross_section=xs)
+    st_bl.connect("o2", sb_bl.ports["o1"])
+    
+    st_tr = c << gf.components.straight(length=l_end, cross_section=xs)
+    st_tr.connect("o1", sb_tr.ports["o2"])
+    
+    st_br = c << gf.components.straight(length=l_end, cross_section=xs)
+    st_br.connect("o1", sb_br.ports["o2"])
+
+    # 4. Port Exposure
+    c.add_port("o1", port=st_bl.ports["o1"])
+    c.add_port("o2", port=st_tl.ports["o1"])
+    c.add_port("o3", port=st_tr.ports["o2"])
+    c.add_port("o4", port=st_br.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    device = symmetric_coupler_v5()
+    
+    # Export to GDS
+    device.write_gds("symmetric_coupler_v5.gds")
+    
+    # Metadata for verification
+    print(f"Device Name: {device.name}")
+    print(f"Dimensions: {device.xsize:.2f} um x {device.ysize:.2f} um")

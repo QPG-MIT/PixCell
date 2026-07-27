@@ -1,0 +1,156 @@
+Turn 3 Response:
+
+```python
+import numpy as np
+import gdsfactory as gf
+
+
+def cubic_bezier_points(p0, p1, p2, p3, n: int = 81):
+    """Return n (x, y) points along a cubic Bezier curve (including endpoints)."""
+    t = np.linspace(0.0, 1.0, n)
+
+    p0 = np.asarray(p0, dtype=float)
+    p1 = np.asarray(p1, dtype=float)
+    p2 = np.asarray(p2, dtype=float)
+    p3 = np.asarray(p3, dtype=float)
+
+    # Column vectors for broadcasting
+    T = t[:, None]
+    one_minus = (1.0 - t)[:, None]
+
+    pts = (one_minus**3) * p0 + 3 * (one_minus**2) * T * p1 + 3 * one_minus * (T**2) * p2 + (T**3) * p3
+    return [tuple(x) for x in pts]
+
+
+@gf.cell
+def trident_splitter(
+    length_total: float = 40.0,
+    height_total: float = 1.7,
+    layer: tuple[int, int] = (1, 0),
+    # widths
+    arm_w: float = 0.22,
+    mid_w: float = 0.14,
+    arm_w_in: float = 0.12,
+    mid_w_in: float = 0.08,
+    mid_w_tip: float = 0.03,
+    # vertical placement
+    y0: float = 0.39,
+    dy_split: float = 0.34,
+    # horizontal partition (late split)
+    L_taper_in: float = 3.0,
+    L_parallel: float = 24.0,
+    L_curve: float = 8.0,
+    L_out: float = 5.0,
+    # middle guide (ends early)
+    L_mid_straight: float = 20.0,
+    L_mid_taper_out: float = 2.0,
+    # Bezier shaping (fractions of L_curve)
+    cp1x_frac: float = 0.35,
+    cp2x_frac: float = 0.65,
+    # curve sampling
+    n_bezier: int = 81,
+):
+    """
+    Trident-like splitter closer to the target:
+    - long parallel run
+    - smooth late divergence using a monotonic cubic Bezier offset (implemented via points)
+    - tapered inputs and tapered middle termination
+    """
+
+    # --- Checks ---
+    if abs((L_taper_in + L_parallel + L_curve + L_out) - length_total) > 1e-6:
+        raise ValueError("Require L_taper_in + L_parallel + L_curve + L_out == length_total")
+
+    if not (0.0 < cp1x_frac < cp2x_frac < 1.0):
+        raise ValueError("Require 0 < cp1x_frac < cp2x_frac < 1")
+
+    approx_height = 2 * (abs(y0) + abs(dy_split)) + arm_w
+    if approx_height > height_total + 1e-3:
+        raise ValueError(
+            f"Approx height {approx_height:.3f}um exceeds height_total={height_total}um. "
+            f"Reduce y0/dy_split/arm_w."
+        )
+
+    c = gf.Component()
+
+    xs_arm = gf.cross_section.strip(width=arm_w, layer=layer)
+    xs_mid = gf.cross_section.strip(width=mid_w, layer=layer)
+
+    # --- Arm body using explicit points (no gf.path.bezier dependency) ---
+    def arm_body(dy: float) -> gf.Component:
+        # Start (x=0,y=0) at the *end* of the input taper
+        x_par_end = L_parallel
+
+        # Bezier from (x_par_end, 0) to (x_par_end+L_curve, dy)
+        p0 = (x_par_end, 0.0)
+        p1 = (x_par_end + L_curve * cp1x_frac, 0.0)
+        p2 = (x_par_end + L_curve * cp2x_frac, dy)
+        p3 = (x_par_end + L_curve, dy)
+
+        pts = [(0.0, 0.0), (x_par_end, 0.0)]
+        bez = cubic_bezier_points(p0, p1, p2, p3, n=n_bezier)
+        pts += bez[1:]  # avoid duplicating p0
+        pts += [(x_par_end + L_curve + L_out, dy)]
+
+        path = gf.Path(pts)
+        return gf.path.extrude(path, cross_section=xs_arm)
+
+    arm_top_body = arm_body(+dy_split)
+    arm_bot_body = arm_body(-dy_split)
+
+    # --- Input tapers (top/bot) ---
+    taper_arm_in = gf.components.taper(
+        length=L_taper_in,
+        width1=arm_w_in,
+        width2=arm_w,
+        layer=layer,
+    )
+
+    top_tin = c << taper_arm_in
+    top_tin.move((0, y0))
+    top_body = c << arm_top_body
+    top_body.connect("o1", top_tin.ports["o2"])
+
+    bot_tin = c << taper_arm_in
+    bot_tin.move((0, -y0))
+    bot_body = c << arm_bot_body
+    bot_body.connect("o1", bot_tin.ports["o2"])
+
+    # --- Middle: taper-in + straight + taper-to-tip ---
+    taper_mid_in = gf.components.taper(
+        length=L_taper_in,
+        width1=mid_w_in,
+        width2=mid_w,
+        layer=layer,
+    )
+    mid_st = gf.components.straight(length=L_mid_straight, cross_section=xs_mid)
+    taper_mid_out = gf.components.taper(
+        length=L_mid_taper_out,
+        width1=mid_w,
+        width2=mid_w_tip,
+        layer=layer,
+    )
+
+    mid_in = c << taper_mid_in
+    mid_s = c << mid_st
+    mid_s.connect("o1", mid_in.ports["o2"])
+    mid_out = c << taper_mid_out
+    mid_out.connect("o1", mid_s.ports["o2"])
+
+    # --- Ports ---
+    c.add_port("in_top", port=top_tin.ports["o1"])
+    c.add_port("in_mid", port=mid_in.ports["o1"])
+    c.add_port("in_bot", port=bot_tin.ports["o1"])
+    c.add_port("out_top", port=top_body.ports["o2"])
+    c.add_port("out_bot", port=bot_body.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    c = trident_splitter()
+    c.show()
+    c.write_gds("trident_splitter.gds")
+```
+
+The specific error you saw (`TypeError: 'int' object is not subscriptable`) was caused by a precedence bug in the Bezier code (it was effectively doing `3[:, None]`). The updated `cubic_bezier_points()` fixes the broadcasting explicitly.

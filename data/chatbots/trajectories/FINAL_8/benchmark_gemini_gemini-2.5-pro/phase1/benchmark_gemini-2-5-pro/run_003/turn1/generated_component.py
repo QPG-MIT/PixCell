@@ -1,0 +1,158 @@
+import gdsfactory as gf
+
+@gf.cell
+def create_device():
+    """
+    Recreates the specified geometry using gdsfactory parametric components.
+
+    The device is decomposed into three main parts:
+    1. A top "horn" with one thick bar and five thin lines.
+    2. A central section of five straight lines.
+    3. A bottom "horn," which is a mirror image of the top one.
+
+    The dimensions are calculated to fit the given footprint of [120.0, 4.0] um.
+    """
+
+    # --- Component to create a single "horn" (top or bottom section) ---
+    @gf.cell
+    def create_horn(
+        min_radius: float,
+        straight_length: float,
+        num_lines: int,
+        line_width: float,
+        gap: float,
+        bar_width: float,
+        bar_gap: float,
+        layer: tuple[int, int],
+    ):
+        """
+        Creates a single horn component consisting of a thick bar and N parallel lines.
+        Each element is a symmetrical U-shape made of bend-straight-bend sections.
+        """
+        c = gf.Component()
+        pitch = line_width + gap
+
+        # Define cross-sections for reuse
+        # FIX: Override the default minimum radius to allow for smaller bends.
+        # Set radius_min to the smallest radius we intend to use.
+        xs_line = gf.cross_section.cross_section(width=line_width, layer=layer, radius_min=min_radius)
+        xs_bar = gf.cross_section.cross_section(width=bar_width, layer=layer, radius_min=min_radius)
+
+        # --- Add the 5 parallel thin lines ---
+        for i in range(num_lines):
+            radius = min_radius + i * pitch
+            y_position = i * pitch
+
+            # Create the three segments for one line
+            bend1 = gf.components.bend_circular(radius=radius, angle=90, cross_section=xs_line)
+            straight_seg = gf.components.straight(length=straight_length, cross_section=xs_line)
+            bend2 = gf.components.bend_circular(radius=radius, angle=90, cross_section=xs_line)
+
+            # Add segments to the component and connect them
+            b1_ref = c << bend1
+            s_ref = c << straight_seg
+            b2_ref = c << bend2
+
+            b1_ref.movey(y_position)
+            s_ref.connect("o1", b1_ref.ports["o2"])
+            b2_ref.mirror_y()
+            b2_ref.connect("o2", s_ref.ports["o2"])
+        
+        # --- Add the outer thick bar ---
+        # Calculate its vertical position and bend radius relative to the lines
+        bar_y_position = (num_lines - 1) * pitch + (line_width + bar_width) / 2 + bar_gap
+        bar_radius = min_radius + bar_y_position
+
+        # Create the three segments for the bar
+        bar_bend1 = gf.components.bend_circular(radius=bar_radius, angle=90, cross_section=xs_bar)
+        bar_straight = gf.components.straight(length=straight_length, cross_section=xs_bar)
+        bar_bend2 = gf.components.bend_circular(radius=bar_radius, angle=90, cross_section=xs_bar)
+
+        # Add and connect the bar segments
+        bar_b1_ref = c << bar_bend1
+        bar_s_ref = c << bar_straight
+        bar_b2_ref = c << bar_bend2
+
+        bar_b1_ref.movey(bar_y_position)
+        bar_s_ref.connect("o1", bar_b1_ref.ports["o1"])
+        bar_b2_ref.mirror_y()
+        bar_b2_ref.connect("o2", bar_s_ref.ports["o2"])
+
+        return c
+
+    # --- Main device assembly ---
+    c_device = gf.Component()
+    layer = (1, 0)
+    
+    # --- Define parameters to fit the 120x4 um footprint ---
+    # Vertical parameters, scaled to fit within 4um height
+    num_lines = 5
+    line_width = 0.12
+    gap = 0.12
+    bar_width = 0.24  # Thicker than a line
+    bar_gap = 0.24    # A larger gap around the bar
+    pitch = line_width + gap
+    inter_group_gap = 0.2 # Vertical gap between main sections
+
+    # Horizontal parameters
+    min_radius = 2.0  # Innermost bend radius for the horns
+
+    # Calculate the max radius to determine total width contribution from bends
+    bar_y_relative = (num_lines - 1) * pitch + (line_width + bar_width) / 2 + bar_gap
+    max_radius = min_radius + bar_y_relative
+    
+    # Calculate straight length to meet total width of 120um
+    center_straight_len = 120.0 - 2 * max_radius
+
+    # --- 1. Create the central block of straight lines ---
+    c_center = gf.Component("center_lines")
+    center_lines_total_height = (num_lines - 1) * pitch
+    
+    line_primitive = gf.components.rectangle(
+        size=(120.0, line_width), layer=layer, centered=True
+    )
+    
+    for i in range(num_lines):
+        y = -center_lines_total_height / 2 + i * pitch
+        line_ref = c_center << line_primitive
+        line_ref.movey(y)
+    
+    center_ref = c_device << c_center
+
+    # --- 2. Create the top and bottom horns ---
+    horn_params = dict(
+        min_radius=min_radius,
+        straight_length=center_straight_len,
+        num_lines=num_lines,
+        line_width=line_width,
+        gap=gap,
+        bar_width=bar_width,
+        bar_gap=bar_gap,
+        layer=layer,
+    )
+    
+    top_horn = create_horn(**horn_params)
+    bottom_horn = create_horn(**horn_params)
+
+    # Place the horns relative to the central section
+    top_ref = c_device << top_horn
+    bottom_ref = c_device << bottom_horn
+    
+    # Mirror the bottom horn
+    bottom_ref.mirror()
+
+    # Align vertically with specified gap
+    top_ref.ymin = center_ref.ymax + inter_group_gap
+    bottom_ref.ymax = center_ref.ymin - inter_group_gap
+
+    # Center the entire device
+    c_device.move(-c_device.center)
+
+    return c_device
+
+# Create an instance of the device
+device = create_device()
+
+# The component is now created. To view or save it:
+# device.show()
+# device.write_gds("recreated_device.gds")

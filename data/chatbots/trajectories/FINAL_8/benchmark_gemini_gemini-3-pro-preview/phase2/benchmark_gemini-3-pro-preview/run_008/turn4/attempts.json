@@ -1,0 +1,39 @@
+{
+  "turn": 4,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:24:46.484605",
+      "api_duration_seconds": 117.28293180465698,
+      "usage": {
+        "input_tokens": 5834,
+        "output_tokens": 1856,
+        "total_tokens": 17261
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_8/benchmark_gemini_gemini-3-pro-preview/phase2/benchmark_gemini-3-pro-preview/run_008/turn4/generated_component.py\", line 140, in <module>\n    device = device_120_4()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-pac",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:26:44.993827",
+      "api_duration_seconds": 37.37505006790161,
+      "usage": {
+        "input_tokens": 8236,
+        "output_tokens": 1578,
+        "total_tokens": 12077
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14070,
+    "output_tokens": 3434,
+    "total_tokens": 29338
+  }
+}

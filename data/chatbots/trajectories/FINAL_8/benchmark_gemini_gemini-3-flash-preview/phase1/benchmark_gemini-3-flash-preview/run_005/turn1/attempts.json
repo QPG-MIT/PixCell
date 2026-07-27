@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.975630",
+      "api_duration_seconds": 162.61062002182007,
+      "usage": {
+        "input_tokens": 3155,
+        "output_tokens": 1271,
+        "total_tokens": 21206
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S120_0_e7249d33' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:54.038969",
+      "api_duration_seconds": 19.26270294189453,
+      "usage": {
+        "input_tokens": 4486,
+        "output_tokens": 1108,
+        "total_tokens": 7143
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 2 validation errors for CrossSection\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.03, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nlayer\n  Extra inputs are not permitted [type=extra_forbidden, input_value=(1, 0), input_type=tuple]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:14.664414",
+      "api_duration_seconds": 24.612498998641968,
+      "usage": {
+        "input_tokens": 5743,
+        "output_tokens": 1232,
+        "total_tokens": 8760
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'float' object is not subscriptable",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13384,
+    "output_tokens": 3611,
+    "total_tokens": 37109
+  }
+}

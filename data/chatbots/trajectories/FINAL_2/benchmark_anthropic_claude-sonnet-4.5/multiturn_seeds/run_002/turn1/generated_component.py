@@ -1,0 +1,76 @@
+import gdsfactory as gf
+
+@gf.cell
+def factory_device():
+    """
+    Creates a factory-shaped device with four tapered chimneys.
+    Footprint: approximately 25 x 10 microns
+    """
+    c = gf.Component()
+    
+    # Define dimensions based on footprint constraint [25, 10] microns
+    total_width = 25.0
+    total_height = 10.0
+    
+    # Main building body dimensions
+    building_width = 24.0
+    building_height = 4.8
+    building_y_center = -0.8  # Position in lower portion
+    
+    # Create main rectangular building
+    building = c << gf.components.rectangle(
+        size=(building_width, building_height),
+        layer=(1, 0),
+        centered=True
+    )
+    building.move((0, building_y_center))
+    
+    # Four chimneys/smokestacks on top
+    num_chimneys = 4
+    chimney_spacing = building_width / (num_chimneys + 1)  # Even spacing
+    chimney_height = 5.2
+    chimney_top_width = 1.5
+    chimney_bottom_width = 3.2
+    
+    for i in range(num_chimneys):
+        # Calculate x position for each chimney
+        x_pos = -building_width/2 + chimney_spacing * (i + 1)
+        
+        # Create tapered chimney (wider at bottom, narrower at top)
+        bottom_y = building.ymax
+        top_y = bottom_y + chimney_height
+        
+        # Define trapezoid points for tapered chimney
+        points = [
+            (x_pos - chimney_bottom_width/2, bottom_y),  # Bottom left
+            (x_pos + chimney_bottom_width/2, bottom_y),  # Bottom right
+            (x_pos + chimney_top_width/2, top_y),        # Top right
+            (x_pos - chimney_top_width/2, top_y)         # Top left
+        ]
+        
+        c.add_polygon(points, layer=(1, 0))
+    
+    # Bottom triangular protrusion (centered)
+    triangle_base = 2.8
+    triangle_height = 1.3
+    triangle_points = [
+        (-triangle_base/2, building.ymin),   # Top left
+        (triangle_base/2, building.ymin),    # Top right
+        (0, building.ymin - triangle_height) # Bottom point
+    ]
+    c.add_polygon(triangle_points, layer=(1, 0))
+    
+    return c
+
+if __name__ == "__main__":
+    # Create the device
+    device = factory_device()
+    
+    # Save to GDS file
+    device.write_gds("factory_device.gds")
+    
+    # Optional: display the device
+    device.show()
+    
+    print("Factory device created successfully!")
+    print(f"Bounding box: {device.bbox}")

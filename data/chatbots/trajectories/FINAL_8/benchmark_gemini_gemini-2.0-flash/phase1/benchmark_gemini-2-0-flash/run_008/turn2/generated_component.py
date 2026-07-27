@@ -1,0 +1,78 @@
+import gdsfactory as gf
+
+@gf.cell
+def interlaced_lines(width=1, line_spacing=0.2, num_lines=5, line_length=20):
+    """
+    Creates an interlaced pattern of horizontal lines.
+
+    Args:
+        width (float): Width of the lines.
+        line_spacing (float): Spacing between the lines.
+        num_lines (int): Number of lines in each interlaced section.
+        line_length (float): Length of individual lines.
+    """
+    c = gf.Component("interlaced_lines")
+
+    # Define parameters
+    # line_length = 120 # Moved to argument
+    vertical_gap = 4
+    section_width = line_spacing * (num_lines - 1) + width * num_lines
+
+    # Create the top section
+    top_section = gf.Component("top_section")
+    for i in range(num_lines):
+        y = i * (width + line_spacing)
+        line = top_section << gf.components.rectangle(size=(line_length, width), layer=(1, 0), centered=False)
+        line.movey(y)
+    top_section_ref = c << top_section
+    top_section_ref.move((0, vertical_gap/2 + section_width/2))
+
+    # Create the bottom section (mirrored)
+    bottom_section = gf.Component("bottom_section")
+    for i in range(num_lines):
+        y = i * (width + line_spacing)
+        line = bottom_section << gf.components.rectangle(size=(line_length, width), layer=(1, 0), centered=False)
+        line.movey(y)
+    bottom_section_ref = c << bottom_section
+    bottom_section_ref.move((0, -vertical_gap/2 - section_width/2))
+    bottom_section_ref.mirror()
+
+    # Create the middle section
+    middle_section = gf.Component("middle_section")
+    for i in range(num_lines):
+        y = i * (width + line_spacing)
+        line = middle_section << gf.components.rectangle(size=(line_length, width), layer=(1, 0), centered=False)
+        line.movey(y)
+    middle_section_ref = c << middle_section
+    middle_section_ref.move((0,0))
+
+    # Add vertical waveguide sections
+    vertical_length = vertical_gap/2
+    vertical_waveguide_width = section_width
+    # add top vertical lines
+    top_vertical_line = c << gf.components.rectangle(size=(vertical_waveguide_width + section_width , width), layer=(1, 0))
+    top_vertical_line.movey(vertical_gap + section_width)
+    top_vertical_line.movex(-25)
+
+    # add bottom vertical lines
+    bottom_vertical_line = c << gf.components.rectangle(size=(vertical_waveguide_width + section_width , width), layer=(1, 0))
+    bottom_vertical_line.movey(-vertical_gap - section_width - width)
+    bottom_vertical_line.movex(-25)
+
+
+    #Add horizontal part of the large rectangles
+    top_horizontal_line = c << gf.components.rectangle(size=(width , vertical_gap), layer=(1, 0))
+    top_horizontal_line.movey( vertical_gap + section_width + width)
+    top_horizontal_line.movex(-15)
+
+    # add bottom horizontal lines
+    bottom_horizontal_line = c << gf.components.rectangle(size=(width , vertical_gap), layer=(1, 0))
+    bottom_horizontal_line.movey( -vertical_gap - section_width - 2*width)
+    bottom_horizontal_line.movex(-15)
+
+    return c
+
+if __name__ == "__main__":
+    c = interlaced_lines(num_lines=5, line_length=50)
+    c.show()
+    c.write_gds("interlaced_lines.gds")

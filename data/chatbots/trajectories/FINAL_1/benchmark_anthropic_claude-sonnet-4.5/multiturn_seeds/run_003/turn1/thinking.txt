@@ -1,0 +1,59 @@
+The error is indicating that there's a width mismatch between ports when trying to connect them. The taper's o1 port has width 250nm (0.25um) but the straight waveguide's o2 port has width 500nm (0.5um).
+
+Looking at my code, I'm creating a straight waveguide with `thin_width = 0.25`, then a taper with `width1=thin_width` (0.25) and `width2=thick_width` (0.70). The error message shows "500"/"250", which suggests the straight waveguide might have a different default width than I specified.
+
+Actually, I think the issue is that when I create the taper, I'm using `cross_section=gf.cross_section.cross_section(layer=layer)` without specifying the width. This might be using a default width.
+
+Let me fix this by being more explicit about the cross-section widths. Actually, looking more carefully, the taper function might not take a cross_section parameter in the same way. Let me check the taper signature again.
+
+From the catalog:
+`gf.components.taper(length=10, width1=0.5, width2=1.0)` - it takes length, width1, width2 as parameters.
+
+I should not be passing cross_section to taper - just length, width1, width2, and optionally layer.
+
+Let me rewrite the script more carefully:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def tapered_waveguides():
+    c = gf.Component()
+    
+    # Define dimensions based on 40 x 1.7 um footprint
+    total_length = 40.0
+    
+    # Layer
+    layer = (1, 0)
+    
+    # Waveguide parameters
+    thin_width = 0.25
+    thick_width = 0.70
+    
+    # Top waveguide - thin for most length, then expands on right
+    top_y = 0.85
+    top_thin_len = 26.0
+    top_taper_len = 14.0
+    
+    top_thin = c << gf.components.straight(
+        length=top_thin_len,
+        cross_section=gf.cross_section.cross_section(width=thin_width, layer=layer)
+    )
+    top_thin.movey(top_y)
+    
+    top_taper = c << gf.components.taper(
+        length=top_taper_len,
+        width1=thin_width,
+        width2=thick_width
+    )
+    top_taper.movey(top_y)
+    top_taper.movex(top_thin_len)
+```
+
+I need to ensure the taper uses the correct width parameters and position it right after the straight section. The key is passing width1 and width2 directly to the taper function rather than trying to specify a cross_section.
+
+For the middle waveguide, I'll create a uniform thin section at y=0 with length 30. The bottom waveguide mirrors the top structure but with different dimensions—18 units of thin waveguide followed by a 22-unit taper that expands from thin to thick width.
+
+I need to verify whether the taper component accepts a layer parameter or relies on cross_section instead, since the width specifications alone may not fully define the layer information needed for the GDS output.
+
+The width ratio of 500/250 (0.5/0.25 microns) suggests the taper's default dimensions might not match what I'm trying to create. I should consider alternative approaches like using the Path system with transitions, or constructing the tapered structures directly with rectangles and polygons rather than depending on port-based connections.

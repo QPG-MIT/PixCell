@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.881877",
+      "api_duration_seconds": 83.64198207855225,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 2819,
+        "total_tokens": 20782
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S24_5__6713f53b' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:35.260633",
+      "api_duration_seconds": 27.315811157226562,
+      "usage": {
+        "input_tokens": 5223,
+        "output_tokens": 2477,
+        "total_tokens": 12155
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'copy'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:04.403328",
+      "api_duration_seconds": 18.336703777313232,
+      "usage": {
+        "input_tokens": 7729,
+        "output_tokens": 2229,
+        "total_tokens": 12366
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: boolean() missing 1 required positional argument: 'B'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15297,
+    "output_tokens": 7525,
+    "total_tokens": 45303
+  }
+}

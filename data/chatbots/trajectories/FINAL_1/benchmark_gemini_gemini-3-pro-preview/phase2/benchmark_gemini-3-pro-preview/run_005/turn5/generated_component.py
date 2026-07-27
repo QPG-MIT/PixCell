@@ -1,0 +1,127 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_recreation_refined_v4():
+    """
+    Refined recreation of the trident spot-size converter.
+    
+    Adjustments v4:
+    - Removed width tapering on outer arms to eliminate visual "kinks" and "wobbles" 
+      seen in rasterization. The target arms appear to have constant width along the straight section.
+    - Adjusted longitudinal proportions: Increased straight section length to 14.0um 
+      and reduced bend length to 21.0um. This pushes the start of the curve later, matching 
+      the visual profile of the target where the arms stay parallel longer.
+    - Tuned gaps and widths to satisfy the 1.7um input constraint exactly while 
+      producing a realistic output gap of 0.3um.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions & constraints ---
+    # Footprint constraint: 40.0um length, 1.7um height
+    
+    # Longitudinal sections
+    # Adjusted ratios to match visual profile (longer straight lead-in)
+    len_straight = 14.0
+    len_bend = 21.0
+    len_out = 5.0
+    # Total length = 40.0
+    
+    # Middle taper extends through straight and bend sections
+    len_middle_taper = len_straight + len_bend  # 35.0um
+
+    # Transverse dimensions
+    # Input Constraint: 3*w + 2*gap_in = 1.7
+    # Widths chosen to be uniform to avoid taper artifacts
+    w = 0.4                # Waveguide width (constant for outer arms)
+    gap_in = 0.25          # Input gap
+    
+    # Height Check: 0.4*3 + 0.25*2 = 1.2 + 0.5 = 1.7. Matches constraint.
+    
+    w_out = 0.4            # Output width (constant)
+    gap_out = 0.30         # Output gap (slightly wider than input, matches visual target)
+    w_tip = 0.03           # Sharp tip for middle taper
+    
+    # --- Calculations ---
+    
+    # 1. Pitch Calculations (Distance from y=0 to center of outer arm)
+    # Input Side:
+    # y = (half_middle_width) + gap + (half_outer_width)
+    y_in_pitch = (w / 2) + gap_in + (w / 2)  # 0.2 + 0.25 + 0.2 = 0.65
+    
+    # Output Side:
+    # y = (half_gap_out) + (half_outer_width)
+    y_out_pitch = (gap_out / 2) + (w_out / 2) # 0.15 + 0.2 = 0.35
+    
+    # Vertical Shift for S-bend
+    dy = y_in_pitch - y_out_pitch # 0.65 - 0.35 = 0.3
+
+    # Cross-sections
+    xs = gf.cross_section.cross_section(width=w, layer=(1, 0))
+
+    # --- Geometry Construction ---
+
+    # 1. Middle Arm
+    # Long taper from input width to fine tip. 
+    middle_taper = c << gf.components.taper(
+        length=len_middle_taper,
+        width1=w,
+        width2=w_tip,
+        layer=(1, 0)
+    )
+    # Starts at (0,0)
+
+    # 2. Top Arm
+    # Section A: Straight (Constant width to avoid kinks)
+    top_straight = c << gf.components.straight(
+        length=len_straight,
+        cross_section=xs
+    )
+    top_straight.move((0, y_in_pitch))
+
+    # Section B: S-Bend (Shifts DOWN)
+    top_bend = c << gf.components.bend_s(
+        size=(len_bend, -dy), 
+        cross_section=xs
+    )
+    top_bend.connect("o1", top_straight.ports["o2"])
+
+    # Section C: Straight Output
+    top_out = c << gf.components.straight(
+        length=len_out,
+        cross_section=xs
+    )
+    top_out.connect("o1", top_bend.ports["o2"])
+
+    # 3. Bottom Arm (Mirrored)
+    # Section A: Straight
+    bot_straight = c << gf.components.straight(
+        length=len_straight,
+        cross_section=xs
+    )
+    bot_straight.move((0, -y_in_pitch))
+
+    # Section B: S-Bend (Shifts UP)
+    bot_bend = c << gf.components.bend_s(
+        size=(len_bend, dy), 
+        cross_section=xs
+    )
+    bot_bend.connect("o1", bot_straight.ports["o2"])
+
+    # Section C: Straight Output
+    bot_out = c << gf.components.straight(
+        length=len_out,
+        cross_section=xs
+    )
+    bot_out.connect("o1", bot_bend.ports["o2"])
+    
+    # Add ports
+    c.add_port("o1", port=middle_taper.ports["o1"])
+    c.add_port("o2", port=top_out.ports["o2"])
+    c.add_port("o3", port=bot_out.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    c = device_recreation_refined_v4()
+    c.show()
+    c.write_gds("trident_refined_v4.gds")

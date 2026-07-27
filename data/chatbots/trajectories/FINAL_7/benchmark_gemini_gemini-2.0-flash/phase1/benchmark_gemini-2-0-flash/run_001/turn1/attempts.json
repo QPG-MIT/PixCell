@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.702197",
+      "api_duration_seconds": 15.40406608581543,
+      "usage": {
+        "input_tokens": 3894,
+        "output_tokens": 1864,
+        "total_tokens": 5758
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Width of symmetrical cross sections must have be a multiple of 2 dbu. This could cause cross sections and extrusions to become unsymmetrical otherwise. [type=value_error, input_value={'width': 375, 'enclosure...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the followin",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:26.570805",
+      "api_duration_seconds": 14.975795984268188,
+      "usage": {
+        "input_tokens": 6269,
+        "output_tokens": 2062,
+        "total_tokens": 8331
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Width of symmetrical cross sections must have be a multiple of 2 dbu. This could cause cross sections and extrusions to become unsymmetrical otherwise. [type=value_error, input_value={'width': 375, 'enclosure...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the followin",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:42.932369",
+      "api_duration_seconds": 12.594578266143799,
+      "usage": {
+        "input_tokens": 8842,
+        "output_tokens": 2049,
+        "total_tokens": 10891
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports taper_gdsfactorypcomponentsptapersptaper_L0p5_W0p8_W0p5_b9cbe6cf_0_0[\"o1\"] and Port \"o2\" (\"800\"/\"500\")",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 19005,
+    "output_tokens": 5975,
+    "total_tokens": 24980
+  }
+}

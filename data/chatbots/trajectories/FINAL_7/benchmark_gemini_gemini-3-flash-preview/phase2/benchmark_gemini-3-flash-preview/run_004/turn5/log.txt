@@ -1,0 +1,103 @@
+Turn 5 Response:
+
+The error occurred because GDSFactory's default `CrossSection` enforces a minimum bend radius (usually 10.0µm), which is much larger than the tight curves required for a device with a 5.5µm total footprint.
+
+I have fixed this by explicitly setting `radius_min=0.01` in the `cross_section` definition. I have also refined the proportions and centering to better match the target image's visual style, ensuring the branching logic is perfectly symmetric.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def racetrack_mzi_device():
+    """
+    Corrected Racetrack MZI device.
+    Footprint: 5.5um x 3.0um.
+    Fixes the ValueError by lowering the radius_min constraint for small-scale geometry.
+    """
+    c = gf.Component("racetrack_mzi_v6")
+    
+    # --- Dimensions ---
+    width = 5.5
+    height = 3.0
+    layer = (1, 0)
+    
+    # Proportions tuned to the target image
+    frame_t = 0.52        # Outer wall thickness
+    wg_w = 0.26           # Internal waveguide width
+    trunk_l = 0.55        # Length of horizontal segment at the walls
+    sbend_dx = 0.75       # Horizontal span of the fork curves
+    branch_y = 0.65       # Vertical offset of parallel arms
+    block_w = 0.85        # Modulation block width
+    block_h = 0.50        # Modulation block height
+    block_gap = 0.12      # Gap between central blocks
+    
+    # --- 1. Define Cross Section with Small Radius Constraint ---
+    # radius_min=0.01 allows the S-bends to compute very tight radii without erroring.
+    xs = gf.cross_section.cross_section(width=wg_w, layer=layer, radius_min=0.01)
+
+    # --- 2. Create the Racetrack Frame ---
+    def make_rt_shape(w, h):
+        rt = gf.Component()
+        s_len = w - h
+        r = h / 2
+        rt << gf.components.rectangle(size=(s_len, h), layer=layer, centered=True)
+        c1 = rt << gf.components.circle(radius=r, layer=layer)
+        c1.movex(-s_len / 2)
+        c2 = rt << gf.components.circle(radius=r, layer=layer)
+        c2.movex(s_len / 2)
+        return rt
+
+    outer_ref = make_rt_shape(width, height)
+    inner_ref = make_rt_shape(width - 2*frame_t, height - 2*frame_t)
+    frame = gf.boolean(outer_ref, inner_ref, operation="not", layer=layer)
+    c << frame
+
+    # --- 3. Build Internal Circuitry ---
+    # Position relative to the inner wall of the racetrack
+    inner_wall_x = (width / 2) - frame_t
+    
+    # Left Trunk (Connecting to the inner left curve)
+    l_trunk = c << gf.components.straight(length=trunk_l, cross_section=xs)
+    l_trunk.movex(-inner_wall_x)
+    
+    # Left Split (S-Bends)
+    ls_top = c << gf.components.bend_s(size=(sbend_dx, branch_y), cross_section=xs)
+    ls_bot = c << gf.components.bend_s(size=(sbend_dx, -branch_y), cross_section=xs)
+    ls_top.connect("o1", l_trunk.ports["o2"])
+    ls_bot.connect("o1", l_trunk.ports["o2"])
+    
+    # Center Parallel Arms
+    # mid_len is calculated to ensure the whole structure fits exactly inside the frame
+    mid_len = (2 * inner_wall_x) - 2 * (trunk_l + sbend_dx)
+    p_top = c << gf.components.straight(length=mid_len, cross_section=xs)
+    p_bot = c << gf.components.straight(length=mid_len, cross_section=xs)
+    p_top.connect("o1", ls_top.ports["o2"])
+    p_bot.connect("o1", ls_bot.ports["o2"])
+    
+    # Right Merge (S-Bends)
+    rs_top = c << gf.components.bend_s(size=(sbend_dx, -branch_y), cross_section=xs)
+    rs_bot = c << gf.components.bend_s(size=(sbend_dx, branch_y), cross_section=xs)
+    rs_top.connect("o1", p_top.ports["o2"])
+    rs_bot.connect("o1", p_bot.ports["o2"])
+    
+    # Right Trunk
+    r_trunk = c << gf.components.straight(length=trunk_l, cross_section=xs)
+    r_trunk.connect("o1", rs_top.ports["o2"])
+
+    # --- 4. Create the Modulation Blocks ---
+    block = gf.components.rectangle(size=(block_w, block_h), layer=layer, centered=True)
+    # Offset from center x=0
+    x_offset = (block_w + block_gap) / 2
+    
+    for y_pos in [branch_y, -branch_y]:
+        for side in [-1, 1]:
+            b_ref = c << block
+            b_ref.move((side * x_offset, y_pos))
+
+    return c
+
+if __name__ == "__main__":
+    device = racetrack_mzi_device()
+    device.write_gds("racetrack_mzi_v6.gds")
+    device.show()
+```

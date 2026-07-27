@@ -1,0 +1,178 @@
+import gdsfactory as gf
+
+LAYER = (1, 0)
+
+
+@gf.cell
+def taper_transition(
+    length: float = 10.0,
+    width1: float = 0.12,
+    width2: float = 0.18,
+    layer=LAYER,
+    width_type: str = "sine",
+) -> gf.Component:
+    """Parametric taper using Path + extrude_transition."""
+    xs1 = gf.cross_section.strip(width=width1, layer=layer)
+    xs2 = gf.cross_section.strip(width=width2, layer=layer)
+    trans = gf.path.transition(xs1, xs2, width_type=width_type)
+    p = gf.path.straight(length=length)
+    return gf.path.extrude_transition(p, trans)
+
+
+def cubic_bezier_points(p0, p1, p2, p3, n: int = 101):
+    """Samples a cubic Bezier curve into a list of (x, y) points."""
+    if n < 2:
+        raise ValueError("n must be >= 2")
+    pts = []
+    for i in range(n):
+        t = i / (n - 1)
+        mt = 1.0 - t
+        x = (
+            mt**3 * p0[0]
+            + 3 * mt**2 * t * p1[0]
+            + 3 * mt * t**2 * p2[0]
+            + t**3 * p3[0]
+        )
+        y = (
+            mt**3 * p0[1]
+            + 3 * mt**2 * t * p1[1]
+            + 3 * mt * t**2 * p2[1]
+            + t**3 * p3[1]
+        )
+        pts.append((x, y))
+    return pts
+
+
+def offset_bezier_segment(
+    x0: float,
+    y0: float,
+    dx: float,
+    dy: float,
+    ctrl_frac: float = 0.35,
+    npoints: int = 101,
+):
+    """
+    Returns Bezier points from (x0,y0) to (x0+dx,y0+dy) with horizontal tangency
+    at both ends (good "S-bend-like" fan-out).
+    """
+    p0 = (x0, y0)
+    p3 = (x0 + dx, y0 + dy)
+    p1 = (x0 + dx * ctrl_frac, y0)
+    p2 = (x0 + dx * (1.0 - ctrl_frac), y0 + dy)
+    return cubic_bezier_points(p0, p1, p2, p3, n=npoints)
+
+
+@gf.cell
+def three_waveguides_split_like_png(
+    # Footprint target
+    length_total: float = 40.0,
+    height_total: float = 1.7,
+    layer=LAYER,
+    # Visual/geometry tuning
+    w_wg: float = 0.18,
+    w_start: float = 0.12,
+    ltaper: float = 10.0,
+    lcpl: float = 17.0,           # straight parallel region AFTER taper
+    lfan_dx: float = 6.0,         # horizontal length of fan-out curve
+    bezier_ctrl_frac: float = 0.35,
+    bezier_npoints: int = 101,
+    y_cpl: float = 0.40,          # outer guides y in parallel region
+    y_out: float = 0.72,          # outer guides y at outputs
+    center_end_offset: float = 0.4,  # center ends before fan-out starts
+) -> gf.Component:
+    """
+    - 3 separate thin waveguides (no merged trunk).
+    - Middle guide terminates before fan-out begins.
+    - Outer guides: truly straight parallel section + smooth Bezier fan-out + straight.
+    """
+    c = gf.Component()
+    xs = gf.cross_section.strip(width=w_wg, layer=layer)
+
+    # --- footprint sanity ---
+    half_h = height_total / 2
+    if abs(y_out) + w_wg / 2 > half_h + 1e-6:
+        raise ValueError("y_out/w_wg exceed the requested 1.7um height footprint.")
+
+    dy_fan = y_out - y_cpl
+    if dy_fan <= 0:
+        raise ValueError("Need y_out > y_cpl for outward fan-out.")
+
+    rest_len = length_total - ltaper
+    lout = rest_len - (lcpl + lfan_dx)
+    if lout <= 0:
+        raise ValueError("Invalid lengths: need length_total > ltaper + lcpl + lfan_dx.")
+
+    x_split_start = ltaper + lcpl
+    x_end_center = x_split_start - center_end_offset
+    if x_end_center <= ltaper:
+        raise ValueError("center_end_offset too large; center waveguide would be too short.")
+
+    def make_outer_path_points(sign: float):
+        """Points for: straight (parallel) -> Bezier offset -> straight."""
+        pts = []
+
+        # Start of 'rest' path is local (0,0). We'll connect it to taper later.
+        # Parallel straight
+        pts.append((0.0, 0.0))
+        pts.append((lcpl, 0.0))
+
+        # Bezier fan-out
+        bez = offset_bezier_segment(
+            x0=lcpl,
+            y0=0.0,
+            dx=lfan_dx,
+            dy=sign * dy_fan,
+            ctrl_frac=bezier_ctrl_frac,
+            npoints=bezier_npoints,
+        )
+        pts.extend(bez[1:])  # skip duplicate first point at (lcpl,0)
+
+        # Output straight
+        x_end = lcpl + lfan_dx + lout
+        y_end = sign * dy_fan
+        pts.append((x_end, y_end))
+
+        return pts
+
+    # -------------------------
+    # TOP waveguide
+    # -------------------------
+    top_taper = c << taper_transition(length=ltaper, width1=w_start, width2=w_wg, layer=layer)
+    top_taper.move((0, y_cpl))
+
+    p_top = gf.Path(make_outer_path_points(+1.0))
+    top_rest = c << gf.path.extrude(p_top, cross_section=xs)
+    top_rest.connect("o1", top_taper.ports["o2"])
+
+    # -------------------------
+    # BOTTOM waveguide
+    # -------------------------
+    bot_taper = c << taper_transition(length=ltaper, width1=w_start, width2=w_wg, layer=layer)
+    bot_taper.move((0, -y_cpl))
+
+    p_bot = gf.Path(make_outer_path_points(-1.0))
+    bot_rest = c << gf.path.extrude(p_bot, cross_section=xs)
+    bot_rest.connect("o1", bot_taper.ports["o2"])
+
+    # -------------------------
+    # CENTER waveguide (ends early)
+    # -------------------------
+    mid_taper = c << taper_transition(length=ltaper, width1=w_start, width2=w_wg, layer=layer)
+    mid_taper.move((0, 0))
+
+    mid_straight = c << gf.components.straight(length=x_end_center - ltaper, cross_section=xs)
+    mid_straight.connect("o1", mid_taper.ports["o2"])
+
+    # Ports (optional but handy)
+    c.add_port("o1", port=top_taper.ports["o1"])   # top input
+    c.add_port("o2", port=mid_taper.ports["o1"])   # mid input
+    c.add_port("o3", port=bot_taper.ports["o1"])   # bottom input
+    c.add_port("o4", port=top_rest.ports["o2"])    # top output
+    c.add_port("o5", port=bot_rest.ports["o2"])    # bottom output
+
+    return c
+
+
+if __name__ == "__main__":
+    c = three_waveguides_split_like_png()
+    c.write_gds("recreated_device_v3_fixed.gds")

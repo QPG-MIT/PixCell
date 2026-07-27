@@ -1,0 +1,102 @@
+Turn 1 Response:
+
+Based on the provided image and constraints, the device is a **directional coupler** with extended straight input and output sections. 
+
+To precisely match the `120 x 4` µm footprint using parametric functions from the catalog, we can assemble the upper and lower arms using straight sections and S-bends. 
+
+Here is the Python script to recreate the geometry:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_120x4():
+    """
+    Directional coupler with a footprint of 120um x 4um.
+    Assembled parametrically using straight waveguides and S-bends.
+    """
+    c = gf.Component("directional_coupler")
+
+    # Define the cross-section
+    wg_width = 0.5
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Geometry Calculations to strictly meet the 120x4 footprint ---
+    # Total length is 120. We divide it visually:
+    # 10 (straight) + 20 (S-bend) + 60 (parallel mid) + 20 (S-bend) + 10 (straight) = 120
+    l_straight_ends = 10.0
+    l_sbend = 20.0
+    l_straight_mid = 60.0
+
+    # Total height is 4.0. With a waveguide width of 0.5:
+    # Top and bottom bounding edges are at y = 2.0 and y = -2.0
+    # Thus, the port centers must be placed at +/- 1.75
+    y_port = 2.0 - (wg_width / 2.0)  # 1.75
+
+    # Center coupling region gap: set visually equal to waveguide width (0.5)
+    # This places the centers of the inner parallel waveguides at +/- 0.5
+    gap = 0.5
+    y_mid = (gap / 2.0) + (wg_width / 2.0)  # 0.5
+
+    # The S-bend vertical displacement:
+    dy_sbend = y_mid - y_port  # 0.5 - 1.75 = -1.25
+
+
+    # --- Top Arm Construction ---
+    # 1. Input straight
+    top_in = c << gf.components.straight(length=l_straight_ends, cross_section=xs)
+    top_in.move((0, y_port))
+
+    # 2. Inward S-bend (shifting down)
+    top_sbend_in = c << gf.components.bend_s(size=(l_sbend, dy_sbend), cross_section=xs)
+    top_sbend_in.connect("o1", top_in.ports["o2"])
+
+    # 3. Parallel straight coupling section
+    top_mid = c << gf.components.straight(length=l_straight_mid, cross_section=xs)
+    top_mid.connect("o1", top_sbend_in.ports["o2"])
+
+    # 4. Outward S-bend (shifting back up)
+    top_sbend_out = c << gf.components.bend_s(size=(l_sbend, -dy_sbend), cross_section=xs)
+    top_sbend_out.connect("o1", top_mid.ports["o2"])
+
+    # 5. Output straight
+    top_out = c << gf.components.straight(length=l_straight_ends, cross_section=xs)
+    top_out.connect("o1", top_sbend_out.ports["o2"])
+
+
+    # --- Bottom Arm Construction ---
+    # 1. Input straight
+    bot_in = c << gf.components.straight(length=l_straight_ends, cross_section=xs)
+    bot_in.move((0, -y_port))
+
+    # 2. Inward S-bend (shifting up)
+    bot_sbend_in = c << gf.components.bend_s(size=(l_sbend, -dy_sbend), cross_section=xs)
+    bot_sbend_in.connect("o1", bot_in.ports["o2"])
+
+    # 3. Parallel straight coupling section
+    bot_mid = c << gf.components.straight(length=l_straight_mid, cross_section=xs)
+    bot_mid.connect("o1", bot_sbend_in.ports["o2"])
+
+    # 4. Outward S-bend (shifting back down)
+    bot_sbend_out = c << gf.components.bend_s(size=(l_sbend, dy_sbend), cross_section=xs)
+    bot_sbend_out.connect("o1", bot_mid.ports["o2"])
+
+    # 5. Output straight
+    bot_out = c << gf.components.straight(length=l_straight_ends, cross_section=xs)
+    bot_out.connect("o1", bot_sbend_out.ports["o2"])
+
+
+    # --- Port Definitions ---
+    c.add_port("in1", port=top_in.ports["o1"])
+    c.add_port("in2", port=bot_in.ports["o1"])
+    c.add_port("out1", port=top_out.ports["o2"])
+    c.add_port("out2", port=bot_out.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Create the cell, display it, and output the GDS
+    device = directional_coupler_120x4()
+    device.show()
+    device.write_gds("directional_coupler_120x4.gds")
+```

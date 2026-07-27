@@ -1,0 +1,115 @@
+Turn 3 Response:
+
+An analysis of the target image and your previous output reveals a few key areas for improvement to achieve a perfect match:
+
+1.  **Straight End Segments:** In the target image, the split waveguides at the far left and right ends run perfectly horizontal for a noticeable distance before reaching the edge. The previous code connected the `bend_s` directly to the outer bounding box, resulting in no straight end region.
+2.  **Number of Lines:** Counting the white gaps in the target image's top block reveals there are exactly **4** thin lines merged on top of the 1 thick line, not 5.
+3.  **Proportions & Bounding Box:** The widths and vertical shifts (`dy`) need precise tuning so that the merged center block has the correct visual weight compared to the 5 center lines, and so that the expanded end regions exactly reach the `4.0 µm` footprint bounds without exceeding them. 
+
+Here is the revised code with mathematically exact coordinates to perfectly nest the S-bends and fill the `120.0 x 4.0` footprint.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def apodized_directional_coupler() -> gf.Component:
+    """
+    Creates an apodized directional coupler matching the specified footprint (120.0 x 4.0 um).
+    Uses a refined geometry to exactly match the target image's features:
+    - 5 straight, thin lines in the center bus.
+    - Top/bottom buses that merge into a solid block in the center and fan out into 
+      1 thick and 4 thin separated lines at the ends.
+    - Added straight end segments for a perfect visual match.
+    """
+    c = gf.Component("apodized_directional_coupler")
+
+    # --- Geometric Parameters ---
+    # Dimensions derived to exactly fill the [120.0, 4.0] footprint constraints
+    L_total = 120.0
+    L_center = 60.0
+    L_bend = 15.0 # Tuned for a visually accurate, smooth bend transition
+    L_end = (L_total - L_center - 2 * L_bend) / 2.0  # 15.0 straight section at the ends
+    
+    # Widths and gaps perfectly scaled so the max y-coordinate equals exactly 2.0 (Height = 4.0)
+    w_thin = 0.08
+    gap_thin = 0.08
+    w_thick = 0.60
+    c_gap = 0.10 # Coupling gap between center bus and outer buses in the center
+    
+    layer = (1, 0)
+
+    # --- Assembly Helpers ---
+    def add_straight_lane(y_pos: float, width: float):
+        xs = gf.cross_section.cross_section(width=width, layer=layer)
+        lane = c << gf.components.straight(length=L_total, cross_section=xs)
+        lane.move((-L_total / 2.0, y_pos))
+
+    def add_bent_lane(y_center: float, width: float, dy: float):
+        xs = gf.cross_section.cross_section(width=width, layer=layer)
+        
+        # Center straight segment
+        str_c = c << gf.components.straight(length=L_center, cross_section=xs)
+        str_c.move((-L_center / 2.0, y_center))
+        
+        # Right Side (Bend + Straight End)
+        bend_r = c << gf.components.bend_s(size=(L_bend, dy), cross_section=xs)
+        bend_r.connect('o1', str_c.ports['o2'])
+        str_r = c << gf.components.straight(length=L_end, cross_section=xs)
+        str_r.connect('o1', bend_r.ports['o2'])
+        
+        # Left Side (Bend + Straight End)
+        bend_l = c << gf.components.bend_s(size=(L_bend, -dy), cross_section=xs)
+        bend_l.connect('o2', str_c.ports['o1'])
+        str_l = c << gf.components.straight(length=L_end, cross_section=xs)
+        str_l.connect('o1', bend_l.ports['o1'])
+
+    # --- 1. Center Bus ---
+    # 5 thin waveguides uniformly spaced, extending full length
+    pitch_thin = w_thin + gap_thin
+    y_center_bus = [i * pitch_thin for i in range(-2, 3)]
+    
+    for y in y_center_bus:
+        add_straight_lane(y, w_thin)
+
+    # --- 2. Top Bus Calculations ---
+    
+    # A. Center section (merged solid block)
+    bottom_edge_top_bus = y_center_bus[-1] + w_thin / 2.0 + c_gap
+    y_top_thick_c = bottom_edge_top_bus + w_thick / 2.0
+    
+    y_top_thin_c = []
+    current_y = bottom_edge_top_bus + w_thick + w_thin / 2.0
+    for _ in range(4): # Exactly 4 thin lines in the top block
+        y_top_thin_c.append(current_y)
+        current_y += w_thin
+        
+    # B. End sections (separated lines spreading out to max y=2.0)
+    dy_thick = 0.30 
+    y_top_thick_e = y_top_thick_c + dy_thick
+    
+    y_top_thin_e = []
+    # Begin spacing first thin line after the thick line + standard gap
+    current_e_y = y_top_thick_e + w_thick / 2.0 + gap_thin + w_thin / 2.0
+    for _ in range(4):
+        y_top_thin_e.append(current_e_y)
+        current_e_y += pitch_thin
+        
+    # Find exact required 'dy' for each thin lane to spread perfectly into standard gaps
+    dy_top_thin = [e - c_y for e, c_y in zip(y_top_thin_e, y_top_thin_c)]
+    
+    # --- Build Top Bus ---
+    add_bent_lane(y_top_thick_c, w_thick, dy_thick)
+    for y_c, dy in zip(y_top_thin_c, dy_top_thin):
+        add_bent_lane(y_c, w_thin, dy)
+
+    # --- 3. Build Bottom Bus (Symmetric Mirror) ---
+    add_bent_lane(-y_top_thick_c, w_thick, -dy_thick)
+    for y_c, dy in zip(y_top_thin_c, dy_top_thin):
+        add_bent_lane(-y_c, w_thin, -dy)
+
+    return c
+
+if __name__ == "__main__":
+    device = apodized_directional_coupler()
+    device.write_gds("apodized_directional_coupler.gds")
+```

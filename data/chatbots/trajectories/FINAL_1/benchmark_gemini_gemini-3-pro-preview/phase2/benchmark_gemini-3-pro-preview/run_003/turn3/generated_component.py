@@ -1,0 +1,119 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def trident_coupler():
+    """
+    Creates a Trident Spot Size Converter (SSC) matching the reference geometry.
+    Footprint: 40.0um x 1.7um
+    
+    Geometry:
+    - Input: Central waveguide flanked by two thin arms with tight spacing.
+    - Transition: Center tapers to a point. Outer arms flare outwards and widen.
+    - Output: Two wide waveguides separated by a gap, bounded by 1.7um height.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions & Constraints ---
+    length = 40.0
+    height = 1.7
+    layer = (1, 0)
+    
+    # Length Partitioning
+    # Taper ends before the device ends (approx 70% of length)
+    len_straight = 12.0
+    len_bend = length - len_straight
+    len_taper = 28.0 
+    
+    # Widths
+    # Input: Compact to maximize expansion ratio within constraint
+    w_center_in = 0.35
+    w_center_tip = 0.05
+    w_arm_in = 0.12
+    gap_in = 0.12
+    
+    # Output: Arms widen significantly
+    w_arm_out = 0.55
+    
+    # --- Y-Coordinate Calculations ---
+    
+    # Input Positions (Centered at Y=0)
+    # y_center_edge = w_center_in / 2
+    # y_arm_inner_edge = y_center_edge + gap_in
+    y_arm_in_center = (w_center_in / 2) + gap_in + (w_arm_in / 2)
+    
+    # Output Positions (Bounded by Height=1.7)
+    # We position the outer arms such that their outer edges touch the +/- 0.85 boundary
+    y_outer_limit = height / 2
+    y_arm_out_center = y_outer_limit - (w_arm_out / 2)
+    
+    # Calculate the vertical shift required for the S-bend
+    dy = y_arm_out_center - y_arm_in_center
+    
+    # --- 1. Central Taper ---
+    # Centered at (0,0)
+    taper = c << gf.components.taper(
+        length=len_taper,
+        width1=w_center_in,
+        width2=w_center_tip,
+        cross_section=gf.cross_section.cross_section(layer=layer)
+    )
+    taper.move((0, 0))
+    
+    # --- 2. Outer Arm Construction ---
+    # We build a single arm 'cluster' containing the straight and bend sections, then instance it twice.
+    
+    arm_cluster = gf.Component()
+    
+    # A. Straight Section
+    # Extrude a straight path
+    path_straight = gf.path.straight(length=len_straight)
+    xs_straight = gf.cross_section.cross_section(width=w_arm_in, layer=layer)
+    ref_straight = arm_cluster << gf.path.extrude(path_straight, xs_straight)
+    
+    # B. Expanding S-Bend
+    # Generate points for a cosine S-bend for smooth adiabatic transition
+    # Path goes from (0,0) to (len_bend, dy) relative to the start of the bend
+    num_points = 101
+    t = np.linspace(0, 1, num_points)
+    x_pts = len_bend * t
+    y_pts = dy * (0.5 * (1 - np.cos(np.pi * t)))
+    
+    path_bend = gf.Path(np.column_stack((x_pts, y_pts)))
+    
+    # Create width transition from w_arm_in to w_arm_out
+    xs_bend_start = gf.cross_section.cross_section(width=w_arm_in, layer=layer)
+    xs_bend_end = gf.cross_section.cross_section(width=w_arm_out, layer=layer)
+    
+    transition = gf.path.transition(
+        cross_section1=xs_bend_start,
+        cross_section2=xs_bend_end,
+        width_type="linear"
+    )
+    
+    ref_bend = arm_cluster << gf.path.extrude_transition(path_bend, transition)
+    
+    # Connect bend to straight section
+    ref_bend.connect("o1", ref_straight.ports["o2"])
+    
+    # Add ports to the cluster for easier placement
+    arm_cluster.add_port("o1", port=ref_straight.ports["o1"])
+    arm_cluster.add_port("o2", port=ref_bend.ports["o2"])
+    
+    # --- 3. Final Assembly ---
+    
+    # Place Top Arm
+    top_arm = c << arm_cluster
+    top_arm.move((0, y_arm_in_center))
+    
+    # Place Bottom Arm (Mirrored)
+    # Mirror across the X-axis (y=0)
+    bot_arm = c << arm_cluster
+    bot_arm.mirror(p1=(0,0), p2=(1,0))
+    bot_arm.move((0, -y_arm_in_center))
+    
+    return c
+
+if __name__ == "__main__":
+    device = trident_coupler()
+    device.write_gds("trident_coupler.gds")

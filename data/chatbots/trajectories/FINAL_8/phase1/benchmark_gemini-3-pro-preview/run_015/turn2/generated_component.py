@@ -1,0 +1,94 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_array_120x4():
+    """
+    Recreates the device based on the visual features of the original image.
+    Features:
+    - Central Bus: Array of straight parallel waveguides (stripes).
+    - Outer Shapes: Thick waveguides that flare outwards at the ends.
+    - Footprint: 120um x 4um.
+    """
+    c = gf.Component()
+
+    # --- Dimensions ---
+    length = 120.0
+    height_constraint = 4.0
+    
+    # Geometric partition (visual estimate)
+    straight_section_len = 60.0
+    bend_section_len = (length - straight_section_len) / 2
+
+    # --- 1. Central Bus (The Stripes) ---
+    # The image shows a grating-like structure in the center.
+    # We create 5 parallel straight waveguides.
+    n_lines = 5
+    bus_pitch = 0.25  # Center-to-center spacing
+    bus_width = 0.15  # Thin lines
+    
+    xs_bus = gf.cross_section.cross_section(width=bus_width, layer=(1, 0))
+    
+    for i in range(n_lines):
+        # Calculate y offset to center the array at y=0
+        y = (i - (n_lines - 1) / 2) * bus_pitch
+        # Add straight waveguide running full length
+        wg = c << gf.components.straight(length=length, cross_section=xs_bus)
+        wg.movey(y)
+
+    # --- 2. Outer Cladding Arms (The Thick Blocks) ---
+    # These shapes flank the central bus. They are straight in the middle
+    # and flare outwards (away from center) at the ends.
+    
+    clad_width = 0.8 # Thicker than central lines
+    xs_clad = gf.cross_section.cross_section(width=clad_width, layer=(1, 0))
+    
+    # Calculate vertical position
+    # Top of central bus array = 2 * pitch + width/2
+    y_bus_max = (2 * bus_pitch) + (bus_width / 2) # ~0.575
+    gap = 0.2 # Gap between bus and cladding
+    
+    # Center Y position for the straight part of the cladding
+    y_clad = y_bus_max + gap + (clad_width / 2) # ~1.175
+    
+    # Flare magnitude (how much they bend away at the ends)
+    # Remaining space to edge of 4um box (y=2.0)
+    # Top edge currently at 1.175 + 0.4 = 1.575. Room ~0.425.
+    dy_flare = 0.45 
+
+    # -- Construct the Arm Component --
+    # We build one "Arm" that is straight with ends curving UP (U-shape)
+    # Then we place one at the top, and a mirrored one at the bottom.
+    arm = gf.Component()
+    
+    # Middle Straight Section
+    s = arm << gf.components.straight(length=straight_section_len, cross_section=xs_clad)
+    s.movex(-straight_section_len / 2) # Center at x=0 locally
+    
+    # Right Bend (Flares UP)
+    # Connects to the East port of the straight section
+    br = arm << gf.components.bend_s(size=(bend_section_len, dy_flare), cross_section=xs_clad)
+    br.connect("o1", s.ports["o2"])
+    
+    # Left Bend (Flares UP)
+    # Connects to the West port. We mirror a bend_s horizontally to attach correctly.
+    bl = arm << gf.components.bend_s(size=(bend_section_len, dy_flare), cross_section=xs_clad)
+    bl.mirror_x()
+    bl.connect("o1", s.ports["o1"])
+    
+    # -- Place Arms in Main Component --
+    
+    # Top Arm (Positoned at +y_clad)
+    top_ref = c << arm
+    top_ref.movey(y_clad)
+    
+    # Bottom Arm (Mirrored and Positioned at -y_clad)
+    # mirror_y() on a reference flips the geometry (U-shape becomes n-shape)
+    bot_ref = c << arm
+    bot_ref.mirror_y()
+    bot_ref.movey(-y_clad)
+
+    return c
+
+# Generate and Save
+device = directional_coupler_array_120x4()
+device.write_gds("recreated_device.gds")

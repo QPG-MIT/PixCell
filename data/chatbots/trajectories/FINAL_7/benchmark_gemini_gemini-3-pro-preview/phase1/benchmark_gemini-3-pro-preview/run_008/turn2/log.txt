@@ -1,0 +1,129 @@
+Turn 2 Response:
+
+To fix the discrepancies and match the original image closer, I will adjust the dimensions and geometry of the internal arms.
+
+**Key Changes:**
+1.  **Thicker Traces**: Increased `trace_width` to `0.25` um to match the visual weight in the original image.
+2.  **Smoother Transitions**: Increased `taper_length` and `bend_dx`. This removes the sharp "kink" seen in the previous render and creates a flowing transition from the heater pad to the lead trace.
+3.  **Geometry Tuning**:
+    *   Adjusted `pad_height` and `pad_width` to better fit the 2.5um straight section.
+    *   Set the S-bends to converge inwards (towards y=0) to follow the narrowing profile of the racetrack ring, ensuring they don't hit the outer walls.
+    *   Using `radius=None` in the cross-section to allow the custom S-bend curvature without validation errors.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_generator():
+    """
+    Recreates the racetrack resonator with internal heater structures.
+    Optimized for visual similarity to the original image:
+    - Thicker traces
+    - Smoother, longer transitions (taper + s-bend)
+    - Correct converging geometry for the inner arms
+    """
+    c = gf.Component("Racetrack_Heater_Optimized")
+    
+    # --- Configuration ---
+    # Device Footprint: 5.5um x 3.0um
+    footprint_w = 5.5
+    footprint_h = 3.0
+    layer = (1, 0)
+    
+    # Outer Ring Geometry
+    ring_width = 0.5
+    outer_radius = footprint_h / 2.0  # 1.5
+    center_radius = outer_radius - (ring_width / 2.0) # 1.25
+    straight_length = footprint_w - (2 * outer_radius) # 2.5
+    
+    # Inner Arm Parameters
+    pad_width = 0.6       # Length of the rectangular heater block
+    pad_height = 0.45     # Height of the heater block
+    gap = 0.2             # Gap between left and right pads
+    
+    taper_length = 0.4    # Longer taper for smooth transition
+    trace_width = 0.25    # Thicker trace to match image
+    
+    # S-Bend Parameters
+    # dx: Length of the bend. Longer = smoother.
+    # dy: Vertical shift. We want to shift INWARDS towards the center line (y=0).
+    bend_dx = 0.9 
+    bend_dy = 0.35 
+    
+    # Vertical position of the heater pads
+    arm_y_offset = 0.65
+    
+    # Define Cross Sections
+    # radius=None allows tight parametric bends without validation errors
+    xs_ring = gf.cross_section.cross_section(width=ring_width, layer=layer)
+    xs_pad = gf.cross_section.cross_section(width=pad_height, layer=layer)
+    xs_trace = gf.cross_section.cross_section(width=trace_width, layer=layer, radius=None)
+
+    # ---------------------------
+    # 1. Construct Outer Ring
+    # ---------------------------
+    p = gf.Path()
+    p.append(gf.path.straight(length=straight_length))
+    p.append(gf.path.arc(radius=center_radius, angle=180))
+    p.append(gf.path.straight(length=straight_length))
+    p.append(gf.path.arc(radius=center_radius, angle=180))
+    
+    ring = c << gf.path.extrude(p, cross_section=xs_ring)
+    # Center the ring geometry
+    ring.move((-straight_length / 2, -center_radius))
+
+    # ---------------------------
+    # 2. Construct Single Inner Arm
+    # ---------------------------
+    arm = gf.Component("Inner_Arm")
+    
+    # Left Pad
+    pad_l = arm << gf.components.straight(length=pad_width, cross_section=xs_pad)
+    pad_l.move((-pad_width - gap/2, 0))
+    
+    # Right Pad
+    pad_r = arm << gf.components.straight(length=pad_width, cross_section=xs_pad)
+    pad_r.move((gap/2, 0))
+    
+    # Left Taper (Connects trace to pad)
+    taper_l = arm << gf.components.taper(length=taper_length, width1=trace_width, width2=pad_height, layer=layer)
+    taper_l.connect("o2", pad_l.ports["o1"])
+    
+    # Right Taper (Connects pad to trace)
+    taper_r = arm << gf.components.taper(length=taper_length, width1=pad_height, width2=trace_width, layer=layer)
+    taper_r.connect("o1", pad_r.ports["o2"])
+    
+    # Left Lead (S-Bend)
+    # We use a negative dy to bend "down" towards the device center line (y=0)
+    # This prevents the trace from hitting the upper ring arc.
+    bend_l = arm << gf.components.bend_s(size=(bend_dx, -bend_dy), cross_section=xs_trace)
+    bend_l.connect("o2", taper_l.ports["o1"]) 
+    
+    # Right Lead (S-Bend Mirrored)
+    # Mirrors the left bend logic (bends down/inward)
+    bend_r = arm << gf.components.bend_s(size=(bend_dx, -bend_dy), cross_section=xs_trace)
+    bend_r.mirror_x() # Flip horizontally to attach to the right side
+    bend_r.connect("o2", taper_r.ports["o2"])
+    
+    # ---------------------------
+    # 3. Assemble Device
+    # ---------------------------
+    # Top Arm
+    top_ref = c << arm
+    top_ref.movey(arm_y_offset)
+    
+    # Bottom Arm
+    # Mirrored across X-axis. 
+    # Since the top arm bends "down" (inward), the mirrored bottom arm will bend "up" (inward).
+    # This creates the converging look seen in the original image.
+    bot_ref = c << arm
+    bot_ref.mirror_y() 
+    bot_ref.movey(-arm_y_offset)
+
+    return c
+
+if __name__ == "__main__":
+    device = device_generator()
+    device.write_gds("racetrack_heater_final.gds")
+    device.show()
+```

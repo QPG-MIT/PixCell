@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T21:31:58.271973",
+      "api_duration_seconds": 664.688884973526,
+      "usage": {
+        "input_tokens": 2769,
+        "output_tokens": 31808,
+        "total_tokens": 34577
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S130_2_70578121' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T21:43:04.185355",
+      "api_duration_seconds": 552.2340610027313,
+      "usage": {
+        "input_tokens": 3291,
+        "output_tokens": 18103,
+        "total_tokens": 21394
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'geometry'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T21:52:17.650851",
+      "api_duration_seconds": 317.6429991722107,
+      "usage": {
+        "input_tokens": 3819,
+        "output_tokens": 11601,
+        "total_tokens": 15420
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 9879,
+    "output_tokens": 61512,
+    "total_tokens": 71391
+  }
+}

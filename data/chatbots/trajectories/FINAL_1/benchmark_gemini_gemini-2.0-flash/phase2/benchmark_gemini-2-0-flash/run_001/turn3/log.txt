@@ -1,0 +1,137 @@
+Turn 3 Response:
+
+Okay, I've analyzed the current raster output and compared it to the target image.  It seems the main issues are:
+
+1.  **Splitter/Heater Structure:** The current approach of using a boolean difference to create the gap for the heater in the splitter is not working as intended. It's creating a weird shape instead of the desired gap.
+2. **Output straights.** The output ports dont connect directly to the bends but connect to a rectangle (splitter)
+3. **Layer**: Layer 1 and 0 is now being used in the splitter which should be a separate layer.
+4. **Geometry issues**: There are lots of geometries intersecting with each other.
+
+Here's an improved version of the code addressing these issues. I'll replace the boolean operation with direct construction of the splitter with a gap:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import straight, bend_circular, rectangle
+from gdsfactory.cross_section import strip
+
+
+@gf.cell
+def my_device():
+    c = gf.Component("tunable_mzi")
+
+    # Parameters
+    wg_width = 0.5
+    straight_length = 20
+    bend_radius = 5
+    taper_length = 5
+    heater_width = 5
+    heater_length = 10
+    splitter_length = 2
+    splitter_width = 0.4
+    splitter_layer = (2,0) # GDS layer for the geometry
+    heater_layer = (1,0)
+
+
+    # Cross-section
+    xs = strip(width=wg_width)
+
+    # Components
+    # input straight section
+    input_straight = c << straight(length=splitter_length, cross_section=xs)
+
+    # bends
+    bend1 = c << bend_circular(radius=bend_radius, angle=90, cross_section=xs)
+    bend2 = c << bend_circular(radius=bend_radius, angle=90, cross_section=xs)
+    bend3 = c << bend_circular(radius=bend_radius, angle=-90, cross_section=xs)
+    bend4 = c << bend_circular(radius=bend_radius, angle=-90, cross_section=xs)
+
+    # Straight waveguides
+    upper_straight = c << straight(length=straight_length, cross_section=xs)
+    lower_straight = c << straight(length=straight_length, cross_section=xs)
+
+    # Heater
+    heater = c << rectangle(size=(heater_length, heater_width), layer = heater_layer)
+
+    # Output section
+    output_straight = c << straight(length=splitter_length, cross_section=xs)
+    output_straight2 = c << straight(length=splitter_length, cross_section=xs)
+
+    #splitter = c << rectangle(size=(splitter_width, 2*bend_radius+wg_width), layer=splitter_layer)
+    #splitter_hole = c << rectangle(size=(heater_length, wg_width), centered = True, layer=heater_layer)
+
+    # Create the splitter with a gap for the heater
+    splitter_top = c << rectangle(size=(splitter_length, bend_radius), layer=splitter_layer)
+    splitter_bottom = c << rectangle(size=(splitter_length, bend_radius), layer=splitter_layer)
+    splitter_middle = c << rectangle(size=(splitter_length, wg_width), layer=xs.layer)
+    heater.xmin = input_straight.xmin + splitter_length
+    heater.y = 0
+
+    # Placement
+    bend1.connect("o1", input_straight.ports["o2"])
+    bend4.connect("o1", input_straight.ports["o2"])
+
+    upper_straight.connect("o1", bend1.ports["o2"])
+    lower_straight.connect("o1", bend4.ports["o2"])
+
+    bend2.connect("o1", upper_straight.ports["o2"])
+    bend3.connect("o1", lower_straight.ports["o2"])
+
+    output_straight.connect("o2", bend2.ports["o2"])
+    output_straight2.connect("o2", bend3.ports["o2"])
+
+    #output_straight.rotate(angle = 180)
+    output_straight.movex(straight_length+ bend_radius*2- wg_width/2)
+    output_straight.movey(bend_radius)
+
+    #output_straight2.rotate(angle = 180)
+    output_straight2.movex(straight_length+ bend_radius*2- wg_width/2)
+    output_straight2.movey(-bend_radius)
+    splitter_top.movex(straight_length+ bend_radius*2- wg_width/2)
+    splitter_top.movey(wg_width/2 + bend_radius)
+    splitter_bottom.movex(straight_length+ bend_radius*2- wg_width/2)
+    splitter_bottom.movey(-wg_width/2 - bend_radius)
+    splitter_middle.movex(straight_length+ bend_radius*2- wg_width/2)
+    splitter_middle.movey(0)
+
+    #splitter.movex(splitter_length)
+    #splitter.movey(0)
+
+    #splitter_hole.movex(splitter_length)
+    #splitter_hole.movey(0)
+    #heater.movex(input_straight.xmin + straight_length/2)
+    #heater.movey(input_straight.ymin + bend_radius+wg_width/2)
+
+
+    # Ports
+    c.add_port("o1", port=input_straight.ports["o1"])
+    c.add_port("o2", port=output_straight.ports["o1"])
+    c.add_port("o3", port=output_straight2.ports["o1"])
+
+    #full_device = gf.Component("full_device")
+    #full_device << c
+    #full_device = gf.boolean(full_device, splitter_hole, operation="not", layer=layer)
+
+    c.add(heater)
+
+    return c
+
+
+if __name__ == "__main__":
+    device = my_device()
+    device.show()
+    device.write_gds("tunable_mzi.gds")
+```
+
+Key changes:
+
+*   **Replaced boolean operation:**  Instead of trying to subtract the heater gap from a rectangle, the splitter is now constructed from three rectangles: top, bottom, and middle with appropriate y offsets.
+
+*   **Fixed ports and move.** Output ports do not connect directly to the bends anymore.
+
+*   **Heater Placement:** Added explicit positioning for the heater to place it properly in the gap between the upper and lower waveguides. Now with xmin and y.
+
+*   **Output Port** fixed the port for the output straights so that it is on the opposite end of the straight part.
+
+*   **Added `heater` to the main component:** Included `heater` as part of the main component after calculating its location
+
+This revised code should produce a device that much closer resembles the target raster image. I've focused on correcting the splitter/heater structure and improving the component placement. Next steps would be optimizing parameters (lengths, widths) to fine-tune the final layout.

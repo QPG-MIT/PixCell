@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:09.449815",
+      "api_duration_seconds": 17.049364805221558,
+      "usage": {
+        "input_tokens": 5444,
+        "output_tokens": 2841,
+        "total_tokens": 8285
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ImportError: cannot import name 'Component' from 'gdsfactory.typings' (/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/gdsfactory/typings.py). Did you mean: 'component'?",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:27.941798",
+      "api_duration_seconds": 13.655224800109863,
+      "usage": {
+        "input_tokens": 8357,
+        "output_tokens": 2355,
+        "total_tokens": 10712
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 5 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:43.113554",
+      "api_duration_seconds": 14.350444793701172,
+      "usage": {
+        "input_tokens": 10753,
+        "output_tokens": 2509,
+        "total_tokens": 13262
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 24554,
+    "output_tokens": 7705,
+    "total_tokens": 32259
+  }
+}

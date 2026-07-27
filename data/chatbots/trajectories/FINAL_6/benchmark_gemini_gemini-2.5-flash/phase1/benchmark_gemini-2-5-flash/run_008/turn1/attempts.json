@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.889346",
+      "api_duration_seconds": 48.02557182312012,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 1780,
+        "total_tokens": 12312
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:00.646739",
+      "api_duration_seconds": 6.084618330001831,
+      "usage": {
+        "input_tokens": 4606,
+        "output_tokens": 1121,
+        "total_tokens": 6012
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'method' object is not subscriptable",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:08.192978",
+      "api_duration_seconds": 19.892791032791138,
+      "usage": {
+        "input_tokens": 5751,
+        "output_tokens": 1316,
+        "total_tokens": 10685
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'DBox' object is not subscriptable",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12704,
+    "output_tokens": 4217,
+    "total_tokens": 29009
+  }
+}

@@ -1,0 +1,136 @@
+Turn 2 Response:
+
+Analysis of the Discrepancy:
+
+The previous script successfully created a directional coupler with a 120x4 um footprint. However, it used `gf.components.taper`, which produces a taper with a *linear* (straight-sided) width transition.
+
+The new target image, upon closer inspection of the crops, clearly shows a *non-linear, flared* taper. The transition from the narrow waveguide to the wide port follows a smooth curve, characteristic of an adiabatic or sinusoidal taper designed to minimize mode conversion losses.
+
+To fix this, I will replace the linear taper primitive with a custom, parametrically-defined taper using GDSFactory's more fundamental path extrusion capabilities, which allow for non-linear width transitions.
+
+**Correction Strategy:**
+
+1.  **Create a Custom Taper Function:** I will create a new function called `sine_taper` that builds the desired flared taper.
+2.  **Use Path and Transition:** Inside this function, I will:
+    *   Define a straight `gf.path`.
+    *   Create a `gf.path.transition` object that varies the waveguide width from narrow to wide using `width_type='sine'`. This is the key change to achieve the curved profile.
+    *   Use `gf.path.extrude_transition` to generate the component geometry from the path and the sinusoidal transition.
+3.  **Adjust Parameters:** The flared taper appears wider at the port than the previous linear one. I will adjust `port_width` to `2.0` and consequently update the vertical separation `dy` to `2.0` to maintain the overall 4 um height (`dy` + `port_width` = `4.0`). All other dimensions that define the central coupler and total length will remain the same to respect the 120 um length constraint.
+4.  **Assemble as Before:** The main assembly logic remains the same. The `sine_taper` component will be instantiated and connected to the central coupler's ports, just as the linear taper was.
+
+This approach directly addresses the visual mismatch by using the appropriate parametric functions from the GDSFactory catalog to create the specific non-linear shape required.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def sine_taper(length: float, width1: float, width2: float) -> gf.Component:
+    """
+    Creates a taper component with a sinusoidal width transition to create a
+    flared, adiabatic shape. This replaces the linear gf.components.taper.
+
+    Args:
+        length: The length of the taper.
+        width1: The width at the start of the taper.
+        width2: The width at the end of the taper.
+    """
+    # Define the path for the taper, which is a simple straight line
+    taper_path = gf.path.straight(length=length)
+
+    # Define the cross-sections for the start and end of the taper
+    xs1 = gf.cross_section.cross_section(width=width1)
+    xs2 = gf.cross_section.cross_section(width=width2)
+
+    # Create the transition profile. The 'sine' width_type produces the
+    # desired flared shape seen in the target image.
+    transition = gf.path.transition(
+        cross_section1=xs1, cross_section2=xs2, width_type="sine"
+    )
+
+    # Extrude the path with the sinusoidal transition to create the component
+    taper_component = gf.path.extrude_transition(p=taper_path, transition=transition)
+    return taper_component
+
+
+def create_component() -> gf.Component:
+    """
+    Recreates the flared directional coupler geometry based on the provided
+    image and footprint constraints.
+    """
+
+    # --- 1. Define Parameters from Footprint and Image Analysis ---
+
+    # Overall footprint dimensions from the task constraint
+    footprint_x = 120.0
+    footprint_y = 4.0
+
+    # Define geometric parameters. Port width is increased to match the flare.
+    taper_length = 10.0
+    port_width = 2.0  # Increased to match the visually wider flared port
+    wg_width = 0.5
+    gap = 0.2
+
+    # Recalculate vertical separation based on the new, wider port
+    # footprint_y = dy (center-to-center) + port_width
+    dy = footprint_y - port_width  # 4.0 - 2.0 = 2.0
+
+    # Central coupler dimensions remain the same to maintain total length
+    coupler_dx = 20.0
+    coupler_length = 60.0
+
+    # --- 2. Create the Component using the Assembly Pattern ---
+
+    c = gf.Component("flared_directional_coupler")
+    xs = gf.cross_section.cross_section(width=wg_width)
+
+    # Create the central coupler primitive (this part is unchanged)
+    coupler_core = gf.components.coupler(
+        length=coupler_length,
+        gap=gap,
+        dy=dy,
+        dx=coupler_dx,
+        cross_section=xs,
+    )
+
+    # Create the custom flared taper primitive using our new function
+    taper = sine_taper(length=taper_length, width1=wg_width, width2=port_width)
+
+    # --- 3. Assemble the Primitives ---
+
+    coupler_ref = c << coupler_core
+
+    # Input tapers (mirrored)
+    taper_in_bot = c << taper
+    taper_in_top = c << taper
+    taper_in_bot.mirror()
+    taper_in_top.mirror()
+
+    taper_in_bot.connect("o1", coupler_ref.ports["o1"])
+    taper_in_top.connect("o1", coupler_ref.ports["o2"])
+
+    # Output tapers
+    taper_out_top = c << taper
+    taper_out_bot = c << taper
+
+    taper_out_top.connect("o1", coupler_ref.ports["o3"])
+    taper_out_bot.connect("o1", coupler_ref.ports["o4"])
+
+    # --- 4. Expose the External Ports ---
+
+    c.add_port("o1", port=taper_in_bot.ports["o2"])
+    c.add_port("o2", port=taper_in_top.ports["o2"])
+    c.add_port("o3", port=taper_out_top.ports["o2"])
+    c.add_port("o4", port=taper_out_bot.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Instantiate the component by calling the creation function
+    my_component = create_component()
+    
+    # Write the component to a GDS file in the current directory
+    my_component.write_gds("flared_directional_coupler.gds")
+
+    # To visualize the component, you can uncomment the line below
+    # my_component.show()
+```

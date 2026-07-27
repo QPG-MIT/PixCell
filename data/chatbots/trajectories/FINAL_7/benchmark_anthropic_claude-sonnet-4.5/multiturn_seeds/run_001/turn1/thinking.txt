@@ -1,0 +1,89 @@
+Looking at this image, I can see:
+1. An oval/elliptical outer ring (black border)
+2. Inside, there are two horizontal bar-like structures stacked vertically
+3. Each bar has two rectangular white cutouts/holes in it
+4. The bars appear symmetrical top-to-bottom
+
+The structure looks like a chain link or a stylized representation of two connected elements.
+
+Let me break down the geometry:
+- Outer ellipse ring (thick black border)
+- Two horizontal bars with rounded ends, positioned one above and one below center
+- Each bar has two rectangular holes/cutouts
+
+Given the footprint constraint of [3.0, 5.5] um, the device is 3.0 um wide and 5.5 um tall.
+
+Looking more carefully:
+- The outer shape is an ellipse
+- There are two horizontal elongated shapes (like rounded rectangles or stadium shapes)
+- Each has two rectangular cutouts
+- The top and bottom parts mirror each other
+
+This looks like a chain link design. Let me think about how to construct it:
+
+1. Create an outer ellipse ring (hollow ellipse)
+2. Create two horizontal bar sections with rounded ends
+3. Cut out rectangular holes from each bar
+4. Position them symmetrically
+
+Actually, looking more carefully, it seems like:
+- An outer ellipse (ring/border)
+- Two horizontal "link" shapes positioned at top and bottom
+- Each link has two rectangular windows cut out of it
+
+The most efficient way would be:
+1. Create the outer elliptical ring using boolean operations (large ellipse minus smaller ellipse)
+2. Create horizontal bars/links with rounded ends
+3. Cut rectangular holes from the bars
+4. Combine everything
+
+Let me code this step by step:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def chain_link_device():
+    c = gf.Component()
+    
+    # Device dimensions based on footprint
+    width = 5.5  # horizontal dimension
+    height = 3.0  # vertical dimension
+    
+    # Create outer ellipse ring
+    outer_ellipse = gf.components.ellipse(radii=(width/2, height/2), layer=(1, 0))
+    inner_ellipse = gf.components.ellipse(radii=(width/2 - 0.3, height/2 - 0.3), layer=(1, 0))
+    ring = gf.boolean(outer_ellipse, inner_ellipse, operation="not", layer=(1, 0))
+    
+    # Create horizontal bars with cutouts
+    # Top bar
+    bar_width = 4.5
+    bar_height = 0.8
+    top_bar = gf.components.rectangle(size=(bar_width, bar_height), layer=(1, 0))
+    top_bar.move((0, height/2 - bar_height/2))
+    
+    # Add rectangular cutouts to bars - two holes per bar positioned symmetrically
+    hole_width = 0.6
+    hole_height = 0.4
+    hole_spacing = 1.2
+    
+    # Create cutout pattern and subtract from bars
+    c.add_ref(ring)
+    c.add_ref(top_bar)
+```
+
+I need to establish the bar dimensions and cutout pattern. The bars should be positioned symmetrically around the center, with two rectangular holes spaced evenly across each bar's width. at the image more carefully, the structure shows an outer ellipse with a thick border containing two horizontal bars positioned near the top and bottom. Each bar has two rectangular cutouts that create a chain-link appearance. The overall dimensions appear to be around 5.5 x 3.0 micrometers, with the cutouts spaced to give the design depth and visual separation between the link elements.
+
+I'm planning to build this using gdsfactory by creating the outer ellipse ring first, then adding the horizontal bars with their rectangular cutouts to form the chain-link pattern.
+
+For the bars, I'll set dimensions with a length of 4.2, height of 0.5, and vertical offset of 0.65. The top bar starts as a centered rectangle, then I'll subtract two cutouts (each 0.7 wide by 0.3 tall) positioned at ±0.9 offset to create the characteristic gaps in the link structure.
+
+I realize the boolean operations are becoming unwieldy, so I should reconsider the approach. Rather than trying to subtract individual cutouts, I'll construct the complete design by building up solid components first, then removing the holes systematically. Looking at the geometry again, the structure consists of an elliptical outer ring with two symmetric horizontal links positioned above and below the center line—each link has rectangular cutouts and rounded ends that transition smoothly into the connecting regions.
+
+Let me implement this more cleanly by starting with the outer ellipse ring, then adding the link geometry with proper cutout placement.
+
+For the horizontal bars, I'll define a bar width of 4.4 and height of 0.55, positioned at y=0.75. The cutouts are smaller rectangles (0.75 × 0.35) spaced 0.8 apart to create the chain link effect. The first cutout is positioned at (-gap_between/2 - cutout_width/2,
+
+0)), and the second at (gap_between/2 + cutout_width/2, 0)). I'll combine both cutouts using a boolean OR operation, then subtract them from the base bar using a NOT operation to create the perforated pattern. The top bar gets placed at the specified y position, and the bottom bar will be a mirrored version.
+
+After creating the device, I need to write it to a GDS file. I should verify that the component references are properly combined—when using the << operator in GDSFactory, all references become part of the same cell, which is what I need. Looking back at the image proportions, the footprint dimensions [3.0, 5.5] suggest a height of 3.0 and width of 5.5, giving roughly a 1.8:1 aspect ratio for the ellipse. The bars appear to occupy a specific portion of the overall structure based on the visual layout.

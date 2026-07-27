@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.092812",
+      "api_duration_seconds": 25.51107406616211,
+      "usage": {
+        "input_tokens": 3193,
+        "output_tokens": 901,
+        "total_tokens": 7784
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:10:42.203431",
+      "api_duration_seconds": 16.789884090423584,
+      "usage": {
+        "input_tokens": 4113,
+        "output_tokens": 692,
+        "total_tokens": 7099
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S0p4_0_9a587f6c' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:11:00.428749",
+      "api_duration_seconds": 13.611264944076538,
+      "usage": {
+        "input_tokens": 4865,
+        "output_tokens": 778,
+        "total_tokens": 7574
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12171,
+    "output_tokens": 2371,
+    "total_tokens": 22457
+  }
+}

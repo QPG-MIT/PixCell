@@ -1,0 +1,72 @@
+Turn 5 Response:
+
+Looking at the comparison between the current output and the target image, I can see several key issues:
+
+1. **Current output shows a racetrack resonator with couplers**, but the target image shows a **tapered waveguide structure** that appears to be a **tapered coupler or mode converter**.
+
+2. The target image has a **tapered section** that gradually widens from left to right, ending in a straight waveguide section.
+
+3. The current code creates a complex racetrack resonator, which is completely different from the simple tapered structure in the target image.
+
+4. The target image shows a single waveguide that starts narrow on the left and gradually widens to a constant width on the right.
+
+Let me completely rewrite the code to match the target image:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def tapered_waveguide():
+    c = gf.Component()
+    
+    # Define cross section for the waveguide
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create a tapered section
+    # Start with a narrow width and end with a wider width
+    taper_length = 5.0  # Length of the taper
+    start_width = 0.3   # Starting width
+    end_width = 0.5     # Ending width (same as cross section width)
+    
+    # Create the taper component
+    taper = gf.components.taper(
+        length=taper_length,
+        width1=start_width,
+        width2=end_width
+    )
+    
+    # Create a straight waveguide section to connect to the taper
+    straight_length = 3.0
+    straight = gf.components.straight(length=straight_length, cross_section=xs)
+    
+    # Add both components to the main component
+    taper_ref = c << taper
+    straight_ref = c << straight
+    
+    # Connect the straight waveguide to the end of the taper
+    straight_ref.connect("o1", taper_ref.ports["o2"])
+    
+    # Add ports for the device
+    c.add_port("in", port=taper_ref.ports["o1"])
+    c.add_port("out", port=straight_ref.ports["o2"])
+    
+    return c
+
+# Create the device
+device = tapered_waveguide()
+device.write_gds("tapered_waveguide.gds")
+```
+
+This new code creates a simple tapered waveguide structure that matches the target image:
+- It starts with a narrow section (0.3μm width)
+- Gradually tapers to a wider section (0.5μm width)
+- Connects to a straight waveguide section
+- The overall shape matches the target image with a tapered section on the left and a straight section on the right
+
+The key changes from the previous code:
+1. Removed the complex racetrack resonator structure
+2. Created a simple taper using `gf.components.taper`
+3. Added a straight waveguide section to match the right side of the target image
+4. Connected them together to create the continuous structure shown in the target
+
+This should produce an output that closely matches the target image.

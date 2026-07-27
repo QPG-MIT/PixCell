@@ -1,0 +1,54 @@
+Turn 1 Response:
+
+The `PortWidthMismatchError` occurs because the previous script attempted to mix components with different internal cross-sections or relied on high-level routing functions that assumed conflicting port widths.
+
+To fix this, we will:
+1.  **Enforce a single `CrossSection`**: Define one `xs` object and use it for *all* primitives.
+2.  **Use Manual Placement**: Instead of high-level routing or `mzi` generators (which may create their own internal cross-sections and cause mismatches), we will manually place `straight` and `racetrack` components.
+3.  **Use `radius_min`**: Explicitly set a small `radius_min` to ensure the bends are generated without errors.
+
+Here is the corrected, robust script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def mzi_with_housing():
+    c = gf.Component()
+    
+    # 1. Define a single, shared CrossSection to prevent PortWidthMismatch
+    # radius_min is set to 1.0 to allow for tight bends
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0), radius_min=1.0)
+
+    # 2. Build the Outer Housing (using racetrack for parametric control)
+    # A racetrack is essentially the outer "capsule" shape seen in the image
+    outer_housing = c << gf.components.racetrack(
+        racetrack_radius=3.0, 
+        length_x=6.0, 
+        cross_section=xs
+    )
+
+    # 3. Build the Inner Structure (the two straight waveguides)
+    # We place them manually to avoid automatic routing width mismatches
+    inner_top = c << gf.components.straight(length=4.0, cross_section=xs)
+    inner_bot = c << gf.components.straight(length=4.0, cross_section=xs)
+
+    # 4. Position the inner waveguides
+    # Center them vertically and horizontally inside the outer housing
+    inner_top.movey(1.5)
+    inner_top.movex(-2.0)
+    
+    inner_bot.movey(-1.5)
+    inner_bot.movex(-2.0)
+
+    return c
+
+# Generate and visualize
+device = mzi_with_housing()
+device.show()
+```
+
+### Explanation of Fixes:
+*   **One `xs`**: By using the `xs` variable for all components (`racetrack`, `straight`), we guarantee all ports have identical width and layer definitions, eliminating the `PortWidthMismatchError`.
+*   **Removed Complex Routing**: By manually placing the `inner_top` and `inner_bot` components using `movex`/`movey`, we avoid the `routing` engine's automatic cross-section guessing, which was the root cause of the mismatch error.
+*   **`racetrack` primitive**: This efficiently creates the capsule/stadium shape required by the geometry without needing to manually piece together bends and straights.

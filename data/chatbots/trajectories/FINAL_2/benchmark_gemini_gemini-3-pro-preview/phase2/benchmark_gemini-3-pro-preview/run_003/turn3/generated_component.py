@@ -1,0 +1,107 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_mmi_1x4_improved():
+    """
+    Improved 1x4 MMI based on visual feedback.
+    - Matches 25um x 10um footprint.
+    - Top ports: 4x composite (Straight + Flare) with tight spacing.
+    - Bottom port: 1x blunt, wide-base taper.
+    """
+    c = gf.Component()
+
+    # --- Geometric Constraints & Parameters ---
+    # Total Footprint: 25.0um x 10.0um
+    
+    # Vertical Budget (Sum = 10.0um)
+    h_top_section = 3.8
+    h_body = 4.4
+    h_bot_section = 1.8
+    
+    # Horizontal Dimensions
+    w_body = 24.8  # Main MMI width (fits within 25um)
+    
+    # Top Ports Parameters
+    n_ports = 4
+    pitch = 5.2            # Spacing between ports
+    w_top_stick = 1.1      # Width of the straight section
+    w_top_base = 3.8       # Width at the base (flare). Gap = 5.2 - 3.8 = 1.4um
+    h_top_stick = 2.6      # Length of straight section
+    h_top_flare = h_top_section - h_top_stick # Remaining length for flare (1.2um)
+
+    # Bottom Port Parameters
+    w_bot_tip = 1.6        # Blunt tip width
+    w_bot_base = 4.5       # Wide base connecting to MMI
+
+    # --- 1. Main Body ---
+    # Centered rectangle
+    body = c << gf.components.rectangle(
+        size=(w_body, h_body), 
+        layer=(1, 0), 
+        centered=True
+    )
+    
+    # --- 2. Top Ports (Composite) ---
+    # Helper to create a single prong: Straight -> Flare -> Base
+    def create_prong():
+        p = gf.Component()
+        
+        # Straight part (top)
+        s = p << gf.components.taper(
+            length=h_top_stick,
+            width1=w_top_stick,
+            width2=w_top_stick,
+            layer=(1, 0)
+        )
+        
+        # Flare part (bottom, connecting to body)
+        f = p << gf.components.taper(
+            length=h_top_flare,
+            width1=w_top_stick,
+            width2=w_top_base,
+            layer=(1, 0)
+        )
+        
+        # Connect flare narrow end to straight end
+        f.connect("o1", s.ports["o2"])
+        
+        # Expose the wide base port for anchoring
+        p.add_port("base", port=f.ports["o2"])
+        return p
+
+    prong_template = create_prong()
+    
+    # Calculate x positions centered around 0
+    # Formula: x_i = (i - (N-1)/2) * pitch
+    indices = [i - (n_ports - 1) / 2 for i in range(n_ports)] # [-1.5, -0.5, 0.5, 1.5]
+    x_positions = [idx * pitch for idx in indices]
+    
+    for x in x_positions:
+        ref = c << prong_template
+        # Rotate -90 to point up (Base at bottom, Tip at top)
+        ref.rotate(-90)
+        # Move base to the top edge of the MMI body
+        ref.move(origin=ref.ports["base"].center, destination=(x, h_body / 2))
+
+    # --- 3. Bottom Port ---
+    # Single blunt taper
+    taper_bot = gf.components.taper(
+        length=h_bot_section, 
+        width1=w_bot_tip, 
+        width2=w_bot_base,
+        layer=(1, 0)
+    )
+    ref_bot = c << taper_bot
+    
+    # Rotate 90: Base (w2) at top, Tip (w1) at bottom
+    ref_bot.rotate(90)
+    
+    # Move Base ('o2') to the bottom edge of the body
+    ref_bot.move(origin=ref_bot.ports["o2"].center, destination=(0, -h_body / 2))
+
+    return c
+
+if __name__ == "__main__":
+    component = device_mmi_1x4_improved()
+    component.show()
+    component.write_gds("mmi_1x4_improved.gds")

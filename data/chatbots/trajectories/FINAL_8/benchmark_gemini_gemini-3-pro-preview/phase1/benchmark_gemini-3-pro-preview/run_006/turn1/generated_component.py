@@ -1,0 +1,146 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_parametric():
+    """
+    Recreates the device geometry using parametric primitives.
+    Structure:
+    - Central bundle: 5 parallel straight waveguides.
+    - Side assemblies: 3 parallel straight waveguides + 1 outer tapered block.
+    - The outer tapered block has a straight inner edge and a curved outer edge.
+    """
+    c = gf.Component()
+    
+    # --- Parameters ---
+    # Dimensions derived from image analysis and footprint (120um x 4um)
+    length = 120.0
+    w_line = 0.12          # Width of thin waveguides
+    gap = 0.12             # Standard gap between waveguides
+    gap_sep = 0.18         # Wider gap separating central bundle from side assemblies
+    
+    w_block_end = 0.62     # Width of the outer block at the ends
+    w_block_mid = 0.25     # Width of the outer block at the middle (waist)
+    
+    layer_wg = (1, 0)
+    
+    # Define standard cross-section for straight lines
+    xs_line = gf.cross_section.cross_section(width=w_line, layer=layer_wg)
+
+    # --- 1. Generate Vertical Positions ---
+    # Pitch for uniform arrays
+    pitch = w_line + gap
+    
+    # Central Bundle: 5 lines centered at Y=0
+    # Indices: 0 (center), +/- 1, +/- 2
+    y_center_indices = [0, 1, -1, 2, -2]
+    y_lines_center = [i * pitch for i in y_center_indices]
+    
+    # Calculate edge of the central bundle to determine start of side assemblies
+    # Max Y of center line 2 = 2*pitch + w/2
+    y_center_edge = 2 * pitch + w_line/2
+    
+    # Start of Side Assembly (3 lines)
+    # First side line center = Edge + gap_sep + w/2
+    y_side_start = y_center_edge + gap_sep + w_line/2
+    
+    y_lines_top = []
+    for i in range(3):
+        y_lines_top.append(y_side_start + i * pitch)
+        
+    # Calculate position for the Tapered Block
+    # Top of the last side line
+    y_side_edge = y_lines_top[-1] + w_line/2
+    # Start of the block (flat edge)
+    y_block_flat_edge = y_side_edge + gap_sep
+    
+    # Collect all straight line positions (Center + Top + Bottom)
+    all_straight_ys = y_lines_center + y_lines_top + [-y for y in y_lines_top]
+
+    # --- 2. Place Straight Waveguides ---
+    for y in all_straight_ys:
+        wg = c << gf.components.straight(length=length, cross_section=xs_line)
+        wg.movey(y)
+
+    # --- 3. Create and Place Tapered Blocks ---
+    # The block transitions from Wide -> Narrow -> Wide.
+    # It must have a STRAIGHT inner edge. We achieve this by offsetting the center 
+    # of the cross-section as the width changes.
+    # Bottom Edge = Center - Width/2. We want Bottom Edge to be constant (at 0 locally).
+    # Therefore, Center must be at +Width/2.
+    
+    def create_tapered_block():
+        cmp = gf.Component()
+        
+        # Define Cross Sections for the ends and middle
+        # Offset ensures the bottom edge remains at y=0 relative to the path
+        xs_end = gf.cross_section.cross_section(
+            width=w_block_end, 
+            offset=w_block_end/2, 
+            layer=layer_wg
+        )
+        xs_mid = gf.cross_section.cross_section(
+            width=w_block_mid, 
+            offset=w_block_mid/2, 
+            layer=layer_wg
+        )
+        
+        # Define Transitions (Sine profile for smooth curvature)
+        # Split length into two halves
+        l_half = length / 2
+        
+        # Part 1: Contract (End -> Mid)
+        path1 = gf.path.straight(length=l_half)
+        trans1 = gf.path.transition(xs_end, xs_mid, width_type='sine')
+        part1 = cmp << gf.path.extrude_transition(path1, trans1)
+        
+        # Part 2: Expand (Mid -> End)
+        path2 = gf.path.straight(length=l_half)
+        trans2 = gf.path.transition(xs_mid, xs_end, width_type='sine')
+        part2 = cmp << gf.path.extrude_transition(path2, trans2)
+        
+        # Connect parts
+        part2.connect("o1", part1.ports["o2"])
+        
+        # Expose ports
+        cmp.add_port("o1", port=part1.ports["o1"])
+        cmp.add_port("o2", port=part2.ports["o2"])
+        
+        return cmp
+
+    # Instantiate the block component
+    taper_block = create_tapered_block()
+    
+    # Place Top Block
+    # The component is designed so its "bottom" edge is at local y=0.
+    # We simply move it to the calculated start position.
+    top_ref = c << taper_block
+    top_ref.movey(y_block_flat_edge)
+    
+    # Place Bottom Block
+    # Mirror across X-axis. 
+    # The flat edge (local y=0) needs to be at -y_block_flat_edge, facing "up" (towards center).
+    # If we mirror across y=0, the flat edge (originally at bottom) becomes the top edge at y=0?
+    # No, mirror(p1=(0,0), p2=(1,0)) flips Y coords: y -> -y.
+    # Original block occupies [y_pos, y_pos + width].
+    # Mirrored block occupies [-y_pos, -y_pos - width].
+    # We want the flat edge (the inner edge) at -y_block_flat_edge.
+    # Since the original flat edge was at y=0 (local) -> moved to y_pos.
+    # Mirroring puts it at -y_pos. This is exactly what we want.
+    bot_ref = c << taper_block
+    bot_ref.movey(y_block_flat_edge) # Move to top position first
+    bot_ref.mirror(p1=(0,0), p2=(1,0)) # Then mirror across x-axis
+
+    # --- 4. Ports ---
+    # Add ports from the central waveguide
+    # Since we generated many, we pick the central one (y=0) to expose as main ports.
+    # We need to find the reference corresponding to y=0.
+    # We can just add new ports at the geometric center ends.
+    c.add_port("o1", center=(0, 0), width=w_line, orientation=180, layer=layer_wg)
+    c.add_port("o2", center=(length, 0), width=w_line, orientation=0, layer=layer_wg)
+
+    return c
+
+# Create the geometry
+component = device_parametric()
+component.write_gds("parametric_coupler.gds")

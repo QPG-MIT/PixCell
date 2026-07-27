@@ -1,0 +1,150 @@
+import gdsfactory as gf
+
+@gf.cell
+def dense_waveguide_coupler_concentric_corrected():
+    c = gf.Component()
+
+    # --- 1. Dimensions & Constraints ---
+    # Target: Fit 12 waveguides (3 groups of 4) into ~4.0um height
+    # Layout: Bottom Group (4) - Gap - Center Group (4) - Gap - Top Group (4)
+    
+    # Global length parameters
+    total_length = 120.0
+    x_right_edge = total_length / 2
+    x_left_edge = -total_length / 2
+    
+    # Bend start X coordinate (distance from center)
+    x_bend_dist = 40.0
+    x_bend_left = -x_bend_dist
+    
+    # Vertical extension length for bent waveguides
+    v_len = 5.0
+
+    # Dimensions for maximal density
+    width = 0.2
+    gap = 0.1
+    pitch = width + gap  # 0.3 um
+    
+    # Spacing between the groups
+    gap_inter_group = 0.2
+    
+    # Bend Radius Constraints
+    # The inner-most track of the outer groups will have this radius
+    r_min_inner_track = 2.0
+
+    # Define Cross Sections with EXPLICIT radius_min to fix the error
+    # We use a very small radius_min (0.5) to allow our calculated radii (2.0+)
+    xs = gf.cross_section.cross_section(
+        width=width, 
+        radius_min=0.5,  # <--- CRITICAL FIX
+        layer=(1, 0)
+    )
+
+    # Number of lines per group
+    n_lines = 4
+
+    # --- 2. Center Group Construction ---
+    # Centered at y=0, straight through lines
+    # y positions: centered around 0
+    y_offsets_c = [(i - (n_lines - 1) / 2) * pitch for i in range(n_lines)]
+    
+    for y in y_offsets_c:
+        wg = c << gf.components.straight(length=total_length, cross_section=xs)
+        wg.center = (0, y)
+
+    # --- 3. Top Group Geometry Logic ---
+    # Calculate Y positions
+    # Top edge of center group
+    y_center_max = y_offsets_c[-1] + width/2
+    
+    # Start of Top group (Bottom edge of the lowest line in Top group)
+    y_top_group_start = y_center_max + gap_inter_group
+    
+    # Y centers for Top group lines
+    # i=0 is the bottom-most line of the top group
+    y_offsets_top = [(y_top_group_start + width/2) + i * pitch for i in range(n_lines)]
+    
+    # Calculate Common Center of Curvature (Y_cc) for Concentricity
+    # For a turn going UP (North), the Center of Curvature is at (X_bend, Y_cc)
+    # The TOP-MOST line (highest Y) is the INNER track of the turn.
+    # It must have the smallest radius = r_min_inner_track.
+    # Y_cc = Y_line + Radius
+    y_top_highest = y_offsets_top[-1]
+    y_cc_top = y_top_highest + r_min_inner_track
+    
+    # --- 4. Assembly Loop (Quadrants) ---
+    
+    # We iterate through the Top Group offsets and mirror them to create the Bottom Group
+    # We also mirror Left/Right to create the full device
+    
+    for y in y_offsets_top:
+        # --- Top Group Radius Calculation ---
+        # Radius depends on distance from Y_cc
+        # r = Y_cc - Y_line
+        r = y_cc_top - y
+        
+        # Length of horizontal segment from edge to bend
+        # Total length is fixed, bends start at +/- x_bend_dist
+        # Input waveguides come from x_left_edge to x_bend_left
+        l_horiz = abs(x_left_edge - x_bend_left)
+
+        # -- A. Top Left Quadrant --
+        # Bend: Left -> Up (90 deg)
+        # Position: x_bend_left
+        b_tl = c << gf.components.bend_circular(radius=r, angle=90, cross_section=xs)
+        b_tl.move((x_bend_left, y))
+        
+        # Horizontal Straight (Input)
+        s_h_tl = c << gf.components.straight(length=l_horiz, cross_section=xs)
+        # Connect Straight.o2 (Right end) to Bend.o1 (Input)
+        s_h_tl.connect("o2", b_tl.ports["o1"])
+        
+        # Vertical Straight (Output)
+        s_v_tl = c << gf.components.straight(length=v_len, cross_section=xs)
+        s_v_tl.connect("o1", b_tl.ports["o2"])
+
+        # -- B. Top Right Quadrant (Mirror X) --
+        # Creates the "East" side turning Up
+        b_tr = c << gf.components.bend_circular(radius=r, angle=90, cross_section=xs)
+        b_tr.move((x_bend_left, y)) # Place at reference
+        b_tr.mirror_x()             # Mirror to right side
+        
+        s_h_tr = c << gf.components.straight(length=l_horiz, cross_section=xs)
+        s_h_tr.connect("o2", b_tr.ports["o1"])
+        
+        s_v_tr = c << gf.components.straight(length=v_len, cross_section=xs)
+        s_v_tr.connect("o1", b_tr.ports["o2"])
+
+        # -- C. Bottom Left Quadrant (Mirror Y) --
+        # Creates the "West" side turning Down
+        # Note: Mirroring Y flips the Y coordinate, so we don't need to recalculate bottom offsets manually
+        # It creates the symmetric bottom group automatically.
+        b_bl = c << gf.components.bend_circular(radius=r, angle=90, cross_section=xs)
+        b_bl.move((x_bend_left, y))
+        b_bl.mirror_y()
+        
+        s_h_bl = c << gf.components.straight(length=l_horiz, cross_section=xs)
+        s_h_bl.connect("o2", b_bl.ports["o1"])
+        
+        s_v_bl = c << gf.components.straight(length=v_len, cross_section=xs)
+        s_v_bl.connect("o1", b_bl.ports["o2"])
+
+        # -- D. Bottom Right Quadrant (Mirror X & Y) --
+        # Creates the "East" side turning Down
+        b_br = c << gf.components.bend_circular(radius=r, angle=90, cross_section=xs)
+        b_br.move((x_bend_left, y))
+        b_br.mirror_x()
+        b_br.mirror_y()
+        
+        s_h_br = c << gf.components.straight(length=l_horiz, cross_section=xs)
+        s_h_br.connect("o2", b_br.ports["o1"])
+        
+        s_v_br = c << gf.components.straight(length=v_len, cross_section=xs)
+        s_v_br.connect("o1", b_br.ports["o2"])
+
+    return c
+
+# Generate and save
+if __name__ == "__main__":
+    device = dense_waveguide_coupler_concentric_corrected()
+    device.write_gds("dense_coupler_concentric_corrected.gds")

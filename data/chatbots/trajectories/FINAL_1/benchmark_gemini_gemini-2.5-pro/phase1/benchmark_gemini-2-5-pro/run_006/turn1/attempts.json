@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.553454",
+      "api_duration_seconds": 89.85699200630188,
+      "usage": {
+        "input_tokens": 2348,
+        "output_tokens": 1438,
+        "total_tokens": 12980
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bend_euler'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:41.466969",
+      "api_duration_seconds": 10.871733903884888,
+      "usage": {
+        "input_tokens": 3819,
+        "output_tokens": 1202,
+        "total_tokens": 5103
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: euler() got an unexpected keyword argument 'use_sbend'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:53.766023",
+      "api_duration_seconds": 19.06874704360962,
+      "usage": {
+        "input_tokens": 5051,
+        "output_tokens": 1257,
+        "total_tokens": 7308
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function width_profile_arm at 0x100fe4180>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11218,
+    "output_tokens": 3897,
+    "total_tokens": 25391
+  }
+}

@@ -1,0 +1,126 @@
+import gdsfactory as gf
+import pathlib
+
+@gf.cell
+def create_petal_with_stem(
+    petal_length: float = 3.9,
+    petal_width: float = 1.8,
+    stem_width: float = 0.5,
+    footprint_size: float = 4.7,
+    layer: tuple = (1, 0)
+) -> gf.Component:
+    """
+    Creates a single, vertically oriented petal unit with a stem attached at the top.
+
+    The petal shape is a "vesica piscis," formed by the intersection of two circles.
+    The stem is a simple rectangle positioned at the petal's tip.
+
+    Args:
+        petal_length: The length of the petal from tip to tip (major axis).
+        petal_width: The maximum width of the petal (minor axis).
+        stem_width: The width of the stem rectangle.
+        footprint_size: The total extent of the final device, used to calculate stem length.
+        layer: The GDS layer for the geometry.
+    """
+    c = gf.Component()
+
+    # --- 1. Create the Petal Shape ---
+    # The petal is a "vesica piscis" formed by the intersection of two circles.
+    # We use the correct formula for a "thin" petal where length > width.
+    # L = Length (major axis), W = Width (minor axis)
+    # R = (L^2 + W^2) / (4W)  (Radius of the two intersecting circles)
+    # d = R - W/2             (Offset of circle centers from the origin)
+
+    L = petal_length
+    W = petal_width
+    R = (L**2 + W**2) / (4 * W)
+    d = R - W / 2
+
+    # Create the two circles that will be intersected.
+    # It is more robust to create new components for each transformed circle
+    # before performing the boolean operation.
+    base_circle = gf.components.circle(radius=R, layer=layer)
+
+    circle_up_comp = gf.Component("circle_up")
+    ref_up = circle_up_comp << base_circle
+    ref_up.movey(d)
+
+    circle_down_comp = gf.Component("circle_down")
+    ref_down = circle_down_comp << base_circle
+    ref_down.movey(-d)
+
+    petal = gf.boolean(
+        A=circle_up_comp, B=circle_down_comp, operation="and", layer=layer
+    )
+    c.add_ref(petal)
+
+    # --- 2. Create the Stem Shape ---
+    # The stem starts where the petal ends and extends to the device boundary.
+    stem_length = (footprint_size - petal_length) / 2
+    stem_center_y = petal_length / 2 + stem_length / 2
+
+    stem = c << gf.components.rectangle(
+        size=(stem_width, stem_length), layer=layer, centered=True
+    )
+    stem.movey(stem_center_y)
+
+    return c
+
+@gf.cell
+def create_device():
+    """
+    Creates the final four-lobed device by rotating a single petal-and-stem unit.
+
+    This composition strategy avoids the errors from the previous attempt (unioning
+    two full orthogonal shapes), which created an incorrect bulging center. By
+    placing four rotated copies of a single "arm," we achieve the desired shape
+    where four distinct petals meet at a sharp central point. The slight overlap
+    at the origin is handled correctly by the GDSII format.
+
+    The key parameters for the petal shape were refined through visual analysis
+    to better match the target image's aspect ratio.
+    """
+    c = gf.Component("four_petal_cross")
+
+    # --- Define Component Parameters ---
+    # These parameters have been tuned to match the target image visually.
+    params = {
+        "petal_length": 3.9,
+        "petal_width": 1.8,
+        "stem_width": 0.5,
+        "footprint_size": 4.7,
+        "layer": (1, 0)
+    }
+
+    # --- Assemble the Final Device ---
+    # Create the base unit (a vertical petal with a stem on top).
+    petal_unit = create_petal_with_stem(**params)
+
+    # Place four references to the base unit, rotating each one.
+    # The overlapping polygons at the center will merge correctly.
+    p_up = c << petal_unit
+    p_right = c << petal_unit
+    p_down = c << petal_unit
+    p_left = c << petal_unit
+
+    p_right.rotate(-90)
+    p_down.rotate(180)
+    p_left.rotate(90) # same as -270
+
+    return c
+
+# This block allows the script to be run directly to generate and view the GDS.
+if __name__ == "__main__":
+    device = create_device()
+    device.show()
+
+    # Print the component's bounding box size to verify it matches the footprint.
+    print(f"Component created: {device.name}")
+    print(f"Bounding box size (width, height): ({device.xsize:.3f}, {device.ysize:.3f})")
+    print(f"Expected footprint: [{4.7}, {4.7}]")
+
+    # Save the GDS file.
+    script_dir = pathlib.Path(__file__).parent.resolve()
+    output_gds_path = script_dir / "output.gds"
+    device.write_gds(output_gds_path)
+    print(f"GDS file saved to: {output_gds_path}")

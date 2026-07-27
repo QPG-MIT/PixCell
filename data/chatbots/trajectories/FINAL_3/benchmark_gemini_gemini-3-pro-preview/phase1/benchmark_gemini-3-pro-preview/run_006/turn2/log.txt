@@ -1,0 +1,89 @@
+Turn 2 Response:
+
+Based on the visual feedback, the previous design had S-bends that appeared too elongated and a coupling region that felt proportionaly short compared to the reference image. The reference image shows a distinct, substantial central coupling region with transitions that appear slightly more compact.
+
+To address this, I have adjusted the longitudinal proportions. Instead of an equal 40-40-40 split, I have increased the central straight section length to 50µm and reduced the bend lengths to 35µm. This better captures the morphology of the directional coupler in the image while maintaining the strict 120µm x 4µm footprint.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_improved():
+    """
+    Creates a directional coupler matching the provided image and footprint.
+    Refined proportions: Elongated central coupling region (50um) with
+    steeper transitions (35um) to match the visual morphology.
+    
+    Footprint: 120um x 4um
+    """
+    c = gf.Component()
+
+    # --- Dimensions ---
+    # Total constraints
+    total_length = 120.0
+    total_height = 4.0
+    
+    # Waveguide parameters
+    wg_width = 0.5
+    gap = 0.2
+    
+    # Longitudinal Partitioning
+    # The reference image shows a prominent straight coupling region.
+    # We allocate more length to the straight section and reduce the bend length.
+    length_straight = 50.0
+    length_bend = (total_length - length_straight) / 2  # 35.0 um
+
+    # Vertical Geometry
+    # Inner y-offsets (center of waveguide in coupling region)
+    # Distance from y=0 is half the pitch (gap + width)
+    y_inner = (gap + wg_width) / 2  # 0.35 um
+    
+    # Outer y-offsets (center of waveguide at ports)
+    # Edges are at +/- 2.0 (total height/2). Center is edge - width/2.
+    y_outer = (total_height / 2) - (wg_width / 2)  # 1.75 um
+    
+    # Vertical transition height for the S-bend
+    dy = y_outer - y_inner  # 1.4 um
+
+    # Define Cross Section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- 1. Central Coupling Region ---
+    # Construct two parallel straight waveguides centered at y=0
+    wg_coup_top = c << gf.components.straight(length=length_straight, cross_section=xs)
+    wg_coup_bot = c << gf.components.straight(length=length_straight, cross_section=xs)
+
+    wg_coup_top.movey(y_inner)
+    wg_coup_bot.movey(-y_inner)
+
+    # --- 2. Input S-Bends (Left Side) ---
+    # Top Input: Transitions from y_outer down to y_inner
+    bend_in_top = c << gf.components.bend_s(size=(length_bend, -dy), cross_section=xs)
+    # Connect end of bend to start of coupling region
+    bend_in_top.connect("o2", wg_coup_top.ports["o1"])
+
+    # Bottom Input: Transitions from -y_outer up to -y_inner
+    bend_in_bot = c << gf.components.bend_s(size=(length_bend, dy), cross_section=xs)
+    bend_in_bot.connect("o2", wg_coup_bot.ports["o1"])
+
+    # --- 3. Output S-Bends (Right Side) ---
+    # Top Output: Transitions from y_inner up to y_outer
+    bend_out_top = c << gf.components.bend_s(size=(length_bend, dy), cross_section=xs)
+    bend_out_top.connect("o1", wg_coup_top.ports["o2"])
+
+    # Bottom Output: Transitions from -y_inner down to -y_outer
+    bend_out_bot = c << gf.components.bend_s(size=(length_bend, -dy), cross_section=xs)
+    bend_out_bot.connect("o1", wg_coup_bot.ports["o2"])
+
+    # --- 4. Expose Ports ---
+    c.add_port("o1", port=bend_in_top.ports["o1"]) # Top Left
+    c.add_port("o2", port=bend_in_bot.ports["o1"]) # Bottom Left
+    c.add_port("o3", port=bend_out_top.ports["o2"]) # Top Right
+    c.add_port("o4", port=bend_out_bot.ports["o2"]) # Bottom Right
+
+    return c
+
+# Create and save the GDS
+device = directional_coupler_improved()
+device.write_gds("directional_coupler_improved.gds")
+```

@@ -1,0 +1,84 @@
+import gdsfactory as gf
+
+@gf.cell
+def coupler_arm(length: float = 10.0, separation: float = 2.5, cross_section="strip"):
+    """
+    Creates a single arm of the coupler, which curves away from the center
+    and then back. It is built from two S-bends.
+
+    Args:
+        length: The horizontal length of each S-bend (half the total arm length).
+        separation: The vertical displacement of the arm (half the max separation).
+        cross_section: The cross-section for the waveguide.
+    """
+    c = gf.Component()
+    # get_cross_section correctly handles both string names and CrossSection objects
+    xs = gf.get_cross_section(cross_section)
+
+    # First S-bend curves away from the center (positive vertical displacement)
+    bend1 = gf.components.bend_s(size=(length, separation), cross_section=xs)
+    # Second S-bend curves back towards the center (negative vertical displacement)
+    bend2 = gf.components.bend_s(size=(length, -separation), cross_section=xs)
+
+    # Add and connect the bends to form one continuous arm
+    ref1 = c << bend1
+    ref2 = c << bend2
+    ref2.connect("o1", ref1.ports["o2"])
+
+    # Expose the start and end ports of the complete arm
+    c.add_port("o1", port=ref1.ports["o1"])
+    c.add_port("o2", port=ref2.ports["o2"])
+    return c
+
+
+@gf.cell
+def recreate_device():
+    """
+    Recreates the eye-shaped structure from the image.
+
+    The device consists of two symmetric arms that split and recombine,
+    built using the `coupler_arm` sub-component.
+    """
+    c = gf.Component()
+
+    # --- 1. Define Parameters ---
+    total_length = 20.0
+    max_separation = 5.0
+    wg_width = 1.0
+
+    # --- FIX: Use the correct factory function `gf.cross_section.strip` ---
+    # This function creates a CrossSection object and accepts parameters like
+    # `width` and `min_bend_radius`.
+    xs = gf.cross_section.strip(width=wg_width, min_bend_radius=8.0)
+    
+    # Derive the parameters needed for the single arm sub-component
+    arm_s_bend_length = total_length / 2
+    arm_vertical_separation = max_separation / 2
+
+    # --- 2. Assemble the Device ---
+    # Create an instance of our reusable arm component using the custom cross-section
+    arm = coupler_arm(
+        length=arm_s_bend_length,
+        separation=arm_vertical_separation,
+        cross_section=xs
+    )
+
+    # Add the top arm to the final component
+    top_arm_ref = c << arm
+
+    # Add the bottom arm by creating another instance and mirroring it vertically
+    bottom_arm_ref = c << arm
+    bottom_arm_ref.mirror(p1=(0, 0), p2=(1, 0)) # Mirror across the x-axis
+
+    return c
+
+# Main execution block to instantiate and save the GDS file
+if __name__ == "__main__":
+    # Instantiate the final component
+    device = recreate_device()
+    
+    # Show the component in a viewer (like KLayout) for verification
+    device.show()
+    
+    # Write the component to a GDS file
+    device.write_gds("recreated_device.gds")

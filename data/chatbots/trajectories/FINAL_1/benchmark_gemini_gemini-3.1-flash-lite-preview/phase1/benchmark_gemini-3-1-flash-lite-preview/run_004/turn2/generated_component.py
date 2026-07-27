@@ -1,0 +1,43 @@
+import gdsfactory as gf
+
+@gf.cell
+def tapered_coupler_device():
+    c = gf.Component()
+
+    # Define Cross Sections
+    # Using 0.3um as the narrow tip and 0.8um as the wide base
+    xs_narrow = gf.cross_section.cross_section(width=0.3, layer=(1, 0))
+    xs_wide = gf.cross_section.cross_section(width=0.8, layer=(1, 0))
+
+    # Define Transitions
+    # Center: Wide -> Narrow
+    trans_center = gf.path.transition(xs_wide, xs_narrow, width_type="sine")
+    # Arms: Narrow -> Wide
+    trans_arm = gf.path.transition(xs_narrow, xs_wide, width_type="sine")
+
+    # 1. Construct Center Waveguide (Straight Taper)
+    # Length 30um
+    p_center = gf.path.straight(length=30)
+    center_wg = gf.path.extrude_transition(p_center, trans_center)
+    c << center_wg
+
+    # 2. Construct Outer Waveguides (Straight + Euler Bend)
+    # This creates the flare at the end
+    p_arm = gf.path.straight(length=20) + gf.path.euler(radius=100, angle=5)
+    outer_wg = gf.path.extrude_transition(p_arm, trans_arm)
+
+    # 3. Position Arms
+    # Place top and bottom arms, offset to create the required gap
+    # Move Y by 0.6um to ensure there is space between the center and arms
+    top_arm = c << outer_wg
+    top_arm.movey(0.6)
+    
+    bot_arm = c << outer_wg
+    bot_arm.mirror(p1=(0, 0), p2=(1, 0)) # Mirror across X-axis for the bottom
+    bot_arm.movey(-0.6)
+
+    return c
+
+# Create and save
+device = tapered_coupler_device()
+device.write_gds("tapered_coupler_v2.gds")

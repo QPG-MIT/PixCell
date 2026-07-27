@@ -1,0 +1,158 @@
+Turn 3 Response:
+
+This script fixes the `ValueError` by explicitly setting `radius=None` in the cross-section definitions. This disables the default minimum bend radius check (usually 10µm), allowing the tight 0.5µm bends required for the heater geometry.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_generator():
+    """
+    Racetrack Resonator with Internal Heaters (Optimized).
+    
+    Recreates the target geometry:
+    - Thick outer racetrack ring.
+    - Solid internal heater blocks that fill the bend curvature.
+    - Central gap cleanly separating top and bottom heaters.
+    - Validated parameters to avoid cross-section errors.
+    """
+    c = gf.Component("Racetrack_Heater_Final")
+    
+    # --- Configuration ---
+    # Device Footprint: ~5.5um x 3.0um
+    layer = (1, 0)
+    
+    # Outer Ring Parameters
+    ring_width = 0.6
+    r_outer = 1.5
+    straight_len = 2.5
+    
+    # Inner Structure Parameters
+    # We define cross-sections with radius=None to allow tight bends (r=0.5) 
+    # without triggering the default min_bend_radius (10.0) check.
+    
+    pad_width = 0.45          # Width of the straight heating element
+    pad_length = 0.8          # Length of the straight heating element
+    
+    # Geometry calculation for the "Ear" (curved heater section)
+    # The ear fills the space from the center line to the ring gap.
+    # Ring inner edge:
+    r_inner_ring_edge = r_outer - (ring_width / 2.0) # 1.2
+    gap_ring_heater = 0.2
+    
+    # Heater outer radius limits
+    r_heater_outer = r_inner_ring_edge - gap_ring_heater # 1.0
+    
+    # We construct the ear as a wide path.
+    # To fill the quadrant from center (r=0) to outer (r=1.0),
+    # Width = 1.0. Center radius = 0.5.
+    ear_width = 1.0
+    ear_radius = 0.5
+    
+    # Vertical position: The ear's center of curvature must align with y=0 eventually.
+    # The ear path is defined at radius 0.5.
+    # So the component must be placed at y = 0.5.
+    y_pad_center = ear_radius 
+    
+    # Taper fills the rest of the straight section
+    taper_len = (straight_len - pad_length) / 2
+    
+    # Gap cut
+    gap_center_h = 0.2
+
+    # --- Cross Sections ---
+    # Note: radius=None prevents validation errors for tight bends
+    xs_ring = gf.cross_section.cross_section(width=ring_width, layer=layer, radius=None)
+    xs_ear = gf.cross_section.cross_section(width=ear_width, layer=layer, radius=None)
+    xs_pad = gf.cross_section.cross_section(width=pad_width, layer=layer, radius=None)
+
+    # ---------------------------
+    # 1. Outer Ring
+    # ---------------------------
+    p = gf.Path()
+    p.append(gf.path.straight(length=straight_len))
+    p.append(gf.path.arc(radius=r_outer - ring_width/2, angle=180))
+    p.append(gf.path.straight(length=straight_len))
+    p.append(gf.path.arc(radius=r_outer - ring_width/2, angle=180))
+    
+    ring = c << gf.path.extrude(p, cross_section=xs_ring)
+    ring.move((-straight_len/2, -(r_outer - ring_width/2)))
+
+    # ---------------------------
+    # 2. Internal Heater Assembly
+    # ---------------------------
+    top_arm = gf.Component("Arm_Half")
+    
+    # Left Ear (Bend)
+    # Rotated to connect East-facing port to the straight section,
+    # occupying the top-left quadrant relative to connection.
+    ear_l = top_arm << gf.components.bend_circular(
+        radius=ear_radius, 
+        angle=90, 
+        cross_section=xs_ear
+    )
+    ear_l.rotate(-90)
+    
+    # Left Taper
+    taper_l = top_arm << gf.components.taper(
+        length=taper_len, 
+        width1=ear_width, 
+        width2=pad_width, 
+        layer=layer
+    )
+    taper_l.connect("o1", ear_l.ports["o2"])
+    
+    # Central Pad
+    pad = top_arm << gf.components.straight(length=pad_length, cross_section=xs_pad)
+    pad.connect("o1", taper_l.ports["o2"])
+    
+    # Right Taper
+    taper_r = top_arm << gf.components.taper(
+        length=taper_len, 
+        width1=pad_width, 
+        width2=ear_width, 
+        layer=layer
+    )
+    taper_r.connect("o1", pad.ports["o2"])
+    
+    # Right Ear (Mirrored)
+    ear_r = top_arm << gf.components.bend_circular(
+        radius=ear_radius, 
+        angle=90, 
+        cross_section=xs_ear
+    )
+    ear_r.mirror_x()
+    ear_r.connect("o2", taper_r.ports["o2"])
+
+    # ---------------------------
+    # 3. Combine and Cut
+    # ---------------------------
+    heaters_raw = gf.Component("Heaters_Raw")
+    
+    # Place Top Arm
+    top_ref = heaters_raw << top_arm
+    top_ref.move((-straight_len/2, y_pad_center))
+    
+    # Place Bottom Arm
+    bot_ref = heaters_raw << top_arm
+    bot_ref.mirror_y()
+    bot_ref.move((-straight_len/2, -y_pad_center))
+    
+    # Boolean Cut for Central Gap
+    # The ears touch at y=0. We cut a slot to separate them.
+    cutout_rect = gf.components.rectangle(
+        size=(straight_len + 2*r_outer + 1.0, gap_center_h), 
+        layer=layer, 
+        centered=True
+    )
+    
+    heaters_final = gf.boolean(heaters_raw, cutout_rect, operation="not", layer=layer)
+    c << heaters_final
+
+    return c
+
+if __name__ == "__main__":
+    device = device_generator()
+    device.write_gds("racetrack_heater_final.gds")
+    device.show()
+```

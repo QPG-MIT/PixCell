@@ -1,0 +1,131 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_dense_coupler_array(
+    length: float = 120.0,
+    height: float = 4.0,
+    w_wg: float = 0.1,
+    g_wg: float = 0.08,
+    bend_length: float = 35.0,
+) -> gf.Component:
+    """
+    Creates a dense waveguide coupler array matching the visual style of the reference.
+    Features finer lines, larger flared caps, and strict height constraint adherence.
+    """
+    c = gf.Component()
+    
+    # Derived parameters
+    straight_section_length = length - 2 * bend_length
+    pitch = w_wg + g_wg
+    xs_std = gf.cross_section.cross_section(width=w_wg, layer=(1, 0))
+    
+    # -----------------------------------------------------------
+    # 1. Center Bundle (5 Straight Waveguides)
+    # -----------------------------------------------------------
+    # Center lines are straight and centered at Y=0
+    n_center = 5
+    center_indices = range(-(n_center//2), n_center//2 + 1)
+    
+    # Calculate the vertical extent of the center bundle to place outer groups correctly
+    # Top of top-most center line = (2 * pitch) + w_wg/2
+    y_center_max = (n_center // 2) * pitch + w_wg / 2
+    
+    for i in center_indices:
+        y_pos = i * pitch
+        wg = c << gf.components.straight(length=length, cross_section=xs_std)
+        wg.center = (0, y_pos)
+
+    # -----------------------------------------------------------
+    # 2. Flared Outer Regions (Top and Bottom)
+    # -----------------------------------------------------------
+    # These sections 'compress' inwards in the middle straight section
+    # and flare outwards at the ends.
+    
+    n_outer_thin = 3
+    gap_center_to_outer = 0.16  # Distinct gap separating center from outer
+    w_cap = 0.55                # Thick outer block
+    
+    # Vertical Flare (dy): How much the outer lines move vertically 
+    # between the ends (wide) and the center (narrow).
+    # We calibrate this to fit exactly within height=4.0 (+/- 2.0).
+    
+    # Calculate Y position of the inner-most outer line in the "flat" middle section
+    y_outer_inner_flat = y_center_max + gap_center_to_outer + w_wg/2
+    
+    # Calculate total height of the outer bundle structure (3 thin lines + gaps + cap)
+    # Height = (2 * pitch) + gap_to_cap + w_cap
+    h_outer_structure = (n_outer_thin - 1) * pitch + g_wg + w_cap
+    
+    # Calculate the Y position of the TOP edge of the cap in the flat section
+    # Center of cap relative to inner line = (n_outer_thin-1)*pitch + g_wg + w_cap/2
+    y_cap_center_flat = y_outer_inner_flat + (n_outer_thin - 1) * pitch + g_wg + w_cap/2
+    y_top_flat = y_cap_center_flat + w_cap/2
+    
+    # Max allowed Y is 2.0. The flare is the difference.
+    # We leave a tiny margin (0.01)
+    y_max_limit = height / 2.0 - 0.01
+    dy_flare = y_max_limit - y_top_flat
+    
+    # Ensure flare is positive (otherwise geometry overlaps)
+    if dy_flare < 0:
+        print("Warning: Geometry exceeds height constraints. Reducing spacing.")
+        dy_flare = 0.0
+
+    def add_flared_row(y_flat_center, is_top=True, width=w_wg):
+        """
+        Adds a single waveguide row that flares out at the ends.
+        y_flat_center: The y-coordinate in the middle (straight) section.
+        """
+        xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+        
+        # Determine bend direction
+        # Top side: Starts high, bends DOWN (-dy) to middle, goes straight, bends UP (+dy)
+        offset_y = -dy_flare if is_top else dy_flare
+        
+        # 1. Left S-Bend
+        b_l = c << gf.components.bend_s(size=(bend_length, offset_y), cross_section=xs)
+        
+        # Place Left Bend
+        # It ends at (-straight/2, y_flat_center). 
+        # Start (Origin) = End - (length, offset)
+        x_start = -straight_section_length/2 - bend_length
+        y_start = y_flat_center - offset_y
+        b_l.move((x_start, y_start))
+        
+        # 2. Straight Section
+        st = c << gf.components.straight(length=straight_section_length, cross_section=xs)
+        st.connect("o1", b_l.ports["o2"])
+        
+        # 3. Right S-Bend
+        # Top side: Bends UP (+dy) from flat
+        b_r = c << gf.components.bend_s(size=(bend_length, -offset_y), cross_section=xs)
+        b_r.connect("o1", st.ports["o2"])
+
+    # --- Generate Top Outer Group ---
+    # Thin lines
+    for i in range(n_outer_thin):
+        y_pos = y_outer_inner_flat + i * pitch
+        add_flared_row(y_pos, is_top=True, width=w_wg)
+    
+    # Thick Cap
+    add_flared_row(y_cap_center_flat, is_top=True, width=w_cap)
+
+    # --- Generate Bottom Outer Group (Mirrored) ---
+    # We mirror coordinates simply by negating Y values
+    y_outer_inner_flat_bot = -y_outer_inner_flat
+    y_cap_center_flat_bot = -y_cap_center_flat
+    
+    # Thin lines
+    for i in range(n_outer_thin):
+        y_pos = y_outer_inner_flat_bot - i * pitch
+        add_flared_row(y_pos, is_top=False, width=w_wg)
+        
+    # Thick Cap
+    add_flared_row(y_cap_center_flat_bot, is_top=False, width=w_cap)
+
+    return c
+
+if __name__ == "__main__":
+    device = device_dense_coupler_array()
+    device.write_gds("dense_coupler_array.gds")
+    device.show()

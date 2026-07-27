@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:07.900987",
+      "api_duration_seconds": 46.194936990737915,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 2147,
+        "total_tokens": 13154
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: euler() got an unexpected keyword argument 'bend_factory'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:55.618519",
+      "api_duration_seconds": 12.731693983078003,
+      "usage": {
+        "input_tokens": 4521,
+        "output_tokens": 2158,
+        "total_tokens": 7443
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: euler() got an unexpected keyword argument 'bend_type'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:10.033708",
+      "api_duration_seconds": 18.681516885757446,
+      "usage": {
+        "input_tokens": 6708,
+        "output_tokens": 2229,
+        "total_tokens": 11027
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Calculated y-size ({c.ysize:.2f} \u00b5m) does not match \"\n                     f\"footprint y-dimension (4 \u00b5m). Check width or vertical positioning logic.\")\nValueError: Calculated y-size (4.20 \u00b5m) does not match footprint y-dimension (4 \u00b5m). Check width or vertical positioning logic.",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13574,
+    "output_tokens": 6534,
+    "total_tokens": 31624
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "phase": "phase2_extended_iteration",
+  "model": "gemini/gemini-2.5-flash",
+  "timestamp": {
+    "start_iso": "2026-01-26T19:24:59.058855",
+    "end_iso": "2026-01-26T19:29:35.009721",
+    "duration_seconds": 275.950501
+  },
+  "runs": {
+    "total": 2,
+    "completed": 0,
+    "with_telemetry": 2
+  },
+  "aggregate_usage": {
+    "total_input_tokens": 38142,
+    "total_output_tokens": 12728,
+    "total_tokens": 50870
+  },
+  "aggregate_attempts": {
+    "total_api_calls": 10,
+    "total_failed_attempts": 0,
+    "total_successful_attempts": 0,
+    "failure_rate": 0.0
+  },
+  "thinking_content": {
+    "total_turns": 0,
+    "turns_with_thinking": 0,
+    "thinking_rate": 0
+  },
+  "per_run_telemetry": [
+    {
+      "run_id": 4,
+      "seed": 1326,
+      "model": "gemini-2.5-flash",
+      "provider": "gemini",
+      "phase1_sse": 568248.0,
+      "phase1_iou": 0.31042550506276273,
+      "run_duration_seconds": 275.948,
+      "turns": [
+        {
+          "turn": 3,
+          "success": true,
+          "attempts": 1,
+          "usage": {
+            "input_tokens": 3018,
+            "output_tokens": 3583,
+            "total_tokens": 28622
+          },
+          "duration_seconds": 104.626,
+          "sse": 410821.0,
+          "iou": 0.3488189625383984
+        },
+        {
+          "turn": 4,
+          "success": false,
+          "attempts": 3,
+          "usage": {
+            "input_tokens": 13026,
+            "output_tokens": 4077,
+            "total_tokens": 22916
+          },
+          "duration_seconds": 171.319
+        }
+      ],
+      "cumulative_usage": {
+        "input_tokens": 16044,
+        "output_tokens": 7660,
+        "total_tokens": 51538
+      },
+      "total_api_calls": 4,
+      "total_successful_turns": 1
+    },
+    {
+      "run_id": 9,
+      "seed": 1331,
+      "model": "gemini-2.5-flash",
+      "provider": "gemini",
+      "phase1_sse": 535823.0,
+      "phase1_iou": 0.10542896829901899,
+      "run_duration_seconds": 256.835,
+      "turns": [
+        {
+          "turn": 3,
+          "success": true,
+          "attempts": 3,
+          "usage": {
+            "input_tokens": 10636,
+            "output_tokens": 2392,
+            "total_tokens": 13329
+          },
+          "duration_seconds": 128.75,
+          "sse": 548419.0,
+          "iou": 0.11070409882452906
+        },
+        {
+          "turn": 4,
+          "success": true,
+          "attempts": 3,
+          "usage": {
+            "input_tokens": 11462,
+            "output_tokens": 2676,
+            "total_tokens": 15713
+          },
+          "duration_seconds": 128.083,
+          "sse": 554608.0,
+          "iou": 0.10781798205044471
+        }
+      ],
+      "cumulative_usage": {
+        "input_tokens": 22098,
+        "output_tokens": 5068,
+        "total_tokens": 29042
+      },
+      "total_api_calls": 6,
+      "total_successful_turns": 2
+    }
+  ]
+}

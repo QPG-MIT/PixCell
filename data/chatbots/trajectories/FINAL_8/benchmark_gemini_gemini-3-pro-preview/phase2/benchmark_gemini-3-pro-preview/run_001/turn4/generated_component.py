@@ -1,0 +1,151 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def tapered_coupler_array():
+    """
+    Creates a dense waveguide coupler array with a central bus and flared outer blocks.
+    The outer blocks and adjacent waveguides follow a parabolic profile to flare out
+    towards the edges, matching the target geometry.
+    """
+    c = gf.Component()
+    
+    # =========================================================================
+    # Parameters
+    # =========================================================================
+    L = 120.0       # Device Length
+    w = 0.13        # Waveguide width (tuned for density and constraint)
+    g = 0.08        # Gap between waveguides in a group
+    pitch = w + g
+    
+    # Vertical Constraint: y must stay within +/- 2.0
+    y_limit = 2.0
+    
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=w, layer=layer)
+
+    # =========================================================================
+    # 1. Central Bus (5 straight waveguides)
+    # =========================================================================
+    # Centered at y=0. Indices -2, -1, 0, 1, 2
+    for i in range(-2, 3):
+        wg = c << gf.components.straight(length=L, cross_section=xs)
+        wg.y = i * pitch
+        wg.x = 0
+        
+    # Calculate Y-coordinate of the top edge of this central group
+    y_bus_top_edge = 2 * pitch + w / 2
+
+    # =========================================================================
+    # 2. Flank Structure Calculation (Waist Geometry)
+    # =========================================================================
+    # At x=0 (the waist), the components are packed most tightly.
+    
+    # Separation gap at the waist (between central bus and first flank WG)
+    g_sep_waist = 0.15
+    
+    # Start position for flank waveguides at waist
+    y_flank_start = y_bus_top_edge + g_sep_waist
+    
+    # We have 3 waveguides in the flank group
+    n_flank = 3
+    flank_centers_waist = []
+    for i in range(n_flank):
+        # Calculate center y for each flank waveguide
+        y_c = y_flank_start + w/2 + i*pitch
+        flank_centers_waist.append(y_c)
+        
+    # Top Block position at waist
+    # Starts after the last flank waveguide
+    y_block_inner_waist = flank_centers_waist[-1] + w/2 + g
+    
+    # Block thickness at waist (thinnest part of the block)
+    block_waist_thickness = 0.15
+    y_block_outer_waist = y_block_inner_waist + block_waist_thickness
+    
+    # =========================================================================
+    # 3. Curvature Profiles (Parabolic)
+    # =========================================================================
+    # We define parabolic curves: y(x) = y_waist + k * x^2
+    # The components flare outwards (higher y) as |x| increases.
+    
+    x_edge = L / 2
+    
+    # Outer Curve (Top Edge of Block)
+    # This determines the maximum extent. It must hit y_limit at the edge.
+    sag_outer = y_limit - y_block_outer_waist
+    k_outer = sag_outer / (x_edge**2)
+    
+    # Inner Curve (Flank WGs and Bottom Edge of Block)
+    # This curve defines the "gap" expansion. 
+    # To make the block look like a "horn" (thicker at ends), this curve must
+    # rise less sharply than the outer curve.
+    # Let's target a specific block thickness at the edge (e.g., 0.5um).
+    block_edge_thickness = 0.5
+    y_block_inner_edge = y_limit - block_edge_thickness
+    
+    sag_inner = y_block_inner_edge - y_block_inner_waist
+    k_inner = sag_inner / (x_edge**2)
+    
+    # Generate X points for the path
+    n_pts = 301
+    x_pts = np.linspace(-L/2, L/2, n_pts)
+
+    # =========================================================================
+    # 4. Generate Geometry (Top Half)
+    # =========================================================================
+    
+    # A. Flank Waveguides (Curved)
+    for y_wc in flank_centers_waist:
+        # Calculate curve path for this waveguide center
+        # We apply the k_inner curvature to keep them parallel to the block's inner edge
+        y_pts = y_wc + k_inner * x_pts**2
+        pts = list(zip(x_pts, y_pts))
+        
+        # Extrude path
+        p = gf.Path(pts)
+        wg = c << gf.path.extrude(p, cross_section=xs)
+        
+    # B. Solid Block (Polygon)
+    # Calculate the arrays of y-coordinates for the block edges
+    y_inner = y_block_inner_waist + k_inner * x_pts**2
+    y_outer = y_block_outer_waist + k_outer * x_pts**2
+    
+    # Construct vertices for a closed polygon (CCW)
+    verts_top = list(zip(x_pts, y_outer))             # Left to right along top edge
+    verts_bot = list(zip(x_pts[::-1], y_inner[::-1])) # Right to left along bottom edge
+    c.add_polygon(verts_top + verts_bot, layer=layer)
+
+    # =========================================================================
+    # 5. Generate Geometry (Bottom Half - Mirrored)
+    # =========================================================================
+    
+    # A. Flank Waveguides
+    for y_wc in flank_centers_waist:
+        # Mirror Y: y -> -y
+        # The shape is symmetric, so we just negate the Y coordinates
+        y_pts = -(y_wc + k_inner * x_pts**2)
+        pts = list(zip(x_pts, y_pts))
+        
+        p = gf.Path(pts)
+        wg = c << gf.path.extrude(p, cross_section=xs)
+        
+    # B. Solid Block
+    # Mirror Y values
+    y_inner_bot = -(y_inner)
+    y_outer_bot = -(y_outer)
+    
+    # Construct polygon CCW
+    # For the bottom block:
+    # Top edge is y_inner_bot (closest to axis, less negative)
+    # Bottom edge is y_outer_bot (farthest from axis, more negative)
+    verts_top_b = list(zip(x_pts, y_inner_bot))
+    verts_bot_b = list(zip(x_pts[::-1], y_outer_bot[::-1]))
+    c.add_polygon(verts_top_b + verts_bot_b, layer=layer)
+
+    return c
+
+# Generate and save
+device = tapered_coupler_array()
+device.write_gds("tapered_coupler_array.gds")
+device.show()

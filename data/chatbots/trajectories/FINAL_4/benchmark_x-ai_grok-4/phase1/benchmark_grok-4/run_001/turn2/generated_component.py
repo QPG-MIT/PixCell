@@ -1,0 +1,64 @@
+import gdsfactory as gf
+
+@gf.cell
+def device():
+    c = gf.Component()
+
+    # Parameters
+    length = 18
+    height = 3
+    w = 0.5
+    layer = (1, 0)
+    gap_mid = 0.2
+    xs = gf.cross_section.cross_section(width=w, layer=layer)
+
+    y0 = (height - w) / 2
+    c_mid = (gap_mid + w) / 2  # half distance between centers in middle
+    d = y0 - c_mid
+
+    length_mid = 6
+    dx = (length - length_mid) / 2
+
+    # Top input bend
+    points_top_in = [(0, 0), (dx / 2, 0), (dx / 2, -d), (dx, -d)]
+    path_top_in = gf.path.smooth(points=points_top_in, radius=None)
+    top_in = path_top_in.extrude(cross_section=xs)
+    top_in = c << top_in
+    top_in.move((0, y0))
+
+    # Bottom input bend
+    points_bottom_in = [(0, 0), (dx / 2, 0), (dx / 2, d), (dx, d)]
+    path_bottom_in = gf.path.smooth(points=points_bottom_in, radius=None)
+    bottom_in = path_bottom_in.extrude(cross_section=xs)
+    bottom_in = c << bottom_in
+    bottom_in.move((0, -y0))
+
+    # Middle coupler
+    middle = c << gf.components.coupler_straight(length=length_mid, gap=gap_mid, cross_section=xs)
+    middle.connect("o2", top_in.ports["o2"])
+
+    # Top output bend
+    points_top_out = [(0, 0), (dx / 2, 0), (dx / 2, d), (dx, d)]
+    path_top_out = gf.path.smooth(points=points_top_out, radius=None)
+    top_out = path_top_out.extrude(cross_section=xs)
+    top_out = c << top_out
+    top_out.connect("o1", middle.ports["o4"])
+
+    # Bottom output bend
+    points_bottom_out = [(0, 0), (dx / 2, 0), (dx / 2, -d), (dx, -d)]
+    path_bottom_out = gf.path.smooth(points=points_bottom_out, radius=None)
+    bottom_out = path_bottom_out.extrude(cross_section=xs)
+    bottom_out = c << bottom_out
+    bottom_out.connect("o1", middle.ports["o3"])
+
+    # Expose ports
+    c.add_port("o1", port=top_in.ports["o1"])
+    c.add_port("o2", port=top_out.ports["o2"])
+    c.add_port("o3", port=bottom_in.ports["o1"])
+    c.add_port("o4", port=bottom_out.ports["o2"])
+
+    return c
+
+# Create and save
+dev = device()
+dev.write_gds("device.gds")

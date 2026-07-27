@@ -1,0 +1,101 @@
+import gdsfactory as gf
+
+@gf.cell
+def asymmetric_coupler_array():
+    """
+    Creates an arrayed waveguide device with central straight segments and 
+    flaring solid blocks at the top and bottom. The solid blocks merge from
+    individual lines at the edges into a gapless solid rectangle in the middle.
+    """
+    c = gf.Component("asymmetric_coupler_array")
+    layer = (1, 0)
+
+    # Footprint constraints
+    length = 120.0
+    
+    # Section lengths to match the visual proportions
+    l_mid = 70.0
+    l_bend = 15.0
+    l_end = (length - l_mid - 2 * l_bend) / 2.0  # 10.0
+    
+    # Waveguide parameters
+    w_thin = 0.1
+    w_thick = 0.65
+    pitch_center = 0.2  # spacing of 0.2 with 0.1 width = 0.1 gap
+    
+    # --- 1. Central Straight Waveguides ---
+    # 5 continuous straight lines spanning the entire length
+    for i in range(-2, 3):
+        xs = gf.cross_section.cross_section(width=w_thin, layer=layer)
+        wg = c << gf.components.straight(length=length, cross_section=xs)
+        wg.move((-length/2, i * pitch_center))
+
+    # --- Helper function for Top/Bottom Blocks ---
+    def add_merged_wg(y_mid, y_end, width):
+        """
+        Creates a 'finger' with straight ends, S-bends, and a central straight section.
+        """
+        xs = gf.cross_section.cross_section(width=width, layer=layer)
+        
+        # Central straight section
+        wg_mid = c << gf.components.straight(length=l_mid, cross_section=xs)
+        wg_mid.move((-l_mid/2, y_mid))
+        
+        # Left side (S-bend + straight end)
+        dy_left = y_mid - y_end
+        if abs(dy_left) > 1e-6:
+            wg_bend_left = c << gf.components.bend_s(size=(l_bend, dy_left), cross_section=xs)
+            wg_bend_left.connect("o2", wg_mid.ports["o1"])
+            
+            wg_end_left = c << gf.components.straight(length=l_end, cross_section=xs)
+            wg_end_left.connect("o2", wg_bend_left.ports["o1"])
+        else:
+            # If no bend is needed, just extend the straight line
+            wg_left = c << gf.components.straight(length=l_bend + l_end, cross_section=xs)
+            wg_left.connect("o2", wg_mid.ports["o1"])
+
+        # Right side (S-bend + straight end)
+        dy_right = y_end - y_mid
+        if abs(dy_right) > 1e-6:
+            wg_bend_right = c << gf.components.bend_s(size=(l_bend, dy_right), cross_section=xs)
+            wg_bend_right.connect("o1", wg_mid.ports["o2"])
+            
+            wg_end_right = c << gf.components.straight(length=l_end, cross_section=xs)
+            wg_end_right.connect("o1", wg_bend_right.ports["o2"])
+        else:
+            # If no bend is needed, just extend the straight line
+            wg_right = c << gf.components.straight(length=l_bend + l_end, cross_section=xs)
+            wg_right.connect("o1", wg_mid.ports["o2"])
+
+    # --- 2 & 3. Top and Bottom Solid Blocks ---
+    # 4 thin inner lines + 1 thick outer line = 5 lines total for top/bottom blocks
+    widths = [w_thin, w_thin, w_thin, w_thin, w_thick]
+    
+    # y_mids perfect stack (forms a gapless solid block without artifacts):
+    # Widths stack perfectly adjacent to each other
+    # y_mids = 0.60 covers [0.55, 0.65] -> flat straight bottom edge
+    # y_mids = 0.70 covers [0.65, 0.75]
+    # y_mids = 0.80 covers [0.75, 0.85]
+    # y_mids = 0.90 covers [0.85, 0.95]
+    # y_mids = 1.275 covers [0.95, 1.60] (with w_thick=0.65)
+    y_mids = [0.60, 0.70, 0.80, 0.90, 1.275]
+    
+    # y_ends perfect spacing to maintain exact uniform 0.1µm gaps everywhere at edges:
+    # 0.60 (+/- 0.05) => 0.1 gap to central 5 lines
+    # 0.80 (+/- 0.05) => 0.1 gap
+    # 1.00 (+/- 0.05) => 0.1 gap
+    # 1.20 (+/- 0.05) => 0.1 gap
+    # 1.675 (+/- 0.325) => 0.1 gap, top edge lands perfectly at exactly 2.0.
+    y_ends = [0.60, 0.80, 1.00, 1.20, 1.675]
+
+    for w, ym, ye in zip(widths, y_mids, y_ends):
+        # Place top block line
+        add_merged_wg(ym, ye, w)
+        # Place bottom block line (mirror symmetry)
+        add_merged_wg(-ym, -ye, w)
+
+    return c
+
+if __name__ == "__main__":
+    device = asymmetric_coupler_array()
+    device.write_gds("asymmetric_coupler_array_corrected.gds")

@@ -1,0 +1,81 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreated_device():
+    """
+    Recreates the device with a 5.5um x 3.0um footprint.
+    Aligns all components to a common center and merges them for a clean silhouette.
+    """
+    layer = (1, 0)
+    
+    # --- 1. Dimensions and Parameters ---
+    total_w = 5.5
+    total_h = 3.0
+    ring_thick = 0.45
+    
+    # Stadium math: Total H = 2 * Radius_outer.
+    # Radius_outer = 1.5. Mean Radius for path = 1.5 - ring_thick/2 = 1.275
+    # Total W = 2 * Radius_outer + Straight_Length.
+    # Straight_Length = 5.5 - 3.0 = 2.5
+    r_mean = (total_h / 2) - (ring_thick / 2)
+    l_straight = total_w - total_h
+    
+    # --- 2. Create the Outer Stadium Ring ---
+    ring_comp = gf.Component("ring_sub")
+    p_ring = gf.path.straight(length=l_straight)
+    p_ring += gf.path.arc(radius=r_mean, angle=180)
+    p_ring += gf.path.straight(length=l_straight)
+    p_ring += gf.path.arc(radius=r_mean, angle=180)
+    
+    r_ext = gf.path.extrude(p_ring, width=ring_thick, layer=layer)
+    r_ref = ring_comp << r_ext
+    # Center the ring at (0,0). 
+    # Path spans from 0 to l_straight in x and 0 to 2*r_mean in y.
+    r_ref.move((-l_straight / 2, -r_mean))
+    
+    # --- 3. Create the Internal Network ---
+    internal_comp = gf.Component("internal_sub")
+    
+    # Junction and arm parameters
+    junc_w, junc_h = 0.5, 0.9
+    x_junc = 2.1  # Placed inside the curved "ears" of the stadium
+    arm_y_offset = 0.65
+    arm_w = 0.2
+    box_w, box_h = 0.8, 0.45
+    box_gap = 0.12
+    
+    # Vertical junction blocks
+    j_left = internal_comp << gf.components.rectangle(size=(junc_w, junc_h), centered=True, layer=layer)
+    j_left.movex(-x_junc)
+    j_right = internal_comp << gf.components.rectangle(size=(junc_w, junc_h), centered=True, layer=layer)
+    j_right.movex(x_junc)
+    
+    # Helper to create top and bottom arms
+    def add_arm(y_sign):
+        y = y_sign * arm_y_offset
+        # Path from center of left junction, through horizontal segment, to center of right junction
+        # Using gf.path.smooth to replicate the beveled transitions in the original image
+        pts = [(-x_junc, 0), (-1.3, y), (1.3, y), (x_junc, 0)]
+        path = gf.path.smooth(pts, radius=0.3)
+        internal_comp << gf.path.extrude(path, width=arm_w, layer=layer)
+        
+        # Add the two rectangular 'boxes' on the horizontal waveguide sections
+        for dx in [-(box_w + box_gap)/2, (box_w + box_gap)/2]:
+            b = internal_comp << gf.components.rectangle(size=(box_w, box_h), centered=True, layer=layer)
+            b.move((dx, y))
+
+    add_arm(1)   # Top arm
+    add_arm(-1)  # Bottom arm
+    
+    # --- 4. Boolean Merge ---
+    # We perform an 'OR' operation between the ring and the internal parts.
+    # This creates a single polygon component, removing internal lines and ensuring 
+    # it renders exactly like the solid black mask in the original image.
+    device = gf.boolean(A=ring_comp, B=internal_comp, operation="or", layer=layer)
+    
+    return device
+
+if __name__ == "__main__":
+    c = recreated_device()
+    c.show()
+    c.write_gds("recreated_device.gds")

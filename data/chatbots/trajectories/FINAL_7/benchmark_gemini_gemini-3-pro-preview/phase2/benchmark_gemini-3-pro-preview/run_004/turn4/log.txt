@@ -1,0 +1,121 @@
+Turn 4 Response:
+
+The previous code failed because `gf.components.polygon` is not a valid component factory function in standard GDSFactory versions; polygons are typically added directly to components using the `.add_polygon()` method.
+
+Here is the corrected and improved script. I have refined the geometry logic to create a smooth "dogbone" inner void using a polygon that bridges the constant-width central section with the circular bend holes. This properly creates the tapered transition from thin straight arms to thick bends, matching the target image.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_structure():
+    """
+    Constructs a racetrack resonator with variable arm width and slotted straight sections.
+    
+    Geometry:
+    - Outer Hull: Stadium shape (5.5um x 3.0um).
+    - Inner Void: 
+      - Ends: Circular holes (creating thick bends).
+      - Center: Wide polygon (creating thin straight arms).
+      - Transition: Tapered connection between center and ends.
+    - Slots: Rectangular cutouts in the thin straight arms.
+    """
+    c = gf.Component()
+
+    # --- 1. Dimensions & Parameters ---
+    width = 5.5
+    height = 3.0
+    layer = (1, 0)
+
+    # Outer Hull (Stadium)
+    r_outer = height / 2.0           # 1.5 um
+    l_straight = width - 2 * r_outer # 2.5 um
+    x_bend_center = l_straight / 2.0 # 1.25 um
+
+    # Inner Geometry
+    # Target: Thin straight arms, Thick bends.
+    
+    # Bend Section: Thick arms -> Small hole
+    r_inner_bend = 0.75              # Inner radius. Bend width = 1.5 - 0.75 = 0.75 um
+    
+    # Straight Section: Thin arms -> Wide void
+    arm_width_straight = 0.4         # Straight arm width
+    y_inner_straight = r_outer - arm_width_straight # 1.1 um
+    
+    # Transition Geometry (Taper)
+    # Slots span ~1.2um centered. We keep arm width constant for 1.6um.
+    l_constant_void = 1.6
+    x_taper_start = l_constant_void / 2.0 # 0.8 um
+
+    # Slot Parameters
+    slot_len = 0.5
+    slot_height = 0.15
+    slot_gap = 0.2
+
+    # --- 2. Construct Outer Hull ---
+    outer = gf.Component()
+    outer << gf.components.rectangle(size=(l_straight, height), layer=layer, centered=True)
+    
+    # Add circular ends
+    c_right = outer << gf.components.circle(radius=r_outer, layer=layer)
+    c_right.movex(x_bend_center)
+    c_left = outer << gf.components.circle(radius=r_outer, layer=layer)
+    c_left.movex(-x_bend_center)
+
+    # --- 3. Construct Inner Void ---
+    void = gf.Component()
+
+    # 3a. End Circles (The holes inside the bends)
+    v_right = void << gf.components.circle(radius=r_inner_bend, layer=layer)
+    v_right.movex(x_bend_center)
+    
+    v_left = void << gf.components.circle(radius=r_inner_bend, layer=layer)
+    v_left.movex(-x_bend_center)
+
+    # 3b. Central Polygon (The "bone" shape)
+    # Connects the constant width center to the circular ends.
+    # Vertices are defined clockwise.
+    poly_pts = [
+        (-x_taper_start, y_inner_straight),   # Top-Left (Start of constant section)
+        (x_taper_start, y_inner_straight),    # Top-Right (End of constant section)
+        (x_bend_center, r_inner_bend),        # Connect to Right Circle Apex
+        (x_bend_center, -r_inner_bend),       # Connect to Right Circle Bottom
+        (x_taper_start, -y_inner_straight),   # Bottom-Right
+        (-x_taper_start, -y_inner_straight),  # Bottom-Left
+        (-x_bend_center, -r_inner_bend),      # Connect to Left Circle Bottom
+        (-x_bend_center, r_inner_bend),       # Connect to Left Circle Apex
+    ]
+    # FIX: Use .add_polygon() method on the Component instance
+    void.add_polygon(points=poly_pts, layer=layer)
+
+    # --- 4. Construct Slots ---
+    slots = gf.Component()
+    
+    # Calculate Slot Centers
+    # Y: Centered in the thin arm (average of inner and outer boundary)
+    y_slot = (y_inner_straight + r_outer) / 2.0
+    
+    # X: Two slots per side, separated by gap
+    x_slot = slot_gap / 2.0 + slot_len / 2.0
+    
+    # Create the 4 slots
+    for x_sign in [-1, 1]:
+        for y_sign in [-1, 1]:
+            s = slots << gf.components.rectangle(size=(slot_len, slot_height), layer=layer, centered=True)
+            s.move((x_sign * x_slot, y_sign * y_slot))
+
+    # --- 5. Boolean Assembly ---
+    # Combine Void and Slots into a single "negative" mask
+    negatives = gf.boolean(void, slots, operation="or", layer=layer)
+    
+    # Subtract the negatives from the Outer Hull
+    final_device = gf.boolean(outer, negatives, operation="not", layer=layer)
+    
+    c << final_device
+    return c
+
+if __name__ == "__main__":
+    device = device_structure()
+    device.write_gds("complex_resonator.gds")
+    device.show()
+```

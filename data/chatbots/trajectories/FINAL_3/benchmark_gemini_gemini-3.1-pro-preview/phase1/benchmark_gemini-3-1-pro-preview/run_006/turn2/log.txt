@@ -1,0 +1,100 @@
+Turn 2 Response:
+
+Based on the visual comparison, the primary difference is that your original target image has **distinct straight waveguide segments** at the input and output ports before the S-bends begin. My previous code made the S-bends sweep across the entire available length, resulting in a much "lazier", fully curved outer section.
+
+To fix this, we need to divide the total 120 µm length into **five distinct zones** instead of three:
+1. Input straight waveguides
+2. Input S-bends (shorter, tighter bends)
+3. Central straight coupling region
+4. Output S-bends
+5. Output straight waveguides
+
+Here is the revised code that implements these straight feeding sections to perfectly match the "squarish" aspect of your original image, while strictly maintaining the `120` x `4` footprint constraints.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_directional_coupler_exact(
+    total_length: float = 120.0,
+    port_pitch: float = 4.0,
+    gap: float = 0.2,
+    wg_width: float = 0.5,
+    coupling_length: float = 60.0,
+    sbend_x_length: float = 15.0
+) -> gf.Component:
+    """
+    Creates a symmetric directional coupler with straight input/output segments,
+    matching the original image visually and maintaining exactly the [120, 4] footprint.
+    """
+    c = gf.Component("directional_coupler_exact")
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Geometry Calculations ---
+    # Calculate the remaining length for the straight sections at the ports
+    port_straight_length = (total_length - coupling_length - (2 * sbend_x_length)) / 2.0
+    
+    # Center-to-center pitch of waveguides in the coupling region
+    pitch_mid = wg_width + gap
+    # Y-shift required for the S-bends to transition from outer pitch to inner gap
+    sbend_y = (port_pitch - pitch_mid) / 2.0
+
+    # --- Create Parametric Primitives ---
+    str_port = gf.components.straight(length=port_straight_length, cross_section=xs)
+    str_mid = gf.components.straight(length=coupling_length, cross_section=xs)
+
+    # Top bends shift DOWN (-Y) going inward, UP (+Y) going outward
+    bend_top_in = gf.components.bend_s(size=(sbend_x_length, -sbend_y), cross_section=xs)
+    bend_top_out = gf.components.bend_s(size=(sbend_x_length, sbend_y), cross_section=xs)
+
+    # Bottom bends shift UP (+Y) going inward, DOWN (-Y) going outward
+    bend_bot_in = gf.components.bend_s(size=(sbend_x_length, sbend_y), cross_section=xs)
+    bend_bot_out = gf.components.bend_s(size=(sbend_x_length, -sbend_y), cross_section=xs)
+
+    # --- Assembly: Top Arm ---
+    t_in = c << str_port
+    t_b_in = c << bend_top_in
+    t_mid = c << str_mid
+    t_b_out = c << bend_top_out
+    t_out = c << str_port
+
+    # Position center and chain connections outward
+    t_mid.move((0, pitch_mid / 2.0))
+    t_b_in.connect("o2", t_mid.ports["o1"])
+    t_in.connect("o2", t_b_in.ports["o1"])
+    
+    t_b_out.connect("o1", t_mid.ports["o2"])
+    t_out.connect("o1", t_b_out.ports["o2"])
+
+    # --- Assembly: Bottom Arm ---
+    b_in = c << str_port
+    b_b_in = c << bend_bot_in
+    b_mid = c << str_mid
+    b_b_out = c << bend_bot_out
+    b_out = c << str_port
+
+    # Position center and chain connections outward
+    b_mid.move((0, -pitch_mid / 2.0))
+    b_b_in.connect("o2", b_mid.ports["o1"])
+    b_in.connect("o2", b_b_in.ports["o1"])
+    
+    b_b_out.connect("o1", b_mid.ports["o2"])
+    b_out.connect("o1", b_b_out.ports["o2"])
+
+    # --- Expose External Ports ---
+    c.add_port("o1", port=b_in.ports["o1"])   # Bottom-Left
+    c.add_port("o2", port=t_in.ports["o1"])   # Top-Left
+    c.add_port("o3", port=b_out.ports["o2"])  # Bottom-Right
+    c.add_port("o4", port=t_out.ports["o2"])  # Top-Right
+
+    return c
+
+if __name__ == "__main__":
+    device = symmetric_directional_coupler_exact()
+    device.write_gds("directional_coupler_exact.gds")
+```
+
+### Key Changes Made:
+1. **Added `str_port` Primitives:** I created new `straight` waveguide primitives specifically for the input and output tails.
+2. **Constrained S-Bend X-Length:** The S-bends (`sbend_x_length`) are now strictly limited to 15 µm in the X-axis, giving them a sharper, more deliberate curve.
+3. **Chained Connections:** The assembly logic was updated to hook `straight -> bend -> straight -> bend -> straight` in a continuous chain, anchoring from the center to ensure exact symmetry. The math inside guarantees the final X-length remains exactly 120 µm.

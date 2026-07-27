@@ -1,0 +1,92 @@
+import gdsfactory as gf
+
+@gf.cell
+def create_parametric_device():
+    """
+    Recreates the specified device using GDSFactory parametric components.
+
+    The device is constructed from three vertically stacked groups of waveguides:
+    a central straight group, and top and bottom groups with 90-degree bends.
+    Parameters are calculated to fit the target footprint of 120x4 um.
+    """
+
+    # 1. Define Design Parameters
+    # These parameters are derived from the footprint and visual inspection.
+    n_lines = 5
+    line_width = 0.2
+    gap = 0.075  # Assumed gap between all adjacent lines
+    straight_length_bent_group = 40.0  # Length of the central straight part for top/bottom groups
+
+    # Define a common cross-section for all waveguides
+    xs = gf.cross_section.cross_section(width=line_width)
+
+    # 2. Calculate Derived Geometric Parameters
+    pitch = line_width + gap
+
+    # Y-positions for lines within a single group, centered at y=0
+    y_offsets_in_group = [pitch * (i - (n_lines - 1) / 2) for i in range(n_lines)]
+
+    # Vertical offset for the centers of the top and bottom groups
+    group_vertical_offset = n_lines * pitch
+
+    # Calculate the minimum bend radius required to fit the 120um total width.
+    # TotalWidth = straight_length + 2 * (max_bend_radius_span)
+    # The horizontal span of a 90-degree Euler bend is approximately its radius.
+    # 120 = 40.0 + 2 * (min_radius + (n_lines - 1) * pitch)
+    min_radius = (120.0 - straight_length_bent_group) / 2.0 - (n_lines - 1) * pitch
+    
+    # 3. Create the Top-Level Component
+    device = gf.Component("ComplexWaveguideStructure")
+
+    # 4. Add the Central Group (Straight Waveguides)
+    for y_offset in y_offsets_in_group:
+        wg_straight = device << gf.components.straight(length=120.0, cross_section=xs)
+        wg_straight.movey(y_offset)
+
+    # 5. Add the Top and Bottom Curved Groups
+    for sign in [-1, 1]:  # sign=1 for top group, sign=-1 for bottom group
+        group_center_y = sign * group_vertical_offset
+
+        # Create each of the 5 waveguides in the group
+        for i in range(n_lines):
+            # Radius increases for outer lines to prevent collisions
+            radius = min_radius + i * pitch
+            y_position = group_center_y + y_offsets_in_group[i]
+
+            # A single waveguide is built from a straight segment and two bends
+            straight_part = gf.components.straight(
+                length=straight_length_bent_group, cross_section=xs
+            )
+            bend_left = gf.components.bend_euler(
+                radius=radius, angle=90 * sign, cross_section=xs
+            )
+            bend_right = gf.components.bend_euler(
+                radius=radius, angle=-90 * sign, cross_section=xs
+            )
+
+            # Add and connect the parts within the main device component
+            s_ref = device << straight_part
+            b1_ref = device << bend_left
+            b2_ref = device << bend_right
+
+            # Position the straight section first
+            s_ref.movey(y_position)
+            
+            # The connect function automatically moves and rotates the bends to align ports
+            b1_ref.connect("o2", s_ref.ports["o1"])
+            # FIX: Connect the input ('o1') of the right bend to the output ('o2') of the straight
+            b2_ref.connect("o1", s_ref.ports["o2"])
+
+    return device
+
+# --- FIX: Main execution block ---
+# The following lines were uncommented to ensure the script runs and produces a file.
+if __name__ == "__main__":
+    # Instantiate the component by calling the function
+    my_device = create_parametric_device()
+    
+    # Write the component to a GDS file
+    my_device.write_gds("device_recreation.gds")
+
+    # Optional: show the component in the KLayout viewer if installed
+    my_device.show()

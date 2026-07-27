@@ -1,0 +1,231 @@
+Turn 1 Response:
+
+You're encountering this error because you're passing a `DInstance` (from KFactory, which GDSFactory uses under the hood) to a function that expects a `Component`. The issue arises when trying to use boolean operations directly on references.
+
+Let me fix this by ensuring we work with components directly, not references, and properly handle the boolean operations:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def racetrack_resonator_with_couplers():
+    c = gf.Component()
+    
+    # Define cross section
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create the racetrack resonator
+    straight_length = 2.5
+    bend_radius = 0.75
+    
+    # Create the path for the racetrack
+    path = gf.path.straight(length=straight_length)
+    path += gf.path.euler(radius=bend_radius, angle=180)
+    path += gf.path.straight(length=straight_length)
+    path += gf.path.euler(radius=bend_radius, angle=180)
+    
+    # Extrude the path to create the racetrack component
+    racetrack = gf.path.extrude(path, cross_section=xs)
+    
+    # Create the coupling gaps (rectangles to subtract)
+    gap_width = 0.2
+    gap_length = 0.5
+    
+    # Create gap components
+    top_gap = gf.components.rectangle(size=(gap_length, gap_width), layer=(1, 0))
+    bottom_gap = gf.components.rectangle(size=(gap_length, gap_width), layer=(1, 0))
+    
+    # Position gaps in the coupling regions
+    top_gap_ref = gf.Component()
+    top_gap_instance = top_gap_ref << top_gap
+    top_gap_instance.move((straight_length/2 - gap_length/2, bend_radius + 0.1))
+    
+    bottom_gap_ref = gf.Component()
+    bottom_gap_instance = bottom_gap_ref << bottom_gap
+    bottom_gap_instance.move((straight_length/2 - gap_length/2, -bend_radius - 0.1))
+    
+    # Create a new component for the final structure
+    final_component = gf.Component()
+    
+    # Add racetrack to final component
+    racetrack_instance = final_component << racetrack
+    
+    # Add gaps to final component (for boolean operation)
+    top_gap_instance_final = final_component << top_gap_ref
+    bottom_gap_instance_final = final_component << bottom_gap_ref
+    
+    # Perform boolean operation to subtract gaps from racetrack
+    # First, create a component with just the racetrack
+    racetrack_only = gf.Component()
+    racetrack_only_instance = racetrack_only << racetrack
+    
+    # Subtract top gap
+    result = gf.boolean(racetrack_only, top_gap_ref, operation="not", layer=(1, 0))
+    
+    # Subtract bottom gap
+    result = gf.boolean(result, bottom_gap_ref, operation="not", layer=(1, 0))
+    
+    # Add the result to our main component
+    final_instance = c << result
+    
+    # Add ports from original racetrack
+    # Since we've modified the geometry, we need to recreate ports or use the original ones
+    # Let's recreate ports based on the original racetrack geometry
+    c.add_port("o1", port=racetrack.ports["o1"])
+    c.add_port("o2", port=racetrack.ports["o2"])
+    
+    return c
+
+# Create the device
+device = racetrack_resonator_with_couplers()
+device.write_gds("racetrack_resonator_with_couplers.gds")
+```
+
+Actually, let me simplify this approach significantly. The issue is that we're trying to do boolean operations on references. Let me create the structure more directly:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def racetrack_resonator_with_couplers():
+    c = gf.Component()
+    
+    # Define cross section
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create the racetrack resonator
+    straight_length = 2.5
+    bend_radius = 0.75
+    
+    # Create the path for the racetrack
+    path = gf.path.straight(length=straight_length)
+    path += gf.path.euler(radius=bend_radius, angle=180)
+    path += gf.path.straight(length=straight_length)
+    path += gf.path.euler(radius=bend_radius, angle=180)
+    
+    # Extrude the path to create the racetrack
+    racetrack = gf.path.extrude(path, cross_section=xs)
+    
+    # Create the coupling gaps (rectangles to subtract)
+    gap_width = 0.2
+    gap_length = 0.5
+    
+    # Create gap components
+    top_gap = gf.components.rectangle(size=(gap_length, gap_width), layer=(1, 0))
+    bottom_gap = gf.components.rectangle(size=(gap_length, gap_width), layer=(1, 0))
+    
+    # Create a component to hold the final structure
+    final = gf.Component()
+    
+    # Add racetrack to final component
+    racetrack_ref = final << racetrack
+    
+    # Add gaps to final component
+    top_gap_ref = final << top_gap
+    top_gap_ref.move((straight_length/2 - gap_length/2, bend_radius + 0.1))
+    
+    bottom_gap_ref = final << bottom_gap
+    bottom_gap_ref.move((straight_length/2 - gap_length/2, -bend_radius - 0.1))
+    
+    # Create the final structure using boolean operations
+    # We need to create separate components for the boolean operation
+    racetrack_component = gf.Component()
+    racetrack_component_ref = racetrack_component << racetrack
+    
+    # Create component with top gap
+    top_gap_component = gf.Component()
+    top_gap_component_ref = top_gap_component << top_gap
+    top_gap_component_ref.move((straight_length/2 - gap_length/2, bend_radius + 0.1))
+    
+    # Create component with bottom gap
+    bottom_gap_component = gf.Component()
+    bottom_gap_component_ref = bottom_gap_component << bottom_gap
+    bottom_gap_component_ref.move((straight_length/2 - gap_length/2, -bend_radius - 0.1))
+    
+    # Perform boolean operations
+    # First subtract top gap
+    result = gf.boolean(racetrack_component, top_gap_component, operation="not", layer=(1, 0))
+    
+    # Then subtract bottom gap
+    result = gf.boolean(result, bottom_gap_component, operation="not", layer=(1, 0))
+    
+    # Add the result to our main component
+    final_result = c << result
+    
+    # Add ports from the original racetrack
+    c.add_port("o1", port=racetrack.ports["o1"])
+    c.add_port("o2", port=racetrack.ports["o2"])
+    
+    return c
+
+# Create the device
+device = racetrack_resonator_with_couplers()
+device.write_gds("racetrack_resonator_with_couplers.gds")
+```
+
+Let me provide a cleaner, more straightforward solution:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def racetrack_resonator_with_couplers():
+    c = gf.Component()
+    
+    # Define cross section
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create the racetrack resonator
+    straight_length = 2.5
+    bend_radius = 0.75
+    
+    # Create the path for the racetrack
+    path = gf.path.straight(length=straight_length)
+    path += gf.path.euler(radius=bend_radius, angle=180)
+    path += gf.path.straight(length=straight_length)
+    path += gf.path.euler(radius=bend_radius, angle=180)
+    
+    # Extrude the path to create the racetrack
+    racetrack = gf.path.extrude(path, cross_section=xs)
+    
+    # Create the coupling gaps (rectangles to subtract)
+    gap_width = 0.2
+    gap_length = 0.5
+    
+    # Create gap components
+    top_gap = gf.components.rectangle(size=(gap_length, gap_width), layer=(1, 0))
+    bottom_gap = gf.components.rectangle(size=(gap_length, gap_width), layer=(1, 0))
+    
+    # Create a new component for the boolean operation
+    racetrack_component = gf.Component()
+    racetrack_ref = racetrack_component << racetrack
+    
+    # Create components for gaps with proper positioning
+    top_gap_component = gf.Component()
+    top_gap_ref = top_gap_component << top_gap
+    top_gap_ref.move((straight_length/2 - gap_length/2, bend_radius + 0.1))
+    
+    bottom_gap_component = gf.Component()
+    bottom_gap_ref = bottom_gap_component << bottom_gap
+    bottom_gap_ref.move((straight_length/2 - gap_length/2, -bend_radius - 0.1))
+    
+    # Perform boolean operations
+    # Subtract top gap from racetrack
+    result = gf.boolean(racetrack_component, top_gap_component, operation="not", layer=(1, 0))
+    
+    # Subtract bottom gap from result
+    result = gf.boolean(result, bottom_gap_component, operation="not", layer=(1, 0))
+    
+    # Add the final result to our main component
+    final_ref = c << result
+    
+    # Add ports from original racetrack
+    c.add_port("o1", port=racetrack.ports["o1"])
+    c.add_port("o2", port=racetrack.ports["o2"])
+    
+    return c
+
+# Create the device
+device = racetrack_resonator_with_couplers()
+device.write_gds("racetrack_resonator_with_couplers.gds")
+```

@@ -1,0 +1,76 @@
+import gdsfactory as gf
+from gdsfactory.component import Component
+
+@gf.cell
+def make_the_image() -> Component:
+    """Recreates the geometry from the provided image using GDSFactory."""
+
+    c = gf.Component("the_image")
+
+    # Cross-section for waveguides
+    xs = gf.cross_section.strip(width=1, layer=(1, 0))
+
+    # Parameters based on the image
+    wg_width = 20  # Overall width of the 'waveguides'
+    wg_separation = 1  # Separation between waveguides
+    wg_length_middle = 50
+    wg_length_side = 50
+
+    top_offset = 10 #Vertical Offset for top structure.
+    bottom_offset = -10 # Vertical Offset for bottom structure
+
+    # Number of waveguides in each stack
+    num_waveguides = 5
+
+    #--- Top Waveguides ---
+    for i in range(num_waveguides):
+        y_offset = i * wg_separation
+
+        # Create straight waveguide section.
+        straight_top = c << gf.components.straight(length=wg_length_side + wg_length_middle + wg_length_side, cross_section=xs)
+        straight_top.movey(y_offset + top_offset)
+
+        # Create bend section
+        bend_top_left = c << gf.components.bend_euler(radius=5, angle=-90, cross_section=xs)
+        bend_top_left.connect("o1", straight_top.ports["o1"])
+        bend_top_left.movey(-8.2) #Move it down
+
+
+        bend_top_right = c << gf.components.bend_euler(radius=5, angle=90, cross_section=xs)
+        bend_top_right.connect("o1", straight_top.ports["o2"])
+        bend_top_right.movey(-8.2) #Move it down
+
+    # Middle Block Waveguides
+    for i in range(num_waveguides):
+        y_offset = i * wg_separation
+
+        # Create straight waveguide section
+        straight_middle = c << gf.components.straight(length=wg_length_middle, cross_section=xs)
+        straight_middle.movey(y_offset - wg_separation*3/2)
+
+
+    #--- Bottom Waveguides ---
+    for i in range(num_waveguides):
+        y_offset = i * wg_separation
+
+        # Create straight waveguide section.
+        straight_bottom = c << gf.components.straight(length=wg_length_side + wg_length_middle + wg_length_side, cross_section=xs)
+        straight_bottom.movey(y_offset + bottom_offset)
+
+        # Create bend section
+        bend_bottom_left = c << gf.components.bend_euler(radius=5, angle=90, cross_section=xs)
+        bend_bottom_left.connect("o1", straight_bottom.ports["o1"])
+        bend_bottom_left.movey(8.2) #Move it up
+
+
+        bend_bottom_right = c << gf.components.bend_euler(radius=5, angle=-90, cross_section=xs)
+        bend_bottom_right.connect("o1", straight_bottom.ports["o2"])
+        bend_bottom_right.movey(8.2) #Move it up
+
+    return c
+
+
+if __name__ == "__main__":
+    image = make_the_image()
+    image.show()
+    image.write_gds("the_image.gds")  # Add this line to save the GDS file

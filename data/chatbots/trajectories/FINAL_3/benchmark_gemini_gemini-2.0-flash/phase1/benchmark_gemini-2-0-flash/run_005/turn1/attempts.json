@@ -1,0 +1,49 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.508973",
+      "api_duration_seconds": 7.89362096786499,
+      "usage": {
+        "input_tokens": 4408,
+        "output_tokens": 772,
+        "total_tokens": 5180
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'function' object has no attribute 'width'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:18.797536",
+      "api_duration_seconds": 9.53245210647583,
+      "usage": {
+        "input_tokens": 5205,
+        "output_tokens": 1044,
+        "total_tokens": 6249
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:29.916378",
+      "api_duration_seconds": 0.0,
+      "usage": null,
+      "success": false,
+      "failure_type": "api_error",
+      "error_message": "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The service is currently unavailable.', 'status': 'UNAVAILABLE'}}",
+      "code_extracted": false
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 9613,
+    "output_tokens": 1816,
+    "total_tokens": 11429
+  }
+}

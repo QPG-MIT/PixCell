@@ -1,0 +1,81 @@
+import gdsfactory as gf
+
+@gf.cell
+def optical_splitter_1x4():
+    """
+    Recreates the vertical 1x4 optical splitter structure shown in the reference image.
+    Builds the shape by composing parametric primitives (rectangle, taper, straight).
+    """
+    c = gf.Component("optical_splitter_1x4")
+
+    # Base configuration
+    layer = (1, 0)
+    
+    # Footprint of the main mixing body
+    mmi_width = 25.0
+    mmi_height = 10.0
+
+    # 1. Main Rectangular Body
+    # Centered at (0,0), spans x:[-12.5, 12.5], y:[-5, 5]
+    c << gf.components.rectangle(size=(mmi_width, mmi_height), layer=layer, centered=True)
+
+    # 2. Bottom Input Arm
+    # Taper connecting to the bottom edge of the rectangle. Wide at the interface, narrow outwards.
+    bot_taper_len = 6.0
+    bot_taper = c << gf.components.taper(
+        length=bot_taper_len, 
+        width1=4.0,  # Wide base 
+        width2=1.5,  # Narrow tip
+        layer=layer
+    )
+    # Rotate -90 deg to point downwards and translate to the bottom edge of the rectangle (y = -5)
+    # The default taper has width1 at x=0 (o1) and width2 at x=length (o2)
+    bot_taper.rotate(-90)
+    bot_taper.move((0, -mmi_height / 2))
+    
+    # Expose the input port
+    c.add_port("o1", port=bot_taper.ports["o2"])
+
+    # 3. Top Output Arms
+    # 4 evenly spaced arms consisting of a taper transition and a straight waveguide section.
+    num_arms = 4
+    pitch = mmi_width / num_arms  # 6.25 µm spacing
+    
+    # Calculate the x-coordinates for the 4 ports to be evenly distributed across the 25µm width
+    # Centers at: -9.375, -3.125, 3.125, 9.375
+    x_positions = [pitch * (i - (num_arms - 1) / 2) for i in range(num_arms)]
+    
+    # Cross-section for the final thin straight waveguides
+    xs_straight = gf.cross_section.cross_section(width=1.0, layer=layer)
+
+    for i, x in enumerate(x_positions):
+        # A. Taper transition starting from the MMI body
+        top_taper = c << gf.components.taper(
+            length=8.0, 
+            width1=3.0,  # Base width connecting to MMI
+            width2=1.0,  # Narrow interface 
+            layer=layer
+        )
+        # Rotate 90 deg to point upwards and translate to the top edge of the rectangle (y = 5)
+        top_taper.rotate(90)
+        top_taper.move((x, mmi_height / 2))
+
+        # B. Straight waveguide extension
+        top_straight = c << gf.components.straight(
+            length=7.0, 
+            cross_section=xs_straight
+        )
+        # GDSFactory auto-aligns, rotates, and translates the straight section when connected
+        top_straight.connect("o1", top_taper.ports["o2"])
+        
+        # Expose the output ports
+        c.add_port(f"o{i+2}", port=top_straight.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Instantiate the component
+    device = optical_splitter_1x4()
+    
+    # Write the output to a GDS file instead of just showing it
+    device.write_gds("device.gds")

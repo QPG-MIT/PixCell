@@ -1,0 +1,320 @@
+Looking at this image, I can see what appears to be a pair of tweezers or forceps viewed from the side. The shape shows:
+
+1. Two prongs/tines that start parallel on the left side
+2. The prongs converge and merge on the right side into a handle
+3. There's a distinctive S-curve or bend where the prongs transition from separate to joined
+
+Let me analyze the geometry more carefully:
+- On the left side: Two parallel straight lines (the tips of the tweezers)
+- In the middle: The lines start to curve/converge
+- On the right side: The two prongs merge into a single thicker body
+
+The footprint is 40.0 um × 1.7 um, which is quite long and narrow.
+
+Looking at the image again:
+- The top prong appears to curve upward then back down to join
+- The bottom prong appears to curve downward then back up to join
+- They meet on the right side in a unified body
+
+This looks like a Y-splitter or a directional coupler with tapered transitions, or perhaps a 1x2 MMI-like structure but with tapered waveguides.
+
+Actually, looking more carefully at the shape:
+- Two parallel waveguides on the left (with a gap between them)
+- They curve and merge into a single waveguide on the right
+- The transition has smooth S-bend like curves
+
+This is essentially a Y-junction or Y-branch waveguide combiner/splitter.
+
+Given the footprint of 40.0 × 1.7 um:
+- Total width: 1.7 um (so the two waveguides plus their gap)
+- Total length: 40.0 um
+
+Let me think about how to construct this:
+
+1. I could use two S-bends that start separated and end joined
+2. Or I could use paths and extrude them
+
+Looking at the image:
+- The left side has two thin parallel lines
+- They curve in opposite directions (top one goes up then down, bottom goes down then up)
+
+
+- On the right, they join into a single wider section
+
+For the dimensions, if the total width is 1.7 um with two waveguides and a gap between them, I'm estimating each waveguide at roughly 0.5 um wide with a 0.2-0.3 um gap, though the outer envelope reaches 1.7 um due to the outward curves. I need to look more carefully at the exact proportions in the image.
+
+The structure appears to be a 2x1 combiner where two thin input waveguides on the left spread apart through the middle section before converging and merging into a single output on the right. The top prong curves upward while the bottom curves downward, creating maximum separation in the middle before they rejoin. There's also what looks like a shorter middle section between the two main paths. The structure appears to be a Y-combiner where two parallel waveguides on the left gradually diverge through curved sections, then reconverge and merge into a single output on the right. The top waveguide curves upward then back down, while the bottom curves downward then back up, creating a symmetric S-bend pattern before they join together. Given the 40.0 × 1.7 μm footprint, I'm planning to construct this using curved waveguide segments that smoothly transition the two inputs into one output. like a straight coupling section where they're parallel but separated, then they converge back together on the right.
+
+I should construct this with paths for each arm. The top waveguide starts straight, bends upward via an S-curve, runs parallel in a coupling region, then bends back down to merge. The bottom mirrors this—straight start, S-bend downward, parallel coupling section, S-bend upward to converge at the output. The middle section appears to be where both guides run side-by-side. I could use gdsfactory's path tools to define the centerline of each waveguide and extrude them to the proper width, or check if there's a built-in Y-junction component.
+
+Let me build this from basic primitives. I'll define the cross-section, set parameters for the input gap and bend geometry, then construct each arm's path step by step. 0))
+    
+    # Input spacing
+    input_separation = 0.7  # center to center
+    
+    # Create top arm using path
+    # Start at (0, input_separation/2)
+    # Go straight, then S-bend, then straight coupling, then S-bend back, then join
+    
+    # Actually, let's use the path system
+
+I'm reconsidering the approach—using smooth curves or Bezier paths might be cleaner than manually constructing S-bends. The strategy is to define two separate paths for the top and bottom arms, extrude them with the appropriate cross-section, then add a merging section where they converge at the output.
+
+Setting up the component with specific dimensions: total length of 40 units, waveguide width of 0.4, input gap of 0.3 between the two inputs, and maximum separation of 0.6 during the spread phase. Breaking this into segments—8 units for the initial straight section, 8 for the first S-bend, 8 for the parallel coupling region, 8 for the return S-bend, and 8 for the final output. The top arm path begins at the positive offset position.
+
+Now I'm appending the path segments: a straight section for the input, then an Euler curve angled at 45 degrees with a 10-unit radius to curve upward. This is getting unwieldy though. A simpler approach using the bend_s component would be cleaner—defining the input spacing as 0.7 units center-to-center, then breaking the design into two main sections of 8 units each for the input straight and the next segment.
+
+For the top arm, I'll place an input straight waveguide offset by half the input spacing, then connect an S-bend that displaces the waveguide outward by 0.3 units vertically. The S-bend's size parameter controls both the horizontal length and vertical displacement needed to merge the two arms together.
+
+Looking at the merge region more carefully, the two waveguides need to combine into a single output. Rather than trying to connect them directly, I should use a Y-combiner or taper geometry where both waveguides gradually converge into one. The path-based approach might give me more flexibility to define exactly how the waveguides come together at the output.
+
+I can define control points for each arm that guide the waveguides through their routing and then converge them smoothly at the center. For the top arm, the path would start at an offset position, travel straight for a distance, curve outward for coupling, then taper back inward to meet at the center output point. _section=xs)
+    bottom_wg = c << gf.path.extrude(bottom_path, cross_section=xs)
+    
+    return c
+
+The overlapping waveguides at the output could be problematic. Looking more carefully at the structure, I notice three distinct components: the top waveguide executes an S-curve that rises then falls back down, a middle coupling section, and the bottom waveguide performs a complementary S-curve that dips then returns. These elements work together to create the directional coupler effect.
+
+The geometry appears to be a symmetric Y-combiner where two input waveguides with S-bend transitions converge into a single output, with the middle region serving as the interaction zone where the waveguides run parallel and close together.
+
+Setting up the structure with a 0.4 μm waveguide width and 0.7 μm arm separation. The design uses three main sections: initial straight segments of 8 μm, a 24 μm curved transition region where the arms bend toward each other with a maximum vertical displacement of 0.85 μm, and then a final straight output section. The top arm path begins at the positive arm separation offset and curves inward through the transition zone.
+
+The bottom arm mirrors the top path with inverted y-coordinates. Both paths are smoothed with a 4 μm radius to create gentle curves, then extruded using the cross-section to form the actual waveguides. Ports are being added to complete the component definition.
+
+Looking back at the image more carefully, I can see the structure has two thin parallel lines on the left that gradually separate into a coupling region in the middle before reconverging on the right. The overall dimensions appear to be approximately 40 × 1.7 μm, which constrains how the geometry should be scaled.
+
+Given the 1.7 μm height, the waveguides likely sit at roughly ±0.4 μm from center, spreading outward to about ±0.65 μm at maximum separation. I'll set the waveguide width to 0.35 μm and position the input arms accordingly, then define the coupling region and output merger using these constraints.
+
+The layout uses several key sections: a 6 μm input straight, a 6 μm outward bend to maximum separation, a 10 μm parallel coupling region, a 12 μm inward bend for smooth convergence, and a 6 μm output section. The top arm traces from the input position through the bend-out to maximum y, holds that separation during coupling, then bends back inward to merge at the output.
+
+A mirrored bottom arm is created by negating all y-coordinates. Both paths use smooth curves with 4 μm bend radius to avoid sharp transitions. The paths are then extruded with the defined cross-section to create the actual waveguide geometry, and the device is written to a GDS file.
+
+Looking more carefully at the structure, there appear to be three distinct elements rather than just two mirrored arms. The top section curves upward in an S-shape before converging on the right side, while the bottom mirrors this behavior. The middle segment is a shorter straight section that might represent a parallel coupling region or bus waveguide. This could indicate a three-waveguide coupler configuration rather than a simple two-arm combiner.
+
+I'm reconsidering the geometry: the outer waveguides (top and bottom) likely spread apart initially, then curve back together, while a central straight waveguide runs through the middle coupling zone. This suggests a multi-port coupler or splitter design. I'll need to adjust the implementation to account for this third element and properly define the S-bend trajectories for the outer arms, the straight section for the central guide, and how they all connect at the output. The bottom arm mirrors the top arm by negating all y-coordinates. I create a smooth path for the bottom points and extrude it with the same cross-section. Then I add a straight waveguide segment in the middle coupling region, positioning it between the S-bends. Finally, I return the component. However, the blunt ends of the middle waveguide might not align with the actual design shown in the image, so I should reconsider the geometry.
+
+Looking at the structure more carefully, it appears to be a Y-combiner with two parallel inputs on the left that gradually transition and merge into a single output on the right. The middle region isn't a separate element but rather the visual effect of the two waveguides' inner edges becoming visible as they approach each other in the coupling section. What initially seemed like three distinct parallel sections is actually just how the two waveguides appear when their spacing narrows. _height = 1.7
+    
+    wg_width = 0.35
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+    
+    # Breaking down the geometry: input section spans 6 um, the coupling region takes up 14 um, and the final merge section is 20 um
+    L_in = 6
+    L_coupling = 14
+    L_merge = 20
+    
+    # Setting vertical positions for the input arm and where it spreads
+    y_input = 0.45
+    y_spread = 0.7
+    
+    # === TOP ARM PATH
+    top_points = [
+        (0, y_input),
+        (L_in, y_input),
+        (L_in + 4, y_spread),  # transition up
+        (L_in + L_coupling - 4, y_spread),  # run parallel
+        (L_in + L_coupling, y_input),  # transition back down
+        (L_in + L_coupling + L_merge - 5, wg_width/2),  # approach center
+        (total_length, 0),  # end at center
+    ]
+    
+    top_path = gf.path.smooth(points=top_points, radius=3)
+    top_wg = c << gf.path.extrude(top_path, cross_section=xs)
+    
+    # === BOTTOM ARM PATH (
+
+mirror) ===
+    bottom_points = [(x, -y) for x, y in top_points]
+    bottom_path = gf.path.smooth(points=bottom_points, radius=3)
+    bottom_wg = c << gf.path.extrude(bottom_path, cross_section=xs)
+
+The bottom arm mirrors the top by negating all y-coordinates. A straight waveguide section runs through the middle of the coupling region, positioned at y=0 and spanning from x=L_in for a length of L_coupling. Ports are then assigned from the top and bottom waveguide outputs.
+
+Looking at the geometry more carefully, I notice the two paths would overlap at their endpoints, which isn't physically realistic. The right side of the reference image shows the arms merging into a single combined body, so I need to handle this junction properly—either by tapering the waveguides as they converge or by ensuring they connect smoothly to a common output section rather than occupying the same space.
+
+Let me reconsider the structure: the input arms should approach a central merge point without overlapping, then transition into a unified output waveguide. I'll use a cleaner approach with properly positioned paths that converge gradually.
+
+The design uses five distinct segments totaling 40 micrometers: initial straight sections for each arm, spreading regions that diverge the paths, coupling zones where they begin approaching each other, convergence sections that bring them together, and finally a shared output. The top arm traces from the input position through the spread region to maximum separation, then gradually converges back toward the center merge point before joining the output.
+
+For the bottom arm, I mirror all coordinates vertically to create symmetry. Both paths use smooth curves with a 3.5 micrometer radius to avoid sharp bends. The middle coupling section sits centered between the arms, positioned to overlap slightly with the coupling region of the top and bottom arms. I'm placing it at x = L_input + L_spread - 2 to start earlier and extending it by 4 micrometers beyond the nominal coupling length to ensure adequate overlap. The four output ports connect to the endpoints of each arm and the middle waveguide, allowing light to couple between the three elements.
+
+Looking at the device proportions again, the top and bottom arms span nearly the full 40-micrometer length with their characteristic S-curves, while the middle element is distinctly shorter and positioned in the central region where coupling occurs. For this geometry, the middle waveguide should start around x = 8 and extend to approximately x = 22, with the merge happening between x = 28 and 35.
+
+Now I'm setting up the coordinate system with the input at y = 0.35 and maximum spread at y = 0.65. The top arm follows a path that begins at the input position, bends outward to peak separation around x = 12, maintains that spacing through the coupling zone until x = 22, then gradually converges back toward the center as it approaches the output.
+
+The bottom arm mirrors this trajectory exactly, just reflected across the x-axis. I smooth both paths with a 4-unit radius to avoid sharp corners, then extrude them using the cross-section to create the actual waveguides. For the middle section where the two arms couple together, I'm placing a straight waveguide segment that's 14 units long starting around x = 8, which overlaps with the spreading region to create the interaction zone.
+
+I position this middle waveguide at the origin and then add ports at each waveguide endpoint—the input ports connect to the first ports of the top and bottom arms, while the output ports connect to their second ports. Finally, I generate the device and write it to a GDS file.
+
+Looking at the structure more carefully, I see this is a 2x1 combiner with two input waveguides that diverge, interact through a central coupling section, then converge back together. The total dimensions are approximately 40 by 1.7 micrometers. I'll build a parametric implementation that lets me adjust the total length, waveguide width, initial separation between the arms, maximum separation at the coupling region, and the length of that coupling section itself.
+
+The layout divides into four segments: an initial 5-micrometer straight section, a 7-micrometer divergence region where the arms spread to maximum separation, the coupling zone where they interact, and finally a convergence section that brings them back together. The x-coordinates mark these transitions, while the y-coordinates track the vertical positions of each arm as they move through the device. The top arm starts at positive y_in and expands to y_max, the bottom arm mirrors this at negative values, and the central waveguide sits at the origin. 4, cross_section=xs)
+    coupling_wg.move((coupling_start_x, 0))
+    
+    # Add ports
+    c.add_port("o1", port=top_ref.ports["o1"])
+    c.add_port("o2", port=bottom_ref.ports["o1"])
+    c.add_port("o3", port=top_ref.ports["o2"])
+    c.add_port("o4", port=bottom_ref.ports["o2"])
+    
+    return c
+
+Looking at the image more carefully, I notice the right side shows the two arms converging into a unified structure rather than remaining separate. There's a merging behavior happening that I need to account for.
+
+For a proper Y-combiner design, I need two distinct inputs that taper and merge into a single output waveguide. Let me restructure the approach with a tapered transition section that smoothly combines the two paths into one.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def y_combiner():
+    c = gf.Component()
+    
+    wg_width = 0.35
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+    xs_wide = gf.cross_section.cross_section(width=wg_width*2, layer=layer)
+    
+    # Geometry
+    y
+
+_in = 0.35
+    y_max = 0.65
+    
+    L_in = 5
+    L_spread = 7  
+    L_couple = 12
+    L_merge = 10
+    L_out = 6
+    
+    x1 = L_in
+    x2 = x1 + L_spread
+    x3 = x2 + L_couple
+    x4 = x3 + L_merge
+    
+    # TOP ARM (goes from input to merge point)
+    top_points = [
+        (0, y_in),
+        (x1, y_in),
+        (x2, y_max),
+        (x3, y_max),
+        (x4, 0.175),
+    ]
+    
+    # BOTTOM ARM
+    bottom_points = [(x, -y) for x, y in top_points]
+    
+    top_path = gf.path.smooth(points=top_points, radius=4)
+    bottom_path = gf.path.smooth(points=bottom_points, radius=4)
+    
+    c << gf.path.extrude(top_path, cross_section=xs)
+    c << gf.path.extrude(bottom_path, cross_section=xs)
+    
+    # OUTPUT STRAIGHT
+    out_wg = c << gf.components.straight(length=L_out, cross_section=xs)
+    out_wg.move((x4, 0))
+    
+    # CENTRAL COUPLING WAVEGUIDE
+    couple
+
+_wg = c << gf.components.straight(length=L_couple - 2, cross_section=xs)
+    couple_wg.move((x1 + L_spread + 1, 0))
+    
+    return c
+
+The device is instantiated and exported to a GDS file. The complete function creates a Y-branch combiner with two input arms that merge through a coupling region into a single output waveguide, with the overall footprint being 40 x 1.7 micrometers. input
+    x2 = x1 + L_spread
+    x3 = x2 + L_coupling
+    x4 = x3 + L_merge
+    
+    # === TOP ARM PATH ===
+    top_pts = [
+        (0, y_input),        # Start
+        (x1, y_input),       # End of input straight
+        (x2, y_spread),      # Peak of outward spread
+        (x3, y_spread),      # End of coupling parallel
+        (x4, 0),             # Merge at center
+    ]
+    top_path = gf.path.smooth(points=top_pts, radius=4.0)
+    top_wg = c << gf.path.extrude(top_path, cross_section=xs)
+    
+    # === BOTTOM ARM PATH (
+
+I'm calculating the x-coordinates for each section transition point. Then I'm defining the top arm's path with five key points: starting at the input offset, maintaining that offset through the input section, spreading outward to maximum separation, staying parallel during coupling, and converging back to center. I'm using a smooth path with 4 micrometer bend radius and extruding it with the cross-section to create the waveguide.
+
+For the bottom arm, I'm mirroring the top path across the x-axis by negating all y-coordinates. The central coupling waveguide runs horizontally between the two arms with a calculated length, positioned at the coupling region. Finally, I'm adding the output straight section at the merge point and connecting the input ports from both top and bottom arms to the component's output ports. The structure consists of a top arm that spreads upward then merges back down, a bottom arm spreading downward then merging up, a central waveguide running straight through the coupling region, and a single output waveguide. With the current parameters, the coupling section spans from x=7 to x=22 micrometers, which aligns with the proportions visible in the reference image where the coupling region occupies roughly 30-40% of the total device length. The overall footprint should match the target 40 x 1.7 micrometer dimensions.
+
+Now I'll set up the component with the necessary imports and define the basic waveguide parameters: 0.35 micrometer width on layer (1, 0), input arms positioned 0.35 micrometers from center with maximum spread at 0.65 micrometers, and an input section length of 5 micrometers.
+
+The layout continues with bend-out (7 micrometers), coupling (12 micrometers), bend-in (10 micrometers), and output (6 micrometers) sections. These define x-coordinates that map the horizontal progression through the device. The top arm traces from the input position through the spreading bend to maximum spread, maintains that position through the coupling region, then bends back toward center before reaching the output.
+
+Now I'm creating smooth paths for both the top and bottom arms using the defined points with a 4-micrometer bend radius, then extruding each path with the cross-section. The bottom arm mirrors the top arm's geometry vertically. For the central coupling waveguide, I'm positioning a straight section that spans most of the coupling region, starting slightly offset from the input and extending through the bend-out and coupling lengths.
+
+The output straight section is then placed at the final x-position. After assembling all components, I verify the total device length matches the expected 40 micrometers and check that the vertical spacing between arms remains consistent throughout the design. I could fine-tune y_spread to 0.675 to achieve exactly 1.7 um. Here's the implementation with that adjustment:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def y_branch_combiner():
+    """
+    Y-branch combiner device - two inputs merging to one output
+    with spreading S-bends and central coupling waveguide.
+    
+    Target footprint: 40 x 1.7 um
+    """
+    c = gf.Component()
+    
+    # Parameters
+    wg_width = 0.35
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+    
+    # Vertical positions
+    y_input = 0
+    y_spread = 0.675  # Adjusted for 1.7um total height
+    
+    # Section lengths
+    L_in = 5.0
+    L_bend_out = 7.0
+    L_coupling = 12.0
+    L_bend_in = 10.0
+    L_out = 6.0
+    
+    # X positions
+    x1 = L_in
+    x2 = x1 + L_bend_out
+    x3 = x2 + L_coupling
+    x4 = x3 + L_bend_in
+    
+    # Top arm path
+    top_pts = [
+        (0, y_input),
+        (x1, y_input),
+        (x2, y_spread),
+        (x3, y_spread),
+        (x4
+
+, 0),
+    ]
+    top_path = gf.path.smooth(points=top_pts, radius=4.0)
+    c << gf.path.extrude(top_path, cross_section=xs)
+    
+    # Bottom arm path (mirror)
+    bot_pts = [(x, -y) for x, y in top_pts]
+    bot_path = gf.path.smooth(points=bot_pts, radius=4.0)
+    c << gf.path.extrude(bot_path, cross_section=xs)
+    
+    # Central coupling waveguide
+    central = c << gf.components.straight(length=L_bend_out + L_coupling - 4, cross_section=xs)
+    central.move((x1 + 2, 0))
+    
+    # Output waveguide
+    output = c << gf.components.straight(length=L_out, cross_section=xs)
+    output.move((x4, 0))
+    
+    return c
+
+The final section adds the output waveguide positioned at the right end, then returns the complete component. The main execution block instantiates the y_branch_combiner and exports it to a GDS file for fabrication.

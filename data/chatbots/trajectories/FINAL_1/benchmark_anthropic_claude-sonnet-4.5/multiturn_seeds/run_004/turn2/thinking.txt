@@ -1,0 +1,37 @@
+Looking at the current output vs the original target image:
+
+Original target:
+- Top waveguide: Has a smooth bulge/widening that starts around 70% of the way along, then narrows back
+- Middle waveguide: Appears relatively straight and thin, maybe slightly angled
+- Bottom waveguide: Has a taper that widens significantly at the right end
+
+Current output:
+- Top waveguide: Has a rectangular bulge section with hard transitions - doesn't match the smooth curves
+- Middle waveguide: Angled too much, creating jagged appearance
+- Bottom waveguide: Has a taper but looks wrong
+
+The key issues:
+1. Top waveguide needs smooth transitions, not hard rectangular bulges. Should use tapers
+2. Middle waveguide should be straighter or very slightly angled
+3. Bottom waveguide taper needs adjustment
+4. The overall proportions seem off
+
+Let me redesign:
+
+Top waveguide: 
+- Starts thin, stays thin for most of length
+- Around 60-70% along, it widens smoothly (taper up)
+- Then narrows back down (taper down)
+- Or could be: thin -> taper wider -> wide section -> taper thinner
+
+Middle waveguide:
+- Should be mostly straight, thin throughout
+- Maybe a very slight diagonal
+
+Bottom waveguide:
+- Thin for most of the length
+- Tapers to much wider at the right end
+
+Looking at the footprint 40 x 1.7 um, the structures are tightly packed vertically.
+
+Let me create a better version:

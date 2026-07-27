@@ -1,0 +1,117 @@
+Turn 3 Response:
+
+```python
+import numpy as np
+import gdsfactory as gf
+
+
+def _cubic_bezier_points(p0, p1, p2, p3, n: int = 201):
+    """Returns a list of (x, y) points sampling a cubic Bezier curve."""
+    t = np.linspace(0.0, 1.0, n)
+    p0 = np.array(p0, dtype=float)
+    p1 = np.array(p1, dtype=float)
+    p2 = np.array(p2, dtype=float)
+    p3 = np.array(p3, dtype=float)
+
+    pts = (
+        ((1 - t) ** 3)[:, None] * p0
+        + (3 * ((1 - t) ** 2) * t)[:, None] * p1
+        + (3 * (1 - t) * (t**2))[:, None] * p2
+        + (t**3)[:, None] * p3
+    )
+    return [tuple(p) for p in pts]
+
+
+@gf.cell
+def three_to_two_fanout_v3(
+    footprint_um: tuple[float, float] = (40.0, 1.7),
+    layer: tuple[int, int] = (1, 0),
+    wg_width: float = 0.18,
+    gap_in: float = 0.18,
+    # X partition (must sum to footprint_um[0])
+    l_pre: float = 22.0,
+    l_curve: float = 12.0,
+    l_post: float = 6.0,
+    bezier_alpha: float = 0.28,   # 0.2..0.4 controls curvature distribution
+    bezier_npoints: int = 201,
+    # Middle "ends" behavior
+    l_mid_taper: float = 4.0,
+    mid_width2: float = 0.03,
+    mid_end_offset: float = 0.4,  # how far BEFORE bend-start the tip ends (um)
+    # Vertical placement
+    y_out_margin: float | None = None,
+) -> gf.Component:
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+
+    Lx, Ly = footprint_um
+
+    total_x = l_pre + l_curve + l_post
+    if abs(total_x - Lx) > 1e-6:
+        raise ValueError(f"Set l_pre+l_curve+l_post to Lx. Got {total_x=} vs {Lx=}")
+
+    if y_out_margin is None:
+        y_out_margin = wg_width / 2
+    y_out = Ly / 2 - y_out_margin
+
+    pitch_in = wg_width + gap_in
+    y_in = pitch_in
+
+    dy = y_out - y_in
+    if dy <= 0:
+        raise ValueError(
+            f"Need y_out > y_in. Got {y_out=} <= {y_in=}. "
+            f"Increase Ly, reduce gap_in, or reduce y_out_margin."
+        )
+
+    def fanout_path(dy_local: float) -> gf.Path:
+        # Cubic Bezier from (0,0) to (l_curve, dy_local) with horizontal tangents
+        # at both ends via control points with same y as endpoints.
+        p0 = (0.0, 0.0)
+        p1 = (l_curve * bezier_alpha, 0.0)
+        p2 = (l_curve * (1.0 - bezier_alpha), dy_local)
+        p3 = (l_curve, dy_local)
+        bez_pts = _cubic_bezier_points(p0, p1, p2, p3, n=bezier_npoints)
+        p_bez = gf.Path(bez_pts)
+
+        return gf.path.straight(l_pre) + p_bez + gf.path.straight(l_post)
+
+    # TOP arm
+    top = gf.path.extrude(fanout_path(+dy), cross_section=xs)
+    rt = c << top
+    rt.move((0, y_in))
+
+    # BOTTOM arm
+    bot = gf.path.extrude(fanout_path(-dy), cross_section=xs)
+    rb = c << bot
+    rb.move((0, -y_in))
+
+    # MIDDLE arm ends just before the fanout starts
+    x_bend_start = l_pre
+    x_mid_tip = x_bend_start - mid_end_offset
+    l_mid_straight = max(0.0, x_mid_tip - l_mid_taper)
+
+    rmid_s = c << gf.components.straight(length=l_mid_straight, cross_section=xs)
+    rmid_s.move((0, 0))
+
+    rmid_t = c << gf.components.taper(
+        length=l_mid_taper, width1=wg_width, width2=mid_width2, layer=layer
+    )
+    rmid_t.connect("o1", rmid_s.ports["o2"])
+
+    # Ports
+    c.add_port("in_top", port=rt.ports["o1"])
+    c.add_port("in_mid", port=rmid_s.ports["o1"])
+    c.add_port("in_bot", port=rb.ports["o1"])
+    c.add_port("out_top", port=rt.ports["o2"])
+    c.add_port("out_bot", port=rb.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    c = three_to_two_fanout_v3()
+    c.write_gds("three_to_two_fanout_v3.gds")
+```
+
+This removes the unavailable `gf.path.bezier()` call and generates the Bezier curve path by sampling points, then constructing `gf.Path(points)` (which is supported across gdsfactory versions).

@@ -1,0 +1,87 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreate_image_device():
+    """
+    Recreates the geometry from the image using GDSFactory parametric functions.
+    Footprint: 120um x 4um.
+    """
+    c = gf.Component("recreated_device")
+    
+    # Dimensions based on 120um x 4um footprint
+    WIDTH = 120.0
+    HEIGHT = 4.0
+    LAYER = (1, 0)
+    
+    # Parametric feature sizes
+    w_thin = 0.1      # Thin waveguide width
+    w_thick = 0.3     # Thick inner U waveguide width
+    gap = 0.08        # Gap between waveguides
+    r_bend = 0.1      # Small radius to fit in the tight vertical space
+    
+    # Define Cross-Sections (as per Catalog Section 6)
+    xs_thin = gf.cross_section.cross_section(width=w_thin, layer=LAYER)
+    xs_thick = gf.cross_section.cross_section(width=w_thick, layer=LAYER)
+    
+    # ------------------------------------------------------------------
+    # 1. CENTRAL STACK (5 Straight Waveguides)
+    # ------------------------------------------------------------------
+    num_central = 5
+    central_total_h = num_central * w_thin + (num_central - 1) * gap
+    y_start_central = -(central_total_h / 2) + w_thin / 2
+    
+    for i in range(num_central):
+        y_pos = y_start_central + i * (w_thin + gap)
+        # Using parametric straight component with cross_section (Section 1)
+        bar = c << gf.components.straight(length=WIDTH, cross_section=xs_thin)
+        bar.x = 0
+        bar.y = y_pos
+
+    # ------------------------------------------------------------------
+    # 2. U-SHAPED STACKS (Top and Bottom)
+    # ------------------------------------------------------------------
+    def add_u_stack(direction=1):
+        """Adds a stack of 5 nested U-shapes (1 thick, 4 thin)."""
+        y_edge = (HEIGHT / 2) * direction  # The +/- 2.0um boundary
+        
+        # Start the U-shapes with a gap from the central stack
+        y_inner_base = (central_total_h / 2 + gap + w_thick / 2) * direction
+        h_span_inner = 100.0 
+
+        # A. Inner Thick U-Shape
+        pts_thick = [
+            (-h_span_inner/2, y_edge),
+            (-h_span_inner/2, y_inner_base),
+            (h_span_inner/2, y_inner_base),
+            (h_span_inner/2, y_edge)
+        ]
+        # Create path then extrude using cross_section (Section 3)
+        path_thick = gf.path.smooth(points=pts_thick, radius=r_bend)
+        c << gf.path.extrude(path_thick, cross_section=xs_thick)
+        
+        # B. 4 Outer Thin U-Shapes
+        for i in range(4):
+            offset = (w_thick/2 + gap + i * (w_thin + gap) + w_thin/2)
+            y_curr = y_inner_base + (offset * direction)
+            h_span = h_span_inner + 2 * offset
+            
+            pts = [
+                (-h_span/2, y_edge),
+                (-h_span/2, y_curr),
+                (h_span/2, y_curr),
+                (h_span/2, y_edge)
+            ]
+            
+            path = gf.path.smooth(points=pts, radius=r_bend)
+            c << gf.path.extrude(path, cross_section=xs_thin)
+
+    # Add the top and bottom U-stacks
+    add_u_stack(direction=1)   # Top
+    add_u_stack(direction=-1)  # Bottom
+
+    return c
+
+if __name__ == "__main__":
+    device = recreate_image_device()
+    device.write_gds("recreated_device.gds")
+    print(f"Device created successfully. Bounding Box: {device.bbox}")

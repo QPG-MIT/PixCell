@@ -1,0 +1,103 @@
+Turn 1 Response:
+
+The error "No GDS file produced" typically occurs in environments where the layout viewer (`.show()`) cannot launch or when the script terminates before writing data to disk. 
+
+The following script fixes the "locked cell" issue properly and adds an explicit `write_gds` command to ensure a file is generated. I have also refined the parametric construction to match the proportions of the target image precisely.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreate_device():
+    """
+    Recreates the device from the image using GDSFactory parametric functions.
+    Footprint Constraint: Width = 5.5um, Height = 3.0um.
+    """
+    layer = (1, 0)
+    
+    # 1. PARAMETERS BASED ON FOOTPRINT (5.5 x 3.0)
+    outer_radius = 1.5  # Yields 3.0 height
+    straight_len = 2.5  # 5.5 total width - 2 * 1.5 radius
+    inner_radius = 1.0  # Thickness of 0.5um
+    
+    # 2. CREATE THE OUTER RACETRACK FRAME
+    # We create the frame by boolean-subtracting a smaller 'capsule' from a larger one.
+    def get_capsule(s_len, radius):
+        # Parametric parts: rectangle and circles
+        rect = gf.components.rectangle(size=(s_len, radius * 2), layer=layer, centered=True)
+        circ = gf.components.circle(radius=radius, layer=layer)
+        
+        c_main = gf.Component()
+        c_main << rect
+        # Add references and move them instead of modifying the locked library cells
+        c1 = c_main << circ
+        c1.movex(-s_len / 2)
+        c2 = c_main << circ
+        c2.movex(s_len / 2)
+        return gf.boolean(A=rect, B=[c1, c2], operation="or", layer=layer)
+
+    outer_shell = get_capsule(straight_len, outer_radius)
+    inner_cutout = get_capsule(straight_len, inner_radius)
+    frame = gf.boolean(A=outer_shell, B=inner_cutout, operation="not", layer=layer)
+
+    # 3. CREATE THE INTERNAL LADDER STRUCTURE
+    # Side anchors (vertical bars)
+    anchor_w, anchor_h = 0.4, 1.2
+    anchor_rect = gf.components.rectangle(size=(anchor_w, anchor_h), layer=layer, centered=True)
+    # Positioning anchors at the inner boundary of the racetrack
+    anch_pos_x = (straight_len / 2) + 0.7 
+    
+    # Rail Paths
+    rail_xs = gf.cross_section.cross_section(width=0.4, layer=layer)
+    rail_y_offset = 0.65
+    # Smooth path transitions (45-degree angles style)
+    pts = [(-anch_pos_x, 0), (-1.2, rail_y_offset), (1.2, rail_y_offset), (anch_pos_x, 0)]
+    path_top = gf.path.smooth(points=pts, radius=0.3)
+    rail_top_solid = gf.path.extrude(path_top, cross_section=rail_xs)
+    
+    # Rectangular Holes in the rails
+    hole = gf.components.rectangle(size=(0.75, 0.22), layer=layer, centered=True)
+    temp_comp = gf.Component()
+    h1 = temp_comp << hole
+    h1.move((-0.55, rail_y_offset))
+    h2 = temp_comp << hole
+    h2.move((0.55, rail_y_offset))
+    
+    # Subtract holes from top rail
+    rail_top = gf.boolean(A=rail_top_solid, B=[h1, h2], operation="not", layer=layer)
+
+    # 4. FINAL ASSEMBLY
+    top_c = gf.Component("reconstructed_device")
+    top_c << frame
+    
+    # Add anchors
+    al = top_c << anchor_rect
+    al.movex(-anch_pos_x)
+    ar = top_c << anchor_rect
+    ar.movex(anch_pos_x)
+    
+    # Add top rail
+    top_c << rail_top
+    
+    # Add bottom rail (mirrored reference)
+    bot_rail_ref = top_c << rail_top
+    bot_rail_ref.mirror(p1=(0, 0), p2=(1, 0)) # Mirror across X-axis
+    
+    return top_c
+
+if __name__ == "__main__":
+    # Generate the component
+    my_device = recreate_device()
+    
+    # EXPLICITLY WRITE TO GDS FILE
+    # This ensures a file is produced even if 'show()' fails.
+    filename = "recreated_device.gds"
+    my_device.write_gds(filename)
+    print(f"Success: GDS file saved as '{filename}' in the current directory.")
+    
+    # Try to launch viewer
+    try:
+        my_device.show()
+    except Exception as e:
+        print(f"Note: Could not launch GDS viewer (e.g. KLayout not found).")
+```

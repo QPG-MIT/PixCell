@@ -1,0 +1,96 @@
+import gdsfactory as gf
+
+@gf.cell
+def star_cross_device():
+    """
+    Generates a 4-lobed cross device.
+    Refined parameters (Iteration 3) to create slender lobes and thin ports
+    that match the target geometry more closely.
+    
+    Footprint: 4.7 um x 4.7 um
+    """
+    c = gf.Component()
+    
+    # 1. Dimensional Parameters
+    footprint = 4.7
+    half_size = footprint / 2.0  # Boundary at +/- 2.35 um
+    
+    # Ellipse Dimensions (The Lobes)
+    # Lobe Major Radius: 2.0 um
+    #   - Increased to 2.0 to elongate the taper.
+    #   - This ensures the ellipse is narrow enough (approx 0.35um) at the stub junction.
+    lobe_major_radius = 2.0
+    
+    # Lobe Minor Radius: 0.6 um
+    #   - Decreased to 0.6 to slim down the petals and deepen the 'V' between lobes.
+    lobe_minor_radius = 0.6
+    
+    # Stub Dimensions (The Tips)
+    # Stub Width: 0.35 um
+    #   - Reduced to match the thin linear ports in the target image.
+    stub_width = 0.35
+    
+    # Stub Length: 0.8 um
+    #   - Chosen to overlap the ellipse tip and reach the 2.35um boundary.
+    #   - Effectively creates the straight waveguide section at the end of the arm.
+    stub_length = 0.8
+    
+    # 2. Define Primitives
+    # Main elliptical body (horizontal)
+    ellipse = gf.components.ellipse(
+        radii=(lobe_major_radius, lobe_minor_radius), 
+        layer=(1, 0)
+    )
+    
+    # Rectangular port tip
+    stub = gf.components.rectangle(
+        size=(stub_length, stub_width), 
+        layer=(1, 0), 
+        centered=True
+    )
+
+    # 3. Assembly
+    # Add Center Cross (Horizontal and Vertical Ellipses)
+    # Horizontal Lobe
+    c << ellipse
+    
+    # Vertical Lobe (Rotated 90 degrees)
+    v_lobe = c << ellipse
+    v_lobe.rotate(90)
+    
+    # Add Port Stubs
+    # Calculate position: Align outer edge of stub with the footprint boundary.
+    # Center position = Boundary - (Half Length)
+    pos_offset = half_size - (stub_length / 2.0)
+    
+    # Right Stub
+    s_right = c << stub
+    s_right.movex(pos_offset)
+    
+    # Left Stub
+    s_left = c << stub
+    s_left.movex(-pos_offset)
+    
+    # Top Stub
+    s_top = c << stub
+    s_top.rotate(90)
+    s_top.movey(pos_offset)
+    
+    # Bottom Stub
+    s_bot = c << stub
+    s_bot.rotate(90)
+    s_bot.movey(-pos_offset)
+    
+    return c
+
+if __name__ == "__main__":
+    # Create and display
+    device = star_cross_device()
+    device.show()
+    
+    # Verify dimensions
+    print(f"Device width: {device.size_info.width:.2f} um")
+    print(f"Device height: {device.size_info.height:.2f} um")
+    
+    # Save GDS
+    device.write_gds("star_cross_refined_v3.gds")

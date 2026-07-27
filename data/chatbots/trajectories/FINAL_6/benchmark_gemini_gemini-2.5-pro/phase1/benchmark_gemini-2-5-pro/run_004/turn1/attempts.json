@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.860895",
+      "api_duration_seconds": 69.46171283721924,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 1139,
+        "total_tokens": 11204
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'circle_gdsfactorypcomponentspshapespcircle_R2p380625_AR2p5_L1_0' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:21.773195",
+      "api_duration_seconds": 21.160571813583374,
+      "usage": {
+        "input_tokens": 3549,
+        "output_tokens": 1087,
+        "total_tokens": 6062
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'list' object has no attribute 'is_regular_array'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:44.367880",
+      "api_duration_seconds": 13.801862955093384,
+      "usage": {
+        "input_tokens": 4667,
+        "output_tokens": 1119,
+        "total_tokens": 6385
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'tuple' object is not callable",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10563,
+    "output_tokens": 3345,
+    "total_tokens": 23651
+  }
+}

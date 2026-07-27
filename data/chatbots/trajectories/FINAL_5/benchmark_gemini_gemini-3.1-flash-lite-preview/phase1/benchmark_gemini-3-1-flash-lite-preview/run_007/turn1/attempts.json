@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.263971",
+      "api_duration_seconds": 47.475610971450806,
+      "usage": {
+        "input_tokens": 3171,
+        "output_tokens": 1147,
+        "total_tokens": 8696
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.35 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:11:04.298164",
+      "api_duration_seconds": 18.358107328414917,
+      "usage": {
+        "input_tokens": 4364,
+        "output_tokens": 1063,
+        "total_tokens": 7707
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:11:24.331522",
+      "api_duration_seconds": 20.071688890457153,
+      "usage": {
+        "input_tokens": 5446,
+        "output_tokens": 1151,
+        "total_tokens": 9087
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12981,
+    "output_tokens": 3361,
+    "total_tokens": 25490
+  }
+}

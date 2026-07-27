@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.184862",
+      "api_duration_seconds": 68.81392693519592,
+      "usage": {
+        "input_tokens": 2348,
+        "output_tokens": 3214,
+        "total_tokens": 18197
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports straight_gdsfactorypcomponentspwaveguidespstraight_L15__0807be34_0_0[\"o1\"] and Port \"o2\" (\"250\"/\"150\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:20.158991",
+      "api_duration_seconds": 55.48601293563843,
+      "usage": {
+        "input_tokens": 5638,
+        "output_tokens": 2912,
+        "total_tokens": 19695
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports straight_gdsfactorypcomponentspwaveguidespstraight_L15__0807be34_0_0[\"o1\"] and Port \"o2\" (\"250\"/\"500\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:17.034654",
+      "api_duration_seconds": 41.84598779678345,
+      "usage": {
+        "input_tokens": 8626,
+        "output_tokens": 2722,
+        "total_tokens": 18582
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports taper_gdsfactorypcomponentsptapersptaper_L5_W0p25_W0p05_73d5efdf_0_0[\"o1\"] and Port \"o2\" (\"50\"/\"250\")",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16612,
+    "output_tokens": 8848,
+    "total_tokens": 56474
+  }
+}

@@ -1,0 +1,68 @@
+Turn 1 Response:
+
+The error occurred because the previous script only displayed the device in a local viewer (`device.show()`) but did not explicitly write the geometry to a GDS file on disk, which is required for the automated check.
+
+Here is the corrected script that includes the `write_gds` command to generate the output file:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler(
+    total_length: float = 18.0,
+    wg_width: float = 0.5,
+    gap: float = 0.2,
+    port_pitch: float = 2.5,
+    straight_length: float = 2.0
+) -> gf.Component:
+    """
+    Directional coupler composed of two symmetric waveguide arms.
+    """
+    c = gf.Component("directional_coupler")
+    
+    # Define the cross-section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    
+    # Derived parameters for routing
+    y_offset = port_pitch / 2.0                           # Starting Y for the top arm center (1.25 um)
+    y_center_offset = (wg_width + gap) / 2.0              # Central coupling Y for the top arm (0.35 um)
+    dy_sbend = y_offset - y_center_offset                 # Vertical drop needed for the S-bend (0.9 um)
+    dx_sbend = (total_length - straight_length) / 2.0     # Horizontal length per S-bend (8.0 um)
+
+    # --- TOP ARM COMPONENTS ---
+    # S-bend down, straight section, S-bend up
+    sb1_top = c << gf.components.bend_s(size=(dx_sbend, -dy_sbend), cross_section=xs)
+    str_top = c << gf.components.straight(length=straight_length, cross_section=xs)
+    sb2_top = c << gf.components.bend_s(size=(dx_sbend, dy_sbend), cross_section=xs)
+
+    # Position and connect top arm sequentially
+    sb1_top.movey(y_offset)
+    str_top.connect("o1", sb1_top.ports["o2"])
+    sb2_top.connect("o1", str_top.ports["o2"])
+
+
+    # --- BOTTOM ARM COMPONENTS ---
+    # S-bend up, straight section, S-bend down
+    sb1_bot = c << gf.components.bend_s(size=(dx_sbend, dy_sbend), cross_section=xs)
+    str_bot = c << gf.components.straight(length=straight_length, cross_section=xs)
+    sb2_bot = c << gf.components.bend_s(size=(dx_sbend, -dy_sbend), cross_section=xs)
+
+    # Position and connect bottom arm sequentially
+    sb1_bot.movey(-y_offset)
+    str_bot.connect("o1", sb1_bot.ports["o2"])
+    sb2_bot.connect("o1", str_bot.ports["o2"])
+
+
+    # --- EXPOSE EXTERNAL PORTS ---
+    c.add_port("o1", port=sb1_top.ports["o1"])
+    c.add_port("o2", port=sb1_bot.ports["o1"])
+    c.add_port("o3", port=sb2_top.ports["o2"])
+    c.add_port("o4", port=sb2_bot.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Instantiate and explicitly save the device as a GDS file
+    device = directional_coupler()
+    device.write_gds("directional_coupler.gds")
+```

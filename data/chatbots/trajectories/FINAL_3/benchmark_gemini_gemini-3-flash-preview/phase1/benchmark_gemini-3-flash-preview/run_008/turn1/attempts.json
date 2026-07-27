@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.780308",
+      "api_duration_seconds": 49.66372871398926,
+      "usage": {
+        "input_tokens": 3162,
+        "output_tokens": 1253,
+        "total_tokens": 9603
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: coupler_straight() got an unexpected keyword argument 'width'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:01.289259",
+      "api_duration_seconds": 34.97325801849365,
+      "usage": {
+        "input_tokens": 4443,
+        "output_tokens": 1092,
+        "total_tokens": 9875
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:37.853074",
+      "api_duration_seconds": 16.55216693878174,
+      "usage": {
+        "input_tokens": 6008,
+        "output_tokens": 1192,
+        "total_tokens": 8396
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13613,
+    "output_tokens": 3537,
+    "total_tokens": 27874
+  }
+}

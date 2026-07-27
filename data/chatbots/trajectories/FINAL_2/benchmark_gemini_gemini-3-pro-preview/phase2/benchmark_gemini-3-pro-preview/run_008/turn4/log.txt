@@ -1,0 +1,108 @@
+Turn 4 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_1x4_splitter():
+    c = gf.Component()
+    
+    # Layer definition
+    layer = (1, 0)
+    
+    # --- Dimensions ---
+    # Refined dimensions to match the target silhouette.
+    # The device consists of a main rectangular body, 4 output prongs (bottleneck shape),
+    # and 1 input taper.
+    
+    # Main Body
+    # Rectangular block, wider than tall.
+    body_width = 8.5
+    body_height = 5.0
+    
+    # Output Prongs (x4)
+    # Spacing and widths tuned so bases are close together.
+    num_prongs = 4
+    prong_pitch = 2.0          # Center-to-center distance
+    
+    # Prong Geometry
+    # "Neck" is the tapered base. "Tip" is the straight extension.
+    prong_width_base = 1.8     # Base width (Pitch 2.0 - Width 1.8 = 0.2um gap)
+    prong_width_tip = 0.8      # Tip width
+    
+    prong_len_base = 2.5       # Length of the tapering neck
+    prong_len_tip = 4.0        # Length of the straight section
+    
+    # Input Taper
+    input_len = 1.5
+    input_width_base = 2.0
+    input_width_tip = 0.6
+
+    # --- Geometry Construction ---
+
+    # 1. Main Body
+    body = c << gf.components.rectangle(
+        size=(body_width, body_height), 
+        layer=layer, 
+        centered=True
+    )
+
+    # 2. Output Prongs
+    # Define primitives for the neck and tip
+    
+    # Neck: Taper from wide base to narrow tip
+    taper_neck = gf.components.taper(
+        length=prong_len_base,
+        width1=prong_width_base,
+        width2=prong_width_tip,
+        layer=layer
+    )
+    
+    # Tip: Straight waveguide (modeled as constant width taper)
+    taper_tip = gf.components.taper(
+        length=prong_len_tip,
+        width1=prong_width_tip,
+        width2=prong_width_tip,
+        layer=layer
+    )
+    
+    # Place array of prongs
+    for i in range(num_prongs):
+        # Calculate x position centered around 0
+        # Formula: (index - (N-1)/2) * pitch
+        x_pos = (i - (num_prongs - 1) / 2.0) * prong_pitch
+        
+        # Place Neck
+        # Rotate 90 degrees to point North (+y).
+        # Origin (o1, wide end) placed at the top edge of the body.
+        ref_neck = c << taper_neck
+        ref_neck.rotate(90)
+        ref_neck.move((x_pos, body_height / 2.0))
+        
+        # Place Tip
+        # Rotate 90 degrees.
+        # Origin (o1) placed at the end of the neck.
+        ref_tip = c << taper_tip
+        ref_tip.rotate(90)
+        ref_tip.move((x_pos, body_height / 2.0 + prong_len_base))
+
+    # 3. Input Port
+    # Taper pointing South (-y)
+    taper_input = gf.components.taper(
+        length=input_len,
+        width1=input_width_base,
+        width2=input_width_tip,
+        layer=layer
+    )
+    
+    ref_input = c << taper_input
+    ref_input.rotate(-90)
+    ref_input.move((0, -body_height / 2.0))
+
+    return c
+
+if __name__ == "__main__":
+    device = device_1x4_splitter()
+    device.write_gds("device_1x4_splitter.gds")
+    device.show()
+```

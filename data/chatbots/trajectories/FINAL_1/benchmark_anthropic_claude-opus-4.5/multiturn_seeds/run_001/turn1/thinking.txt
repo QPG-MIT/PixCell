@@ -1,0 +1,175 @@
+Looking at the image, I can see what appears to be a Y-branch or Y-splitter waveguide device. Let me analyze it:
+
+1. On the left side, there are two straight waveguides that are parallel and relatively close together
+2. On the right side, these two waveguides merge/split into two separate paths that curve outward (one going up, one going down)
+3. The device appears to be a 1x2 or 2x1 Y-splitter/combiner
+
+Looking more carefully:
+- The left side shows two parallel horizontal waveguides
+- The right side shows these waveguides curving apart (one curves up, one curves down)
+- There's a gap between the middle sections
+
+The footprint is 40.0 x 1.7 μm, which is quite wide but not very tall.
+
+Let me reconsider the geometry:
+- Looking at the image, I see two horizontal lines on the left that converge/diverge on the right
+- The top waveguide curves up on the right
+- The bottom waveguide curves down on the right
+- They seem to form a Y-shape or splitter pattern
+
+Actually, looking more carefully at the shape:
+1. There are two parallel straight waveguides on the left side
+2. The top waveguide has an S-bend that goes up on the right
+3. The bottom waveguide has an S-bend that goes down on the right
+4. This creates a splitter-like structure
+
+Given the footprint of 40.0 x 1.7 μm, the total height is only 1.7 μm, which is quite narrow. This suggests the waveguides are thin and the separation at the output is small.
+
+Let me think about how to construct this:
+- The device looks like a 1x2 Y-splitter or coupler
+- Two input waveguides on the left that are close together (parallel)
+- They separate/split on the right side with curved sections
+
+
+- The structure resembles a directional coupler or Y-branch splitter
+
+To build this geometry, I need to establish the basic parameters: two parallel waveguides that gradually diverge through curved bends. With the constrained dimensions, the waveguide width is likely around 0.5 μm, and the initial gap between them appears minimal, perhaps 0.2 μm or less.
+
+Looking more closely at the image, the left side shows the waveguides running parallel before they separate via S-bends—the top one curves upward while the bottom curves downward. This is characteristic of an adiabatic coupler or Y-splitter design. I should set up a Python implementation using gdsfactory to define the cross-section (0.5 μm width) and route the waveguides with the appropriate bending curves across the 40 μm length.
+
+The structure needs a 20 μm straight section where both guides run parallel with a 0.2 μm gap, followed by 20 μm of S-bend routing that offsets each waveguide vertically by 0.35 μm in opposite directions. I'll construct the top and bottom paths separately using path primitives to achieve this geometry. m, then the total vertical space for gaps and offsets is limited. The input side has the waveguides positioned close together, while the output side spreads them apart. Given the 40 x 1.7 μm footprint, with 0.5 μm waveguide width, I can fit two guides at the input with minimal spacing (~1.0-1.2 μm total height) and separate them at the output to use the full 1.7 μm height available. I'll design this by creating two parallel input waveguides that curve outward toward the output ports. y_bot = -(gap_input/2 + wg_width/2)  # Center of bottom waveguide
+
+Looking at the geometry more carefully, the waveguides appear to converge on the right side rather than diverge. This looks like a directional coupler where two parallel input waveguides come together in a coupling region before separating again at the output.
+
+Examining the image closely: the left side shows two straight parallel waveguides, they merge toward the center, then the right side has them separating with curved transitions. Given the 40 x 1.7 μm footprint, I'll implement this as a splitter device using gdsfactory with a 0.5 μm waveguide width.
+
+The design approach involves a 20 μm coupling section in the middle where the guides are close (0.2 μm gap), flanked by 10 μm S-bend sections on each end to handle the 0.35 μm vertical offset between input and output ports. I'm setting up the component structure and defining the top arm as the first straight waveguide segment. -(gap/2 + wg_width/2)))
+    
+    # S-bend for bottom output (going down)
+    sbend_bot = c << gf.components.bend_s(size=(sbend_length, -sbend_offset), cross_section=xs)
+    sbend_bot.connect("o1", wg_bot_straight.ports["o2"])
+    
+    # Extend with straight
+    wg_bot_out = c << gf.components.straight(length=sbend_length, cross_section=xs)
+    wg_bot_out.connect("o1", sbend_bot.ports["o2"])
+
+The bottom waveguide mirrors the top structure—an S-bend curves downward to the output, followed by a straight extension. The input side still needs to be implemented to complete the coupler geometry.
+
+Looking at the schematic more carefully, I can see the device consists of two parallel waveguides on the left that diverge on the right. The left section should be straight with both guides aligned, while the right section uses S-bends to separate them vertically. Let me build this systematically with proper cross-section definitions and component sizing to fit the target dimensions. .components.bend_s(size=(sbend_dx, sbend_dy), cross_section=xs)
+    top_sbend.connect("o1", top_in.ports["o2"])
+    
+    # Output straight
+    top_out = c << gf.components.straight(length=straight_out_length, cross_section=xs)
+    top_out.connect("o1", top_sbend.ports["o2"])
+    
+    # Bottom arm
+    # Input straight
+    bot_in = c << gf.components.straight(length=straight_in_length, cross_section=xs)
+    bot_in.move((0, y_bot_in))
+    
+    # S-bend going down
+    bot_sbend = c << gf.components.bend_s(size=(sbend_dx, -sbend_dy), cross_section=xs)
+    bot_sbend.connect("o1", bot_in.ports["o2"])
+    
+    bot_out = c << gf.components.straight(length=straight_out_length, cross_section=xs)
+    bot_out.connect("o1", bot_sbend.ports["o2"])
+
+Now I'm building the top and bottom arms symmetrically. The top arm uses a positive S-bend deflection while the bottom arm mirrors this with a negative deflection. Each arm follows the same pattern: input straight section, S-bend for vertical displacement, then output straight section, with ports connected sequentially to form the complete path. Looking at the left side more carefully, I notice the two input lines appear to converge toward the center with slight angular offsets. On the right side, they diverge again with curved transitions. This suggests a symmetric coupler structure where inputs merge in the middle section then separate on the output side.
+
+Let me reconsider the geometry: the component likely uses S-bends to transition the waveguides from their initial separated positions, bring them close together in a coupling region, then use additional S-bends to separate them again for the outputs. I'll restructure the code to reflect this symmetric 2x2 coupler pattern with proper input and output port definitions. they curve apart, with the top going up and bottom going down. The curves on the right appear to be gradual S-bends. I'll design this to fit the 40 x 1.7 μm footprint by starting with straight parallel waveguides in the input section, then transitioning to curved output paths that separate vertically.
+
+The S-bends will have a horizontal span of 22 μm and vertical displacement of ±0.35 μm. I'm setting the input gap between waveguides at 0.2 μm and calculating the center positions for each arm based on the waveguide width. For the top arm, I'll place a straight input section and position it vertically.
+
+Now I need to connect an S-bend to the output of the top straight section, then mirror this setup for the bottom arm with an inverted S-bend that moves downward. The bottom straight section gets positioned at the negative y-coordinate, and its corresponding S-bend connects with opposite vertical displacement.
+
+After setting up both arms, I'll expose the input and output ports from each section—the top and bottom straight inputs become o1 and o2, while the S-bend outputs become o3 and o4. Then I need to reconsider whether the dimensions work: with a 40 × 1.7 μm footprint and 0.5 μm waveguide width, the vertical spacing at the input would be around 1.2 μm if the gap is 0.2 μm, but I should verify this matches the output spacing as well.
+
+At the output, if the total height is 1.7 μm, two 0.5 μm waveguides leave 0.7 μm for the gap, giving a center-to-center separation of 1.2 μm. This means each S-bend needs to shift its waveguide by about 0.25 μm vertically to accommodate the change from the input spacing to the output spacing.
+
+Now I'm setting up the component with the calculated parameters: a straight section of 18 μm, S-bends with a horizontal span of 22 μm and vertical displacement of 0.25 μm per arm, and positioning the input waveguides with a 0.2 μm gap between them.
+
+For the top arm, I place a straight waveguide at y = 0.35 μm, then connect an S-bend to its output. The bottom arm mirrors this setup at y = -0.35 μm, using a negative vertical displacement for the S-bend to curve downward.
+
+I then expose four ports: the input ports from both straight sections and the output ports from both S-bends. Finally, I instantiate the device and export it as a GDS file.
+
+Looking more carefully at the target image, I notice the structure has two parallel waveguides on the left that maintain their separation through a straight section, then diverge with curved bends on the right side. The curves appear to be symmetric S-bends. I estimate the straight section comprises roughly half the total length, with the curved section taking the remaining half. I should refine the implementation to use proper cross-section definitions and ensure the S-bend parameters create smooth, symmetric curves that match the visual proportions shown. y_offset))
+    
+    # S-bend to move upward
+    sbend_top = c << gf.components.bend_s(size=(sbend_dx, sbend_dy), cross_section=xs)
+    sbend_top.connect("o1", wg_top.ports["o2"])
+    
+    # ====== BOTTOM ARM ======
+    # Straight section
+    wg_bot = c << gf.components.straight(length=straight_length, cross_section=xs)
+    wg_bot.move((0, -y_offset))
+    
+    # S-bend to move downward
+    sbend_bot = c << gf.components.bend_s(size=(sbend_dx, -sbend_dy), cross_section=xs)
+    sbend_bot.connect("o1", wg_bot.ports["o2"])
+
+Now I'm building the two arms symmetrically—the top waveguide gets positioned upward and connected to an S-bend that curves further up, while the bottom arm mirrors this with downward displacement and a negated S-bend curvature.
+
+Then I need to expose the input and output ports for both paths. The top and bottom inputs come from the initial straight sections, while the outputs are at the far ends of the S-bends. Finally, I generate the device and write it to a GDS file.
+
+Looking more carefully at the image, I can see two parallel waveguide paths on the left that diverge smoothly on the right. The device dimensions are 40.0 × 1.7 μm, giving me a length of 40 μm and height of 1.7 μm. With 0.5 μm wide waveguides and 1.7 μm total height, the center-to-center spacing at the input is roughly 0.7 μm (assuming a 0.2 μm gap). At the output, the full 1.7 μm height is available for separation.
+
+The center-to-center distance increases from 0.7 μm to 1.2 μm, meaning each waveguide shifts outward by 0.25 μm. I'll implement this as a Y-splitter component using gdsfactory, defining the cross-section with 0.5 μm width and creating smooth diverging paths over the 40 μm length. top_sbend = c << gf.components.bend_s(size=(sbend_dx, sbend_dy), cross_section=xs)
+top_sbend.connect("o1", top_wg.ports["o2"])
+
+For the bottom arm, I create a straight waveguide at y_bot and attach an S-bend with opposite curvature (negative sbend_dy). Then I expose the input port from the top waveguide as the component's external port.
+
+Now I need to add the remaining three output ports: one from the bottom waveguide's input, and the two S-bend outputs. Finally, I'll instantiate the device and write it to a GDS file.
+
+For the geometry verification: the bottom waveguide mirrors the top one, starting at y = -0.35 and running to x = 18 before its own S-bend curves it down to y = -0.6. At the input, the total vertical span is 1.2 μm (from 0.6 to -0.6), while at the output it expands to 1.7 μm (from 0.85 to -0.85) due to the S-bend routing.
+
+Let me double-check the y-coordinates more carefully. The top waveguide center sits at y = 0.35, giving edges at 0.6 and 0.1. The bottom waveguide center is at y = -0.35, with edges at -0.1 and -0.6. This creates a 0.2 μm gap between them at the input, and the input footprint height is indeed 1.2 μm.
+
+After the S-bends shift the waveguides, the top moves to y = 0.6 (edges at 0.85 and 0.35) while the bottom moves to y = -0.6 (edges at -0.35 and -0.85). The gap widens to 0.7 μm and the total output height becomes 1.7 μm.
+
+Now I need to verify the straight waveguides position correctly when moved. In gdsfactory, the straight component typically has its center at y = 0 with ports at both ends. When I apply move((0, y_top)), the entire component shifts so its centerline aligns with that y-coordinate. The S-bend should then connect seamlessly since it transitions from the input position to the moved straight's location.
+
+Let me finalize the implementation with proper parameters: a 0.5 μm waveguide width on layer (1, 0), two parallel straights separated vertically, and S-bends to smoothly transition between them. xs)
+    top_sbend.connect("o1", top_straight.ports["o2"])
+    
+    # === Bottom arm ===
+    bot_straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+    bot_straight.move((0, -y_offset))
+    
+    bot_sbend = c << gf.components.bend_s(size=(sbend_dx, -sbend_dy), cross_section=xs)
+    bot_sbend.connect("o1", bot_straight.ports["o2"])
+    
+    # Add ports
+    c.add_port("o1", port=top_straight.ports["o1"])
+    c.add_port("o2", port=bot_straight.ports["o1"])
+    c.add_port("o3", port=top_sbend.ports["o2"])
+    c.add_port("o4", port=bot_sbend.ports["o2"])
+
+I'm connecting the S-bends to the straight sections and then exposing all four ports—the input ports from each straight waveguide and the output ports from each S-bend.
+
+Looking back at the image, I see two parallel waveguides that diverge outward, which matches a Y-splitter topology. The curved sections appear to be smooth transitions, possibly Euler bends or similar gradual curves that separate the waveguides from their initial spacing to a wider separation.
+
+The implementation uses S-bends to achieve this divergence. The code defines a waveguide with 0.5 μm width on layer (1, 0), maintains an 18 μm straight section where the guides run parallel, then applies S-bends with a 22 μm horizontal displacement to spread them apart before connecting to output ports. ("o1", bot_straight.ports["o2"])
+    
+    # External ports
+    c.add_port("o1", port=top_straight.ports["o1"])
+    c.add_port("o2", port=bot_straight.ports["o1"])
+    c.add_port("o3", port=top_sbend.ports["o2"])
+    c.add_port("o4", port=bot_sbend.ports["o2"])
+    
+    return c
+
+# Generate and save the device
+device = waveguide_y_splitter()
+device.write_gds("waveguide_y_splitter.gds")
+
+The structure accomplishes the goal effectively: two input waveguides run parallel through the coupling region, then S-bends diverge them at the output. All four ports are properly exposed for external connections.
+
+Let me double-check the dimensional constraints. The total length of 40 μm comes from the 18 μm straight section plus 22 μm S-bend curves. At the input, the two waveguides with their gap occupy 1.2 μm vertically, while the output expands to 1.7 μm as the S-bends separate them further. The layer assignment (1, 0) and parametric waveguide definitions ensure the design is reproducible and matches the target footprint. In gdsfactory, a `straight` component positions the waveguide along the x-axis centered at y=0, with ports "o1" at x=0 and "o2" at x=length. Applying a y_offset shifts the entire waveguide vertically. When connecting an S-bend to the straight's output port using `connect()`, the S-bend aligns its input and extends in the +x direction while transitioning vertically by sbend_dy. Looking back at the image, I notice the left side shows two distinct straight segments, which matches this expected behavior.
+
+The right side displays curves where the S-bends create the vertical separation. Though the left waveguides might appear to converge slightly, the current design reasonably approximates the target device with parallel waveguides on the left transitioning through S-bends on the right. I'll proceed with implementing this approach, creating a Y-splitter with two parallel input waveguides that diverge via S-bend curves, occupying approximately 40.0 x 1.7 micrometers.
+
+Setting up the cross-section with a 0.5 micrometer waveguide width on layer (1, 0), then defining geometry parameters: an 18-micrometer straight section, S-bends spanning 22 micrometers horizontally with 0.25 micrometers vertical displacement, and a 0.2 micrometer gap between the input waveguides. The top arm gets positioned at a y-offset calculated from the gap and waveguide width, with a straight segment followed by an S-bend curve to separate the outputs.
+
+The bottom arm mirrors this layout with inverted offsets and S-bend curvature. Both S-bends connect to their respective straight sections at the output ports. Four ports are then assigned to the component: the input ports from each straight waveguide and the output ports from each S-bend, before returning the completed device.
+
+Finally, I instantiate the waveguide splitter and write it to a GDS file for fabrication.

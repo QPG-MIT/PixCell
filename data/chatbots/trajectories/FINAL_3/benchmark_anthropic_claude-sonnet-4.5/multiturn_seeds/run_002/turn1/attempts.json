@@ -1,0 +1,39 @@
+{
+  "turn": 1,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:00:44.981473",
+      "api_duration_seconds": 48.506298780441284,
+      "usage": {
+        "input_tokens": 3807,
+        "output_tokens": 3048,
+        "total_tokens": 6855
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 6.985 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:01:34.705977",
+      "api_duration_seconds": 22.06334900856018,
+      "usage": {
+        "input_tokens": 5155,
+        "output_tokens": 1492,
+        "total_tokens": 6647
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 8962,
+    "output_tokens": 4540,
+    "total_tokens": 13502
+  }
+}

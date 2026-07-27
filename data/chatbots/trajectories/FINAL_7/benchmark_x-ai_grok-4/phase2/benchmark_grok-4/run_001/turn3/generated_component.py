@@ -1,0 +1,60 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+    t = 0.5
+    outer_straight = 2.5
+    outer_radius = 1.5
+    outer_height = 3.0
+    inner_height = outer_height - 2 * t
+    inner_radius = outer_radius - t
+
+    # Outer solid stadium
+    outer = gf.Component()
+    rect_o = gf.components.rectangle(size=(outer_straight, outer_height), layer=layer, centered=True)
+    outer << rect_o
+    cl = outer << gf.components.circle(radius=outer_radius, layer=layer)
+    cl.move((-outer_straight / 2, 0))
+    cr = outer << gf.components.circle(radius=outer_radius, layer=layer)
+    cr.move((outer_straight / 2, 0))
+
+    # Merge outer
+    empty = gf.Component()
+    outer_merged = gf.boolean(outer, empty, operation="or", layer=layer)
+
+    # Inner solid stadium
+    inner = gf.Component()
+    rect_i = gf.components.rectangle(size=(outer_straight, inner_height), layer=layer, centered=True)
+    inner << rect_i
+    cl_i = inner << gf.components.circle(radius=inner_radius, layer=layer)
+    cl_i.move((-outer_straight / 2, 0))
+    cr_i = inner << gf.components.circle(radius=inner_radius, layer=layer)
+    cr_i.move((outer_straight / 2, 0))
+
+    # Merge inner
+    inner_merged = gf.boolean(inner, empty, operation="or", layer=layer)
+
+    # Hollow frame
+    frame = gf.boolean(outer_merged, inner_merged, operation="not", layer=layer)
+
+    # Gaps to subtract
+    gaps = gf.Component()
+    gap_width = 0.2
+    gap_height = 0.7
+    gap_y = inner_height / 2 + t / 2
+    gap = gf.components.rectangle(size=(gap_height, gap_width), layer=layer, centered=True)
+    gt = gaps << gap
+    gt.move((0, gap_y))
+    gb = gaps << gap
+    gb.move((0, -gap_y))
+
+    # Final device with gaps removed
+    device = gf.boolean(frame, gaps, operation="not", layer=layer)
+    c << device
+
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")

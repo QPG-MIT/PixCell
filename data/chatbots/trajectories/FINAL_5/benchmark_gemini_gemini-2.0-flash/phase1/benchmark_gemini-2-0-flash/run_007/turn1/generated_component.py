@@ -1,0 +1,103 @@
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+from gdsfactory.components import bend_euler
+from gdsfactory.components import straight
+from gdsfactory.components import taper
+from gdsfactory.cross_section import strip
+from gdsfactory.difftest import difftest
+
+@gf.cell
+def create_device():
+    c = gf.Component("device")
+
+    # Cross section definition
+    width = 0.7  # waveguide width
+    gap = 0.2  # gap between waveguides in coupler
+    coupling_length = 6.0  # Length of coupling region
+    taper_length = 2.0 # Length of tapers before coupling
+    bend_radius = 4.0
+    num_lines = 40
+    line_width = 0.02
+    line_sep = 0.03
+
+    xs = gf.cross_section.strip(width=width)
+
+    # Top waveguide structure
+    # 1. Straight waveguide
+    straight_top = c << straight(length=3, cross_section=xs)
+
+    # 2. Euler bend
+    bend_top = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend_top.connect("o1", straight_top.ports["o2"])
+
+    # 3. Straight coupler segment
+    straight_coupler_top = c << straight(length=coupling_length + 2 * taper_length, cross_section=xs)
+    straight_coupler_top.connect("o1", bend_top.ports["o2"])
+
+    # 4. Second bend
+    bend_top2 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend_top2.connect("o1", straight_coupler_top.ports["o2"])
+
+    # 5. Final straight
+    straight_top2 = c << straight(length=3, cross_section=xs)
+    straight_top2.connect("o1", bend_top2.ports["o2"])
+
+    # Bottom waveguide structure (mirrored)
+    straight_bottom = c << straight(length=3, cross_section=xs)
+    bend_bottom = c << bend_euler(radius=bend_radius, angle=-90, cross_section=xs)
+    bend_bottom.connect("o1", straight_bottom.ports["o2"])
+
+    straight_coupler_bottom = c << straight(length=coupling_length + 2 * taper_length, cross_section=xs)
+    straight_coupler_bottom.connect("o1", bend_bottom.ports["o2"])
+
+    bend_bottom2 = c << bend_euler(radius=bend_radius, angle=-90, cross_section=xs)
+    bend_bottom2.connect("o1", straight_coupler_bottom.ports["o2"])
+
+    straight_bottom2 = c << straight(length=3, cross_section=xs)
+    straight_bottom2.connect("o1", bend_bottom2.ports["o2"])
+
+    # Move the bottom to be below the top
+    straight_bottom.movey(-width - gap)
+    bend_bottom.movey(-width - gap)
+    straight_coupler_bottom.movey(-width - gap)
+    bend_bottom2.movey(-width - gap)
+    straight_bottom2.movey(-width - gap)
+
+    # Central line
+    central_line = c << straight(length=coupling_length + 2 * taper_length, cross_section=xs)
+    central_line.movey(-width/2 - gap/2)
+    central_line_top = c << straight(length=coupling_length + 2 * taper_length, cross_section=xs)
+    central_line_top.movey(width/2 + gap/2)
+
+    # Tapers before the coupling
+    taper_top_start = c << taper(length=taper_length, width1=width, width2=0.1)
+    taper_top_start.connect("o1", straight_coupler_top.ports["o1"])
+
+    taper_top_end = c << taper(length=taper_length, width1=0.1, width2=width)
+    taper_top_end.connect("o1", straight_coupler_top.ports["o2"])
+
+    taper_bottom_start = c << taper(length=taper_length, width1=width, width2=0.1)
+    taper_bottom_start.connect("o1", straight_coupler_bottom.ports["o1"])
+
+    taper_bottom_end = c << taper(length=taper_length, width1=0.1, width2=width)
+    taper_bottom_end.connect("o1", straight_coupler_bottom.ports["o2"])
+
+    # Create the bars on top of the middle waveguides
+    for i in range(num_lines):
+        x_pos = -coupling_length/2 - taper_length + i * (line_width + line_sep) + line_width/2 + line_sep
+        bar = c << rectangle(size=(line_width, 0.15), layer=(1, 0), centered=True)
+        bar.move((x_pos, -width/2 - gap/2))
+
+        bar2 = c << rectangle(size=(line_width, 0.15), layer=(1, 0), centered=True)
+        bar2.move((x_pos, width/2 + gap/2))
+
+    return c
+
+
+if __name__ == "__main__":
+    device = create_device()
+    device.show(show_ports=True)
+    #difftest(device)
+
+    #Verify the device footprint
+    print(device.bbox)

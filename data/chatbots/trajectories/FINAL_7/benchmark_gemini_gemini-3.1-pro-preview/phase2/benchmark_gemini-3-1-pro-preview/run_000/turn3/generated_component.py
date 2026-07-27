@@ -1,0 +1,98 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def parametric_racetrack_device():
+    # Main component container
+    c = gf.Component("Racetrack_Device")
+    layer = (1, 0)
+
+    # ==========================================
+    # 1. Parametric Variables (Footprint 3.0 x 5.5)
+    # ==========================================
+    R_out = 1.5             # Outer radius (Total Height = 3.0)
+    L_total = 5.5           # Total width
+    L = L_total - 2 * R_out # Straight section length (2.5)
+
+    W_bend = 0.5            # Width of the track at the bends
+    R_in = R_out - W_bend   # Inner radius (1.0)
+    
+    H_mid_hole = 1.0        # Height of central narrow hole gap
+    
+    # Internal straight segment lengths
+    L_mid_thick = 1.3       # Length of the central thickened track region
+    L_taper = (L - L_mid_thick) / 2 # Length of the taper transitions (0.6)
+
+    # ==========================================
+    # 2. Build Positive Geometry (Solid Stadium)
+    # ==========================================
+    stadium = gf.Component("Solid_Stadium")
+    stadium << gf.components.rectangle(size=(L, 2*R_out), centered=True, layer=layer)
+    
+    ref_circ_left = stadium << gf.components.circle(radius=R_out, layer=layer)
+    ref_circ_left.movex(-L/2)
+    
+    ref_circ_right = stadium << gf.components.circle(radius=R_out, layer=layer)
+    ref_circ_right.movex(L/2)
+
+    # ==========================================
+    # 3. Build Negative Geometry (Holes to Subtract)
+    # ==========================================
+    holes = gf.Component("Holes")
+
+    # --- 3a. Central Void Polygon ---
+    # Constructing a single continuous polygon for the inner void
+    # to avoid boolean intersection artifacts and ensure perfect tapers.
+    pts = []
+    
+    # Right semicircle (from top to bottom)
+    theta_right = np.linspace(np.pi/2, -np.pi/2, 50)
+    for t in theta_right:
+        pts.append((L/2 + R_in * np.cos(t), R_in * np.sin(t)))
+        
+    # Bottom straight/taper points (right to left)
+    pts.append((L/2 - L_taper, -H_mid_hole/2))
+    pts.append((-L/2 + L_taper, -H_mid_hole/2))
+    
+    # Left semicircle (from bottom to top)
+    theta_left = np.linspace(-np.pi/2, np.pi/2, 50)
+    for t in theta_left:
+        pts.append((-L/2 + R_in * np.cos(t), R_in * np.sin(t)))
+        
+    # Top straight/taper points (left to right)
+    pts.append((-L/2 + L_taper, H_mid_hole/2))
+    pts.append((L/2 - L_taper, H_mid_hole/2))
+    
+    holes.add_polygon(pts, layer=layer)
+
+    # --- 3b. Four Rectangular Track Cuts ---
+    L_cut = 0.50
+    H_cut = 0.50
+    X_cut = 0.30       # Center positions of cuts horizontally
+    Y_cut = 1.0        # Center position of cuts vertically (midpoint of the thick waveguide)
+
+    cut_comp = gf.components.rectangle(size=(L_cut, H_cut), centered=True, layer=layer)
+    
+    ref_c1 = holes << cut_comp
+    ref_c1.move((-X_cut, Y_cut))   # Top-Left
+    
+    ref_c2 = holes << cut_comp
+    ref_c2.move((X_cut, Y_cut))    # Top-Right
+    
+    ref_c3 = holes << cut_comp
+    ref_c3.move((-X_cut, -Y_cut))  # Bottom-Left
+    
+    ref_c4 = holes << cut_comp
+    ref_c4.move((X_cut, -Y_cut))   # Bottom-Right
+
+    # ==========================================
+    # 4. Final Boolean Subtraction
+    # ==========================================
+    final_shape = gf.boolean(A=stadium, B=holes, operation='not', layer=layer)
+    c << final_shape
+
+    return c
+
+if __name__ == "__main__":
+    device = parametric_racetrack_device()
+    device.write_gds("device.gds")

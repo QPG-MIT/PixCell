@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:58:57.409368",
+      "api_duration_seconds": 137.431499004364,
+      "usage": {
+        "input_tokens": 3170,
+        "output_tokens": 1648,
+        "total_tokens": 16488
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: boolean() missing 1 required positional argument: 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:01:16.108816",
+      "api_duration_seconds": 28.595293283462524,
+      "usage": {
+        "input_tokens": 4846,
+        "output_tokens": 1270,
+        "total_tokens": 7541
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:01:45.919757",
+      "api_duration_seconds": 58.9000461101532,
+      "usage": {
+        "input_tokens": 6142,
+        "output_tokens": 1561,
+        "total_tokens": 12251
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.25 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14158,
+    "output_tokens": 4479,
+    "total_tokens": 36280
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "turn": 1,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:08.374364",
+      "api_duration_seconds": 48.97642278671265,
+      "usage": {
+        "input_tokens": 3157,
+        "output_tokens": 1164,
+        "total_tokens": 9692
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o1' is not a valid port name or index. Available ports: []\"\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_4/benchmark_gemini_gemini-3-flash-preview/phase1/benchmark_gemini-3-flash-preview/run_008/turn1/generated_component.py\", line 58, in <module>\n    component = recreate_coupler()\n  File \"/Users/aad",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:00.615630",
+      "api_duration_seconds": 17.35359001159668,
+      "usage": {
+        "input_tokens": 4860,
+        "output_tokens": 1046,
+        "total_tokens": 7169
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 8017,
+    "output_tokens": 2210,
+    "total_tokens": 16861
+  }
+}

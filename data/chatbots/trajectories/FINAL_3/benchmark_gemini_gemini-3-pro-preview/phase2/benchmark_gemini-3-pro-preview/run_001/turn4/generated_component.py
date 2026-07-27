@@ -1,0 +1,108 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_s_bend_v3():
+    """
+    A parametric directional coupler using S-bends.
+    Iteration 3 Improvements:
+    - Adjusted length distribution based on visual analysis of target:
+      - Increased lead length (2.0 -> 5.0) to match the distinct straight sections at ports.
+      - Increased bend length significantly (15.0 -> 25.0) to soften the curve and match the target's aspect ratio.
+      - Decreased coupler length (remaining ~60.0) to match the proportion (approx 2.4x bend length).
+    - Increased coupling gap slightly (0.4 -> 0.5) to match the visual ratio where gap width is similar to waveguide width.
+    """
+    c = gf.Component()
+    
+    # --- Parameters ---
+    # Overall dimensions matching constraints
+    total_length = 120.0
+    total_height = 4.0 
+    
+    # Waveguide geometry
+    wg_width = 0.5
+    
+    # Gap analysis: Gap appears roughly equal to waveguide width in target
+    gap_coupling = 0.5
+    
+    # Length partitioning
+    # Based on visual estimation:
+    # Leads take up small but noticeable % (approx 5um each)
+    # Bends are elongated (approx 25um each)
+    # Central coupler takes remainder (approx 60um)
+    length_lead = 5.0
+    length_bend = 25.0
+    length_coupler = total_length - (2 * length_lead) - (2 * length_bend)
+    
+    # --- Vertical Position Calculations ---
+    # 1. Input/Output Y positions (Outer edges aligned to +/- 2.0 for 4um height)
+    # Center Y = Edge - Width/2
+    y_io_offset = (total_height / 2) - (wg_width / 2)   # 2.0 - 0.25 = 1.75
+    
+    # 2. Coupling region Y positions (Centered around 0 with gap)
+    # Center Y = Gap/2 + Width/2
+    y_coup_offset = (gap_coupling / 2) + (wg_width / 2) # 0.25 + 0.25 = 0.5
+    
+    # 3. Vertical shift required for the S-bends (dy)
+    dy = y_io_offset - y_coup_offset # 1.75 - 0.5 = 1.25
+    
+    # --- Cross Section ---
+    xs = gf.cross_section.cross_section(width=wg_width)
+
+    # --- Primitives ---
+    # Straight segments
+    comp_lead = gf.components.straight(length=length_lead, cross_section=xs)
+    comp_coupler = gf.components.straight(length=length_coupler, cross_section=xs)
+    
+    # S-Bends
+    # Bend down (Input to Coupler on top arm): dy is negative
+    bend_down = gf.components.bend_s(size=(length_bend, -dy), cross_section=xs)
+    
+    # Bend up (Input to Coupler on bottom arm): dy is positive
+    bend_up = gf.components.bend_s(size=(length_bend, dy), cross_section=xs)
+    
+    # --- Assembly: Top Arm ---
+    # Path: Input (High) -> Bend Down -> Coupler (Low) -> Bend Up -> Output (High)
+    t_in = c << comp_lead
+    t_in.move((0, y_io_offset))
+    
+    t_b1 = c << bend_down
+    t_b1.connect("o1", t_in.ports["o2"])
+    
+    t_c = c << comp_coupler
+    t_c.connect("o1", t_b1.ports["o2"])
+    
+    t_b2 = c << bend_up
+    t_b2.connect("o1", t_c.ports["o2"])
+    
+    t_out = c << comp_lead
+    t_out.connect("o1", t_b2.ports["o2"])
+    
+    # --- Assembly: Bottom Arm ---
+    # Path: Input (Low) -> Bend Up -> Coupler (High) -> Bend Down -> Output (Low)
+    b_in = c << comp_lead
+    b_in.move((0, -y_io_offset))
+    
+    b_b1 = c << bend_up
+    b_b1.connect("o1", b_in.ports["o2"])
+    
+    b_c = c << comp_coupler
+    b_c.connect("o1", b_b1.ports["o2"])
+    
+    b_b2 = c << bend_down
+    b_b2.connect("o1", b_c.ports["o2"])
+    
+    b_out = c << comp_lead
+    b_out.connect("o1", b_b2.ports["o2"])
+    
+    # --- Ports ---
+    c.add_port("o1", port=t_in.ports["o1"])
+    c.add_port("o2", port=b_in.ports["o1"])
+    c.add_port("o3", port=t_out.ports["o2"])
+    c.add_port("o4", port=b_out.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler_s_bend_v3()
+    device.write_gds("directional_coupler_s_bend_v3.gds")
+    device.show()

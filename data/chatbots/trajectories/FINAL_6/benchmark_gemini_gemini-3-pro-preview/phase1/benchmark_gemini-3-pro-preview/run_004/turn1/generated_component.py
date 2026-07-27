@@ -1,0 +1,67 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_quatrefoil():
+    c = gf.Component()
+
+    # --- Parameters ---
+    total_footprint = 4.7
+    radius = total_footprint / 2.0  # 2.35 um
+    
+    # Visual estimates for dimensions based on the image and total footprint
+    len_stub = 0.35
+    len_taper_segment = (radius - len_stub) / 2.0  # 1.0 um for expand, 1.0 um for contract
+    
+    width_min = 0.22   # Width at center and at the stub
+    width_max = 0.85   # Maximum width of the petal bulge
+    
+    layer_main = (1, 0)
+
+    # --- Cross Sections ---
+    # We define the start/end cross section and the middle thick cross section
+    xs_min = gf.cross_section.cross_section(width=width_min, layer=layer_main)
+    xs_max = gf.cross_section.cross_section(width=width_max, layer=layer_main)
+
+    # --- Define Transitions ---
+    # 'sine' width_type creates the smooth, organic bulge seen in the image
+    trans_expand = gf.path.transition(xs_min, xs_max, width_type='sine')
+    trans_contract = gf.path.transition(xs_max, xs_min, width_type='sine')
+
+    # --- Define Components for One Arm ---
+    # Path for the variable width sections
+    path_segment = gf.path.straight(length=len_taper_segment)
+    
+    # 1. Expansion segment
+    c_expand = gf.path.extrude_transition(path_segment, trans_expand)
+    
+    # 2. Contraction segment
+    c_contract = gf.path.extrude_transition(path_segment, trans_contract)
+    
+    # 3. Straight stub segment
+    c_stub = gf.components.straight(length=len_stub, cross_section=xs_min)
+
+    # --- Assembly ---
+    # Rotate and place the 4 arms
+    for i, angle in enumerate([0, 90, 180, 270]):
+        # Place Expansion (starts at center)
+        ref1 = c << c_expand
+        ref1.rotate(angle)
+        
+        # Connect Contraction to Expansion
+        ref2 = c << c_contract
+        ref2.connect("o1", ref1.ports["o2"])
+        
+        # Connect Stub to Contraction
+        ref3 = c << c_stub
+        ref3.connect("o1", ref2.ports["o2"])
+        
+        # Optional: Expose the outer ports of the device
+        c.add_port(f"o{i+1}", port=ref3.ports["o2"])
+
+    return c
+
+# Generate and save the device
+if __name__ == "__main__":
+    device = device_quatrefoil()
+    device.write_gds("quatrefoil_device.gds")
+    device.show()

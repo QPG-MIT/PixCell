@@ -1,0 +1,97 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreate_image_device():
+    """
+    Recreates the geometry from the image using GDSFactory parametric functions.
+    Footprint: 120um x 4um.
+    """
+    c = gf.Component("recreated_device")
+    
+    # Boundary and Layer Constants
+    WIDTH_LIMIT = 120.0
+    HEIGHT_LIMIT = 4.0
+    HALF_HEIGHT = HEIGHT_LIMIT / 2  # 2.0 um
+    LAYER = (1, 0)
+    
+    # Parametric feature sizes (scaled to fit within 2.0um half-height)
+    w_thin = 0.1
+    w_thick = 0.4
+    gap = 0.1
+    r_bend = 0.1  # Radius fits within the vertical arm length
+    
+    # Define Cross-Sections
+    xs_thin = gf.cross_section.cross_section(width=w_thin, layer=LAYER)
+    xs_thick = gf.cross_section.cross_section(width=w_thick, layer=LAYER)
+    
+    # ------------------------------------------------------------------
+    # 1. CENTRAL STACK (5 Waveguides)
+    # ------------------------------------------------------------------
+    # Total height of central stack: 5*0.1 + 4*0.1 = 0.9um
+    num_central = 5
+    central_h = num_central * w_thin + (num_central - 1) * gap
+    y_start_central = -(central_h / 2) + w_thin / 2
+    
+    for i in range(num_central):
+        y_pos = y_start_central + i * (w_thin + gap)
+        # Add full-width straight segment (Catalog Section 1)
+        bar = c << gf.components.straight(length=WIDTH_LIMIT, cross_section=xs_thin)
+        bar.x = 0
+        bar.y = y_pos
+
+    # ------------------------------------------------------------------
+    # 2. U-SHAPED STACKS (Top and Bottom)
+    # ------------------------------------------------------------------
+    def add_u_stack(direction=1):
+        """Adds a stack of 1 thick and 4 thin U-shapes."""
+        y_edge = HALF_HEIGHT * direction
+        
+        # Base horizontal span (slightly shorter than central stack)
+        base_span = 100.0
+        
+        # Inner Thick Waveguide center position
+        # Start with a gap after the central stack half-height (0.45)
+        # y = (0.45 + gap + thick/2) = 0.45 + 0.1 + 0.2 = 0.75
+        y_inner_base = (central_h / 2 + gap + w_thick / 2) * direction
+        
+        # Path for the thick waveguide (Catalog Section 3)
+        pts_thick = [
+            (-base_span/2, y_edge),
+            (-base_span/2, y_inner_base),
+            (base_span/2, y_inner_base),
+            (base_span/2, y_edge)
+        ]
+        path_thick = gf.path.smooth(points=pts_thick, radius=r_bend)
+        c << gf.path.extrude(path_thick, cross_section=xs_thick)
+        
+        # 4 Outer Thin Waveguides
+        for i in range(4):
+            # Calculate offset from the thick waveguide's center
+            # offset = (thick/2 + gap) + i*(thin + gap) + thin/2
+            offset = (w_thick/2 + gap) + i * (w_thin + gap) + w_thin/2
+            y_curr = y_inner_base + (offset * direction)
+            
+            # Widen span slightly to keep vertical arms parallel
+            span = base_span + 2 * (i + 1) * (w_thin + gap)
+            
+            pts = [
+                (-span/2, y_edge),
+                (-span/2, y_curr),
+                (span/2, y_curr),
+                (span/2, y_edge)
+            ]
+            
+            # Parametric extrusion with smoothing
+            path = gf.path.smooth(points=pts, radius=r_bend)
+            c << gf.path.extrude(path, cross_section=xs_thin)
+
+    # Add the top and bottom stacks
+    add_u_stack(direction=1)   # Points UP
+    add_u_stack(direction=-1)  # Points DOWN
+
+    return c
+
+if __name__ == "__main__":
+    device = recreate_image_device()
+    device.write_gds("recreated_device.gds")
+    print(f"Device created successfully. Bounding Box: {device.bbox}")

@@ -1,0 +1,77 @@
+Turn 3 Response:
+
+Okay, I understand. The current code creates a standard cross and attaches a rectangle below it. The target image is more like a four-petal flower or a stylized cross where the ends of the arms are rounded/bulbous and connected to short rectangular stubs.
+
+Here's an updated strategy:
+
+1.  **Replace `gf.components.cross`**: The core issue is the shape of the cross. We need something closer to four rounded "petals." We can achieve this using circular shapes.
+2.  **Add Rounded Arms**: Instead of rectangles, create "arms" from a combination of circles (or ellipses) and rectangles.
+3.  **Create stubs**: add a small rectangle on each side.
+
+Here's the updated code:
+
+```python
+import gdsfactory as gf
+from gdsfactory.typings import LayerSpec
+
+@gf.cell
+def my_stylized_cross(
+    petal_radius: float = 2.0,
+    stub_length: float = 1.0,
+    stub_width: float = 1.0,
+    layer: LayerSpec = (1, 0),
+) -> gf.Component:
+    """
+    Create a stylized cross using GDSFactory parametric functions, resembling a four-petal flower.
+
+    Args:
+        petal_radius: Radius of the circular "petals."
+        stub_length: Length of the rectangular stubs at the ends of the cross.
+        stub_width: Width of the rectangular stubs.
+        layer: GDS layer for the cross.
+
+    Returns:
+        A GDSFactory component representing the stylized cross.
+    """
+    c = gf.Component("stylized_cross")
+
+    # Create the petals (circles)
+    petal_top = c << gf.components.circle(radius=petal_radius, layer=layer)
+    petal_bottom = c << gf.components.circle(radius=petal_radius, layer=layer)
+    petal_left = c << gf.components.circle(radius=petal_radius, layer=layer)
+    petal_right = c << gf.components.circle(radius=petal_radius, layer=layer)
+
+    petal_top.movey(petal_radius)
+    petal_bottom.movey(-petal_radius)
+    petal_left.movex(-petal_radius)
+    petal_right.movex(petal_radius)
+
+    # Create the rectangular stubs
+    stub_top = c << gf.components.rectangle(size=(stub_width, stub_length), layer=layer, centered=True)
+    stub_bottom = c << gf.components.rectangle(size=(stub_width, stub_length), layer=layer, centered=True)
+    stub_left = c << gf.components.rectangle(size=(stub_length, stub_width), layer=layer, centered=True)
+    stub_right = c << gf.components.rectangle(size=(stub_length, stub_width), layer=layer, centered=True)
+
+    stub_top.movey(2 * petal_radius + stub_length / 2)
+    stub_bottom.movey(-(2 * petal_radius + stub_length / 2))
+    stub_left.movex(-(2 * petal_radius + stub_length / 2))
+    stub_right.movex(2 * petal_radius + stub_length / 2)
+
+    return c
+
+if __name__ == "__main__":
+    c = my_stylized_cross()
+    c.show()
+    c.write_gds("my_stylized_cross.gds")
+    print(f"Device footprint: {c.bbox}")
+```
+
+Key changes and explanations:
+
+*   **`my_stylized_cross` Function:** Replaced `my_cross_with_rect` with `my_stylized_cross` to reflect the new design.
+*   **Petal Creation (Circles):** Creates four circles using `gf.components.circle` which act as the rounded petals.  These are then positioned using `movex` and `movey` to form the cross shape.
+*   **Stub Creation (Rectangles):**  Creates four rectangular "stub" shapes that connect to the ends of the circular petals. These rectangles provide the straight edges seen in the target image.
+*   **Placement:** The code carefully positions each shape relative to the center of the component, creating the overall stylized cross.
+*   **Parameters:** Introduced `petal_radius`, `stub_length`, and `stub_width` for more control over the shape.
+
+This revised code creates a shape that is much closer to the reference image by using circles for the rounded portions and short rectangular extensions at each end.  It's significantly different from the standard cross created in the previous version.

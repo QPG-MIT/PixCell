@@ -1,0 +1,85 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreate_symmetric_device():
+    """
+    Recreates the device from the image using parametric primitives.
+    Footprint: 120um x 4um
+    """
+    c = gf.Component("device_recreation")
+    
+    # Layer and global dimensions
+    layer = (1, 0)
+    L = 120.0  # Total width based on footprint
+    H = 4.0    # Total height based on footprint
+    
+    # Shared parameters for horizontal gratings
+    bar_width = 0.06
+    bar_gap = 0.08
+    
+    # 1. CENTRAL GRATING (5 long bars)
+    # Define the component once to optimize memory
+    main_bar = gf.components.rectangle(size=(L, bar_width), layer=layer, centered=True)
+    
+    for i in range(5):
+        y_offset = (i - 2) * (bar_width + bar_gap)
+        ref = c << main_bar
+        ref.movey(y_offset)
+        
+    # 2. TOP AND BOTTOM SYMMETRIC BLOCKS
+    # Double-line rails parameters
+    rail_dx = 15.0
+    rail_dy = 1.4
+    rail_thick = 0.03
+    rail_sep = 0.05
+    
+    # Use the factory function gf.cross_section.cross_section as per catalog
+    # We use a Section to create the second parallel line for the rails
+    xs_rails = gf.cross_section.cross_section(
+        width=rail_thick, 
+        layer=layer,
+        sections=[gf.Section(width=rail_thick, offset=rail_thick + rail_sep, layer=layer)]
+    )
+    
+    # Components used in the top/bottom blocks
+    s_bend = gf.components.bend_s(size=(rail_dx, rail_dy), cross_section=xs_rails)
+    slab = gf.components.rectangle(size=(L - 2*rail_dx, 0.4), layer=layer, centered=True)
+    
+    for sign in [1, -1]:
+        # -- Side Rails (Mirrored) --
+        # Right Rail
+        rr = c << s_bend
+        rr.move((L/2 - rail_dx, sign * 0.5))
+        if sign == -1: rr.mirror_y()
+        
+        # Left Rail
+        lr = c << s_bend
+        lr.mirror_x()
+        lr.move(-(L/2 - rail_dx), sign * 0.5)
+        if sign == -1: lr.mirror_y()
+        
+        # -- Central Slab (Thick block) --
+        s_ref = c << slab
+        s_ref.movey(sign * 0.9)
+        
+        # -- Secondary Grating (5 bars) --
+        # Length increases as we move away from center to match the flare
+        for i in range(5):
+            y_pos = sign * (1.3 + i * (bar_width + bar_gap))
+            current_bar_len = 100 + (i * 4.5) 
+            
+            bar_comp = gf.components.rectangle(size=(current_bar_len, bar_width), layer=layer, centered=True)
+            b_ref = c << bar_comp
+            b_ref.movey(y_pos)
+
+    return c
+
+if __name__ == "__main__":
+    # Generate the device
+    component = recreate_symmetric_device()
+    
+    # Save the GDS file
+    component.write_gds("symmetric_device_fixed.gds")
+    
+    # Display the result
+    component.show()

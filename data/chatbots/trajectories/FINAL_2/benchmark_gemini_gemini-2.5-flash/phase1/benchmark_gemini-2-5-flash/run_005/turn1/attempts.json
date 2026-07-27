@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.871356",
+      "api_duration_seconds": 106.61282420158386,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 3036,
+        "total_tokens": 26646
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: taper() got an unexpected keyword argument 'centered'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:58.011198",
+      "api_duration_seconds": 35.61323285102844,
+      "usage": {
+        "input_tokens": 5407,
+        "output_tokens": 2815,
+        "total_tokens": 14067
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'taper_gdsfactorypcomponentsptapersptaper_L2_W2_W4_L1_0__1c391386' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:34.974892",
+      "api_duration_seconds": 19.473758935928345,
+      "usage": {
+        "input_tokens": 8288,
+        "output_tokens": 2017,
+        "total_tokens": 12867
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: boolean() missing 1 required positional argument: 'B'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16040,
+    "output_tokens": 7868,
+    "total_tokens": 53580
+  }
+}

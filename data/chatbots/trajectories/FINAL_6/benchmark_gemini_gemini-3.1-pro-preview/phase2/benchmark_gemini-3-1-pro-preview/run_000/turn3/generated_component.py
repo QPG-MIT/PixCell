@@ -1,0 +1,76 @@
+import gdsfactory as gf
+
+@gf.cell
+def elliptical_crossing() -> gf.Component:
+    """
+    Creates an optimized elliptical crossing component.
+    The geometry uses four shifted ellipses merged with a central cross.
+    Parameters are mathematically chosen to create a rounded central pinch, 
+    a smooth adiabatic bulge, and proportionate straight waveguide segments 
+    at the ends to match the target image.
+    """
+    c = gf.Component()
+    
+    # Target footprint constraint
+    total_length = 4.7
+    
+    # Refined proportions:
+    # - straight_width increased to 0.2 for sturdier ends.
+    # - petal parameters solved so that:
+    #   1. Center width is ~0.3um (softening the sharp pinch).
+    #   2. Ellipses intersect the straight waveguide at x=~1.7um, 
+    #      leaving ~0.65um of clean straight waveguide at each port.
+    straight_width = 0.2
+    petal_a = 0.894    # Ellipse x-radius (length)
+    petal_b = 0.4      # Ellipse y-radius (width bulge)
+    petal_shift = 0.83 # Distance from origin to ellipse center
+    
+    layer = (1, 0)
+    
+    # 1. Base cross enforcing the exact footprint and straight ends
+    base_cross = gf.components.cross(
+        length=total_length, 
+        width=straight_width, 
+        layer=layer
+    )
+    
+    # 2. Create the 4 offset petals
+    # Right petal
+    c_r = gf.Component()
+    ref_r = c_r << gf.components.ellipse(radii=(petal_a, petal_b), layer=layer)
+    ref_r.movex(petal_shift)
+    
+    # Left petal
+    c_l = gf.Component()
+    ref_l = c_l << gf.components.ellipse(radii=(petal_a, petal_b), layer=layer)
+    ref_l.movex(-petal_shift)
+    
+    # Top petal (swap radii for vertical orientation)
+    c_t = gf.Component()
+    ref_t = c_t << gf.components.ellipse(radii=(petal_b, petal_a), layer=layer)
+    ref_t.movey(petal_shift)
+    
+    # Bottom petal
+    c_b = gf.Component()
+    ref_b = c_b << gf.components.ellipse(radii=(petal_b, petal_a), layer=layer)
+    ref_b.movey(-petal_shift)
+    
+    # 3. Combine the geometry using Boolean OR operations to form a single clean polygon
+    u1 = gf.boolean(c_r, c_l, operation="or", layer=layer)
+    u2 = gf.boolean(c_t, c_b, operation="or", layer=layer)
+    u3 = gf.boolean(u1, u2, operation="or", layer=layer)
+    
+    # Final merge ensures the straight waveguide ends punch cleanly out of the ellipses
+    final_shape = gf.boolean(u3, base_cross, operation="or", layer=layer)
+    
+    # Add the unified geometry to our parent component
+    c << final_shape
+    
+    return c
+
+if __name__ == "__main__":
+    # Generate the device
+    device = elliptical_crossing()
+    
+    # Explicitly write to a GDS file
+    device.write_gds("elliptical_crossing.gds")

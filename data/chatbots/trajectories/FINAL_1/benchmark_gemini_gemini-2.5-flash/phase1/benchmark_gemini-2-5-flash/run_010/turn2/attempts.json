@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:20:40.505810",
+      "api_duration_seconds": 34.239331007003784,
+      "usage": {
+        "input_tokens": 4290,
+        "output_tokens": 1879,
+        "total_tokens": 12245
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: extrude() got an unexpected keyword argument 'widths'. Did you mean 'width'?",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:16.089492",
+      "api_duration_seconds": 31.09842085838318,
+      "usage": {
+        "input_tokens": 6202,
+        "output_tokens": 1834,
+        "total_tokens": 13001
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 2 validation errors for CrossSection\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=<function custom_device_f...function at 0x136980ea0>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nlayer\n  Extra inputs are not permitted [type=extra_forbidden, input_value=(1, 0), input_type=tuple]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidde",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:48.654187",
+      "api_duration_seconds": 9.720946073532104,
+      "usage": {
+        "input_tokens": 8201,
+        "output_tokens": 1942,
+        "total_tokens": 10494
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function custom_device_f...function at 0x12cd80ea0>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 18693,
+    "output_tokens": 5655,
+    "total_tokens": 35740
+  }
+}

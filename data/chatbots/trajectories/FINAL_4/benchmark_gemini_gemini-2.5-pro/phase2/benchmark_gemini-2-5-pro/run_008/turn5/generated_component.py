@@ -1,0 +1,95 @@
+import gdsfactory as gf
+import numpy as np
+import os
+
+@gf.cell
+def create_wavy_coupler():
+    """
+    Creates a directional coupler with a sinusoidal "hourglass" shape,
+    matching the target image.
+
+    The waveguides are defined by cosine-based paths. They are furthest
+    apart at the input/output ends and closest together in the center.
+    """
+    # 1. Define device parameters from footprint and visual analysis
+    length = 18.0
+    total_height_at_ends = 3.0  # The footprint is defined by the widest point
+    
+    # Visually estimate proportions: the gap at the end looks about twice the
+    # waveguide width. Let w = waveguide_width, g_end = end_gap.
+    # total_height = 2*w + g_end. If g_end = 2*w, then total_height = 4*w.
+    # So, w = total_height / 4.
+    waveguide_width = total_height_at_ends / 4.0  # This sets waveguide_width to 0.75
+    
+    # The gap in the middle is very narrow, estimated as half the waveguide width.
+    mid_gap = waveguide_width / 2.0  # This sets mid_gap to 0.375
+
+    # 2. Calculate key y-coordinates for the waveguide centerlines
+    # At the ends (x=0, x=L), the separation is maximized.
+    s_max_center_to_center = (total_height_at_ends - waveguide_width)
+    y_end = s_max_center_to_center / 2.0  # y-position of top wg centerline at ends
+
+    # At the center (x=L/2), the separation is minimized.
+    s_min_center_to_center = mid_gap + waveguide_width
+    y_mid = s_min_center_to_center / 2.0 # y-position of top wg centerline at middle
+
+    # 3. Determine the parameters for the cosine function defining the path
+    # The path for the top waveguide is y(x) = C + A * cos(2*pi*x/L).
+    # We solve for amplitude A and offset C using the boundary conditions:
+    # y(0) = y(L) = y_end      => C + A = y_end
+    # y(L/2) = y_mid (minimum) => C - A = y_mid
+    C = (y_end + y_mid) / 2.0
+    A = (y_end - y_mid) / 2.0
+
+    # Number of points to define the smooth curve
+    num_points = 201
+
+    # 4. Generate the points for the paths
+    x_coords = np.linspace(0, length, num_points)
+
+    # Calculate the y-coordinates for the top waveguide's centerline.
+    # This creates a "dip" shape, high at the ends and low in the middle.
+    y_coords_top = C + A * np.cos(2 * np.pi * x_coords / length)
+    points_top = list(zip(x_coords, y_coords_top))
+
+    # The bottom waveguide is a mirror image across the x-axis.
+    y_coords_bottom = -y_coords_top
+    points_bottom = list(zip(x_coords, y_coords_bottom))
+
+    # 5. Create the component and define the cross-section
+    c = gf.Component("wavy_coupler_hourglass")
+    xs = gf.cross_section.cross_section(width=waveguide_width)
+
+    # 6. Create paths from the points, extrude them, and add to the component
+    path_top = gf.Path(points_top)
+    path_bottom = gf.Path(points_bottom)
+
+    wg_top = c << gf.path.extrude(path_top, cross_section=xs)
+    wg_bottom = c << gf.path.extrude(path_bottom, cross_section=xs)
+
+    # 7. Add and rename ports for the final device
+    c.add_port("o1", port=wg_top.ports["o1"])
+    c.add_port("o2", port=wg_top.ports["o2"])
+    c.add_port("o3", port=wg_bottom.ports["o1"])
+    c.add_port("o4", port=wg_bottom.ports["o2"])
+
+    # 8. Center the component on the origin (0,0)
+    c.movex(-length / 2.0)
+
+    return c
+
+# Instantiate the final component
+device = create_wavy_coupler()
+
+# Define the output filename
+output_filename = "wavy_coupler.gds"
+
+# Save the component to a GDS file
+device.write_gds(output_filename)
+
+# Optional: Display the component in a viewer if available
+# device.show()
+
+# Provide confirmation to the user
+print(f"Successfully generated GDS file: '{output_filename}'")
+print(f"File saved at: {os.path.abspath(output_filename)}")

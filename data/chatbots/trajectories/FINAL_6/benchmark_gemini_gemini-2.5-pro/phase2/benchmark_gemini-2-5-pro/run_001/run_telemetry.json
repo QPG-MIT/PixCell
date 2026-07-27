@@ -1,0 +1,42 @@
+{
+  "run_id": 1,
+  "seed": 1323,
+  "model": "gemini-2.5-pro",
+  "provider": "gemini",
+  "phase1_sse": 97004.0,
+  "phase1_iou": 0.43354666915817996,
+  "run_duration_seconds": 212.509,
+  "turns": [
+    {
+      "turn": 3,
+      "success": true,
+      "attempts": 1,
+      "usage": {
+        "input_tokens": 3392,
+        "output_tokens": 1395,
+        "total_tokens": 13789
+      },
+      "duration_seconds": 79.165,
+      "sse": 71029.0,
+      "iou": 0.09477990467208727
+    },
+    {
+      "turn": 4,
+      "success": false,
+      "attempts": 3,
+      "usage": {
+        "input_tokens": 6900,
+        "output_tokens": 1035,
+        "total_tokens": 8545
+      },
+      "duration_seconds": 133.34
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10292,
+    "output_tokens": 2430,
+    "total_tokens": 22334
+  },
+  "total_api_calls": 4,
+  "total_successful_turns": 1
+}

@@ -1,0 +1,91 @@
+import gdsfactory as gf
+
+@gf.cell
+def routing_line(width: float = 0.1, length: float = 120.0, dy: float = 1.0) -> gf.Component:
+    """
+    Creates a single parametric line using S-bends and straight segments.
+    Starts at (0,0), bends vertically by `-dy`, goes straight, and bends back by `dy` to return to the original axis.
+    """
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    L_straight_mid = 60.0
+    L_sbend_x = (length - L_straight_mid) / 2.0  # 30.0
+    
+    # Left S-bend (drops down by dy)
+    b1 = c << gf.components.bend_s(size=(L_sbend_x, -dy), cross_section=xs)
+    
+    # Center straight section
+    s1 = c << gf.components.straight(length=L_straight_mid, cross_section=xs)
+    
+    # Right S-bend (returns up by dy)
+    b2 = c << gf.components.bend_s(size=(L_sbend_x, dy), cross_section=xs)
+    
+    # Connect segments seamlessly
+    s1.connect("o1", b1.ports["o2"])
+    b2.connect("o1", s1.ports["o2"])
+    
+    return c
+
+@gf.cell
+def recreating_geometry() -> gf.Component:
+    """
+    Recreates the symmetric directional coupler structure with multiple 
+    slotted waveguides bounded strictly within the requested footprint.
+    """
+    c = gf.Component("parallel_slot_coupler_final")
+
+    # --- Geometric Parameters ---
+    length = 120.0      # Total footprint length
+    height = 4.0        # Total footprint height
+    
+    w = 0.08            # Waveguide trace width
+    pitch = 0.16        # Pitch (Width + Gap)
+    dy_shift = 0.84     # Vertical deviation of the S-bends at the ends
+    
+    # --- 1. Middle Group (5 straight waveguides) ---
+    xs_thin = gf.cross_section.cross_section(width=w, layer=(1, 0))
+    for i in range(-2, 3): # Indices -2, -1, 0, 1, 2
+        y_mid = i * pitch 
+        ref = c << gf.components.straight(length=length, cross_section=xs_thin)
+        ref.move((-length/2, y_mid))
+        
+    # --- 2. Top Group (4 thin bent waveguides + 1 thick bounding block) ---
+    # The lowest line in this group has index 3. It needs to align with the middle group.
+    for i in range(3, 7): # Indices 3, 4, 5, 6
+        y_mid = i * pitch
+        y_end = y_mid + dy_shift  # Place it higher at the ends so it dips down to y_mid
+        ref = c << routing_line(width=w, length=length, dy=dy_shift)
+        ref.move((-length/2, y_end))
+        
+    # Top thick outer bounding block (Acts as the 5th line conceptually but extends far upward)
+    W_thick = 2.0
+    y_mid_thick = 2.08  # Perfectly pitched distance leaving an exact 0.08um gap from line 6
+    y_end_thick = y_mid_thick + dy_shift
+    ref_thick_top = c << routing_line(width=W_thick, length=length, dy=dy_shift)
+    ref_thick_top.move((-length/2, y_end_thick))
+    
+    # --- 3. Bottom Group (Mirror of Top Group) ---
+    for i in range(-6, -2): # Indices -6, -5, -4, -3
+        y_mid = i * pitch
+        y_end = y_mid - dy_shift  # Place it lower at the ends so it curves UP to y_mid
+        ref = c << routing_line(width=w, length=length, dy=-dy_shift)
+        ref.move((-length/2, y_end))
+        
+    # Bottom thick outer bounding block
+    y_mid_thick_bot = -2.08
+    y_end_thick_bot = y_mid_thick_bot - dy_shift
+    ref_thick_bot = c << routing_line(width=W_thick, length=length, dy=-dy_shift)
+    ref_thick_bot.move((-length/2, y_end_thick_bot))
+    
+    # --- 4. Bounding Box Cut ---
+    # Intersect the geometry with a master rectangle to create perfectly flat boundary edges
+    box = gf.components.rectangle(size=(length, height), layer=(1, 0), centered=True)
+    final_c = gf.boolean(c, box, operation="and", layer=(1, 0))
+    
+    return final_c
+
+if __name__ == "__main__":
+    # Generate and specifically export to a GDS file so testing pipelines capture it
+    device = recreating_geometry()
+    device.write_gds("output.gds")

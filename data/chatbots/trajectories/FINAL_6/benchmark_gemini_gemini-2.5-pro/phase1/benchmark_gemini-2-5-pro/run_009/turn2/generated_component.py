@@ -1,0 +1,92 @@
+import gdsfactory as gf
+import os
+
+@gf.cell
+def create_lobed_shape(
+    height: float = 4.7,
+    width: float = 2.8,
+    cap_thickness: float = 0.2,
+    vertical_lobe_width_ratio: float = 0.8,
+    layer: tuple = (1, 0),
+):
+    """
+    Creates a shape with a central circular body, vertical elliptical lobes,
+    and small rectangular caps on the four cardinal extrema.
+
+    This is constructed by the boolean union of a circle, a vertical ellipse,
+    and two rectangles forming a cross.
+
+    Args:
+        height: The total vertical dimension of the component.
+        width: The total horizontal dimension of the component.
+        cap_thickness: The thickness of the rectangular caps.
+        vertical_lobe_width_ratio: The width of the vertical ellipse as a
+                                   fraction of the total width.
+        layer: The GDS layer for the component.
+    """
+    c = gf.Component()
+
+    # --- 1. Create the main body from a circle and a vertical ellipse ---
+
+    # The central body is a circle whose diameter defines the shape's width.
+    circle_radius = width / 2.0
+    central_circle = gf.components.circle(radius=circle_radius, layer=layer)
+
+    # The vertical lobes are formed by a tall ellipse.
+    # Its height defines the total component height.
+    # Its width is a fraction of the total width.
+    ellipse_radii = ((width * vertical_lobe_width_ratio) / 2.0, height / 2.0)
+    vertical_ellipse = gf.components.ellipse(radii=ellipse_radii, layer=layer)
+
+    # Union the circle and ellipse to form the main curved body.
+    body = gf.boolean(
+        A=central_circle, B=vertical_ellipse, operation="or", layer=layer
+    )
+
+    # --- 2. Create the caps using two rectangles ---
+    # Because the shape is not square, a standard cross component is unsuitable.
+    # We construct an unequal cross from two rectangles instead.
+
+    # A thin vertical rectangle spanning the total height for top/bottom caps.
+    cap_vertical = gf.components.rectangle(
+        size=(cap_thickness, height), layer=layer, centered=True
+    )
+    # A thin horizontal rectangle spanning the total width for left/right caps.
+    cap_horizontal = gf.components.rectangle(
+        size=(width, cap_thickness), layer=layer, centered=True
+    )
+    # Union the two rectangles to form a single cross shape for all four caps.
+    caps = gf.boolean(A=cap_vertical, B=cap_horizontal, operation="or", layer=layer)
+
+
+    # --- 3. Combine the body and the caps ---
+    final_shape = gf.boolean(A=body, B=caps, operation="or", layer=layer)
+
+    # Add the final geometry to the component cell
+    _ = c << final_shape
+    c.info['footprint_um'] = (width, height)
+    return c
+
+# --- Instantiate and Save the Component ---
+if __name__ == "__main__":
+    # Parameters are estimated from the visual appearance of the target image.
+    # The height is kept at 4.7um, similar to the previous component's size,
+    # while the width is reduced to match the new aspect ratio.
+    device = create_lobed_shape(
+        height=4.7,
+        width=2.8,
+        cap_thickness=0.2,
+        vertical_lobe_width_ratio=0.8
+    )
+
+    # Define the output filename
+    output_filename = "lobed_shape.gds"
+    
+    # Write the GDS file
+    device.write_gds(output_filename)
+    
+    # Add a confirmation message for the user
+    print(f"Successfully wrote GDS file to: {os.path.abspath(output_filename)}")
+
+    # To display the component if running interactively in a Jupyter notebook or similar
+    # device.show()

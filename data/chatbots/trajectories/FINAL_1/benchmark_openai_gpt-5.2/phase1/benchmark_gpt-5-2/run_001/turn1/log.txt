@@ -1,0 +1,122 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+
+LAYER = (1, 0)
+
+
+@gf.cell
+def taper_transition(
+    length: float = 10.0,
+    width1: float = 0.15,
+    width2: float = 0.30,
+    layer=LAYER,
+    width_type: str = "sine",
+) -> gf.Component:
+    """Parametric taper made with Path + extrude_transition (no raw polygons)."""
+    xs1 = gf.cross_section.strip(width=width1, layer=layer)
+    xs2 = gf.cross_section.strip(width=width2, layer=layer)
+    transition = gf.path.transition(xs1, xs2, width_type=width_type)
+    p = gf.path.straight(length=length)
+    return gf.path.extrude_transition(p, transition)
+
+
+@gf.cell
+def three_strip_splitter_footprint_40x1p7(
+    # Footprint target: (40.0, 1.7) um
+    length_total: float = 40.0,
+    height_total: float = 1.7,
+    layer=LAYER,
+    # Waveguide widths (chosen to match the image proportions within 1.7um height)
+    w_wg: float = 0.30,
+    w_in: float = 0.80,
+    w_outer_start: float = 0.15,
+    # Vertical placement (kept within +/- height_total/2)
+    y_cpl: float = 0.45,   # outer guides y in the 3-guide coupling region
+    y_out: float = 0.70,   # outer guides y at the right side
+    # Length partitioning (sums to 40um total in X)
+    lin: float = 4.0,      # wide input straight
+    lt_in: float = 6.0,    # wide->narrow taper for center guide
+    lt_outer: float = 10.0,  # outer-guide appearance taper
+    lcpl: float = 13.0,      # parallel (3-guide) straight section
+    lsb_dx: float = 8.0,     # s-bend dx to fan out
+    lout: float = 5.0,       # final straight to the right edge
+) -> gf.Component:
+    """
+    Recreates the PNG: two outer waveguides that fan out to the right, with a
+    shorter middle waveguide that terminates just before the fan-out region,
+    and a wide left input that tapers down into the middle guide.
+    """
+    c = gf.Component()
+
+    # Basic cross-sections
+    xs_wg = gf.cross_section.strip(width=w_wg, layer=layer)
+    xs_in = gf.cross_section.strip(width=w_in, layer=layer)
+
+    # -------------------------
+    # Center (middle) waveguide
+    # -------------------------
+    in_st = c << gf.components.straight(length=lin, cross_section=xs_in)
+    in_tp = c << taper_transition(length=lt_in, width1=w_in, width2=w_wg, layer=layer)
+    in_tp.connect("o1", in_st.ports["o2"])
+
+    # Middle guide ends where the outer guides begin to fan out
+    # (end_x = lin + lt_in + lmid = (x_start_outer + lt_outer + lcpl))
+    x_start_outer = lin  # outer guides start visually after the wide input
+    x_fan_start = x_start_outer + lt_outer + lcpl
+    lmid = x_fan_start - (lin + lt_in)
+
+    mid_st = c << gf.components.straight(length=lmid, cross_section=xs_wg)
+    mid_st.connect("o1", in_tp.ports["o2"])
+
+    # -------------------------
+    # Outer top waveguide
+    # -------------------------
+    dy_fan = y_out - y_cpl
+
+    top_tp = c << taper_transition(length=lt_outer, width1=w_outer_start, width2=w_wg, layer=layer)
+    top_tp.move((x_start_outer, +y_cpl))
+
+    top_cpl = c << gf.components.straight(length=lcpl, cross_section=xs_wg)
+    top_cpl.connect("o1", top_tp.ports["o2"])
+
+    top_sb = c << gf.components.bend_s(size=(lsb_dx, +dy_fan), cross_section=xs_wg)
+    top_sb.connect("o1", top_cpl.ports["o2"])
+
+    top_out = c << gf.components.straight(length=lout, cross_section=xs_wg)
+    top_out.connect("o1", top_sb.ports["o2"])
+
+    # -------------------------
+    # Outer bottom waveguide
+    # -------------------------
+    bot_tp = c << taper_transition(length=lt_outer, width1=w_outer_start, width2=w_wg, layer=layer)
+    bot_tp.move((x_start_outer, -y_cpl))
+
+    bot_cpl = c << gf.components.straight(length=lcpl, cross_section=xs_wg)
+    bot_cpl.connect("o1", bot_tp.ports["o2"])
+
+    bot_sb = c << gf.components.bend_s(size=(lsb_dx, -dy_fan), cross_section=xs_wg)
+    bot_sb.connect("o1", bot_cpl.ports["o2"])
+
+    bot_out = c << gf.components.straight(length=lout, cross_section=xs_wg)
+    bot_out.connect("o1", bot_sb.ports["o2"])
+
+    # Ports (1 input on the left, 2 outputs on the right)
+    c.add_port("o1", port=in_st.ports["o1"])
+    c.add_port("o2", port=top_out.ports["o2"])
+    c.add_port("o3", port=bot_out.ports["o2"])
+
+    # (Optional) quick sanity check against the requested footprint
+    # bbox = c.bbox
+    # print("bbox (um):", bbox, "size:", (bbox[1][0]-bbox[0][0], bbox[1][1]-bbox[0][1]))
+
+    return c
+
+
+if __name__ == "__main__":
+    c = three_strip_splitter_footprint_40x1p7()
+    c.write_gds("recreated_device.gds")
+```
+

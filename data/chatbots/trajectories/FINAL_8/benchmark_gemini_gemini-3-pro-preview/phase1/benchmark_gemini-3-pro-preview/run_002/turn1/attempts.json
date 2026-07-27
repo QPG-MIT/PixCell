@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:55:12.705353",
+      "api_duration_seconds": 174.88163208961487,
+      "usage": {
+        "input_tokens": 3155,
+        "output_tokens": 1978,
+        "total_tokens": 20302
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise AttributeError(item)\nAttributeError: Section",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:58:08.762558",
+      "api_duration_seconds": 62.37293100357056,
+      "usage": {
+        "input_tokens": 5158,
+        "output_tokens": 1898,
+        "total_tokens": 10790
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 4 validation errors for Section\nlayer.tuple[int, int]\n  Input should be a valid tuple [type=tuple_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.12/v/tuple_type\nlayer.str\n  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.12/v/string_type\nlayer.int\n  Input should be a valid integer [type",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:59:12.446953",
+      "api_duration_seconds": 73.93433284759521,
+      "usage": {
+        "input_tokens": 7339,
+        "output_tokens": 1877,
+        "total_tokens": 14059
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'DInstancePorts' object has no attribute 'values'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15652,
+    "output_tokens": 5753,
+    "total_tokens": 45151
+  }
+}

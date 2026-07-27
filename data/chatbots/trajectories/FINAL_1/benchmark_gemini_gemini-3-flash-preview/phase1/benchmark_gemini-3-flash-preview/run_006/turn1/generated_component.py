@@ -1,0 +1,90 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def recreated_device():
+    # Total Footprint: 40.0um x 1.7um
+    # We divide the 40um length into: 
+    # Input straight (8um), Transition section (24um), Output straight (8um)
+    L_in, L_trans, L_out = 8.0, 24.0, 8.0
+    
+    # Widths based on visual proportions and the 1.7um height constraint
+    w_mid = 0.5        # Central waveguide width
+    w_side_in = 0.2    # Side waveguide width at start
+    w_side_out = 0.5   # Side waveguide width at end
+    gap_in = 0.1       # Initial gap
+    
+    # Calculations to fit 1.7um height perfectly
+    # Center of side waveguide at input: (w_mid/2) + gap + (w_side_in/2) = 0.45
+    y_start = 0.45
+    # To reach 1.7um edge at output: (1.7/2) - (w_side_out/2) = 0.85 - 0.25 = 0.6
+    y_end = 0.6
+    dy = y_end - y_start # Vertical displacement for the S-bend path
+    
+    c = gf.Component("device_recreation")
+
+    # 1. CENTRAL WAVEGUIDE
+    # Straight segment
+    mid_s = c << gf.components.straight(length=L_in, width=w_mid)
+    # Taper segment (ends in a sharp tip)
+    mid_t = c << gf.components.taper(length=L_trans, width1=w_mid, width2=0.01)
+    mid_t.connect("o1", mid_s.ports["o2"])
+
+    # 2. SIDE ARMS (Top and Bottom)
+    # We define a helper function for the side arm using the Path system
+    @gf.cell
+    def side_arm():
+        a = gf.Component()
+        
+        # A. Input Straight
+        s1 = a << gf.components.straight(length=L_in, width=w_side_in)
+        
+        # B. S-Bend + Width Transition Path
+        # We manually define the points for a smooth cosine S-bend
+        x_pts = np.linspace(0, L_trans, 50)
+        y_pts = dy * (1 - np.cos(np.pi * x_pts / L_trans)) / 2
+        pts = [(float(x), float(y)) for x, y in zip(x_pts, y_pts)]
+        path_obj = gf.Path(pts)
+        
+        # Define cross-sections for the transition (from 0.2um to 0.5um)
+        xs1 = gf.cross_section.cross_section(width=w_side_in)
+        xs2 = gf.cross_section.cross_section(width=w_side_out)
+        trans = gf.path.transition(xs1, xs2, width_type="sine")
+        
+        # Extrude the path using the transition
+        s2 = a << gf.path.extrude_transition(path_obj, transition=trans)
+        s2.connect("o1", s1.ports["o2"])
+        
+        # C. Output Straight
+        s3 = a << gf.components.straight(length=L_out, width=w_side_out)
+        s3.connect("o1", s2.ports["o2"])
+        
+        a.add_port("o1", port=s1.ports["o1"])
+        return a
+
+    # Add Top Arm
+    arm_ref = side_arm()
+    top = c << arm_ref
+    top.movey(y_start)
+    
+    # Add Bottom Arm (Mirroring the top one)
+    bot = c << arm_ref
+    bot.mirror_y()
+    bot.movey(-y_start)
+
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    component = recreated_device()
+    
+    # 1. WRITE GDS FILE (This ensures a file is produced)
+    filename = "device_recreation.gds"
+    component.write_gds(filename)
+    print(f"Success! GDS file produced: {filename}")
+    
+    # 2. ATTEMPT TO SHOW (Requires KLayout)
+    try:
+        component.show()
+    except Exception:
+        print("Note: Could not open KLayout automatically, but GDS was saved.")

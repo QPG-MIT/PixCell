@@ -1,0 +1,117 @@
+import gdsfactory as gf
+
+@gf.cell
+def linear_taper(length: float, width1: float, width2: float) -> gf.Component:
+    """
+    Creates a taper component with a linear width transition using the path
+    extrusion method. This produces a trapezoidal shape.
+
+    Args:
+        length: The length of the taper.
+        width1: The width at the start of the taper (narrow end).
+        width2: The width at the end of the taper (wide end).
+    """
+    # Define the path for the taper, which is a simple straight line
+    taper_path = gf.path.straight(length=length)
+
+    # Define the cross-sections for the start and end of the taper
+    xs1 = gf.cross_section.cross_section(width=width1)
+    xs2 = gf.cross_section.cross_section(width=width2)
+
+    # Create the transition profile. 'linear' creates a trapezoidal shape,
+    # which matches the sharp horns in the new target image.
+    transition = gf.path.transition(
+        cross_section1=xs1, cross_section2=xs2, width_type="linear"
+    )
+
+    # Extrude the path with the linear transition to create the component
+    taper_component = gf.path.extrude_transition(p=taper_path, transition=transition)
+    return taper_component
+
+
+def create_component() -> gf.Component:
+    """
+    Recreates the directional coupler with sharp, linear flared ports based
+    on the new target image and footprint constraints.
+    """
+
+    # --- 1. Define Parameters from Footprint and Image Analysis ---
+
+    # Overall footprint dimensions from the task constraint
+    footprint_x = 120.0
+    # The new target image has a much larger vertical extent. The original
+    # footprint_y=4.0 is re-interpreted as the center-to-center vertical
+    # separation (dy) of the coupler arms.
+    
+    # Geometric parameters for the taper (horn) sections
+    taper_length = 20.0
+    port_width = 8.0  # Width of the wide end of the taper, adjusted for visual match
+    wg_width = 0.5   # Width of the narrow waveguide
+
+    # Geometric parameters for the central coupler section
+    coupler_straight_length = 50.0
+    # Calculate dx for the S-bend to ensure the total length is exactly 120 um
+    coupler_bend_dx = (footprint_x - coupler_straight_length - 2 * taper_length) / 2.0
+    # -> (120 - 50 - 40) / 2 = 15.0
+    
+    coupler_separation_dy = 4.0
+    gap = 0.2
+
+    # --- 2. Create the Component Primitives ---
+
+    c = gf.Component("sharp_flared_coupler")
+    xs = gf.cross_section.cross_section(width=wg_width)
+
+    # Create the central coupler primitive. This includes the S-bends and
+    # the straight parallel coupling region.
+    coupler_core = gf.components.coupler(
+        length=coupler_straight_length,
+        gap=gap,
+        dy=coupler_separation_dy,
+        dx=coupler_bend_dx,
+        cross_section=xs,
+    )
+
+    # Create the sharp, linear taper primitive using our new helper function
+    taper = linear_taper(
+        length=taper_length, width1=wg_width, width2=port_width
+    )
+    
+    # --- 3. Assemble the Primitives into the Final Component ---
+
+    # Add the central coupler to the component
+    coupler_ref = c << coupler_core
+
+    # Create, mirror, and connect the input tapers (left side)
+    taper_in_bot = c << taper
+    taper_in_top = c << taper
+    taper_in_bot.mirror()
+    taper_in_top.mirror()
+    taper_in_bot.connect("o1", coupler_ref.ports["o1"])
+    taper_in_top.connect("o1", coupler_ref.ports["o2"])
+
+    # Create and connect the output tapers (right side)
+    taper_out_top = c << taper
+    taper_out_bot = c << taper
+    taper_out_top.connect("o1", coupler_ref.ports["o3"])
+    taper_out_bot.connect("o1", coupler_ref.ports["o4"])
+
+    # --- 4. Expose the External Ports ---
+
+    # The external ports are the wide ends of the tapers (port 'o2')
+    c.add_port("o1", port=taper_in_bot.ports["o2"]) # Bottom-left
+    c.add_port("o2", port=taper_in_top.ports["o2"]) # Top-left
+    c.add_port("o3", port=taper_out_top.ports["o2"])# Top-right
+    c.add_port("o4", port=taper_out_bot.ports["o2"])# Bottom-right
+
+    return c
+
+if __name__ == "__main__":
+    # Instantiate the component by calling the creation function
+    my_component = create_component()
+    
+    # Write the component to a GDS file in the current directory
+    my_component.write_gds("sharp_flared_coupler.gds")
+
+    # To visualize the component, you can uncomment the line below
+    # my_component.show()

@@ -1,0 +1,128 @@
+Turn 4 Response:
+
+To replicate the inverse taper coupler shown in the target image, we need to carefully manage the segmentation of the device and the transition profiles.
+
+**Key Design Updates based on Target Image Analysis:**
+1.  **Segmentation Lengths:** The device is split into three sections. Based on pixel ratios in the target image, the **Straight Input** is shortened (~35%), the **Transition Zone** is lengthened (~45%), and the **Straight Output** takes the remainder (~20%). This positions the "flare" correctly.
+2.  **Central Taper Length:** The central taper ends roughly halfway into the transition zone of the side arms. This ensures the optical mode is handed over to the side arms while they are expanding but before they are fully separated.
+3.  **Side Arm Expansion:** The side arms widen significantly (0.15um to 0.55um) while bending outwards. By using a cosine path for the bend and a sine profile for the width expansion, we achieve a geometry where the inner edge of the side arms remains relatively straight (quasi-parallel) while the outer edge flares out, matching the visual signature of the target.
+
+Here is the refined GDSFactory script:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_inverse_taper():
+    c = gf.Component()
+
+    # --- Dimensions & Constraints ---
+    # Global device footprint constraints
+    length_total = 40.0
+    height_footprint = 1.7
+    
+    # Longitudinal segmentation lengths
+    # Adjusted to match the visual proportions of the target image
+    l_in_straight = 14.0   # Parallel input section
+    l_transition = 18.0    # Flaring/Transition section
+    l_out_straight = 8.0   # Wide parallel output section
+    
+    # Central taper length
+    # Ends inside the transition zone to ensure adiabatic mode transfer
+    l_taper = 22.0 
+
+    # Transverse dimensions (Widths)
+    w_center_start = 0.35   # Central core width
+    w_center_end = 0.03     # Sharp tip
+    
+    w_side_start = 0.15     # Narrow input for side arms
+    w_side_end = 0.55       # Wide output for side arms
+    
+    gap_in = 0.1            # Initial coupling gap
+    
+    layer_wg = (1, 0)
+
+    # --- Geometry Calculations ---
+    
+    # 1. Y-positions at input
+    # Center waveguide is at y=0. Side waveguides are symmetric.
+    y_side_in_abs = (w_center_start / 2.0) + gap_in + (w_side_start / 2.0)
+    
+    # 2. Y-positions at output
+    # Outer boundaries are fixed by the footprint height (1.7um).
+    # The center of the side arm is determined so its outer edge touches the footprint boundary.
+    y_side_out_abs = (height_footprint / 2.0) - (w_side_end / 2.0)
+    
+    # Vertical shift (Dy) required for the S-bend path center
+    # Geometrically, as the width expands outwards, this shift keeps the inner gap 
+    # relatively straight, creating the "opening" effect seen in the image.
+    dy = y_side_out_abs - y_side_in_abs
+    
+    # --- Components Construction ---
+
+    # 1. Central Taper
+    taper = c << gf.components.taper(
+        length=l_taper,
+        width1=w_center_start,
+        width2=w_center_end,
+        layer=layer_wg
+    )
+    taper.move((0, 0))
+
+    # Define Cross Sections
+    xs_side_in = gf.cross_section.cross_section(width=w_side_start, layer=layer_wg)
+    xs_side_out = gf.cross_section.cross_section(width=w_side_end, layer=layer_wg)
+
+    # --- Top Arm Construction ---
+    
+    # Segment 1: Straight Input
+    top_s1 = c << gf.components.straight(length=l_in_straight, cross_section=xs_side_in)
+    top_s1.move((0, y_side_in_abs))
+    
+    # Segment 2: S-Bend with Width Transition
+    # We generate a path for a cosine-shaped S-bend.
+    t = np.linspace(0, 1, 201)
+    x_pts = l_transition * t
+    y_pts = dy * (1 - np.cos(np.pi * t)) / 2.0 
+    
+    pts_top = np.column_stack((x_pts, y_pts))
+    path_top = gf.Path(pts_top)
+    
+    # Create width transition 
+    # width_type='sine' ensures the width expansion creates a smooth, bell-like curve
+    transition = gf.path.transition(xs_side_in, xs_side_out, width_type='sine')
+    
+    top_s2 = c << gf.path.extrude_transition(path_top, transition)
+    top_s2.connect("o1", top_s1.ports["o2"])
+    
+    # Segment 3: Straight Output
+    top_s3 = c << gf.components.straight(length=l_out_straight, cross_section=xs_side_out)
+    top_s3.connect("o1", top_s2.ports["o2"])
+    
+    # --- Bottom Arm Construction (Symmetric) ---
+    
+    # Segment 1: Straight Input
+    bot_s1 = c << gf.components.straight(length=l_in_straight, cross_section=xs_side_in)
+    bot_s1.move((0, -y_side_in_abs))
+    
+    # Segment 2: S-Bend (Negative Dy for downward bend)
+    y_pts_bot = -dy * (1 - np.cos(np.pi * t)) / 2.0
+    pts_bot = np.column_stack((x_pts, y_pts_bot))
+    path_bot = gf.Path(pts_bot)
+    
+    bot_s2 = c << gf.path.extrude_transition(path_bot, transition)
+    bot_s2.connect("o1", bot_s1.ports["o2"])
+    
+    # Segment 3: Straight Output
+    bot_s3 = c << gf.components.straight(length=l_out_straight, cross_section=xs_side_out)
+    bot_s3.connect("o1", bot_s2.ports["o2"])
+
+    # Flatten to merge cells into a single geometry
+    c.flatten()
+    return c
+
+# Generate and save
+device = device_inverse_taper()
+device.write_gds("inverse_taper_coupler.gds")
+```

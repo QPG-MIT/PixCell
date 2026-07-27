@@ -1,0 +1,85 @@
+import gdsfactory as gf
+from gdsfactory.cross_section import Section
+
+@gf.cell
+def create_device():
+    """Creates the geometry with four separated arms."""
+    c = gf.Component("separated_arms_device")
+
+    # --- Define Device Parameters ---
+    n_lines = 4
+    h_grating = 1.0
+    bend_radius = 15.0
+    
+    # Define the spacing for the separated arms
+    horizontal_gap = 40.0 # The space between the inner edges of the arms
+    vertical_gap = 1.0 # The space between the top and bottom arm gratings
+
+    # Define the straight section length of each arm
+    # This can be set independently now
+    arm_straight_len = 25.0
+
+    # Calculate line properties based on grating height (fill factor = 0.5)
+    line_width = h_grating / (n_lines * 2 - 1)
+    gap = line_width
+    pitch = line_width + gap
+
+    # --- 1. Create the Reusable Flaring Arm Component ---
+    # Define a path for the arm (straight segment followed by a bend)
+    arm_path = gf.Path()
+    arm_path.append(gf.path.straight(length=arm_straight_len))
+    arm_path.append(gf.path.euler(radius=bend_radius, angle=90))
+
+    # Define a custom cross-section with 4 parallel lines
+    sections = []
+    # Calculate starting y-offset to center the grating around y=0
+    start_y_local = - (n_lines - 1) * pitch / 2
+    for i in range(n_lines):
+        sec_y_pos = start_y_local + i * pitch
+        sections.append(Section(width=line_width, offset=sec_y_pos, layer=(1, 0)))
+    
+    xs_multi_line = gf.cross_section.CrossSection(sections=sections)
+
+    # Extrude the path with the custom cross-section to create the base arm component
+    arm = gf.path.extrude(arm_path, cross_section=xs_multi_line)
+
+    # --- 2. Assemble the Four Arms ---
+    # Calculate the placement offsets based on the desired gaps
+    x_offset = horizontal_gap / 2
+    y_offset = h_grating / 2 + vertical_gap / 2
+
+    # Top right
+    tr_arm = c.add_ref(arm)
+    tr_arm.move((x_offset, y_offset))
+
+    # Top left (mirrored)
+    tl_arm = c.add_ref(arm)
+    tl_arm.mirror()
+    tl_arm.move((-x_offset, y_offset))
+    
+    # Bottom right (mirrored)
+    br_arm = c.add_ref(arm)
+    br_arm.mirror_y()
+    br_arm.move((x_offset, -y_offset))
+
+    # Bottom left (mirrored)
+    bl_arm = c.add_ref(arm)
+    bl_arm.mirror_y()  # Mirror vertically to point down
+    bl_arm.mirror()    # Mirror horizontally to point left
+    bl_arm.move((-x_offset, -y_offset))
+
+    return c
+
+# This block ensures the code runs only when the script is executed directly
+if __name__ == "__main__":
+    # Generate the component by calling the function
+    device_to_save = create_device()
+
+    # Write the GDS file.
+    device_to_save.write_gds("recreated_device.gds")
+
+    # Add a print statement for confirmation
+    print("Successfully wrote GDS file to 'recreated_device.gds'")
+
+    # You can also uncomment the following line to open the GDS in KLayout for viewing
+    # device_to_save.show()

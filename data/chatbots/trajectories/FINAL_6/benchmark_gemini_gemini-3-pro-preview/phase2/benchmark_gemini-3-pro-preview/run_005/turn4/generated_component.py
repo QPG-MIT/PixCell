@@ -1,0 +1,111 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def star_cross_device_v4():
+    """
+    Creates a 4-fold symmetric device with tapered elliptical petals and rectangular stubs.
+    Refines the central intersection to be sharp (concave star shape) and the tip transition 
+    to match the target geometry.
+    Footprint constrained to 4.7um x 4.7um.
+    """
+    c = gf.Component()
+    
+    # 1. Define Dimensions
+    footprint = 4.7
+    radius = footprint / 2.0  # 2.35 um
+    
+    # Feature sizes estimated from target image
+    # Stubs are the thin, straight waveguide sections at the tips
+    stub_width = 0.14
+    stub_length = 0.65
+    
+    # Petals are the central bulbous sections
+    petal_width = 0.52
+    
+    # Interface coordinate (where petal meets stub)
+    # The stub starts here and goes outwards to the radius edge
+    x_interface = radius - stub_length
+    
+    # 2. Calculate Petal Geometry (Ellipse)
+    # We want an ellipse that:
+    # - Starts effectively at x=0 (conceptually) to minimize center bulk
+    # - Has a maximum width of `petal_width`
+    # - Tapers down to `stub_width` exactly at `x_interface`
+    # This geometric constraint ensures the curve naturally flows into the straight stub
+    # with the correct "shoulder" look seen in the target.
+    
+    ry = petal_width / 2.0
+    y_target = stub_width / 2.0
+    
+    # Solve for rx (x-radius) using the ellipse equation at the interface point.
+    # We model the ellipse starting at x=0 for this calculation.
+    # Ellipse equation relative to its center (rx, 0): (x_interface - rx)^2/rx^2 + y_target^2/ry^2 = 1
+    # This derivation assumes x_interface is on the 'closing' side of the ellipse (past the center).
+    
+    ratio = y_target / ry
+    if ratio >= 1:
+        # Safety check
+        rx = x_interface 
+    else:
+        k = np.sqrt(1 - ratio**2)
+        rx = x_interface / (1 + k)
+    
+    # 3. Create Arm Geometry
+    # Create a temporary container for boolean operations to fuse the petal and stub
+    temp = gf.Component()
+    
+    # Create Petal
+    # We shift it left by a tiny 'overlap' amount.
+    # This ensures the 4 arms overlap at the center to create a connected geometry.
+    # The small overlap combined with the ellipse curvature creates the sharp concave center.
+    overlap = 0.03
+    petal_ref = temp << gf.components.ellipse(radii=(rx, ry), layer=(1, 0))
+    
+    # Position the ellipse
+    # Default ellipse is centered at (0,0).
+    # We want its left tip (which is at local x = -rx) to be at global x = -overlap.
+    # Shift required = (-overlap) - (-rx) = rx - overlap
+    petal_ref.move((rx - overlap, 0))
+    
+    # Create Stub
+    # We add a tiny extra length for overlap with the petal to ensure robust boolean union
+    stub_overlap = 0.02
+    stub_rect_len = stub_length + stub_overlap
+    stub_ref = temp << gf.components.rectangle(
+        size=(stub_rect_len, stub_width), 
+        layer=(1, 0), 
+        centered=True
+    )
+    
+    # Position the stub
+    # The right edge should be exactly at 'radius' (2.35 um).
+    # Center x calculation: radius - (length / 2.0)
+    stub_ref.move((radius - stub_rect_len / 2.0, 0))
+    
+    # Fuse them into a single arm using Boolean OR
+    # This removes internal edges between the petal and stub
+    arm_poly = gf.boolean(petal_ref, stub_ref, operation="or", layer=(1, 0))
+    
+    # 4. Assemble Full Device
+    # Rotate and place the fused arm 4 times
+    for angle in [0, 90, 180, 270]:
+        ref = c << arm_poly
+        ref.rotate(angle)
+    
+    # 5. Add Ports
+    # Add standard optical ports at the extremities for routing
+    c.add_port(name="o1", center=(radius, 0), width=stub_width, orientation=0, layer=(1,0))
+    c.add_port(name="o2", center=(0, radius), width=stub_width, orientation=90, layer=(1,0))
+    c.add_port(name="o3", center=(-radius, 0), width=stub_width, orientation=180, layer=(1,0))
+    c.add_port(name="o4", center=(0, -radius), width=stub_width, orientation=270, layer=(1,0))
+
+    return c
+
+if __name__ == "__main__":
+    device = star_cross_device_v4()
+    device.show()
+    device.write_gds("star_cross_device_v4.gds")
+    
+    # Verification output
+    print(f"Device Size: {device.size_info.width:.2f} x {device.size_info.height:.2f} um")

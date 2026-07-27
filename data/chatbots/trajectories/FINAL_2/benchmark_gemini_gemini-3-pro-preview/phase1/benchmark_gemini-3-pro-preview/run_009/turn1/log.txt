@@ -1,0 +1,88 @@
+Turn 1 Response:
+
+Based on the device footprint constraint and the visual geometry of the provided image, here is the GDSFactory code to recreate the device.
+
+The device appears to be a **1x4 Multi-Mode Interferometer (MMI)**.
+*   **Central Body**: A rectangle determined by the `footprint_um` constraint `[25, 10]` (Width=25µm, Height=10µm).
+*   **Top**: Four output tapers evenly spaced along the top edge.
+*   **Bottom**: One input taper centered on the bottom edge.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def mmi_1x4_vertical():
+    """
+    Creates a vertical 1x4 MMI based on the provided image geometry.
+    Main body dimensions conform to the footprint constraint [25, 10].
+    """
+    c = gf.Component()
+    
+    # 1. Define Main Dimensions based on constraints and visual proportions
+    # The footprint [25, 10] is interpreted as the MMI mixing region size.
+    mmi_width = 25.0
+    mmi_height = 10.0
+    layer = (1, 0)
+
+    # 2. Create the Central Body (Rectangle)
+    # centered=True places the origin (0,0) at the center of the rectangle
+    body = c << gf.components.rectangle(
+        size=(mmi_width, mmi_height), 
+        layer=layer, 
+        centered=True
+    )
+
+    # 3. Create and Place Top Output Tapers
+    # Visual analysis: 4 linear tapers, length approx equal to body height.
+    taper_top_length = 12.0
+    taper_top_w_wide = 3.5   # Base width at MMI connection
+    taper_top_w_tip = 1.0    # Tip width
+    
+    taper_out = gf.components.taper(
+        length=taper_top_length,
+        width1=taper_top_w_wide,
+        width2=taper_top_w_tip,
+        layer=layer
+    )
+
+    # Calculate positions for 4 outputs
+    # Standard 1xN MMI ports are located at ±W/2N, ±3W/2N, ...
+    # For N=4, offsets are ±1/8*W and ±3/8*W
+    offsets = [
+        -3 * mmi_width / 8,
+        -1 * mmi_width / 8,
+         1 * mmi_width / 8,
+         3 * mmi_width / 8
+    ]
+
+    for x_pos in offsets:
+        ref = c << taper_out
+        ref.rotate(90)  # Rotate to point upwards
+        # Move base of taper to the top edge of the rectangle
+        ref.move((x_pos, mmi_height / 2))
+
+    # 4. Create and Place Bottom Input Taper
+    # Visual analysis: 1 central taper, shorter and stouter than outputs.
+    taper_bot_length = 5.0
+    taper_bot_w_wide = 4.0
+    taper_bot_w_tip = 1.5
+    
+    taper_in = gf.components.taper(
+        length=taper_bot_length,
+        width1=taper_bot_w_wide,
+        width2=taper_bot_w_tip,
+        layer=layer
+    )
+
+    ref_in = c << taper_in
+    ref_in.rotate(-90) # Rotate to point downwards
+    # Move base of taper to the bottom edge of the rectangle
+    ref_in.move((0, -mmi_height / 2))
+
+    return c
+
+# Create the component and save to GDS
+component = mmi_1x4_vertical()
+component.write_gds("mmi_1x4.gds")
+component.show()
+```

@@ -1,0 +1,94 @@
+import gdsfactory as gf
+
+@gf.cell
+def crossed_waveguide_coupler():
+    """
+    2x2 waveguide coupler with S-bends and crossing input waveguides.
+    
+    Structure:
+    - Upper S-bend: curves from center-left to top-right
+    - Lower S-bend: curves from center-left to bottom-right  
+    - Two diagonal crossing waveguides on the input side
+    
+    Footprint: 40.0 um x 1.7 um
+    """
+    c = gf.Component()
+    
+    # Device parameters based on footprint
+    total_length = 40.0
+    total_height = 1.7
+    wg_width = 0.1
+    
+    # Cross-section definition
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    
+    # Vertical positions
+    # At input (left): S-bends start close to center
+    y_sbend_start = 0.15
+    # At output (right): S-bends spread to near edges
+    y_sbend_end = total_height / 2 - wg_width - 0.05  # ~0.75
+    
+    # S-bend vertical displacement
+    dy_sbend = y_sbend_end - y_sbend_start
+    
+    # === UPPER S-BEND ===
+    # Curves from center-left upward to top-right
+    sbend_up = c << gf.components.bend_s(
+        size=(total_length, dy_sbend), 
+        cross_section=xs
+    )
+    sbend_up.move((0, y_sbend_start))
+    
+    # === LOWER S-BEND ===
+    # Curves from center-left downward to bottom-right
+    sbend_down = c << gf.components.bend_s(
+        size=(total_length, -dy_sbend), 
+        cross_section=xs
+    )
+    sbend_down.move((0, -y_sbend_start))
+    
+    # === CROSSING DIAGONAL WAVEGUIDES ===
+    # These extend from input positions and cross in the middle
+    cross_length = total_length * 0.65  # ~26 um
+    
+    # Starting Y positions for diagonals (above/below S-bend starts)
+    y_diag_start_upper = y_sbend_start + 0.25  # ~0.40
+    y_diag_start_lower = -y_sbend_start - 0.25  # ~-0.40
+    
+    # Ending Y positions (they cross near center)
+    y_diag_end_upper = -0.08
+    y_diag_end_lower = 0.08
+    
+    # Upper diagonal: goes from upper-left toward lower-center
+    path_diag_upper = gf.Path([
+        (0, y_diag_start_upper),
+        (cross_length, y_diag_end_upper)
+    ])
+    diag_upper = c << gf.path.extrude(path_diag_upper, cross_section=xs)
+    
+    # Lower diagonal: goes from lower-left toward upper-center
+    path_diag_lower = gf.Path([
+        (0, y_diag_start_lower),
+        (cross_length, y_diag_end_lower)
+    ])
+    diag_lower = c << gf.path.extrude(path_diag_lower, cross_section=xs)
+    
+    # Add ports for external connections
+    c.add_port("o1", port=sbend_up.ports["o1"])      # Upper-left input
+    c.add_port("o2", port=sbend_up.ports["o2"])      # Upper-right output
+    c.add_port("o3", port=sbend_down.ports["o1"])    # Lower-left input
+    c.add_port("o4", port=sbend_down.ports["o2"])    # Lower-right output
+    
+    return c
+
+
+# Create the device
+device = crossed_waveguide_coupler()
+
+# Display info
+print(f"Device bounding box: {device.bbox}")
+print(f"Device size: {device.bbox[1][0] - device.bbox[0][0]:.2f} x {device.bbox[1][1] - device.bbox[0][1]:.2f} um")
+
+# Save to GDS file
+device.write_gds("crossed_waveguide_coupler.gds")
+print("Saved to crossed_waveguide_coupler.gds")

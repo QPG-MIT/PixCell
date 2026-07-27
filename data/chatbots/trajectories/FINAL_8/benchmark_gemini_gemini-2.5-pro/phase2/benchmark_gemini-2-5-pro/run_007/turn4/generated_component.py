@@ -1,0 +1,152 @@
+import gdsfactory as gf
+from gdsfactory.cross_section import Section
+
+# It's good practice to create reusable building blocks in their own functions.
+@gf.cell
+def create_flaring_section(
+    bend_radius: float,
+    straight_length: float,
+    line_width: float,
+    gap: float,
+    n_lines: int,
+    thick_band_width: float,
+) -> gf.Component:
+    """Creates the top U-shaped flaring section made of a thick band and N lines."""
+    c = gf.Component("flaring_section")
+    pitch = line_width + gap
+
+    # 1. Define the path for the flared shape, using arc for sharper corners.
+    path = gf.Path()
+    path.append(gf.path.arc(radius=bend_radius, angle=-90))
+    path.append(gf.path.straight(length=straight_length))
+    path.append(gf.path.arc(radius=bend_radius, angle=90))
+
+    # 2. Define the cross-section for this component
+    sections = [Section(width=thick_band_width, offset=0, layer=(1, 0))]
+    current_y = 0.5 * thick_band_width + gap + 0.5 * line_width
+    for _ in range(n_lines):
+        sections.append(Section(width=line_width, offset=current_y, layer=(1, 0)))
+        current_y += pitch
+    
+    xs_flare = gf.cross_section.CrossSection(sections=sections)
+
+    # 3. Extrude the path with the cross-section
+    c.add_ref(gf.path.extrude(path, cross_section=xs_flare))
+    return c
+
+@gf.cell
+def create_diamond(size: float, layer: tuple) -> gf.Component:
+    """Creates a diamond shape by defining its polygon vertices directly."""
+    c = gf.Component()
+    s_half = size / 2
+    # Define vertices for a diamond centered at (0,0)
+    points = [(s_half, 0), (0, s_half), (-s_half, 0), (0, -s_half)]
+    c.add_polygon(points, layer=layer)
+    return c
+
+
+@gf.cell
+def create_device():
+    """
+    Creates the target device using boolean operations for the central feature.
+    """
+    c = gf.Component("final_device")
+    base_geo = gf.Component("base_geometry")
+    cutters = gf.Component("cutters_geometry")
+
+    # --- Define Device Parameters based on Footprint & Ratios ---
+    total_width = 120.0
+    total_height = 4.0
+    n_outer_lines = 4
+    n_center_lines = 4
+    
+    # Ratios derived from visual inspection:
+    # Let w be the base unit (thin line width). Assume gap=w, band_gap=w, thick_band_w=3w.
+    # Total height H = 31w.
+    line_width = total_height / 31
+    gap = line_width
+    band_gap = line_width
+    thick_band_width = 3 * line_width
+    pitch = line_width + gap
+
+    # Horizontal parameters with a smaller radius for sharper turns
+    bend_radius = 5.0
+    straight_length = total_width - 2 * bend_radius
+
+    # --- 1. Create Base Geometry (solid shapes before cutting) ---
+    
+    flare_section = create_flaring_section(
+        bend_radius=bend_radius,
+        straight_length=straight_length,
+        line_width=line_width,
+        gap=gap,
+        n_lines=n_outer_lines,
+        thick_band_width=thick_band_width,
+    )
+
+    center_lines_half_height = (n_center_lines * line_width + (n_center_lines - 1) * gap) / 2
+    y_pos_top_flare_center = center_lines_half_height + band_gap + 0.5 * thick_band_width
+    
+    top_flare = base_geo.add_ref(flare_section)
+    top_flare.movey(y_pos_top_flare_center)
+
+    bottom_flare = base_geo.add_ref(flare_section)
+    bottom_flare.mirror_y()
+    bottom_flare.movey(-y_pos_top_flare_center)
+
+    center_straight_width = total_width
+    start_y_center = - (n_center_lines - 1) * pitch / 2
+    
+    center_line_y_positions = []
+    for i in range(n_center_lines):
+        y_pos = start_y_center + i * pitch
+        center_line_y_positions.append(y_pos)
+        rect = gf.components.rectangle(
+            size=(center_straight_width, line_width),
+            layer=(1,0),
+            centered=True
+        )
+        base_geo.add_ref(rect).movey(y_pos)
+
+    # --- 2. Create the Cutter Geometry ---
+    
+    # Cutter for thick bands (scallop shape)
+    scallop_cutter = gf.components.ellipse(
+        radii=(thick_band_width * 0.8, thick_band_width * 0.45), layer=(1, 0)
+    )
+    cutters.add_ref(scallop_cutter).movey(y_pos_top_flare_center)
+    cutters.add_ref(scallop_cutter).movey(-y_pos_top_flare_center)
+
+    # Cutter for central lines (lemon shape)
+    lemon_cutter = gf.components.ellipse(
+        radii=(2.5 * line_width, line_width * 0.48), layer=(1, 0)
+    )
+    for y_pos in center_line_y_positions:
+        cutters.add_ref(lemon_cutter).movey(y_pos)
+
+    # Cutter for gaps between lines (diamond shape)
+    # FIX: Use the new function that creates the diamond directly as a polygon
+    diamond_size = gap * 0.8
+    diamond_to_place = create_diamond(size=diamond_size, layer=(1, 0))
+
+    # Place diamonds in the 3 gaps
+    for i in range(n_center_lines - 1):
+        y_pos_gap = (center_line_y_positions[i] + center_line_y_positions[i+1]) / 2
+        cutters.add_ref(diamond_to_place).movey(y_pos_gap)
+
+    # --- 3. Perform Boolean Operation ---
+    final_geo = gf.boolean(A=base_geo, B=cutters, operation="not", layer=(1, 0))
+    c.add_ref(final_geo)
+    
+    # Flatten the final component to ensure there are no issues with the boolean result.
+    # While we fixed the root cause, flattening the final boolean output is good practice.
+    c.flatten()
+
+    return c
+
+if __name__ == "__main__":
+    device_to_save = create_device()
+    device_to_save.write_gds("recreated_device.gds")
+    print("Successfully wrote GDS file to 'recreated_device.gds'")
+    # You can uncomment the following line to open the GDS in KLayout for viewing
+    # device_to_save.show()

@@ -1,0 +1,57 @@
+import gdsfactory as gf
+
+@gf.cell
+def custom_clover():
+    """
+    Creates a clover/star geometry by merging 4 leaf-shaped polygons 
+    into a single, seamless structure.
+    """
+    layer = (1, 0)
+    
+    # 1. Define the points of one 'leaf' petal
+    # These points create a more tapered, organic shape than a simple ellipse.
+    # The base is centered near the origin (0,0) to create a clean junction.
+    petal_pts = [
+        (0.15, 0.15),
+        (0.4, 0.8),
+        (0.45, 1.3),
+        (0.3, 1.8),
+        (0.2, 2.3),
+        (-0.2, 2.3),
+        (-0.3, 1.8),
+        (-0.45, 1.3),
+        (-0.4, 0.8),
+        (-0.15, 0.15)
+    ]
+    
+    # 2. Create the petal as a component
+    petal = gf.Component()
+    petal.add_polygon(petal_pts, layer=layer)
+    
+    # 3. Create two components, each with 2 petals.
+    # We split into two components to guarantee the boolean OR works correctly
+    # and to ensure the center junction is merged into one seamless polygon.
+    c1 = gf.Component()
+    (c1 << petal).rotate(0)
+    (c1 << petal).rotate(90)
+    
+    c2 = gf.Component()
+    (c2 << petal).rotate(180)
+    (c2 << petal).rotate(270)
+    
+    # 4. Perform Boolean OR to merge everything into one polygon
+    final_clover = gf.boolean(c1, c2, operation="or", layer=layer)
+    
+    return final_clover
+
+if __name__ == "__main__":
+    # Create the component
+    device = custom_clover()
+    
+    # Save the file
+    device.write_gds("clover_shape.gds")
+    
+    print("GDS file 'clover_shape.gds' produced successfully.")
+    
+    # Display the result
+    device.show()

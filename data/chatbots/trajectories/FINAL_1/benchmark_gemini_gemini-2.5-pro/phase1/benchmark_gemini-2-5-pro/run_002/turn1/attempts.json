@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.540400",
+      "api_duration_seconds": 94.51262307167053,
+      "usage": {
+        "input_tokens": 2348,
+        "output_tokens": 1387,
+        "total_tokens": 14110
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bend_s'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:45.494294",
+      "api_duration_seconds": 73.58281087875366,
+      "usage": {
+        "input_tokens": 3768,
+        "output_tokens": 1595,
+        "total_tokens": 14033
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:00.533162",
+      "api_duration_seconds": 64.48582720756531,
+      "usage": {
+        "input_tokens": 5394,
+        "output_tokens": 1709,
+        "total_tokens": 13325
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: Path.__init__() got an unexpected keyword argument 'points'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11510,
+    "output_tokens": 4691,
+    "total_tokens": 41468
+  }
+}

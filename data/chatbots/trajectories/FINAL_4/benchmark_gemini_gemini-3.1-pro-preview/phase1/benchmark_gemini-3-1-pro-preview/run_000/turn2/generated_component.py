@@ -1,0 +1,71 @@
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler() -> gf.Component:
+    """
+    Creates a symmetric directional coupler with a straight central coupling region.
+    Strictly adheres to an 18x3 um footprint constraint.
+    """
+    c = gf.Component()
+    
+    # 1. Define custom cross section
+    # We set radius=1.0 to bypass the default 10.0um min_bend_radius validation limit,
+    # since our footprint forces a tighter S-bend radius (~5.6um).
+    # Width = 0.6um gives the thick appearance seen in the reference image.
+    xs = gf.cross_section.cross_section(width=0.6, layer=(1, 0), radius=1.0)
+
+    # 2. Calculate geometry dimensions to perfectly hit the 18x3 um footprint
+    # Total Length = 18 -> Split into Bend (6.5) + Straight (5.0) + Bend (6.5)
+    L_straight = 5.0
+    L_bend = 6.5
+    
+    # Total Height = 3 -> Y-bounds are -1.5 to +1.5.
+    # For a 0.6um wide waveguide to touch the +/- 1.5um boundaries, 
+    # the port centers must be exactly at +/- 1.2 um.
+    y_port = 1.2
+    
+    # Let's target a 0.3um gap in the middle coupling region.
+    # Center lines will be at Y = +/- 0.45 um 
+    # (Gap 0.3 / 2 = 0.15 edge, plus 0.3 half-width = 0.45 center)
+    y_center = 0.45
+    
+    # The S-bend must shift by the difference between port and center
+    y_shift = y_port - y_center
+
+    # 3. Create the primitive components
+    straight_mid = gf.components.straight(length=L_straight, cross_section=xs)
+    bend_down = gf.components.bend_s(size=(L_bend, -y_shift), cross_section=xs)
+    bend_up = gf.components.bend_s(size=(L_bend, y_shift), cross_section=xs)
+
+    # --- 4. Assemble Top Waveguide Arm ---
+    top_in = c << bend_down
+    top_center = c << straight_mid
+    top_out = c << bend_up
+
+    top_in.move((0, y_port))
+    top_center.connect("o1", top_in.ports["o2"])
+    top_out.connect("o1", top_center.ports["o2"])
+
+    # --- 5. Assemble Bottom Waveguide Arm ---
+    bot_in = c << bend_up
+    bot_center = c << straight_mid
+    bot_out = c << bend_down
+
+    bot_in.move((0, -y_port))
+    bot_center.connect("o1", bot_in.ports["o2"])
+    bot_out.connect("o1", bot_center.ports["o2"])
+
+    # --- 6. Add External Ports ---
+    c.add_port("o1", port=top_in.ports["o1"])
+    c.add_port("o2", port=bot_in.ports["o1"])
+    c.add_port("o3", port=top_out.ports["o2"])
+    c.add_port("o4", port=bot_out.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Instantiate the created device
+    device = symmetric_coupler()
+    
+    # Produce the GDS file output
+    device.write_gds("symmetric_coupler.gds")

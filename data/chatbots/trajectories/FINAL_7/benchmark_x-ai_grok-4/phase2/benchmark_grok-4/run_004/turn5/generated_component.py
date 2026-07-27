@@ -1,0 +1,62 @@
+import gdsfactory as gf
+
+@gf.cell
+def half():
+    c = gf.Component()
+    layer = (1, 0)
+    width = 0.5
+    xs = gf.cross_section.cross_section(width=width, layer=layer)
+
+    # Adjusted parameters to fit footprint
+    total_L = 2.5
+    R = 1.5
+    L = total_L / 2
+
+    # Outer U-shaped using path extrusion, open on left initially
+    p = gf.Path()
+    p.append(gf.path.straight(length=L))
+    p.append(gf.path.arc(radius=R, angle=180))
+    p.append(gf.path.straight(length=L))
+    ring = gf.path.extrude(p, xs)
+    ring.move((-L / 2, -R))
+    c << ring
+
+    # Inner structure: only the "right" coupler (will be left after mirror in left half)
+    length_inner = 1.2
+    gap_inner = 0.3
+    horizontal_gap = 0.2
+    right_center_x = (length_inner + horizontal_gap) / 2
+    y_center = (gap_inner + width) / 2
+
+    cpl_right = c << gf.components.coupler_straight(
+        length=length_inner, gap=gap_inner, cross_section=xs
+    )
+    cpl_right.move(
+        origin=(length_inner / 2, y_center),
+        destination=(right_center_x, 0)
+    )
+
+    return c
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    h = half()
+    total_L = 2.5  # Must match the value in half
+
+    # Left half: mirrored to have bend on left, open on right
+    left = c << h
+    left.mirror(p1=(0, 0), p2=(0, 1))
+
+    # Right half: original to have bend on right, open on left
+    right = c << h
+
+    # Move right to align its open left with left's open right
+    # Based on calculations, move by total_L / 2
+    right.move((total_L / 2, 0))
+
+    return c
+
+# Create and save
+device = my_device()
+device.write_gds("my_device.gds")

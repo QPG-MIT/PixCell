@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:08.884567",
+      "api_duration_seconds": 120.16372013092041,
+      "usage": {
+        "input_tokens": 2344,
+        "output_tokens": 1102,
+        "total_tokens": 18136
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bend_s'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:10.463364",
+      "api_duration_seconds": 29.486012935638428,
+      "usage": {
+        "input_tokens": 3479,
+        "output_tokens": 1227,
+        "total_tokens": 7186
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:41.552950",
+      "api_duration_seconds": 15.682706356048584,
+      "usage": {
+        "input_tokens": 4725,
+        "output_tokens": 1286,
+        "total_tokens": 6443
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10548,
+    "output_tokens": 3615,
+    "total_tokens": 31765
+  }
+}

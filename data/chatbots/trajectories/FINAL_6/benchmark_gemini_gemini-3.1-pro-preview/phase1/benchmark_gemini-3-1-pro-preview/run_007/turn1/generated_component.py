@@ -1,0 +1,78 @@
+import gdsfactory as gf
+
+@gf.cell
+def crossed_petal_device() -> gf.Component:
+    """
+    Creates a composite cross geometry consisting of rounded petals 
+    with straight rectangular extensions at the tips.
+    """
+    c = gf.Component("crossed_petal_device")
+    
+    # ---------------------------------------------------------
+    # Parametric Dimensions
+    # Footprint constraint: 4.7 um x 4.7 um
+    # ---------------------------------------------------------
+    total_footprint = 4.7
+    
+    # Petal dimensions
+    # Ellipses handle the curved "clover" portion
+    petal_rx = 1.95  # Half-length of the curved petal part
+    petal_ry = 0.65  # Half-width of the petal part
+    
+    # Straight tip dimensions
+    tip_width = 0.15 # Width of the straight extensions protruding from petals
+    
+    # ---------------------------------------------------------
+    # Primitive Construction
+    # ---------------------------------------------------------
+    # 1. Horizontal petal body
+    ellipse_h = gf.components.ellipse(
+        radii=(petal_rx, petal_ry), 
+        layer=(1, 0)
+    )
+    
+    # 2. Vertical petal body
+    ellipse_v = gf.components.ellipse(
+        radii=(petal_ry, petal_rx), 
+        layer=(1, 0)
+    )
+    
+    # 3. Straight extension tips 
+    # (A standard cross matching the exact max footprint boundaries)
+    straight_arms = gf.components.cross(
+        length=total_footprint, 
+        width=tip_width, 
+        layer=(1, 0)
+    )
+    
+    # ---------------------------------------------------------
+    # Composition via Boolean Operations
+    # ---------------------------------------------------------
+    # Merge the two ellipses to form the central clover shape
+    core_petals = gf.boolean(
+        A=ellipse_h, 
+        B=ellipse_v, 
+        operation="or", 
+        layer=(1, 0)
+    )
+    
+    # Merge the clover with the straight cross to add the tip extensions
+    final_geometry = gf.boolean(
+        A=core_petals, 
+        B=straight_arms, 
+        operation="or", 
+        layer=(1, 0)
+    )
+    
+    # Add the unified Boolean polygon to the component
+    c << final_geometry
+    
+    return c
+
+
+if __name__ == "__main__":
+    # Create the component
+    device = crossed_petal_device()
+    
+    # Save the output to a GDS file
+    device.write_gds("crossed_petal_device.gds")

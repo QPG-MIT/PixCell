@@ -1,0 +1,5 @@
+The error is occurring because `c.flatten()` returns a new component but I'm reassigning it to `c`, and there might be an issue with how flatten works. Let me fix this by either returning the flattened component properly or using a different approach.
+
+Actually, looking at the error more carefully, it seems like the flatten operation might be returning None or causing an issue. Let me use a different approach - instead of flattening, I can use boolean operations to merge the ellipses, or I can just return the component without flattening since GDS viewers will show overlapping polygons as merged anyway.
+
+Let me provide a corrected version:

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.499637",
+      "api_duration_seconds": 64.19457006454468,
+      "usage": {
+        "input_tokens": 2344,
+        "output_tokens": 2411,
+        "total_tokens": 17237
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'LayerSpec'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:15.037393",
+      "api_duration_seconds": 7.583487033843994,
+      "usage": {
+        "input_tokens": 4785,
+        "output_tokens": 1351,
+        "total_tokens": 6418
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:24.213234",
+      "api_duration_seconds": 8.00287413597107,
+      "usage": {
+        "input_tokens": 6620,
+        "output_tokens": 1393,
+        "total_tokens": 8273
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'function' object has no attribute 'width'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13749,
+    "output_tokens": 5155,
+    "total_tokens": 31928
+  }
+}

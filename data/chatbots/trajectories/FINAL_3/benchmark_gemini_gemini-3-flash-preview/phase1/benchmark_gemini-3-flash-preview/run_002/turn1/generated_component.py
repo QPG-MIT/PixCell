@@ -1,0 +1,87 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreate_symmetric_coupler() -> gf.Component:
+    """
+    Recreates the symmetric coupler geometry using parametric primitives.
+    Total Footprint: 120 um x 4 um.
+    """
+    c = gf.Component("symmetric_coupler")
+
+    # 1. Dimensions based on 120x4 footprint constraint
+    # Total length: 120 = 10(end) + 20(sbend) + 60(center) + 20(sbend) + 10(end)
+    total_length = 120.0
+    total_height = 4.0
+    
+    wg_width = 0.5      # Standard waveguide width
+    gap = 0.2           # Central coupling gap
+    l_center = 60.0     # Coupling region length
+    l_sbend = 20.0      # Horizontal length of fan-out
+    l_end = 10.0        # Straight access waveguide length
+
+    # 2. Vertical Offset Calculation
+    # Inner waveguide centerlines: +/- (width + gap) / 2
+    y_inner = (wg_width + gap) / 2  # 0.35 um
+    # Outer waveguide centerlines: +/- (total_height / 2 - width / 2)
+    # This ensures the footprint top/bottom edges are at +/- 2.0 um
+    y_outer = (total_height / 2) - (wg_width / 2)  # 1.75 um
+    # Required vertical shift for S-bends
+    dy = y_outer - y_inner # 1.4 um
+
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # 3. Assembly using Parametric Primitives
+    
+    # Central coupling region
+    # Ports: o1:bot-west, o2:top-west, o3:top-east, o4:bot-east
+    mid = c << gf.components.coupler_straight(length=l_center, gap=gap, cross_section=xs)
+
+    # Left Side S-Bends (Connecting to West ports of 'mid')
+    # bend_s o2 connects to mid, o1 extends outwards to the left.
+    sb_tl = c << gf.components.bend_s(size=(l_sbend, -dy), cross_section=xs)
+    sb_tl.connect("o2", mid.ports["o2"])
+    
+    sb_bl = c << gf.components.bend_s(size=(l_sbend, dy), cross_section=xs)
+    sb_bl.connect("o2", mid.ports["o1"])
+    
+    # Right Side S-Bends (Connecting to East ports of 'mid')
+    # o1 connects to mid, o2 extends outwards to the right.
+    sb_tr = c << gf.components.bend_s(size=(l_sbend, dy), cross_section=xs)
+    sb_tr.connect("o1", mid.ports["o3"])
+    
+    sb_br = c << gf.components.bend_s(size=(l_sbend, -dy), cross_section=xs)
+    sb_br.connect("o1", mid.ports["o4"])
+
+    # Outer straight ports to reach full 120um total length
+    st_tl = c << gf.components.straight(length=l_end, cross_section=xs)
+    st_tl.connect("o2", sb_tl.ports["o1"])
+    
+    st_bl = c << gf.components.straight(length=l_end, cross_section=xs)
+    st_bl.connect("o2", sb_bl.ports["o1"])
+    
+    st_tr = c << gf.components.straight(length=l_end, cross_section=xs)
+    st_tr.connect("o1", sb_tr.ports["o2"])
+    
+    st_br = c << gf.components.straight(length=l_end, cross_section=xs)
+    st_br.connect("o1", sb_br.ports["o2"])
+
+    # 4. Define external ports for the parent component
+    c.add_port("o1", port=st_bl.ports["o1"])
+    c.add_port("o2", port=st_tl.ports["o1"])
+    c.add_port("o3", port=st_tr.ports["o2"])
+    c.add_port("o4", port=st_br.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Instantiate the component
+    device = recreate_symmetric_coupler()
+    
+    # Write the GDS file
+    filename = "symmetric_coupler.gds"
+    device.write_gds(filename)
+    
+    # Use standard attributes for printing info
+    print(f"Successfully produced: {filename}")
+    print(f"Device Name: {device.name}")
+    print(f"Footprint: {device.xsize:.2f} um (width) x {device.ysize:.2f} um (height)")

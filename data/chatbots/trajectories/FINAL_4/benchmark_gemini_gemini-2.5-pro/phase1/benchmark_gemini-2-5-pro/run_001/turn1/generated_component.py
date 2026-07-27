@@ -1,0 +1,84 @@
+import gdsfactory as gf
+import pathlib
+
+@gf.cell
+def create_wavy_device():
+    """
+    Creates a device with two symmetric wavy waveguides based on the provided
+    image and footprint constraints.
+
+    Footprint: 18um x 3um
+    """
+
+    # 1. Define Device Parameters from Footprint and Image Analysis
+    length = 18.0
+    total_height = 3.0
+
+    # From visual inspection, the total height is composed of two waveguide
+    # widths, the minimum gap between them, and the amplitude of their curves.
+    # total_height = 2 * wg_width + min_gap + 2 * amplitude
+    # A consistent set of parameters that fits the visual proportions is:
+    wg_width = 0.75
+    min_gap = 0.75
+    amplitude = 0.375  # Peak vertical deviation of each waveguide's centerline
+    # Check: 2*0.75 + 0.75 + 2*0.375 = 1.5 + 0.75 + 0.75 = 3.0. This matches.
+
+    # 2. Create the Path for the Top Waveguide
+    # The top waveguide is defined by a smooth path that curves upwards in the middle.
+    # We define waypoints for the path's centerline. The initial y-position is
+    # calculated to place it correctly relative to the device centerline (y=0).
+    y_center_top = min_gap / 2 + wg_width / 2
+
+    waypoints = [
+        (0, y_center_top),
+        (length / 2, y_center_top + amplitude),
+        (length, y_center_top),
+    ]
+
+    # Use gf.path.smooth to generate a spline-based curve through the waypoints.
+    path_top = gf.path.smooth(points=waypoints)
+
+    # 3. Extrude the Path into a Waveguide Component
+    # Define a cross-section with the calculated width.
+    xs = gf.cross_section.cross_section(width=wg_width)
+    
+    # Extrude the path to create the solid waveguide geometry.
+    waveguide_shape = gf.path.extrude(path_top, cross_section=xs)
+
+    # 4. Assemble the Final Device
+    # Create a new component to hold the final assembly.
+    c = gf.Component()
+
+    # Add the top waveguide as a reference.
+    wg_top_ref = c.add_ref(waveguide_shape)
+
+    # Create the bottom waveguide by mirroring the top one across the x-axis.
+    wg_bottom_ref = c.add_ref(waveguide_shape)
+    wg_bottom_ref.mirror(p1=(0, 0), p2=(length, 0))
+
+    # Center the entire component at the origin (0, 0).
+    c.movex(-length / 2)
+    # The component is already centered vertically due to the mirroring.
+
+    # 5. Add Ports for Connectivity
+    # Expose the ports from the internal waveguide references.
+    c.add_port("o1", port=wg_top_ref.ports["o1"])
+    c.add_port("o2", port=wg_top_ref.ports["o2"])
+    c.add_port("o3", port=wg_bottom_ref.ports["o1"])
+    c.add_port("o4", port=wg_bottom_ref.ports["o2"])
+
+    return c
+
+# To run, verify, and SAVE the script:
+if __name__ == "__main__":
+    device = create_wavy_device()
+    
+    # --- FIX ---
+    # The following line saves the component to a GDS file.
+    # Without it, the script only creates the object in memory.
+    output_path = pathlib.Path("wavy_device.gds")
+    device.write_gds(output_path)
+    print(f"GDS file saved to: {output_path.resolve()}")
+    
+    # This line shows the component in a viewer (e.g., KLayout).
+    device.show()

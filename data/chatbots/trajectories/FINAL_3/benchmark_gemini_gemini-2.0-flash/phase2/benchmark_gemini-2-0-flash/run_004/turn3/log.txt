@@ -1,0 +1,89 @@
+Turn 3 Response:
+
+Okay, I understand. The current code connects the bottom straight section to the top straight section at the inputs, which is not what the target image shows.  The bottom waveguide needs to be a mirror image of the top waveguide such that the inputs and outputs are on opposite sides.
+
+Here's the corrected code:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import bend_euler, straight
+from gdsfactory.cross_section import strip
+
+
+@gf.cell
+def capacitively_coupled_waveguide(
+    wg_width: float = 0.5,
+    wg_length: float = 10.0,
+    gap: float = 0.2,
+    bend_radius: float = 5.0,
+    straight_after_bend: float = 2.0,
+    layer: tuple[int, int] = (1, 0),
+) -> gf.Component:
+    """Creates a capacitively coupled waveguide structure.
+
+    Args:
+        wg_width: width of the waveguides.
+        wg_length: length of the straight waveguide sections.
+        gap: gap between the waveguides.
+        bend_radius: radius of the Euler bends.
+        straight_after_bend: length of the straight section after the bend.
+        layer: GDS layer for the structure.
+
+    Returns:
+        A gdsfactory Component representing the structure.
+    """
+
+    c = gf.Component("capacitively_coupled_waveguide")
+
+    # Define cross-section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+
+    # Define components
+    straight_wg = straight(length=wg_length, cross_section=xs)
+    bend = bend_euler(radius=bend_radius, cross_section=xs)
+
+    # Create the top waveguide
+    top_straight1 = c << straight_wg
+    top_bend = c << bend
+    top_straight2 = c << straight(length=straight_after_bend, cross_section=xs)
+
+    top_bend.connect("o1", top_straight1.ports["o2"])
+    top_straight2.connect("o1", top_bend.ports["o2"])
+
+    # Create the bottom waveguide (mirrored)
+    bottom_straight1 = c << straight_wg
+    bottom_bend = c << bend
+    bottom_straight2 = c << straight(length=straight_after_bend, cross_section=xs)
+
+    # Move bottom components down
+    bottom_straight1.movey(-gap)
+    bottom_bend.movey(-gap)
+    bottom_straight2.movey(-gap)
+
+    # Connect bottom waveguide components
+    bottom_bend.connect("o2", bottom_straight1.ports["o1"])
+    bottom_straight2.connect("o1", bottom_bend.ports["o1"])
+
+    c.add_port("o1", port=top_straight1.ports["o1"])
+    c.add_port("o2", port=top_straight2.ports["o2"])
+    c.add_port("o3", port=bottom_straight2.ports["o2"])
+    c.add_port("o4", port=bottom_straight1.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    c = capacitively_coupled_waveguide(
+        wg_length=30.0, gap=1.0, bend_radius=10.0, straight_after_bend=15.0
+    )
+    c.show()
+    c.write_gds("capacitively_coupled_waveguide.gds")
+```
+
+Key changes:
+
+* **Corrected Bottom Waveguide Connections:** The bottom waveguide now connects in the correct order. `bottom_bend.connect("o2", bottom_straight1.ports["o1"])` and  `bottom_straight2.connect("o1", bottom_bend.ports["o1"])` ensures the signal flows from left to right on the bottom waveguide (matching the target image).
+* **Re-ordered Ports**: Changed port "o4" to reference  `bottom_straight1.ports["o2"]` .
+* **Removed incorrect initial placement of the bottom waveguide**: Removed `bottom_straight1.connect("o1", top_straight1.ports["o1"])`
+
+This revised code should produce the correct capacitively coupled waveguide structure as shown in the target image.

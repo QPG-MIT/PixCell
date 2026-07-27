@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.850109",
+      "api_duration_seconds": 152.39745712280273,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 4113,
+        "total_tokens": 31034
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.15 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:44.231075",
+      "api_duration_seconds": 20.9749538898468,
+      "usage": {
+        "input_tokens": 6508,
+        "output_tokens": 3454,
+        "total_tokens": 10696
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "UnboundLocalError: cannot access local variable 'L_taper_outer' where it is not associated with a value",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:07.301677",
+      "api_duration_seconds": 23.3473379611969,
+      "usage": {
+        "input_tokens": 10001,
+        "output_tokens": 3423,
+        "total_tokens": 14959
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 18858,
+    "output_tokens": 10990,
+    "total_tokens": 56689
+  }
+}

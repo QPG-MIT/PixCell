@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:57.942837",
+      "api_duration_seconds": 64.57502627372742,
+      "usage": {
+        "input_tokens": 5571,
+        "output_tokens": 1457,
+        "total_tokens": 13168
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:03.862207",
+      "api_duration_seconds": 45.57754302024841,
+      "usage": {
+        "input_tokens": 7054,
+        "output_tokens": 1310,
+        "total_tokens": 13698
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:50.911491",
+      "api_duration_seconds": 38.286919832229614,
+      "usage": {
+        "input_tokens": 8395,
+        "output_tokens": 1259,
+        "total_tokens": 14828
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 21020,
+    "output_tokens": 4026,
+    "total_tokens": 41694
+  }
+}

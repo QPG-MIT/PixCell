@@ -1,0 +1,84 @@
+import gdsfactory as gf
+
+@gf.cell
+def mzi_eye_structure():
+    """
+    MZI-like structure with eye-shaped opening and central rectangular element.
+    Two input waveguides spread apart, run parallel, then converge to two outputs.
+    
+    Target footprint: 40 x 1.7 um
+    """
+    c = gf.Component()
+    
+    # Parameters
+    wg_width = 0.4
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+    
+    total_length = 40.0
+    
+    # Vertical positions - waveguides close at input/output
+    y_input = 0.22           # Position at input/output (close together)
+    y_spread = 0.65          # Position at maximum spread
+    delta_y = y_spread - y_input  # Vertical displacement
+    
+    # Section lengths
+    L_in = 0.5               # Very short input straight
+    L_sbend = 9.0            # S-bend transition length
+    L_parallel = 21.0        # Parallel section in eye
+    L_out = 0.5              # Very short output straight
+    # Total: 0.5 + 9.0 + 21.0 + 9.0 + 0.5 = 40.0
+    
+    # === TOP ARM ===
+    top_in = c << gf.components.straight(length=L_in, cross_section=xs)
+    top_in.move((0, y_input))
+    
+    # S-bend spreading upward
+    top_sbend1 = c << gf.components.bend_s(size=(L_sbend, delta_y), cross_section=xs)
+    top_sbend1.connect("o1", top_in.ports["o2"])
+    
+    # Parallel straight at max spread
+    top_straight = c << gf.components.straight(length=L_parallel, cross_section=xs)
+    top_straight.connect("o1", top_sbend1.ports["o2"])
+    
+    # S-bend converging downward
+    top_sbend2 = c << gf.components.bend_s(size=(L_sbend, -delta_y), cross_section=xs)
+    top_sbend2.connect("o1", top_straight.ports["o2"])
+    
+    # Output straight
+    top_out = c << gf.components.straight(length=L_out, cross_section=xs)
+    top_out.connect("o1", top_sbend2.ports["o2"])
+    
+    # === BOTTOM ARM (mirror of top) ===
+    bot_in = c << gf.components.straight(length=L_in, cross_section=xs)
+    bot_in.move((0, -y_input))
+    
+    # S-bend spreading downward
+    bot_sbend1 = c << gf.components.bend_s(size=(L_sbend, -delta_y), cross_section=xs)
+    bot_sbend1.connect("o1", bot_in.ports["o2"])
+    
+    # Parallel straight at max spread
+    bot_straight = c << gf.components.straight(length=L_parallel, cross_section=xs)
+    bot_straight.connect("o1", bot_sbend1.ports["o2"])
+    
+    # S-bend converging upward
+    bot_sbend2 = c << gf.components.bend_s(size=(L_sbend, delta_y), cross_section=xs)
+    bot_sbend2.connect("o1", bot_straight.ports["o2"])
+    
+    # Output straight
+    bot_out = c << gf.components.straight(length=L_out, cross_section=xs)
+    bot_out.connect("o1", bot_sbend2.ports["o2"])
+    
+    # === CENTRAL RECTANGLE (inside the eye) ===
+    rect_length = 15.0
+    rect_height = 0.4
+    rect = c << gf.components.rectangle(size=(rect_length, rect_height), layer=layer, centered=True)
+    rect.move((total_length/2, 0))
+    
+    return c
+
+
+# Generate and save
+if __name__ == "__main__":
+    device = mzi_eye_structure()
+    device.write_gds("mzi_eye_structure.gds")

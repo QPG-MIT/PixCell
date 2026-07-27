@@ -1,0 +1,80 @@
+import gdsfactory as gf
+
+@gf.cell
+def smooth_coupler_like_device():
+    """
+    Creates a symmetric waveguide device with smooth, crossing S-bends,
+    resembling the target image.
+
+    The device's dimensions are constrained by the footprint [120, 4] um.
+    """
+    c = gf.Component("smooth_coupler_like_device")
+
+    # Define the default cross-section for the waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    waveguide_width = xs.width
+
+    # Device footprint dimensions
+    full_length = 120.0
+    full_height = 4.0
+
+    # Calculate Y-coordinates for the centerlines of the outermost waveguides
+    # These also define the Y-coordinates at the input/output ports.
+    y_outer_top = full_height - waveguide_width / 2  # Centerline of top waveguide at ends (3.75)
+    y_outer_bottom = waveguide_width / 2             # Centerline of bottom waveguide at ends (0.25)
+
+    # Horizontal dimensions
+    L_straight_io = 5.0      # Length of the straight input/output sections
+    mid_x = full_length / 2  # Horizontal center of the device (60.0)
+
+    # --- Construct Top Waveguide Path ---
+    # The path starts high (y_outer_top), dips low (y_outer_bottom) at the horizontal center,
+    # then returns to high (y_outer_top).
+    points_top = [ # Changed from waypoints_top to points_top
+        (0, y_outer_top),
+        (L_straight_io, y_outer_top),
+        (mid_x, y_outer_bottom),  # Crossing point where top waveguide is at bottom Y-level
+        (full_length - L_straight_io, y_outer_top),
+        (full_length, y_outer_top)
+    ]
+    
+    # Create the smooth path for the top waveguide
+    # 'radius' controls the minimum bend radius of the Euler curves used to connect waypoints.
+    path_top = gf.path.smooth(points=points_top, radius=4.0) # Corrected argument name
+    
+    # Extrude the path to create the component geometry
+    wg_top = c << gf.path.extrude(path_top, cross_section=xs)
+    
+    # Add ports for the top waveguide
+    c.add_port("o1_top", port=wg_top.ports["o1"])
+    c.add_port("o2_top", port=wg_top.ports["o2"])
+
+
+    # --- Construct Bottom Waveguide Path ---
+    # The path starts low (y_outer_bottom), rises high (y_outer_top) at the horizontal center,
+    # then returns to low (y_outer_bottom). This is a mirrored version of the top path.
+    points_bottom = [ # Changed from waypoints_bottom to points_bottom
+        (0, y_outer_bottom),
+        (L_straight_io, y_outer_bottom),
+        (mid_x, y_outer_top),  # Crossing point where bottom waveguide is at top Y-level
+        (full_length - L_straight_io, y_outer_bottom),
+        (full_length, y_outer_bottom)
+    ]
+    
+    # Create the smooth path for the bottom waveguide
+    path_bottom = gf.path.smooth(points=points_bottom, radius=4.0) # Corrected argument name
+    
+    # Extrude the path to create the component geometry
+    wg_bottom = c << gf.path.extrude(path_bottom, cross_section=xs)
+    
+    # Add ports for the bottom waveguide
+    c.add_port("o1_bottom", port=wg_bottom.ports["o1"])
+    c.add_port("o2_bottom", port=wg_bottom.ports["o2"])
+
+    return c
+
+# Example usage and visualization
+if __name__ == "__main__":
+    device = smooth_coupler_like_device()
+    device.show() # Renders the device for visualization in a GDS viewer
+    device.write_gds("smooth_coupler_like_device.gds") # Saves the GDS file

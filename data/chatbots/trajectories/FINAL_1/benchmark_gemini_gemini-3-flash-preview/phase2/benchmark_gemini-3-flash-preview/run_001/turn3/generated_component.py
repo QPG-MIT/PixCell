@@ -1,0 +1,82 @@
+import gdsfactory as gf
+
+@gf.cell
+def trident_ssc_v3():
+    """
+    Trident Spot-Size Converter - Turn 3 Refinement.
+    
+    Target Footprint: 40.0 um x 1.7 um.
+    Key features: Smooth S-bend flare, parallel output, and tapering center.
+    """
+    c = gf.Component()
+
+    # --- 1. Dimensions & Constraints ---
+    L_total = 40.0
+    L_taper = 30.0  # Where the center waveguide ends
+    L_flare_start = 22.0 # Where the side arms start curving outward
+    
+    # Widths (um)
+    w_c_in, w_c_out = 0.8, 0.05    # Center waveguide is thicker at start
+    w_s_in, w_s_out = 0.15, 0.50   # Side arms widen significantly
+    gap_initial = 0.08             # Tight coupling at the start
+    
+    # Calculate Y-coordinates for side arm path
+    # y_start: Center of side arm at input
+    y_start = (w_c_in / 2) + gap_initial + (w_s_in / 2)
+    
+    # y_final: Center of side arm at output to meet 1.7um total width
+    # 1.7 / 2 = 0.85 (outer edge). y_final = 0.85 - (w_s_out / 2)
+    y_final = 0.85 - (w_s_out / 2) 
+
+    # --- 2. Center Waveguide (Taper) ---
+    # We add a small straight section (stem) and then the taper
+    L_stem = 2.0
+    stem = c << gf.components.straight(length=L_stem, width=w_c_in)
+    taper_c = c << gf.components.taper(length=L_taper - L_stem, width1=w_c_in, width2=w_c_out)
+    taper_c.connect("o1", stem.ports["o2"])
+
+    # --- 3. Side Arms (Smooth Flare) ---
+    # Define points for an S-shaped transition
+    # Point 1: Start
+    # Point 2: Just before the flare (tracking the taper)
+    # Point 3: Mid-flare
+    # Point 4: Output (horizontal tail)
+    pts_top = [
+        (0, y_start),
+        (L_flare_start, y_start + 0.05), # Subtle outward tilt following taper
+        (L_total - 6.0, y_final),        # Reaching final height
+        (L_total, y_final)               # Horizontal tail for parallel output
+    ]
+    
+    # Create the smooth path with a larger radius for a more organic look
+    path_top = gf.path.smooth(points=pts_top, radius=15)
+    
+    # Define the width transition for the side arms
+    trans = gf.path.transition(
+        cross_section1=gf.cross_section.cross_section(width=w_s_in),
+        cross_section2=gf.cross_section.cross_section(width=w_s_out),
+        width_type='linear'
+    )
+
+    # Extrude Top and Bottom Arms
+    arm_top = c << gf.path.extrude_transition(path_top, transition=trans)
+    arm_bot = c << gf.path.extrude_transition(path_top, transition=trans)
+    arm_bot.mirror_y()
+
+    # --- 4. Final Alignment & Centering ---
+    # Ensure the whole component starts at X=0
+    c.movex(-c.xmin)
+    # Flatten to merge layers if needed, though not strictly required for GDS
+    
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    component = trident_ssc_v3()
+    
+    # Validation Print
+    print(f"Final Footprint: {component.xsize:.2f} um x {component.ysize:.2f} um")
+    
+    # Export
+    component.write_gds("trident_ssc_v3.gds")
+    # component.show() # Uncomment to view in KLayout

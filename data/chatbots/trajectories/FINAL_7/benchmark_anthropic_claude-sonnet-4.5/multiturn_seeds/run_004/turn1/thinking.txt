@@ -1,0 +1,168 @@
+Looking at the image, I can see what appears to be a chain link design - an elongated oval/ellipse shape with two rectangular cutouts or links in the middle section, creating a chain-like appearance. The design has:
+
+1. An outer oval/elliptical boundary
+2. Two horizontal rectangular bars crossing through the middle
+3. The bars have rectangular gaps/windows in them
+4. The overall appearance is of two chain links interlocked
+
+Let me break down the geometry:
+- Outer boundary: elongated ellipse or rounded rectangle
+- Two horizontal bars running across the middle with spacing between them
+- Each bar has two rectangular cutouts/windows
+- The bars appear to be connected at the edges
+
+Looking more carefully, this looks like:
+- An outer elliptical ring (thick border)
+- Two horizontal bridge structures in the middle
+- Each bridge has two rectangular openings
+
+The footprint constraint is [3.0, 5.5] um, so the width should be about 3.0 um and height about 5.5 um.
+
+Let me think about how to construct this:
+
+1. Create an outer ellipse (the boundary)
+2. Create an inner ellipse (to make it a ring)
+3. Create the two horizontal bridge structures with rectangular cutouts
+4. Use boolean operations to combine them
+
+Actually, looking more carefully at the image:
+- It's an oval/ellipse outline (ring)
+- Inside there are two horizontal rectangular bars
+- Each bar has two rectangular windows/cutouts in it
+- The bars are separated by a gap in the middle
+
+The construction approach:
+1. Create outer ellipse
+2. Create slightly smaller inner ellipse
+3. Boolean subtract to get ring
+4. Create the two bridge structures with windows
+5. Boolean OR to combine everything
+
+Or alternatively:
+1. Start with a filled outer ellipse
+2. Create an inner ellipse and subtract it (to make ring)
+3. Add two horizontal bars
+4. Subtract the rectangular windows from the bars
+
+Let me write the code:
+
+
+I'll use gdsfactory to build this structure. The function needs to create an elliptical ring with two horizontal bars that have rectangular windows cut through them. I'll define parameters for the overall dimensions (3.0 um width, 5.5 um height), ring thickness, bar dimensions, and window sizes, then use boolean operations to combine the shapes on the specified layer. # Create ring by boolean subtraction
+ring = gf.boolean(outer_ellipse, inner_ellipse, operation="not", layer=layer)
+
+# Create top horizontal bar
+bar_length = width * 0.85
+top_bar_y = bar_spacing/2 + bar_width/2
+
+top_bar_outer = gf.components.rectangle(
+    size=(bar_length, bar_width),
+    layer=layer,
+    centered=True
+)
+
+# Create windows for top bar
+window_spacing = 0.5
+left_window_top = gf.components.rectangle(
+    size=(window_width, window_height),
+    layer=layer,
+    centered=True
+)
+right_window_top = gf.components.rectangle(
+    size=(window_width, window_height),
+    layer=layer,
+    centered=True
+)
+
+Position the top bar and its windows at the calculated y-coordinate, offsetting the left and right windows horizontally by half the window spacing. Then mirror this structure for the bottom bar at the negative y position, creating a symmetrical layout with rectangular elements and cutout windows on both the top and bottom horizontal sections. 2, bottom_bar_y))
+    
+    # Flatten and get all polygons
+    c_flat = c.flatten()
+    
+    # Now perform boolean operations
+    # First create top bar with windows
+    top_bar_solid = gf.components.rectangle(
+        size=(bar_length, bar_width),
+        layer=layer,
+        centered=True
+    )
+    top_bar_solid_ref = gf.Component()
+    ref = top_bar_solid_ref << top_bar_solid
+    ref.movey(top_bar_y)
+
+The approach is becoming unwieldy with all these manual placements and flattening operations. I should step back and use boolean operations more directly instead of trying to manage individual polygon references. A cleaner strategy would be to construct the solid bars first, then subtract the window cutouts using proper boolean logic rather than this piecemeal assembly.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def chain_link_device():
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Dimensions based on 3.0 x 5.5 um footprint
+    width = 3.0
+    height = 5.5
+    
+    # Create outer ellipse
+    outer = gf.components.ellipse(radii=(width/2, height/2), layer=layer)
+    
+    # Create inner ellipse (for ring)
+    inner = gf.components.ellipse(radii=(width/2 - 0.35, height/2 - 0.35), layer=layer)
+    
+    # Make ring
+    ring = gf.boolean(outer, inner, operation="not", layer=layer)
+    
+    # Create horizontal bars with windows
+    bar_height = 0.4
+    bar_length = 2.4
+    bar_y_offset = 0.5
+    
+    # Top bar
+    top_bar_base = gf.components.rectangle(size=(bar_length, bar_height), layer=layer, centered=True)
+    
+    # Windows in top bar
+    window_width = 0.5
+    window_height = 0.25
+    window_x_offset = 0.6
+    
+    top_left_window = gf.components.rectangle(size=(window_width, window_height), layer=layer, centered=True)
+    top_right_window = gf.components.rectangle(size=(window_width, window_height), layer=layer, centered=True)
+    
+    # Move windows
+    c_top_left = gf.Component()
+    ref = c_top_left << top_left_window
+    ref.move((-window_x_offset, 0))
+    
+    c_top_right = gf.Component()
+    ref = c_top_right << top_right_window
+    ref.move((window_x_offset, 0))
+    
+    # Create top bar with windows removed
+    top_bar = gf.boolean(top_bar_base, c_top_left, operation="not", layer=layer)
+    top_bar = gf.boolean(top_bar, c_top_right, operation="not", layer=layer)
+    
+    # Bottom bar (same structure)
+    bottom_bar_base = gf.components.rectangle(size=(bar_length, bar_height), layer=layer, centered=True)
+    
+    c_bottom_left = gf.Component()
+    ref = c_bottom_left << gf.components.rectangle(size=(window_width, window_height), layer=layer, centered=True)
+    ref.move((-window_x_offset, 0))
+    
+    c_bottom_right = gf.Component()
+    ref = c_bottom_right << gf.components.rectangle(size=(window_width, window_height), layer=layer, centered=True)
+    ref.move((window_x_offset, 0))
+    
+    bottom_bar = gf.boolean(bottom_bar_base, c_bottom_left, operation="not", layer=layer)
+    bottom_bar = gf.boolean(bottom_bar, c_bottom_right, operation="not", layer=layer)
+    
+    # Add components to main component
+    c << ring
+    c << top_bar
+    c << bottom_bar
+    
+    return c
+```
+
+This approach is cleaner but still involves multiple boolean operations. I should consider using direct polygon manipulation instead for better performance.
+
+Looking at the geometry more carefully, I can see it's fundamentally an oval ring with two horizontal bridges spanning across the middle, each containing rectangular cutouts. A more straightforward implementation would handle the polygon construction directly rather than relying on successive boolean operations.

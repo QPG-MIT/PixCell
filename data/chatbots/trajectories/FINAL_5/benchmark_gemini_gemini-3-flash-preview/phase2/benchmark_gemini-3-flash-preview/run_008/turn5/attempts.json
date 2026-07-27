@@ -1,0 +1,53 @@
+{
+  "turn": 5,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:31:18.024596",
+      "api_duration_seconds": 32.52368378639221,
+      "usage": {
+        "input_tokens": 5466,
+        "output_tokens": 1517,
+        "total_tokens": 9652
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Width of symmetrical cross sections must have be a multiple of 2 dbu. This could cause cross sections and extrusions to become unsymmetrical otherwise. [type=value_error, input_value={'width': 45, 'enclosure'...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the followin",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:31:52.047747",
+      "api_duration_seconds": 21.095749139785767,
+      "usage": {
+        "input_tokens": 7487,
+        "output_tokens": 1371,
+        "total_tokens": 10338
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.085 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:32:14.434398",
+      "api_duration_seconds": 17.57446002960205,
+      "usage": {
+        "input_tokens": 8905,
+        "output_tokens": 1328,
+        "total_tokens": 11405
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 21858,
+    "output_tokens": 4216,
+    "total_tokens": 31395
+  }
+}

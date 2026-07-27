@@ -1,0 +1,99 @@
+Turn 5 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_geometry():
+    """
+    Creates a directional coupler geometry matching the provided image and footprint.
+    
+    Footprint: 18 um x 3 um
+    
+    Refinement Strategy (Turn 5):
+    - Waveguide Width: Increased from 0.5 um to 0.8 um. The target image shows waveguides 
+      that are visually 'heavy' relative to the vertical gap.
+    - Vertical Scale & Margins: Adjusted input port positions to y = +/- 0.85 um.
+      - Outer boundaries: +/- (0.85 + 0.4) = +/- 1.25 um.
+      - This leaves 0.25 um of white space at top and bottom (total 3.0 um height), matching the visual margins.
+      - Input separation: 1.7 um center-to-center, leaving a ~0.9 um gap, which is visually comparable to the waveguide width.
+    - Coupling Gap: Set to 0.2 um. With 0.8 um width, this maintains a distinct separation while appearing 'close' at the center.
+    - Geometry: Retained the double S-bend architecture. The combination of two S-bends 
+      (converging then diverging) creates a naturally flat (parallel) section at the center 
+      where the derivatives zero out, replicating the smooth 'kissing' interaction of the target.
+    """
+    c = gf.Component()
+
+    # --- Parameters ---
+    total_length = 18.0
+    
+    # Feature dimensions
+    wg_width = 0.8
+    gap = 0.2
+    
+    # Vertical Positioning
+    # y_port: Center y-coordinate of the input/output ports.
+    # Set to 0.85 to center the design with correct padding in the 3um window.
+    y_port = 0.85
+    
+    # y_couple: Center y-coordinate of the waveguide at the coupling point (x=0).
+    # Defined by half the gap plus half the waveguide width.
+    y_couple = (gap / 2) + (wg_width / 2) # 0.1 + 0.4 = 0.5
+    
+    # Bend Geometry
+    # The device is split into two halves lengthwise (input side and output side).
+    half_length = total_length / 2  # 9.0 um
+    
+    # dy: The vertical distance the waveguide travels in the S-bend.
+    dy = y_port - y_couple  # 0.85 - 0.5 = 0.35 um
+
+    # Cross Section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Primitives ---
+    # We define the S-bend primitives based on the calculated size (dx, dy).
+    
+    # Top Branch Primitives
+    # Converging (Input): Moves (dx, -dy)
+    s_top_in = gf.components.bend_s(size=(half_length, -dy), cross_section=xs)
+    # Diverging (Output): Moves (dx, dy)
+    s_top_out = gf.components.bend_s(size=(half_length, dy), cross_section=xs)
+    
+    # Bottom Branch Primitives
+    # Converging (Input): Moves (dx, dy)
+    s_bot_in = gf.components.bend_s(size=(half_length, dy), cross_section=xs)
+    # Diverging (Output): Moves (dx, -dy)
+    s_bot_out = gf.components.bend_s(size=(half_length, -dy), cross_section=xs)
+
+    # --- Assembly ---
+
+    # Top Branch
+    # 1. Input Section: Starts at left edge, centered at +y_port
+    ref_top_in = c << s_top_in
+    ref_top_in.move((-half_length, y_port))
+    
+    # 2. Output Section: Connects to the end of the input section
+    ref_top_out = c << s_top_out
+    ref_top_out.connect("o1", ref_top_in.ports["o2"])
+
+    # Bottom Branch
+    # 1. Input Section: Starts at left edge, centered at -y_port
+    ref_bot_in = c << s_bot_in
+    ref_bot_in.move((-half_length, -y_port))
+    
+    # 2. Output Section: Connects to the end of the input section
+    ref_bot_out = c << s_bot_out
+    ref_bot_out.connect("o1", ref_bot_in.ports["o2"])
+
+    # --- Ports ---
+    c.add_port("o1", port=ref_top_in.ports["o1"])
+    c.add_port("o2", port=ref_bot_in.ports["o1"])
+    c.add_port("o3", port=ref_top_out.ports["o2"])
+    c.add_port("o4", port=ref_bot_out.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler_geometry()
+    device.write_gds("directional_coupler_refined.gds")
+```

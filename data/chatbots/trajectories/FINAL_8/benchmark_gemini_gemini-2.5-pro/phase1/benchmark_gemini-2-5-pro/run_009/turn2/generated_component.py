@@ -1,0 +1,90 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def create_wavy_line_structure():
+    """
+    Creates a structure of parallel wavy lines, symmetric about the x and y axes.
+    The two central lines are straight, and the outer lines have a wave-like
+    shape with amplitude increasing with distance from the center.
+    """
+    c = gf.Component()
+
+    # --- Parameters ---
+    # Dimensions
+    total_width = 120.0
+    line_width = 2.0
+    gap_at_ends = 2.5  # Gap between lines at the left/right edges
+    
+    # Line counts and wave shape
+    num_curved_lines_half = 5 # Number of curved lines on each side (top/bottom)
+    min_displacement = 2.0   # Vertical wave amplitude for the innermost curved line
+    max_displacement = 12.0  # Vertical wave amplitude for the outermost curved line
+
+    # Create a standard cross-section for the lines
+    xs = gf.cross_section.cross_section(width=line_width)
+
+    # --- Calculations ---
+    pitch = line_width + gap_at_ends
+    
+    # Calculate the y-positions of all lines in the top half at the edges.
+    # The first position is for the straight line, the rest for the curved ones.
+    num_lines_half = num_curved_lines_half + 1
+    y_positions_at_ends = [(pitch / 2) + i * pitch for i in range(num_lines_half)]
+    
+    # Create a list of vertical displacements (wave amplitudes) for the curved lines.
+    displacements = np.linspace(min_displacement, max_displacement, num_curved_lines_half)
+
+    # --- Component Assembly ---
+
+    # 1. Add the two central straight lines
+    straight_wg = gf.components.straight(length=total_width, cross_section=xs)
+    
+    y_straight = y_positions_at_ends[0]
+    
+    s_top = c << straight_wg
+    s_top.movey(y_straight)
+    
+    s_bot = c << straight_wg
+    s_bot.movey(-y_straight)
+
+    # 2. Add the sets of curved lines for the top and bottom halves
+    for i in range(num_curved_lines_half):
+        y_pos = y_positions_at_ends[i + 1]
+        dy = displacements[i]
+        
+        bend_radius = total_width / 4
+
+        # --- Top half curved line ---
+        points_top = [
+            (-total_width / 2, y_pos),
+            (0, y_pos + dy),
+            (total_width / 2, y_pos),
+        ]
+        path_top = gf.path.smooth(points=points_top, radius=bend_radius)
+        wg_top = gf.path.extrude(path_top, cross_section=xs)
+        # FIX: Use the '<<' operator to add a component as a reference.
+        c << wg_top
+
+        # --- Bottom half curved line (symmetrical) ---
+        points_bot = [
+            (-total_width / 2, -y_pos),
+            (0, -y_pos - dy),
+            (total_width / 2, -y_pos),
+        ]
+        path_bot = gf.path.smooth(points=points_bot, radius=bend_radius)
+        wg_bot = gf.path.extrude(path_bot, cross_section=xs)
+        # FIX: Use the '<<' operator here as well.
+        c << wg_bot
+
+    return c
+
+# --- Main execution block ---
+if __name__ == "__main__":
+    device = create_wavy_line_structure()
+    
+    # Write the component to a GDS file
+    device.write_gds("wavy_structure.gds")
+    
+    # Show the component in the KLayout viewer for verification
+    device.show()

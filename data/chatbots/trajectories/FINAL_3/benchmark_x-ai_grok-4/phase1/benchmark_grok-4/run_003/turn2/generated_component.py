@@ -1,0 +1,63 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreated_device():
+    c = gf.Component()
+    width = 0.5
+    gap = 0.2
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    center_spacing = width + gap
+    end_spacing = 3.5
+    offset = (end_spacing - center_spacing) / 2
+    length_middle = 70
+    dx = 20
+    taper_len = 5
+    tip_width = 0.002  # Even number of dbu to satisfy symmetry validation
+
+    coupler = gf.components.coupler_straight(length=length_middle, gap=gap, cross_section=xs)
+    coup = c << coupler
+
+    # Left bottom
+    dy_l_b = offset
+    bend_l_b = gf.components.bend_s(size=(dx, dy_l_b), cross_section=xs)
+    blb = c << bend_l_b
+    blb.connect("o2", coup.ports["o1"])
+
+    # Left top
+    dy_l_t = -offset
+    bend_l_t = gf.components.bend_s(size=(dx, dy_l_t), cross_section=xs)
+    blt = c << bend_l_t
+    blt.connect("o2", coup.ports["o2"])
+
+    # Right bottom
+    dy_r_b = offset
+    bend_r_b = gf.components.bend_s(size=(dx, dy_r_b), cross_section=xs)
+    brb = c << bend_r_b
+    brb.connect("o1", coup.ports["o3"])
+
+    # Right top
+    dy_r_t = -offset
+    bend_r_t = gf.components.bend_s(size=(dx, dy_r_t), cross_section=xs)
+    brt = c << bend_r_t
+    brt.connect("o1", coup.ports["o4"])
+
+    # Tapers for left (tip on left, wide on right)
+    taper_left = gf.components.taper(length=taper_len, width1=tip_width, width2=width)
+    tlb = c << taper_left
+    tlb.connect("o2", blb.ports["o1"])
+
+    tlt = c << taper_left
+    tlt.connect("o2", blt.ports["o1"])
+
+    # Tapers for right (wide on left, tip on right)
+    taper_right = gf.components.taper(length=taper_len, width1=width, width2=tip_width)
+    trb = c << taper_right
+    trb.connect("o1", brb.ports["o2"])
+
+    trt = c << taper_right
+    trt.connect("o1", brt.ports["o2"])
+
+    return c
+
+device = recreated_device()
+device.write_gds("recreated_device.gds")

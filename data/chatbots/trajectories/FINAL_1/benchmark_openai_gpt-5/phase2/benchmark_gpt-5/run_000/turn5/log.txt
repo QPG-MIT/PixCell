@@ -1,0 +1,90 @@
+Turn 5 Response:
+
+Key changes
+- The S-bends were centered only ±gap/2, so both rails overlapped and formed a big black “bulb.” Now the centers are at ±(w+gap)/2 so the inner slit really is gap.
+- dy is computed from the footprint height so the total device height stays at 1.7 µm after the new offset.
+- Reduced the left clearance so the three tapers stop closer to the nozzle.
+
+Improved script
+
+```python
+import gdsfactory as gf
+
+LAYER = (1, 0)
+FOOTPRINT_X = 40.0
+FOOTPRINT_Y = 1.7
+
+
+@gf.cell
+def right_body(
+    w: float = 0.70,       # rail width
+    gap: float = 0.12,     # slit opening (between inner edges) at the left
+    dx: float = 10.0,      # S-bend length
+    W: float = 15.0,       # straight length to the right
+    height: float = FOOTPRINT_Y,  # total device height
+) -> gf.Component:
+    """Two rails = S-bend + straight. Centers placed so inner slit = gap."""
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=w, layer=LAYER)
+
+    # Centerline offset that yields the requested inner slit
+    s = (w + gap) / 2.0  # center positions of the two rails at the inlet
+
+    # Choose dy so that the overall height equals 'height'
+    # top outer edge at right: y = s + dy + w/2 = height/2
+    dy = max(0.0, height / 2.0 - w / 2.0 - s)
+
+    # S-bends
+    top = c << gf.components.bend_s(size=(dx, +dy), cross_section=xs)
+    bot = c << gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+    top.movey(+s)
+    bot.movey(-s)
+
+    # Straights to the right
+    rt = c << gf.components.straight(length=W, cross_section=xs)
+    rb = c << gf.components.straight(length=W, cross_section=xs)
+    rt.connect("o1", top.ports["o2"])
+    rb.connect("o1", bot.ports["o2"])
+
+    return c
+
+
+@gf.cell
+def three_tapers(length=14.5, pitch=0.56, w1=0.45, w2=0.06) -> gf.Component:
+    c = gf.Component()
+    base = gf.components.taper(length=length, width1=w1, width2=w2, layer=LAYER)
+    c << base               # middle
+    (c << base).movey(+pitch)
+    (c << base).movey(-pitch)
+    return c
+
+
+@gf.cell
+def device() -> gf.Component:
+    c = gf.Component()
+
+    # Right side: two rails with a real slit and proper height
+    w = 0.70
+    gap = 0.12
+    right = c << right_body(w=w, gap=gap, dx=10.0, W=15.0, height=FOOTPRINT_Y)
+
+    # Place so total width ~ 40 µm
+    right_span = 10.0 + 15.0
+    offset_right = FOOTPRINT_X - right_span
+    right.movex(offset_right)
+
+    # Left tapers: stop close to the nozzle
+    gap_to_nozzle = 0.18
+    taper_length = max(5.0, offset_right - gap_to_nozzle)
+    c << three_tapers(length=taper_length, pitch=0.56)
+
+    return c
+
+
+if __name__ == "__main__":
+    D = device()
+    D.write_gds("recreated_device_iter5.gds")
+    print("Wrote GDS: recreated_device_iter5.gds")
+```
+
+This should remove the unwanted black blob at the junction, give a narrow straight slit at the throat, and keep the overall height within 1.7 µm while keeping the long straights on the right.

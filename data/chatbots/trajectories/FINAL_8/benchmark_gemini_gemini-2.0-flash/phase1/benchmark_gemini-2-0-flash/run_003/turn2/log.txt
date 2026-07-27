@@ -1,0 +1,39 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+
+
+@gf.cell
+def waveguide_structure():
+    c = gf.Component("waveguide_structure")
+    line_width = 5
+    line_spacing = 5
+    num_lines = 4
+    total_height = (num_lines * line_width) + ((num_lines - 1) * line_spacing)
+    length = 100
+
+    for i in range(num_lines):
+        y = i * (line_width + line_spacing)
+        rect = c << rectangle(size=(length, line_width), layer=(1, 0), centered=False)
+        rect.movey(y)
+
+    return c
+
+structure = waveguide_structure()
+structure.show()
+structure.write_gds("waveguide_structure.gds")
+```
+
+**Reasoning for the fix:**
+
+The image shows a series of horizontal bars. The original code tried to reproduce a much more complicated structure. This is a simplified version that more closely reproduces the target image. 
+
+The key changes are:
+
+*   **Simplified Structure:** The image is just horizontal bars. The code now creates only horizontal lines.
+*   **Parameters:** Key parameters like `line_width`, `line_spacing`, `num_lines`, and `length` are introduced to control the shape.
+*   **Loop for Lines:** A loop is used to create the lines, positioning each one with the calculated `y` coordinate.
+*   **Centering:** The `centered=False` argument is used to position the rectangles from the bottom-left corner.
+*   **Removed Vertical Sections:** The vertical sections are unnecessary for this image and have been removed.

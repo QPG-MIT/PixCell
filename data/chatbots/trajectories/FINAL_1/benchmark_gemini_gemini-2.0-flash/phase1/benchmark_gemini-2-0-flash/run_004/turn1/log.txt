@@ -1,0 +1,70 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import straight, bend_euler, taper
+from gdsfactory.cross_section import strip
+
+@gf.cell
+def three_port_splitter(width=0.5, taper_length=20, bend_radius=10, gap=0.5):
+    """
+    Creates a three-port splitter using GDSFactory primitives.
+    """
+    c = gf.Component("three_port_splitter")
+
+    # Define cross-section. Explicitly pass the width to strip
+    xs = strip(width=width)
+
+    # Create the main straight waveguide
+    straight_wg = c << straight(length=taper_length, cross_section=xs)
+    c.add_port("o1", port=straight_wg.ports["o1"])
+
+    # Create the taper that splits the waveguide.  taper to width + gap/2 on either side
+    taper_main = c << taper(length=taper_length, width1=width, width2=width + gap/2)
+
+    # Connect the straight to the taper
+    taper_main.connect("o1", straight_wg.ports["o2"])
+
+    # Create two upper bends
+    bend1 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend2 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+
+    # Create two lower bends (mirrored versions)
+    bend3 = c << bend_euler(radius=bend_radius, angle=-90, cross_section=xs)
+    bend4 = c << bend_euler(radius=bend_radius, angle=-90, cross_section=xs)
+
+    #Create a straight after bend for output
+    straight_out1 = c << straight(length=taper_length, cross_section=xs)
+    straight_out2 = c << straight(length=taper_length, cross_section=xs)
+
+    # Position and connect first bend pair and straights
+    bend1.move((taper_length, gap/2))
+    bend3.move((taper_length, -gap/2))
+
+    straight_out1.connect("o1",bend1.ports["o2"])
+    straight_out2.connect("o1",bend3.ports["o2"])
+
+    # Position and connect second bend pair. Connect to taper at midpoint.
+    bend1.connect("o1", taper_main.ports["o2"])
+    bend3.connect("o1", taper_main.ports["o2"])
+
+    #Connect external ports
+    c.add_port("o2", port=straight_out1.ports["o2"])
+    c.add_port("o3", port=straight_out2.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    splitter = three_port_splitter()
+    splitter.show()  # show in klayout
+```
+
+The root cause of the error is the assumption about where the tapers connect and what the tapers are connected to. The original solution assumes the split is a taper to `width+gap`, implying that the original waveguide width is *added* to the full gap. This is incorrect. The geometry requires the taper split to the point where the distance *from center* is `gap/2` for each arm. Thus, we only taper to `width+gap/2`.
+
+Key Changes and Explanation:
+
+* **Correct Taper Width:** The `taper_main` now tapers to the correct width. Changed `width2=width + gap` to `width2=width + gap/2`
+* **Gap Calculation:** Gap is calculated from the midpoint of the splitting waveguide to the outside edge of the split waveguides, so we only need to increase width by 1/2 the gap size.
+
+This final version should address the port mismatch, and the geometry requested.

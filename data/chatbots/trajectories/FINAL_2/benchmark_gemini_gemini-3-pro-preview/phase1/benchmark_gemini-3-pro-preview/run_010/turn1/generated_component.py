@@ -1,0 +1,88 @@
+import gdsfactory as gf
+
+@gf.cell
+def mmi_1x4_vertical():
+    """
+    Creates a 1x4 MMI splitter geometry based on the provided image.
+    Orientation: Vertical (Input bottom, Outputs top).
+    Dimensions: Fits within approx 10um x 25um bounding box.
+    """
+    c = gf.Component()
+    
+    # Standard waveguide layer
+    layer_wg = (1, 0)
+
+    # --- Dimensions ---
+    # Inferred from visual proportions and [25, 10] footprint constraint.
+    # Total Height ~ 25um (5 input + 12 body + 8 output)
+    # Total Width ~ 10um
+    
+    body_width = 10.0
+    body_height = 12.0
+    
+    # Output (Top) Tapers
+    out_taper_len = 8.0
+    out_width_base = 1.8  # Wide end at MMI interface
+    out_width_tip = 0.5   # Narrow waveguide end
+    out_pitch = 2.4       # Spacing between output ports
+    
+    # Input (Bottom) Taper
+    in_taper_len = 5.0
+    in_width_base = 2.0
+    in_width_tip = 0.5
+
+    # --- 1. MMI Body ---
+    # Central rectangular multimode region
+    body = c << gf.components.rectangle(
+        size=(body_width, body_height), 
+        layer=layer_wg, 
+        centered=True
+    )
+
+    # --- 2. Input Port (Bottom) ---
+    # Taper transitioning from MMI body to input waveguide
+    taper_in_cmp = gf.components.taper(
+        length=in_taper_len,
+        width1=in_width_base,
+        width2=in_width_tip,
+        layer=layer_wg
+    )
+    
+    ref_in = c << taper_in_cmp
+    # Rotate -90 to point downwards. 
+    # Taper 'o1' (width1) is at local (0,0), 'o2' (width2) is at (length, 0).
+    ref_in.rotate(-90)
+    # Move wide base to the bottom center of the body
+    ref_in.move((0, -body_height / 2))
+
+
+    # --- 3. Output Ports (Top) ---
+    # 4 Tapers transitioning from MMI body to output waveguides
+    taper_out_cmp = gf.components.taper(
+        length=out_taper_len,
+        width1=out_width_base,
+        width2=out_width_tip,
+        layer=layer_wg
+    )
+    
+    num_outputs = 4
+    # Calculate x-offsets for the 4 ports to be centered
+    # Positions: -1.5p, -0.5p, 0.5p, 1.5p
+    indices = [i - (num_outputs - 1) / 2 for i in range(num_outputs)]
+    
+    for i in indices:
+        x_pos = i * out_pitch
+        
+        ref_out = c << taper_out_cmp
+        # Rotate 90 to point upwards
+        ref_out.rotate(90)
+        # Move wide base to the top edge of the body at the calculated x_pos
+        ref_out.move((x_pos, body_height / 2))
+
+    return c
+
+# Create the component and save to GDS
+if __name__ == "__main__":
+    device = mmi_1x4_vertical()
+    device.write_gds("mmi_1x4.gds")
+    device.show()

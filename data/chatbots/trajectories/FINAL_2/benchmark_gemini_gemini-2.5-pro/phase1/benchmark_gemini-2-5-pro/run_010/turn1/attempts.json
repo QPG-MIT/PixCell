@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:51.340851",
+      "api_duration_seconds": 104.25383496284485,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 1403,
+        "total_tokens": 16732
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:42.128675",
+      "api_duration_seconds": 32.205904960632324,
+      "usage": {
+        "input_tokens": 3767,
+        "output_tokens": 1253,
+        "total_tokens": 7568
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: boolean() missing 1 required positional argument: 'B'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:22:15.617246",
+      "api_duration_seconds": 25.229921102523804,
+      "usage": {
+        "input_tokens": 5048,
+        "output_tokens": 1277,
+        "total_tokens": 8151
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'union'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11160,
+    "output_tokens": 3933,
+    "total_tokens": 32451
+  }
+}

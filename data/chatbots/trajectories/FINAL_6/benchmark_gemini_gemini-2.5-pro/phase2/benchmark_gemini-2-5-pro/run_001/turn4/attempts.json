@@ -1,0 +1,53 @@
+{
+  "turn": 4,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:22:46.563222",
+      "api_duration_seconds": 95.9582040309906,
+      "usage": {
+        "input_tokens": 3589,
+        "output_tokens": 1449,
+        "total_tokens": 16467
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Width of symmetrical cross sections must have be a multiple of 2 dbu. This could cause cross sections and extrusions to become unsymmetrical otherwise. [type=value_error, input_value={'width': 1, 'enclosure':...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the followin",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:24:23.802009",
+      "api_duration_seconds": 19.62432312965393,
+      "usage": {
+        "input_tokens": 5550,
+        "output_tokens": 1324,
+        "total_tokens": 7929
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:24:44.777484",
+      "api_duration_seconds": 13.772825002670288,
+      "usage": {
+        "input_tokens": 6900,
+        "output_tokens": 1035,
+        "total_tokens": 8545
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports straight_gdsfactorypcomponentspwaveguidespstraight_L0p4_f3dfa7e6_0_0[\"o1\"] and Port \"o2\" (\"400\"/\"2\")",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16039,
+    "output_tokens": 3808,
+    "total_tokens": 32941
+  }
+}

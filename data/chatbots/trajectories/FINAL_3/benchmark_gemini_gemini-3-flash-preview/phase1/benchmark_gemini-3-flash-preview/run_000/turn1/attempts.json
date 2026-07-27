@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.773290",
+      "api_duration_seconds": 44.190114974975586,
+      "usage": {
+        "input_tokens": 3162,
+        "output_tokens": 1181,
+        "total_tokens": 9196
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:55.544110",
+      "api_duration_seconds": 15.689867973327637,
+      "usage": {
+        "input_tokens": 4825,
+        "output_tokens": 1067,
+        "total_tokens": 6773
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: get_cross_section() missing 1 required positional argument: 'cross_section'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:12.766143",
+      "api_duration_seconds": 24.377501964569092,
+      "usage": {
+        "input_tokens": 5926,
+        "output_tokens": 1106,
+        "total_tokens": 9629
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13913,
+    "output_tokens": 3354,
+    "total_tokens": 25598
+  }
+}

@@ -1,0 +1,84 @@
+Turn 3 Response:
+
+Based on the comparison between the target image and the current output, the main areas for improvement are the **aspect ratio of the body** (it needs to be much wider) and the **thickness of the top fingers** (they are currently too spindly). We also need to shorten the bottom tip to better match the "stubby" look in the original.
+
+Here is the updated code with adjusted proportions to more accurately reflect the target device while strictly adhering to the **25um x 10um** footprint constraint.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreate_device():
+    """
+    Recreates the probe device with proportions matching the target image.
+    Footprint constraint: 25um (width) x 10um (height).
+    
+    Adjustments:
+    - Increased body width significantly to match the rectangular aspect ratio.
+    - Thickened the top fingers and adjusted their spacing.
+    - Shortened and widened the bottom stub.
+    """
+    c = gf.Component("probe_device")
+    layer = (1, 0)
+
+    # --- Dimensions (Total Height must be 10.0um) ---
+    body_w = 18.0   # Wide rectangle
+    body_h = 5.0    # 50% of total height
+    
+    top_taper_h = 2.0
+    top_straight_h = 1.5
+    # Total top height = 3.5um
+    
+    bottom_h = 1.5   # Short stubby tip
+    # Total Height = 5.0 (body) + 3.5 (top) + 1.5 (bottom) = 10.0um
+    
+    # 1. Main Body
+    # A wide rectangular central block
+    body = c << gf.components.rectangle(size=(body_w, body_h), layer=layer, centered=True)
+
+    # 2. Top Fingers (4 symmetric fingers)
+    # Fingers are thicker than the previous iteration
+    w_base = 1.5
+    w_tip = 1.1
+    
+    # Position fingers evenly across the wide top surface
+    # Placed at roughly 1/8, 3/8, 5/8, 7/8 of the 18um width
+    x_positions = [-6.5, -2.2, 2.2, 6.5]
+    
+    for x in x_positions:
+        # Tapered base for each finger
+        taper = gf.components.taper(length=top_taper_h, width1=w_base, width2=w_tip, layer=layer)
+        t_ref = c << taper
+        t_ref.rotate(90)
+        t_ref.move((x, body_h / 2))
+        
+        # Straight vertical tip
+        tip_xs = gf.cross_section.cross_section(width=w_tip, layer=layer)
+        straight = gf.components.straight(length=top_straight_h, cross_section=tip_xs)
+        s_ref = c << straight
+        s_ref.rotate(90)
+        s_ref.move((x, (body_h / 2) + top_taper_h))
+
+    # 3. Bottom Feature (Centered stubby taper)
+    # Wider base to match the visual weight of the top fingers
+    b_taper = gf.components.taper(length=bottom_h, width1=2.2, width2=0.8, layer=layer)
+    b_ref = c << b_taper
+    b_ref.rotate(-90)
+    b_ref.move((0, -body_h / 2))
+
+    return c
+
+if __name__ == "__main__":
+    device = recreate_device()
+    device.write_gds("probe_device_v3.gds")
+    
+    # Validation output
+    print(f"Device Width: {device.size_info.width:.2f} um (Max: 25 um)")
+    print(f"Device Height: {device.size_info.height:.2f} um (Max: 10 um)")
+```
+
+### Key Changes Made:
+1.  **Width-to-Height Ratio:** Increased `body_w` to 18um while keeping `body_h` at 5um. This creates the horizontal rectangular look seen in the target silhouette.
+2.  **Finger Thickness:** Increased `w_base` from 0.9 to 1.5 and `w_tip` from 0.3 to 1.1. This removes the "needle" look and matches the more substantial fingers of the target.
+3.  **Bottom Tip:** Widened the base of the bottom feature to 2.2um and shortened its length to 1.5um, making it look like a sturdy protrusion rather than a long point.
+4.  **Spatial Distribution:** Widened the spacing between the fingers to correspond with the wider body.

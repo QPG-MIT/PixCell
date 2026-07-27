@@ -1,0 +1,116 @@
+import gdsfactory as gf
+
+def make_stadium(length: float, radius: float, layer: tuple) -> gf.Component:
+    """
+    Creates a solid stadium (racetrack) shape from a rectangle and two circles
+    and returns it as a single component for boolean operations.
+    
+    Args:
+        length: The length of the central straight section.
+        radius: The radius of the semicircular ends.
+        layer: The GDS layer for the shape.
+    """
+    center_rect = gf.components.rectangle(size=(length, 2 * radius), layer=layer, centered=True)
+    circle_shape = gf.components.circle(radius=radius, layer=layer)
+
+    # Use .copy() before applying a transformation (.movex) to a cached component.
+    left_circle_moved = circle_shape.copy().movex(-length / 2)
+    right_circle_moved = circle_shape.copy().movex(length / 2)
+    
+    # Perform boolean unions to merge the shapes into a single component.
+    s1 = gf.boolean(A=center_rect, B=left_circle_moved, operation="or", layer=layer)
+    stadium_comp = gf.boolean(A=s1, B=right_circle_moved, operation="or", layer=layer)
+    
+    return stadium_comp
+
+
+@gf.cell
+def recreated_device():
+    """
+    Recreates the device from the image using parametric primitives and booleans.
+    The method is primarily additive, creating solid parts, unioning them, and
+    then subtracting the final window cutouts.
+    """
+    c = gf.Component("recreated_device")
+
+    # 1. Define device dimensions from footprint and image analysis
+    footprint_w = 5.5
+    footprint_h = 3.0
+    
+    # Primary dimensions from footprint
+    radius_outer = footprint_h / 2.0
+    straight_length = footprint_w - 2 * radius_outer
+
+    # Secondary dimensions estimated from image proportions
+    wall_thickness = 0.4
+    bar_width = 0.8
+    window_width = 0.6
+    window_height = 0.4
+    window_gap = 0.3
+    bridge_width = 0.4
+    
+    # Calculated dimensions for internal structures
+    radius_ring_inner = radius_outer - wall_thickness
+    total_inner_height = 2 * radius_ring_inner
+    central_gap_height = total_inner_height - 2 * bar_width
+    radius_gap_inner = central_gap_height / 2.0
+    inner_straight_length = straight_length - (2 * 0.2)  # Make inner part slightly shorter
+    
+    layer = (1, 0)
+
+    # 2. Create the outer ring by subtracting one stadium from another
+    stadium_outer = make_stadium(length=straight_length, radius=radius_outer, layer=layer)
+    stadium_ring_inner = make_stadium(length=straight_length, radius=radius_ring_inner, layer=layer)
+    ring = gf.boolean(A=stadium_outer, B=stadium_ring_inner, operation="not", layer=layer)
+
+    # 3. Create the inner hollow structure (before adding windows)
+    stadium_inner_gap = make_stadium(length=inner_straight_length, radius=radius_gap_inner, layer=layer)
+    inner_hollow_body = gf.boolean(A=stadium_ring_inner, B=stadium_inner_gap, operation="not", layer=layer)
+
+    # 4. Create vertical bridges to connect the ring and inner body
+    bridge = gf.components.rectangle(size=(bridge_width, total_inner_height), layer=layer, centered=True)
+    bridge_left = bridge.copy().movex(-straight_length / 2)
+    bridge_right = bridge.copy().movex(straight_length / 2)
+
+    # 5. Union the solid parts together to form the main body
+    body_no_windows = gf.boolean(A=ring, B=inner_hollow_body, operation="or", layer=layer)
+    body_no_windows = gf.boolean(A=body_no_windows, B=bridge_left, operation="or", layer=layer)
+    body_no_windows = gf.boolean(A=body_no_windows, B=bridge_right, operation="or", layer=layer)
+
+    # 6. Create the window cutouts
+    window = gf.components.rectangle(size=(window_width, window_height), layer=layer, centered=True)
+    window_x_offset = window_gap / 2.0 + window_width / 2.0
+    window_y_offset = central_gap_height / 2.0 + bar_width / 2.0
+    
+    wins = [
+        window.copy().move((-window_x_offset, window_y_offset)),
+        window.copy().move((window_x_offset, window_y_offset)),
+        window.copy().move((-window_x_offset, -window_y_offset)),
+        window.copy().move((window_x_offset, -window_y_offset)),
+    ]
+    # Union all windows into a single component for subtraction
+    all_windows = gf.boolean(A=wins[0], B=wins[1], operation="or", layer=layer)
+    all_windows = gf.boolean(A=all_windows, B=wins[2], operation="or", layer=layer)
+    all_windows = gf.boolean(A=all_windows, B=wins[3], operation="or", layer=layer)
+
+    # 7. Subtract the windows from the main body for the final result
+    final_device = gf.boolean(A=body_no_windows, B=all_windows, operation="not", layer=layer)
+
+    c.add_ref(final_device)
+    c.flatten() # Combine all polygons into the top cell
+
+    # FIX: The c.center property returns a tuple (x, y). The unary minus operator '-'
+    # cannot be applied directly to a tuple. To move the component's center to the
+    # origin (0,0), we must negate each element of the center tuple individually
+    # to create the correct displacement vector.
+    center_coords = c.center
+    c.move((-center_coords[0], -center_coords[1]))
+
+    return c
+
+# Instantiate and view the component
+device = recreated_device()
+# To display the component if running interactively:
+# device.show()
+# To save the component to a GDS file:
+# device.write_gds("recreated_device.gds")

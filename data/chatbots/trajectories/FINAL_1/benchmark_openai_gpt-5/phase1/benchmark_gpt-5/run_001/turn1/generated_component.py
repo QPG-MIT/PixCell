@@ -1,0 +1,59 @@
+import gdsfactory as gf
+
+
+@gf.cell
+def fork_funnel():
+    c = gf.Component("fork_funnel")
+
+    # Target footprint ~ 40 µm x 1.7 µm
+    w_small = 0.12          # thin tips at the left for top/bottom branches
+    w_wide = 0.90           # wide rails on the right
+    w_center_left = 0.50    # start width of the center wedge
+    w_center_tip = 0.06     # almost-pointed end of the center wedge
+
+    L_taper = 20.0          # straight taper region for top/bottom
+    dx_s = 8.0              # S-bend x span
+    L_right = 12.0          # right straight section
+    # total x length ≈ 20 + 8 + 12 = 40 µm
+
+    y_start = 0.55          # vertical centerlines near the left
+    y_final = 0.85          # final centerlines at the right (half of 1.7 µm)
+    dy = y_final - y_start
+
+    # Wide rail cross-section for the S-bend and right straights
+    xs_wide = gf.cross_section.cross_section(width=w_wide, layer=(1, 0))
+
+    # Top branch
+    t_top = c << gf.components.taper(length=L_taper, width1=w_small, width2=w_wide, layer=(1, 0))
+    t_top.movey(y_start)
+
+    s_top = c << gf.components.bend_s(size=(dx_s, dy), cross_section=xs_wide)
+    s_top.connect("o1", t_top.ports["o2"])
+
+    r_top = c << gf.components.straight(length=L_right, cross_section=xs_wide)
+    r_top.connect("o1", s_top.ports["o2"])
+
+    # Bottom branch (mirrored)
+    t_bot = c << gf.components.taper(length=L_taper, width1=w_small, width2=w_wide, layer=(1, 0))
+    t_bot.movey(-y_start)
+
+    s_bot = c << gf.components.bend_s(size=(dx_s, -dy), cross_section=xs_wide)
+    s_bot.connect("o1", t_bot.ports["o2"])
+
+    r_bot = c << gf.components.straight(length=L_right, cross_section=xs_wide)
+    r_bot.connect("o1", s_bot.ports["o2"])
+
+    # Center wedge intruding from the left; tip ends near the start of the fanout
+    center_len = L_taper + dx_s  # ≈ 28 µm
+    center = c << gf.components.taper(
+        length=center_len, width1=w_center_left, width2=w_center_tip, layer=(1, 0)
+    )
+    # centered on y=0 already; left edge aligned at x=0
+
+    return c
+
+
+if __name__ == "__main__":
+    comp = fork_funnel()
+    # Write GDS file explicitly
+    comp.write_gds("fork_funnel.gds")

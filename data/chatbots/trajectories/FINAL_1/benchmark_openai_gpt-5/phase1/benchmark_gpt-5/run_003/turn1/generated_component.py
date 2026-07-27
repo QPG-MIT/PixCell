@@ -1,0 +1,47 @@
+import gdsfactory as gf
+
+@gf.cell
+def fork_splitter():
+    c = gf.Component("fork_splitter")
+
+    # Footprint and geometry targets
+    L_total = 40.0          # total length in x (µm)
+    w_end = 0.50            # output waveguide width
+    w_start = 0.01          # near-zero at left to make the triangular tips
+    y_out = 0.60            # centerline offset of the two arms at the right
+    g0 = 0.10               # initial centerline separation at the left
+
+    # Cross-sections and width transition
+    xs_narrow = gf.cross_section.cross_section(width=w_start, layer=(1, 0))
+    xs_wide = gf.cross_section.cross_section(width=w_end, layer=(1, 0))
+    trans = gf.path.transition(xs_narrow, xs_wide, width_type="sine")
+
+    # Smooth, monotonic divergence for the two arms
+    # (points chosen to match the visual curvature and reach x=L_total)
+    p_top = gf.path.smooth(
+        points=[(0, +g0/2), (16, 0.12), (28, 0.35), (L_total, +y_out)],
+        radius=8.0,
+    )
+    p_bot = gf.path.smooth(
+        points=[(0, -g0/2), (16, -0.12), (28, -0.35), (L_total, -y_out)],
+        radius=8.0,
+    )
+
+    # Extrude both paths with the width transition (creates the long triangular tips)
+    top = gf.path.extrude_transition(p_top, trans)
+    bot = gf.path.extrude_transition(p_bot, trans)
+
+    rt = c << top
+    rb = c << bot
+
+    # Expose right-side ports (constant-width outputs)
+    c.add_port("o_top", port=rt.ports["o2"])
+    c.add_port("o_bot", port=rb.ports["o2"])
+
+    # The vertical span is 2*(y_out + w_end/2) = 1.7 µm, and x-length is 40 µm.
+    return c
+
+if __name__ == "__main__":
+    c = fork_splitter()
+    c.write_gds("fork_splitter.gds")
+    # c.show()  # uncomment to view in Klayout if available

@@ -1,0 +1,151 @@
+import gdsfactory as gf
+from gdsfactory.cross_section import Section
+
+@gf.cell
+def specialized_coupler():
+    """
+    Recreates the multi-rail directional coupler using composite cross-sections
+    to define the complex rail geometry (Thick block + parallel thin lines).
+    """
+    c = gf.Component()
+
+    # =======================================================================
+    # 1. Dimensions & Parameters
+    # =======================================================================
+    # Geometric Constraints
+    total_length = 120.0
+    len_straight = 40.0
+    len_bend = (total_length - len_straight) / 2
+    
+    # Feature Sizes
+    width_thin = 0.2       # Width of the thin rails
+    width_thick = 0.8      # Width of the outer thick cladding blocks
+    gap_internal = 0.2     # Gap between parallel rails within one arm
+    gap_coupling = 0.15    # Gap between the top arm and the center rail
+    
+    # Calculate Offsets for composite Cross-Sections
+    # We define the 'core' of the waveguide as the inner-most thin rail.
+    # Additional rails are added as 'sections' relative to this core.
+    
+    # Offset for the second thin rail
+    off_rail2 = width_thin + gap_internal
+    
+    # Offset for the thick block
+    # Distance from center of rail 2 to edge of rail 2: width_thin/2
+    # Distance from edge of rail 2 to edge of block: gap_internal
+    # Distance from edge of block to center of block: width_thick/2
+    off_block = off_rail2 + (width_thin/2) + gap_internal + (width_thick/2)
+
+    # =======================================================================
+    # 2. Define Parametric Cross-Sections
+    # =======================================================================
+    
+    # -- Center Cross-Section --
+    # Simple straight rail for the middle
+    xs_center = gf.cross_section.cross_section(
+        width=width_thin,
+        layer=(1, 0)
+    )
+
+    # -- Top Arm Cross-Section --
+    # Main core: Inner thin rail
+    # Added sections: Outer thin rail + Thick block
+    sections_top = [
+        Section(width=width_thin, offset=off_rail2, layer=(1, 0)),
+        Section(width=width_thick, offset=off_block, layer=(1, 0))
+    ]
+    xs_top = gf.cross_section.cross_section(
+        width=width_thin, # This draws the rail at offset 0
+        sections=sections_top,
+        layer=(1, 0)
+    )
+
+    # -- Bottom Arm Cross-Section (Mirrored) --
+    sections_bot = [
+        Section(width=width_thin, offset=-off_rail2, layer=(1, 0)),
+        Section(width=width_thick, offset=-off_block, layer=(1, 0))
+    ]
+    xs_bot = gf.cross_section.cross_section(
+        width=width_thin,
+        sections=sections_bot,
+        layer=(1, 0)
+    )
+
+    # =======================================================================
+    # 3. Construct Geometry
+    # =======================================================================
+
+    # --- Center Rail ---
+    # Fixed: Using cross_section instead of raw layer/width arguments
+    center_rail = c << gf.components.straight(
+        length=len_straight, 
+        cross_section=xs_center
+    )
+    center_rail.movex(len_bend) # Center longitudinally
+
+    # --- Top Arm ---
+    # Vertical position in coupling region
+    y_coupling_top = (width_thin/2) + gap_coupling + (width_thin/2)
+    
+    # Vertical position at IO ports (S-bend height)
+    # Target approx 1.25um to fit within tight footprint
+    y_io_top = 1.25 
+    dy_top = y_io_top - y_coupling_top
+
+    # 1. Straight Coupling Region
+    top_straight = c << gf.components.straight(
+        length=len_straight, 
+        cross_section=xs_top
+    )
+    top_straight.move((len_bend, y_coupling_top))
+
+    # 2. Input S-Bend (Left)
+    top_bend_left = c << gf.components.bend_s(
+        size=(len_bend, dy_top), 
+        cross_section=xs_top
+    )
+    top_bend_left.mirror_x() # Flip to come "down" into the straight
+    top_bend_left.connect("o1", top_straight.ports["o1"])
+
+    # 3. Output S-Bend (Right)
+    top_bend_right = c << gf.components.bend_s(
+        size=(len_bend, dy_top), 
+        cross_section=xs_top
+    )
+    top_bend_right.connect("o1", top_straight.ports["o2"])
+
+    # --- Bottom Arm ---
+    # Symmetric Y positions
+    y_coupling_bot = -y_coupling_top
+    y_io_bot = -y_io_top
+    dy_bot = y_io_bot - y_coupling_bot
+
+    # 1. Straight Coupling Region
+    bot_straight = c << gf.components.straight(
+        length=len_straight, 
+        cross_section=xs_bot
+    )
+    bot_straight.move((len_bend, y_coupling_bot))
+
+    # 2. Input S-Bend (Left)
+    bot_bend_left = c << gf.components.bend_s(
+        size=(len_bend, abs(dy_bot)), 
+        cross_section=xs_bot
+    )
+    bot_bend_left.connect("o2", bot_straight.ports["o1"])
+
+    # 3. Output S-Bend (Right)
+    bot_bend_right = c << gf.components.bend_s(
+        size=(len_bend, abs(dy_bot)), 
+        cross_section=xs_bot
+    )
+    bot_bend_right.mirror() # Mirror Y to bend "down" away from center
+    bot_bend_right.connect("o1", bot_straight.ports["o2"])
+
+    return c
+
+# Create and save
+if __name__ == "__main__":
+    component = specialized_coupler()
+    component.show() # Views in KLayout if installed and running
+    component.write_gds("specialized_coupler.gds")

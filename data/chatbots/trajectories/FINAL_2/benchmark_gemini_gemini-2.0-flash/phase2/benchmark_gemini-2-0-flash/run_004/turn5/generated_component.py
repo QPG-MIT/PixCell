@@ -1,0 +1,51 @@
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+
+@gf.cell
+def my_device():
+    c = gf.Component("my_device")
+
+    # Dimensions (adjust these based on the target image)
+    rect_width = 24
+    rect_height = 6
+    taper_width = 1.0
+    taper_height = 3.0
+    taper_separation = 5.5
+    bottom_rect_width = 2.0
+    bottom_rect_height = 4.0
+    taper_base_width = 2.0
+
+    taper_total_width = 4 * taper_width + 3 * taper_separation
+    horizontal_offset = (rect_width - taper_total_width) / 2
+
+    # Main Rectangle
+    rect = c << rectangle(size=(rect_width, rect_height))
+    rect.move((-rect_width/2, -rect_height/2))  # center rectangle to (0,0)
+
+    # Tapers
+    for i in range(4):
+        taper_x = -rect_width/2 + horizontal_offset + i * (taper_width + taper_separation)
+
+        # Rectangular top of taper
+        rect_top = c << rectangle(size=(taper_width, taper_height))
+        rect_top.move((taper_x, rect_height/2))
+
+        # Triangular bottom of taper
+        triangle = c << gf.components.triangle(x=taper_base_width, y=taper_height)
+        triangle.move((taper_x - (taper_base_width - taper_width) / 2, rect_height / 2))
+
+    # Bottom Rectangle
+    bottom_rect = c << rectangle(size=(bottom_rect_width, bottom_rect_height))
+    bottom_rect.move((-bottom_rect_width/2, -rect_height/2 - bottom_rect_height))
+
+    #Check device footprint and report
+    # bbox = c.bbox
+    # size = (bbox[1][0] - bbox[0][0], bbox[1][1] - bbox[0][1])
+    # print(f"Device size: {size}")
+
+    c.flatten()
+    return c
+
+device = my_device()
+device.show()
+device.write_gds("my_device.gds")

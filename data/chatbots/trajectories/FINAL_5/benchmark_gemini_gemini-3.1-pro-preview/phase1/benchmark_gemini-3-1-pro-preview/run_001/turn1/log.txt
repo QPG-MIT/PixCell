@@ -1,0 +1,121 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def grating_section(length=12.0, wg_width=0.05, tooth_height=0.025, tooth_pitch=0.2, tooth_width=0.1, teeth_up=False):
+    """Creates a straight waveguide section with rectangular grating teeth on one edge."""
+    c = gf.Component()
+    wg = c << gf.components.straight(length=length, width=wg_width)
+    
+    num_teeth = int(length / tooth_pitch)
+    start_x = (length - (num_teeth * tooth_pitch)) / 2
+    
+    for i in range(num_teeth):
+        x_pos = start_x + i * tooth_pitch + tooth_pitch/2
+        tooth = c << gf.components.rectangle(size=(tooth_width, tooth_height), centered=False)
+        if not teeth_up:
+            # Place teeth precisely touching the bottom edge
+            tooth.move((x_pos - tooth_width/2, -wg_width/2 - tooth_height))
+        else:
+            # Place teeth precisely touching the top edge
+            tooth.move((x_pos - tooth_width/2, wg_width/2))
+            
+    c.add_port("o1", port=wg.ports["o1"])
+    c.add_port("o2", port=wg.ports["o2"])
+    return c
+
+@gf.cell
+def half_device():
+    """Builds one half (the top section) of the device. 
+    It is centered such that the grating mid-point is at X=0.
+    """
+    c = gf.Component()
+    w = 0.05
+    w_tip = 0.002
+    
+    # Exact geometric parameters to satisfy the [18.24, 0.7] footprint
+    L_grat = 12.0
+    L_inner_L = 0.5
+    L_inner_R = 0.5
+    L_inner_tap = 1.0
+    R_uturn = 0.05
+    
+    # 1. Grating section (centered at X=0)
+    grat = c << grating_section(
+        length=L_grat, wg_width=w, tooth_height=0.025, 
+        tooth_pitch=0.2, tooth_width=0.1, teeth_up=False
+    )
+    grat.move((-L_grat/2, 0))
+    
+    # 2. Inner straight section (Right side)
+    inner_R = c << gf.components.straight(length=L_inner_R, width=w)
+    inner_R.connect("o1", grat.ports["o2"])
+    
+    # 3. U-turn
+    p_u = gf.path.arc(radius=R_uturn, angle=180)
+    u_turn = c << gf.path.extrude(p_u, cross_section=gf.cross_section.cross_section(width=w))
+    u_turn.connect("o1", inner_R.ports["o2"])
+    
+    # 4. Inner straight section (Left side)
+    inner_L = c << gf.components.straight(length=L_inner_L, width=w)
+    inner_L.connect("o2", grat.ports["o1"])
+    
+    # 5. Inner taper to a sharp tip
+    inner_tap = c << gf.components.taper(length=L_inner_tap, width1=w, width2=w_tip)
+    inner_tap.connect("o1", inner_L.ports["o1"])
+    
+    # 6. Outer straight arm
+    # Ensure it exactly aligns with the inner taper tip at the left side before curving
+    L_outer_str = (L_grat/2 + L_inner_R) - (-L_grat/2 - L_inner_L - L_inner_tap)
+    outer_str = c << gf.components.straight(length=L_outer_str, width=w)
+    outer_str.connect("o1", u_turn.ports["o2"])
+    
+    # 7. Outer curved taper
+    # Uses a calculated arc to strictly enforce dx=1.62 and dy=0.17 for perfect bounding box scaling
+    p_curve = gf.path.arc(radius=7.80, angle=-11.98)
+    trans = gf.path.transition(
+        gf.cross_section.cross_section(width=w),
+        gf.cross_section.cross_section(width=w_tip)
+    )
+    outer_curve = c << gf.path.extrude_transition(p_curve, trans)
+    outer_curve.connect("o1", outer_str.ports["o2"])
+    
+    return c
+
+@gf.cell
+def full_device():
+    """Assembles the full geometry by instantiating two mirrored halves and a center line."""
+    c = gf.Component()
+    
+    w_center = 0.04
+    w = 0.05
+    gap = 0.03
+    
+    # Y displacement to center the sub-components around the solid center-line
+    y_shift = w_center/2 + gap + w/2
+    
+    # Place Central straight waveguide
+    # Spans perfectly between the starting points of the inner tapers (-6.5 to +6.5)
+    center_wg = c << gf.components.straight(length=13.0, width=w_center)
+    center_wg.move((-6.5, 0))
+    
+    # Place Top Half
+    top = c << half_device()
+    top.move((0, y_shift))
+    
+    # Place Bottom Half (Rotated 180 degrees around origin to invert U-turn and curve directions)
+    bot = c << half_device()
+    bot.rotate(180)
+    bot.move((0, -y_shift))
+    
+    return c
+
+if __name__ == "__main__":
+    # Generate and assemble the full parametric structure
+    device = full_device()
+    
+    # Output to standard GDS format
+    device.write_gds("output.gds")
+```

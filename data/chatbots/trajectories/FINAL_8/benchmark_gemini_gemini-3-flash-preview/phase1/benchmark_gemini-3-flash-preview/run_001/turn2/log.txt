@@ -1,0 +1,83 @@
+Turn 2 Response:
+
+To move closer to the target image, we need to address three key visual discrepancies in the current rendering:
+
+1.  **Nesting and Fan-out**: In the original image, the vertical legs of the "staple" shapes are not all at the same horizontal position. They "fan out," with the outermost thin waveguides having the widest horizontal span and the innermost thick waveguide having the narrowest.
+2.  **Corner Smoothness**: The bends in the target image are very smooth and prominent. To achieve this within a 4µm total height, we need to maximize the `radius` and ensure the horizontal segments are placed lower to provide enough vertical "runway" for the curves.
+3.  **Horizontal Proportions**: The central straight waveguides should extend slightly beyond the vertical legs of the staples to match the silhouette of the original device.
+
+Here is the refined script with adjusted offsets, widths, and radii.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreated_device():
+    """
+    Refined recreation of the photonic device.
+    Footprint: 120um x 4um.
+    
+    Changes:
+    - Added x_offsets to create the 'nested' fan-out effect at the edges.
+    - Increased radius for smoother, more organic corners.
+    - Adjusted y-levels to provide more vertical space for bends.
+    - Adjusted central waveguide length to match visual proportions.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions ---
+    hw, hh = 60.0, 2.0  # Half-width and Half-height (Total 120x4)
+    layer = (1, 0)
+    
+    # --- 1. Central Group: 5 Straight Waveguides ---
+    # These span nearly the full width (118um), centered.
+    w_thin = 0.1
+    l_center = 118.0
+    y_center = [-0.4, -0.2, 0.0, 0.2, 0.4]
+    xs_thin = gf.cross_section.cross_section(width=w_thin, layer=layer)
+    
+    for y in y_center:
+        # Create and center the straight segment
+        s = c << gf.components.straight(length=l_center, cross_section=xs_thin)
+        s.movex(-l_center / 2)
+        s.movey(y)
+        
+    # --- 2. Top and Bottom Nested Groups ---
+    # Each group consists of 1 thick (inner) and 4 thin (outer) waveguides.
+    w_thick = 0.6
+    
+    # Y-levels for the horizontal segments of the staples.
+    # We keep them relatively low to allow for a larger bend radius.
+    y_levels = [0.65, 0.95, 1.15, 1.35, 1.55]
+    widths = [w_thick, w_thin, w_thin, w_thin, w_thin]
+    
+    # X-offsets define where the vertical legs are located.
+    # Increasing these creates the 'nested' look seen in the original image.
+    x_offsets = [50.0, 52.5, 54.0, 55.5, 57.0]
+    
+    # Radius must be <= (hh - max(y_levels)) / 2. 
+    # For y=1.55, distance to top is 0.45, so max radius is 0.225.
+    r = 0.2 
+    
+    for y_v, w, x_off in zip(y_levels, widths, x_offsets):
+        xs = gf.cross_section.cross_section(width=w, layer=layer)
+        
+        # Define Top 'Staple' Path: [Top-Left -> Inner-Left -> Inner-Right -> Top-Right]
+        # These paths start and end at the boundary y=2.0
+        pts_top = [(-x_off, hh), (-x_off, y_v), (x_off, y_v), (x_off, hh)]
+        path_top = gf.path.smooth(points=pts_top, radius=r)
+        c << gf.path.extrude(path_top, cross_section=xs)
+        
+        # Define Bottom 'Staple' Path (Mirror of Top)
+        # These paths start and end at the boundary y=-2.0
+        pts_bot = [(-x_off, -hh), (-x_off, -y_v), (x_off, -y_v), (x_off, -hh)]
+        path_bot = gf.path.smooth(points=pts_bot, radius=r)
+        c << gf.path.extrude(path_bot, cross_section=xs)
+        
+    return c
+
+if __name__ == "__main__":
+    device = recreated_device()
+    device.write_gds("refined_device.gds")
+    device.show()
+```

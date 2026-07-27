@@ -1,0 +1,102 @@
+Looking at the image, I can see a device that appears to be a factory or industrial building silhouette. It has:
+1. A rectangular base/body (large rectangle)
+2. Four chimneys/smokestacks on top that are tapered (wider at bottom, narrower at top)
+3. A triangular support/base at the bottom center
+
+Let me analyze the proportions:
+- The main body appears to be a large rectangle taking up most of the space
+- There are 4 equally-spaced chimneys on top
+- Each chimney appears to taper from bottom to top
+- There's a triangular or trapezoidal base piece at the bottom center
+
+Given the footprint constraint of [25, 10] (width=25, height=10), I need to design this to fit within those dimensions.
+
+Let me break down the components:
+1. Main rectangular body - this is the largest part
+2. Four tapered chimneys - these extend upward from the body
+3. A triangular/trapezoidal base support at the bottom
+
+Looking more carefully at the image:
+- The chimneys appear to be trapezoids (wider at bottom, narrower at top)
+- They're evenly spaced across the top
+- The main body is a large rectangle
+- There's a triangular piece pointing down from the bottom center
+
+Let me estimate proportions from the image:
+- Total height appears to be about 10 units
+- Chimneys take up maybe 4-5 units of height at the top
+- Main body takes up about 4-5 units in the middle
+- Triangle at bottom takes up about 1 unit
+
+Width-wise:
+- Total width is about 25 units
+- 4 chimneys with gaps between them
+- Each chimney might be about 1.5 units wide at bottom, 1 unit wide at top
+- Gaps between chimneys
+
+Let me create a script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+
+
+def factory_device():
+    c = gf.Component()
+    
+    # Device dimensions
+    total_width = 25
+    total_height = 10
+    
+    # Main body (large rectangle in the middle)
+    body_height = 4.5
+    body_width = 23
+    body_y_offset = 1  # offset from bottom to leave room for triangle
+    
+    body = c << gf.components.rectangle(
+        size=(body_width, body_height),
+        layer=(1, 0),
+        centered=False
+    )
+    body.move((1, body_y_offset))
+```
+
+Now I'll set up the main rectangular body with dimensions that leave space for the triangular base at the bottom and the chimneys extending upward. The body will be positioned with a small offset from the bottom edge to accommodate the support structure.
+
+For the triangular support, I need to create a polygon centered horizontally beneath the main body. The triangle will have its base at the same height as the body's bottom edge and its apex pointing downward to the ground level. Then I'll add four tapered chimneys that rise from the top of the body, each narrowing as they extend upward to create the characteristic smokestack appearance. , layer=(1, 0))
+    
+    return c
+
+# Create and save
+device = factory_device()
+device.write_gds("factory_device.gds")
+
+Looking back at the proportions in the image, I need to adjust my approach. The chimneys are quite tall and prominent, taking up roughly 40% of the total height, while the main body occupies about 50% and the base triangle accounts for the remaining 10%. The chimneys also appear to have a more complex shape—rectangular at the top with tapering as they connect to the building structure. )
+    body.move((body_x, body_y))
+    
+    # Bottom triangle (support/foundation)
+    triangle_width = 3.5
+    triangle_height = 1.2
+    triangle_x_center = total_width / 2
+    
+    triangle_points = [
+        (triangle_x_center - triangle_width/2, body_y),
+        (triangle_x_center + triangle_width/2, body_y),
+        (triangle_x_center, 0)
+    ]
+    c.add_polygon(triangle_points, layer=(1, 0))
+    
+    # Four chimneys
+    num_chimneys = 4
+    chimney_straight_height = 2.0
+    chimney_taper_height = 1.5
+    chimney_top_width = 1.
+
+Now I'm setting up the foundation as a triangular base beneath the main structure, then defining the chimney parameters with a straight section rising from the body and a tapered section narrowing toward the top.
+
+For the four chimneys, I calculate their base position relative to the body height and space them evenly across the width. Each chimney gets positioned by its center x-coordinate, then I create the straight rectangular portion and move it to sit above the tapered section.
+
+The tapered part connects smoothly from the wider base (matching the body width at that point) up to the narrower top using a polygon with four corner points. Finally, the device is written to a GDS file for output.
+
+Looking back at the proportions, the chimneys appear to be a single continuous taper rather than separate segments, so I should consolidate the geometry into one shape from bottom to top.

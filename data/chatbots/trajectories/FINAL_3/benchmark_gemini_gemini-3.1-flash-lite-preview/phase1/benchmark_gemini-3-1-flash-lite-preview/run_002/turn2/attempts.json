@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:45.319312",
+      "api_duration_seconds": 18.857935190200806,
+      "usage": {
+        "input_tokens": 5274,
+        "output_tokens": 700,
+        "total_tokens": 8984
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key=DPort(self.name='o1', self.width=0.5, trans=r180 *1 -10,-1.75, layer=WG (1/0), port_type=optical) is not a valid port name or index. Available ports: ['o1', 'o2', 'o3', 'o4']\"\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_3/benchmark_gemini_gemini-3.1-flash-lite-preview/phase1/benchmark_gemini-3-1-fla",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:11:05.839876",
+      "api_duration_seconds": 14.972184896469116,
+      "usage": {
+        "input_tokens": 6536,
+        "output_tokens": 679,
+        "total_tokens": 9540
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'DInstancePorts' object has no attribute 'keys'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:11:22.221560",
+      "api_duration_seconds": 10.967549085617065,
+      "usage": {
+        "input_tokens": 7244,
+        "output_tokens": 630,
+        "total_tokens": 9204
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 19054,
+    "output_tokens": 2009,
+    "total_tokens": 27728
+  }
+}

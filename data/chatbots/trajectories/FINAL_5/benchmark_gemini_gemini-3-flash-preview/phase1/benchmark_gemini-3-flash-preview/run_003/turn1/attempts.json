@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.781464",
+      "api_duration_seconds": 117.64436316490173,
+      "usage": {
+        "input_tokens": 3171,
+        "output_tokens": 1375,
+        "total_tokens": 14219
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.055 < CrossSection.radius_min 5.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:08.811452",
+      "api_duration_seconds": 23.867362022399902,
+      "usage": {
+        "input_tokens": 4592,
+        "output_tokens": 1303,
+        "total_tokens": 7623
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'NoneType' object has no attribute 'bbox'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:34.026944",
+      "api_duration_seconds": 38.16825485229492,
+      "usage": {
+        "input_tokens": 5923,
+        "output_tokens": 1386,
+        "total_tokens": 10993
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13686,
+    "output_tokens": 4064,
+    "total_tokens": 32835
+  }
+}

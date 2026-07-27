@@ -1,0 +1,115 @@
+Turn 2 Response:
+
+Based on the analysis of your result image, I can identify the specific issues in the previous attempt:
+1.  **Line Width/Gap Ratio:** In your render, the black lines are very thick compared to the white gaps. The original image shows thin lines with wider white gaps.
+2.  **Longitudinal Misalignment:** The central bundle appears to be starting later than the outer bundles in your render, creating a "cut off" look. This is likely due to coordinate origin mismatches between the `straight` and `bend` components.
+3.  **Topology:** The render showed only a partial transition. The full device needs to be symmetrical: **Wide -> Narrow (Interaction) -> Wide**.
+
+Here is the corrected script. It uses explicit coordinate placement to guarantee the central and outer bundles align perfectly, and it adjusts the line widths to match the original style.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_reconstruction():
+    """
+    Corrected reconstruction of the 120x4um waveguide coupler.
+    
+    Fixes:
+    - Explicit X-alignment of central and outer bundles.
+    - Adjusted line widths (thinner) and gaps (wider) to match the original image.
+    - Implements the full S-bend flare in and flare out structure.
+    """
+    c = gf.Component()
+
+    # --- 1. Dimensions & Constraints ---
+    length_total = 120.0
+    
+    # Longitudinal sections
+    length_bend = 25.0
+    length_straight = length_total - 2 * length_bend # 70.0
+
+    # Waveguide cross-section parameters
+    # Original image shows lines are thinner than the gaps between them.
+    wg_width = 0.1
+    gap = 0.2
+    pitch = wg_width + gap
+    
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- 2. Central Bundle ---
+    # 5 straight parallel lines running the full length of the device.
+    # We place them explicitly starting at x=0 to ensure alignment.
+    n_center = 5
+    
+    for i in range(n_center):
+        # Center the group around y=0
+        y_loc = (i - (n_center - 1) / 2) * pitch
+        
+        wg = c << gf.components.straight(length=length_total, cross_section=xs)
+        wg.y = y_loc
+        wg.xmin = 0  # Force start at x=0
+
+    # --- 3. Outer Bundles (Top and Bottom) ---
+    # These bundles start wide (flared out), bend in to interact, then flare out.
+    n_outer = 3
+    
+    # Vertical Spacing
+    gap_interaction = 0.25 # Gap between central bundle and outer bundles
+    dy_flare = 0.6         # Vertical height of the S-bend flare
+    
+    # Calculate key Y-coordinates for the "Straight" (middle) section
+    # Max Y of central bundle
+    y_center_max = ((n_center - 1) / 2) * pitch + wg_width/2
+    
+    # Y-position of the first line of the Top Bundle (in the straight region)
+    y_top_start = y_center_max + gap_interaction + wg_width/2
+    
+    # --- Generate Top Bundle ---
+    for i in range(n_outer):
+        # Y-position of this specific line in the straight region
+        y_straight = y_top_start + i * pitch
+        
+        # Segment 1: Bend IN (Left side)
+        # Starts High, drops down to y_straight
+        # We manually place it at x=0, y=Start
+        b_in = c << gf.components.bend_s(size=(length_bend, -dy_flare), cross_section=xs)
+        b_in.move((0, y_straight + dy_flare))
+        
+        # Segment 2: Straight Section (Middle)
+        st = c << gf.components.straight(length=length_straight, cross_section=xs)
+        st.connect("o1", b_in.ports["o2"])
+        
+        # Segment 3: Bend OUT (Right side)
+        # Starts at y_straight, rises up
+        b_out = c << gf.components.bend_s(size=(length_bend, dy_flare), cross_section=xs)
+        b_out.connect("o1", st.ports["o2"])
+
+    # --- Generate Bottom Bundle ---
+    # Mirrored logic for the bottom
+    for i in range(n_outer):
+        # Y-position in the straight region (negative)
+        y_straight = -(y_top_start + i * pitch)
+        
+        # Segment 1: Bend IN (Left side)
+        # Starts Low, rises up to y_straight
+        # delta Y is positive (+dy_flare)
+        b_in = c << gf.components.bend_s(size=(length_bend, dy_flare), cross_section=xs)
+        b_in.move((0, y_straight - dy_flare))
+        
+        # Segment 2: Straight Section
+        st = c << gf.components.straight(length=length_straight, cross_section=xs)
+        st.connect("o1", b_in.ports["o2"])
+        
+        # Segment 3: Bend OUT (Right side)
+        # Starts at y_straight, drops down
+        # delta Y is negative (-dy_flare)
+        b_out = c << gf.components.bend_s(size=(length_bend, -dy_flare), cross_section=xs)
+        b_out.connect("o1", st.ports["o2"])
+
+    return c
+
+# Generate and save
+device = device_reconstruction()
+device.write_gds("reconstructed_device_v2.gds")
+```

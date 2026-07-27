@@ -1,0 +1,102 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def adiabatic_coupler_recreation():
+    """
+    Recreates the adiabatic coupler/splitter shown in the image.
+    Footprint constraint: [40.0, 1.7] um.
+    """
+    c = gf.Component("adiabatic_coupler")
+    
+    # Global Dimensions
+    L_TOTAL = 40.0
+    W_TOTAL = 1.7
+    
+    # 1. Central Waveguide (Taper)
+    # Tapers from the left edge to a point
+    L_CENTER = 26.0
+    W_CENTER_START = 0.5
+    W_CENTER_END = 0.01
+    
+    center_taper = c << gf.components.taper(
+        length=L_CENTER,
+        width1=W_CENTER_START,
+        width2=W_CENTER_END,
+        layer=(1, 0)
+    )
+    # Origin of taper is (0, 0) at its input port
+    
+    # 2. Outer Arm Parameters
+    L_ARM_START = 3.5      # Start offset from left
+    W_ARM_START = 0.22     # Initial arm width
+    W_ARM_END = 0.52       # Final arm width
+    
+    # Y-offsets (measured to waveguide center)
+    # Total width check: (Y_ARM_END + W_ARM_END/2) * 2 = (0.59 + 0.26) * 2 = 1.7
+    Y_ARM_START = 0.42
+    Y_ARM_END = 0.59
+    
+    L_straight = L_CENTER - L_ARM_START
+    L_curve = L_TOTAL - L_CENTER
+    
+    # Create the straight part of the arm
+    arm_straight_comp = gf.components.straight(
+        length=L_straight,
+        width=W_ARM_START,
+        layer=(1, 0)
+    )
+    
+    # Create the curved transition part of the arm
+    # We define a cubic S-curve path manually for reliability
+    num_points = 50
+    dx = L_curve
+    dy = Y_ARM_END - Y_ARM_START
+    
+    x_pts = np.linspace(0, dx, num_points)
+    # Cubic formula for smooth S-transition: y = dy * (3t^2 - 2t^3)
+    t = x_pts / dx
+    y_pts = dy * (3 * t**2 - 2 * t**3)
+    
+    points = list(zip(x_pts, y_pts))
+    p_curve = gf.Path(points)
+    
+    # Define width transition from start to end width
+    xs1 = gf.CrossSection(width=W_ARM_START, layer=(1, 0))
+    xs2 = gf.CrossSection(width=W_ARM_END, layer=(1, 0))
+    trans = gf.path.transition(xs1, xs2, width_type='linear')
+    
+    # Extrude the S-curve path with the width transition
+    arm_curve_comp = gf.path.extrude_transition(p_curve, transition=trans)
+    
+    # Assembly function for a single arm
+    def create_arm():
+        arm = gf.Component()
+        s_ref = arm << arm_straight_comp
+        c_ref = arm << arm_curve_comp
+        c_ref.connect("o1", s_ref.ports["o2"])
+        arm.add_port("o1", port=s_ref.ports["o1"])
+        return arm
+
+    arm_master = create_arm()
+    
+    # Add Top Arm
+    top_arm = c << arm_master
+    top_arm.move((L_ARM_START, Y_ARM_START))
+    
+    # Add Bottom Arm (Mirrored)
+    bot_arm = c << arm_master
+    bot_arm.mirror((1, 0)) # Mirror across X-axis
+    bot_arm.move((L_ARM_START, -Y_ARM_START))
+    
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    device = adiabatic_coupler_recreation()
+    
+    # Save the GDS file
+    device.write_gds("adiabatic_coupler_fixed.gds")
+    
+    # Print dimensions for verification
+    print(f"Device size (W x H): {device.size[0]:.2f} x {device.size[1]:.2f} um")

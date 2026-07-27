@@ -1,0 +1,62 @@
+import gdsfactory as gf
+
+@gf.cell
+def device():
+    c = gf.Component()
+
+    # Footprint parameters
+    height = 3.0
+    width = 5.5
+
+    # Parameters (chosen to match image proportions)
+    w_ring = 0.5  # Ring width
+    r = (height - w_ring) / 2  # Radius
+    straight_length = width - 2 * r - w_ring  # Straight length
+
+    xs_ring = gf.cross_section.cross_section(width=w_ring, layer=(1, 0))
+
+    # Create path for the racetrack ring
+    p = gf.Path()
+    p += gf.path.straight(straight_length)
+    p += gf.path.arc(radius=r, angle=180)
+    p += gf.path.straight(straight_length)
+    p += gf.path.arc(radius=r, angle=180)
+
+    # Extrude to create ring geometry
+    ring = p.extrude(cross_section=xs_ring)
+    ring_ref = c << ring
+
+    # Internal bars parameters
+    w_int = 0.4  # Internal bar width (slightly thinner than ring)
+    buses_gap = 0.2  # Gap between upper and lower bars
+    center_distance = buses_gap + w_int
+    upper_y = r + center_distance / 2
+    lower_y = r - center_distance / 2
+
+    gap_center = 0.4  # Horizontal gap in each bar
+    space = 0.2  # Space at each end to separate from bends
+    segment_length = (straight_length - 2 * space - gap_center) / 2
+
+    center_x = straight_length / 2
+    left_start = space
+    right_start = center_x + gap_center / 2
+
+    xs_int = gf.cross_section.cross_section(width=w_int, layer=(1, 0))
+
+    # Add internal bar segments
+    for y in [upper_y, lower_y]:
+        # Left segment
+        left_seg = gf.components.straight(length=segment_length, cross_section=xs_int)
+        left_ref = c << left_seg
+        left_ref.move((left_start, y))
+
+        # Right segment
+        right_seg = gf.components.straight(length=segment_length, cross_section=xs_int)
+        right_ref = c << right_seg
+        right_ref.move((right_start, y))
+
+    return c
+
+# Create and save
+dev = device()
+dev.write_gds("my_device.gds")

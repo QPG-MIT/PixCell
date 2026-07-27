@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T21:13:26.069718",
+      "api_duration_seconds": 279.39339804649353,
+      "usage": {
+        "input_tokens": 3158,
+        "output_tokens": 9353,
+        "total_tokens": 12511
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "SyntaxError: invalid syntax. Perhaps you forgot a comma?",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T21:18:05.503997",
+      "api_duration_seconds": 34.69004988670349,
+      "usage": {
+        "input_tokens": 12542,
+        "output_tokens": 899,
+        "total_tokens": 13441
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.0 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T21:18:41.407973",
+      "api_duration_seconds": 46.07932901382446,
+      "usage": {
+        "input_tokens": 13487,
+        "output_tokens": 953,
+        "total_tokens": 14440
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 29187,
+    "output_tokens": 11205,
+    "total_tokens": 40392
+  }
+}

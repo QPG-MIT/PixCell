@@ -1,0 +1,101 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+
+
+@gf.cell
+def _branch_straight_then_offset(
+    length: float,
+    l_straight: float,
+    dy: float,
+    cross_section,
+) -> gf.Component:
+    """Straight section followed by a gentle monotonic S-offset (ends horizontal)."""
+    if l_straight >= length:
+        raise ValueError("l_straight must be smaller than length.")
+    dx = length - l_straight
+
+    c = gf.Component()
+    s = c << gf.components.straight(length=l_straight, cross_section=cross_section)
+
+    # bend_s gives a smooth horizontal->offset->horizontal transition
+    b = c << gf.components.bend_s(size=(dx, dy), cross_section=cross_section)
+    b.connect("o1", s.ports["o2"])
+
+    c.add_port("o1", port=s.ports["o1"])
+    c.add_port("o2", port=b.ports["o2"])
+    return c
+
+
+@gf.cell
+def three_to_two_like_png(
+    length: float = 40.0,
+    height: float = 1.7,
+    wg_width: float = 0.22,           # << key fix: smaller so 3 guides don't merge
+    layer: tuple[int, int] = (1, 0),
+    y_in: float = 0.36,               # << key fix: increase separation at input
+    y_out: float = 0.70,              # output separation (kept within height)
+    l_straight: float = 26.0,         # long straight before divergence
+    l_center: float = 27.0,           # center stub length
+):
+    """
+    3 parallel inputs on the left (top/mid/bot), middle stops early,
+    top/bottom smoothly diverge to 2 outputs (matches the original PNG intent).
+
+    IMPORTANT change vs previous script:
+    - Do NOT force y_out from height. That made the guides fill the full height
+      and visually merge when rasterized.
+    - Use smaller wg_width and larger y_in/y_out to preserve white gaps.
+    """
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+
+    # Keep within footprint height (centered around y=0)
+    ymax = y_out + wg_width / 2
+    if 2 * ymax > height + 1e-6:
+        raise ValueError(
+            f"Geometry too tall: total height ~ {2*ymax:.3f}um exceeds {height}um. "
+            "Reduce y_out and/or wg_width."
+        )
+
+    # Top/bottom branches
+    top_branch = _branch_straight_then_offset(
+        length=length,
+        l_straight=l_straight,
+        dy=(y_out - y_in),
+        cross_section=xs,
+    )
+    bot_branch = _branch_straight_then_offset(
+        length=length,
+        l_straight=l_straight,
+        dy=(-(y_out) - (-(y_in))),  # same magnitude, negative direction
+        cross_section=xs,
+    )
+
+    top = c << top_branch
+    top.move((0, y_in))
+
+    bot = c << bot_branch
+    bot.move((0, -y_in))
+
+    # Middle straight stub
+    mid = c << gf.components.straight(length=l_center, cross_section=xs)
+
+    # Ports
+    c.add_port("o1_top_in", port=top.ports["o1"])
+    c.add_port("o2_mid_in", port=mid.ports["o1"])
+    c.add_port("o3_bot_in", port=bot.ports["o1"])
+    c.add_port("o4_top_out", port=top.ports["o2"])
+    c.add_port("o5_bot_out", port=bot.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    d = three_to_two_like_png()
+    d.show()
+    d.write_gds("recreated_device_fixed.gds")
+```
+
+If it still looks “too filled” when rasterized, decrease `wg_width` a bit more (e.g. `0.18`) and/or increase `y_in` (e.g. `0.40`). Those two parameters control the white gaps between the three left-hand guides.

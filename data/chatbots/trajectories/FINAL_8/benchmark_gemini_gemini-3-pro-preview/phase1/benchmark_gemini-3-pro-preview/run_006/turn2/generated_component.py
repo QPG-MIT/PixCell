@@ -1,0 +1,145 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_parametric():
+    """
+    Recreates the multi-waveguide directional coupler device.
+    
+    Structure:
+    - Central Bundle: 5 parallel straight waveguides.
+    - Side Bundles: 3 parallel straight waveguides above and below.
+    - Outer Blocks: Large adiabatic structures with a straight inner edge (facing the waveguides)
+      and a curved outer edge (cosine/sine taper).
+      
+    The Outer Blocks are constructed by generating a symmetric taper and slicing it in half 
+    using a boolean operation to ensure the inner edge is perfectly flat.
+    """
+    c = gf.Component()
+
+    # --- Dimensions & Parameters ---
+    length = 120.0
+    
+    # Waveguide dimensions (fine-tuned for visual match)
+    w_wg = 0.12          # Width of the thin waveguides
+    g_wg = 0.12          # Gap between waveguides within a bundle
+    g_sep = 0.22         # Separation gap between the bundles (Central <-> Side)
+    
+    # Outer Block dimensions
+    w_block_max = 0.75   # Maximum width of the block (at ends)
+    w_block_min = 0.15   # Minimum width of the block (at waist/center)
+    
+    layer_wg = (1, 0)
+    xs_wg = gf.cross_section.cross_section(width=w_wg, layer=layer_wg)
+
+    # --- 1. Waveguide Array Generation ---
+    pitch = w_wg + g_wg
+    
+    # Central Bundle: 5 lines, centered at Y=0
+    # Indices: -2, -1, 0, 1, 2
+    y_center = [i * pitch for i in range(-2, 3)]
+    
+    # Calculate the Y-coordinate of the top edge of the central bundle
+    # (Center of top line + half width)
+    y_center_top_edge = y_center[-1] + w_wg/2
+    
+    # Top Side Bundle: 3 lines
+    # Start position: Top edge of center + separation gap + half width of first side line
+    y_side_start = y_center_top_edge + g_sep + w_wg/2
+    y_side = [y_side_start + i * pitch for i in range(3)]
+    
+    # Bottom Side Bundle: Mirror of Top Side
+    y_side_bot = [-y for y in y_side]
+    
+    # Combine and Draw all straight waveguides
+    all_ys = y_center + y_side + y_side_bot
+    for y in all_ys:
+        wg = c << gf.components.straight(length=length, cross_section=xs_wg)
+        wg.movey(y)
+
+    # --- 2. Constructing the Outer Block (Boolean Method) ---
+    # We need a block that is flat on the bottom (y=0) and curved on top.
+    # We create a symmetric taper (hourglass) of DOUBLE width centered at y=0,
+    # then cut off the bottom half (y<0).
+    
+    def create_flat_edged_block():
+        # Double widths for the symmetric generation
+        w_start_dbl = w_block_max * 2
+        w_mid_dbl = w_block_min * 2
+        
+        # Define Cross Sections
+        xs_wide = gf.cross_section.cross_section(width=w_start_dbl, layer=layer_wg)
+        xs_narrow = gf.cross_section.cross_section(width=w_mid_dbl, layer=layer_wg)
+        
+        # Build the Taper Path (End -> Mid -> End)
+        l_half = length / 2
+        path1 = gf.path.straight(length=l_half)
+        path2 = gf.path.straight(length=l_half)
+        
+        # Sine transitions for smooth adiabatic curve
+        trans_in = gf.path.transition(xs_wide, xs_narrow, width_type='sine')
+        trans_out = gf.path.transition(xs_narrow, xs_wide, width_type='sine')
+        
+        # Extrude components
+        p1 = gf.path.extrude_transition(path1, trans_in)
+        p2 = gf.path.extrude_transition(path2, trans_out)
+        
+        # Assemble the symmetric taper
+        taper_c = gf.Component()
+        ref1 = taper_c << p1
+        ref2 = taper_c << p2
+        ref2.connect("o1", ref1.ports["o2"])
+        
+        # Create Cutting Rectangle (Covers the top half, Y > 0)
+        # Size: Length x (Max Width + Margin)
+        # Position: (0, 0)
+        rect = gf.components.rectangle(
+            size=(length, w_block_max + 1.0), 
+            layer=layer_wg, 
+            centered=False
+        )
+        
+        # Perform Boolean Intersection (AND)
+        # Overlap of Symmetric Taper AND Top Rectangle = Taper with Flat Bottom
+        cut_block = gf.boolean(taper_c, rect, operation="and", layer=layer_wg)
+        return cut_block
+
+    # Create the block component
+    block_shape = create_flat_edged_block()
+
+    # --- 3. Placement of Outer Blocks ---
+    
+    # Calculate placement Y position
+    # The block's flat edge is at local y=0.
+    # We want this flat edge to face the waveguides.
+    
+    # Top Block Placement
+    # Top edge of side bundle
+    y_side_top_edge = y_side[-1] + w_wg/2
+    # Start of block (Flat edge)
+    y_block_start = y_side_top_edge + g_sep
+    
+    # Add Top Block
+    top_ref = c << block_shape
+    top_ref.movey(y_block_start)
+    
+    # Add Bottom Block
+    # We mirror the Top Block across the X-axis.
+    # The flat edge (at +y_block_start) mirrors to (-y_block_start).
+    # The curve (facing away from center) mirrors to face away from center.
+    # The flat edge will correctly face the central waveguides.
+    bot_ref = c << block_shape
+    bot_ref.movey(y_block_start) # Move to top position first
+    bot_ref.mirror(p1=(0,0), p2=(1,0)) # Mirror across X-axis
+
+    # --- 4. Ports ---
+    # Add ports to the central waveguide for connectivity
+    c.add_port("o1", center=(0, 0), width=w_wg, orientation=180, layer=layer_wg)
+    c.add_port("o2", center=(length, 0), width=w_wg, orientation=0, layer=layer_wg)
+
+    return c
+
+if __name__ == "__main__":
+    # Generate and save the GDS
+    component = device_parametric()
+    component.write_gds("parametric_coupler.gds")

@@ -1,0 +1,118 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_recreation_refined():
+    """
+    Refined recreation of the trident spot-size converter.
+    
+    Improvements:
+    - Added width tapering to outer arms (wide input -> narrow output).
+    - Tuned gaps and widths to match the 'thick' look of the input vs 'thin' output.
+    - Aligned the middle taper termination with the start of the S-bends.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions & constraints ---
+    # Footprint constraint: 40.0um length, ~1.7um height
+    
+    # Longitudinal sections
+    # Split 40um into: Taper/Straight Section | S-Bend Section | Output Section
+    len_taper = 18.0 
+    len_bend = 17.0
+    len_out = 5.0
+    
+    # Transverse dimensions (Vertical)
+    # Input (Left): Denser, wider waveguides
+    w_in = 0.46        # Width of all 3 waveguides at input
+    gap_in = 0.12      # Narrow gap at input
+    
+    # Output (Right): Thinner, coupled waveguides
+    w_out = 0.32       # Width of output waveguides
+    gap_out = 0.15     # Gap for coupling
+    w_tip = 0.05       # Tip width for middle taper (termination)
+
+    # --- Calculations ---
+    
+    # 1. Pitch Calculations (Center-to-Center distances)
+    # Input Pitch: Distance from center (y=0) to center of top arm
+    # y = (middle_half_width) + gap + (top_half_width)
+    y_in_center = (w_in / 2) + gap_in + (w_in / 2)
+    
+    # Output Pitch: Distance from center (y=0) to center of top output arm
+    # y = (half_gap) + (top_half_width)
+    y_out_center = (gap_out / 2) + (w_out / 2)
+    
+    # Vertical Shift required for the S-bend
+    # The top arm moves down (negative shift), bottom moves up
+    dy = y_out_center - y_in_center
+
+    # Cross-section for the output/bend (using the narrower width)
+    xs_out = gf.cross_section.cross_section(width=w_out, layer=(1, 0))
+
+    # --- Geometry Construction ---
+
+    # 1. Middle Arm
+    # Tapers from w_in to a fine point and stops.
+    middle_taper = c << gf.components.taper(
+        length=len_taper,
+        width1=w_in,
+        width2=w_tip,
+        layer=(1, 0)
+    )
+    # Defaults to starting at (0,0)
+
+    # 2. Top Arm
+    # Section A: Straight Taper (Width reduces from w_in to w_out)
+    # This matches the visual cue where outer arms narrow as they approach the bend.
+    top_straight = c << gf.components.taper(
+        length=len_taper,
+        width1=w_in,
+        width2=w_out,
+        layer=(1, 0)
+    )
+    top_straight.move((0, y_in_center))
+
+    # Section B: S-Bend (Shifts y position, constant width w_out)
+    top_bend = c << gf.components.bend_s(
+        size=(len_bend, dy), 
+        cross_section=xs_out
+    )
+    top_bend.connect("o1", top_straight.ports["o2"])
+
+    # Section C: Straight Output
+    top_out = c << gf.components.straight(
+        length=len_out,
+        cross_section=xs_out
+    )
+    top_out.connect("o1", top_bend.ports["o2"])
+
+    # 3. Bottom Arm
+    # Section A: Straight Taper (Mirrored position)
+    bot_straight = c << gf.components.taper(
+        length=len_taper,
+        width1=w_in,
+        width2=w_out,
+        layer=(1, 0)
+    )
+    bot_straight.move((0, -y_in_center))
+
+    # Section B: S-Bend (Positive vertical shift to move up)
+    bot_bend = c << gf.components.bend_s(
+        size=(len_bend, -dy), 
+        cross_section=xs_out
+    )
+    bot_bend.connect("o1", bot_straight.ports["o2"])
+
+    # Section C: Straight Output
+    bot_out = c << gf.components.straight(
+        length=len_out,
+        cross_section=xs_out
+    )
+    bot_out.connect("o1", bot_bend.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    c = device_recreation_refined()
+    c.show()
+    c.write_gds("trident_refined.gds")

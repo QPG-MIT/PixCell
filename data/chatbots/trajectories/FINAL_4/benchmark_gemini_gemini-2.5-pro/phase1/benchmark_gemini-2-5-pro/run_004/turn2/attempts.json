@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:20:02.155740",
+      "api_duration_seconds": 70.75964784622192,
+      "usage": {
+        "input_tokens": 5754,
+        "output_tokens": 1463,
+        "total_tokens": 14947
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'circle_gdsfactorypcomponentspshapespcircle_R27p75_AR2p5_LWG' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:14.261623",
+      "api_duration_seconds": 26.269504070281982,
+      "usage": {
+        "input_tokens": 7275,
+        "output_tokens": 1190,
+        "total_tokens": 10524
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: boolean() missing 1 required positional argument: 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:41.824739",
+      "api_duration_seconds": 14.480866193771362,
+      "usage": {
+        "input_tokens": 8493,
+        "output_tokens": 1156,
+        "total_tokens": 10225
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 21522,
+    "output_tokens": 3809,
+    "total_tokens": 35696
+  }
+}

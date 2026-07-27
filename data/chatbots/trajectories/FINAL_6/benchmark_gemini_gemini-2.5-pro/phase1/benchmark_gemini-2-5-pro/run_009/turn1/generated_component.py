@@ -1,0 +1,82 @@
+import gdsfactory as gf
+import os
+
+@gf.cell
+def create_stylized_cross(
+    size: float = 4.7,
+    petal_width_ratio: float = 0.49,
+    stem_width_ratio: float = 0.085,
+    layer: tuple = (1, 0),
+):
+    """
+    Creates a stylized cross shape by performing boolean unions on
+    ellipses and a standard cross.
+
+    Args:
+        size: The total width and height of the component's footprint.
+        petal_width_ratio: Ratio of the maximum petal width to the total size.
+        stem_width_ratio: Ratio of the stem width to the total size.
+        layer: The GDS layer for the component.
+    """
+    c = gf.Component()
+
+    # --- Derived Dimensions ---
+    # The major radius of the ellipses corresponds to half the total size,
+    # ensuring they span the full footprint.
+    ellipse_major_radius = size / 2.0
+
+    # The minor radius determines the "fatness" of the petals.
+    ellipse_minor_radius = (size * petal_width_ratio) / 2.0
+
+    # The width of the rectangular cross that forms the stems.
+    stem_width = size * stem_width_ratio
+
+    # --- 1. Create the Petal Body ---
+    # Create a vertical and a horizontal ellipse.
+    ellipse_vertical = gf.components.ellipse(
+        radii=(ellipse_minor_radius, ellipse_major_radius), layer=layer
+    )
+    ellipse_horizontal = gf.components.ellipse(
+        radii=(ellipse_major_radius, ellipse_minor_radius), layer=layer
+    )
+
+    # Union the two ellipses to form the main petal-like body.
+    petal_body = gf.boolean(
+        A=ellipse_vertical, B=ellipse_horizontal, operation="or", layer=layer
+    )
+
+    # --- 2. Create the Stems ---
+    # A standard cross component will form the rectangular stems.
+    stems = gf.components.cross(length=size, width=stem_width, layer=layer)
+
+    # --- 3. Combine Body and Stems ---
+    # Union the petal body and the stems to create the final shape.
+    final_shape = gf.boolean(A=petal_body, B=stems, operation="or", layer=layer)
+
+    # Add the final geometry to the component cell.
+    _ = c << final_shape
+    c.info['footprint_um'] = (size, size)
+    return c
+
+# --- Instantiate and Save the Component ---
+if __name__ == "__main__":
+    # Create the device based on the 4.7um x 4.7um footprint constraint.
+    # The ratios are tuned to visually match the provided image.
+    device = create_stylized_cross(
+        size=4.7,
+        petal_width_ratio=0.49, # Makes max petal width ~2.3 um
+        stem_width_ratio=0.085, # Makes stem width ~0.4 um
+    )
+
+    # Define the output filename
+    output_filename = "stylized_cross.gds"
+    
+    # FIX: The following line was commented out, preventing file creation.
+    # It is now uncommented to ensure the GDS file is written.
+    device.write_gds(output_filename)
+    
+    # Add a confirmation message
+    print(f"Successfully wrote GDS file to: {os.path.abspath(output_filename)}")
+
+    # To display the component if running interactively
+    # device.show()

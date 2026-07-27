@@ -1,0 +1,146 @@
+import gdsfactory as gf
+import functools
+
+@gf.cell
+def grating_waveguide(
+    length: float = 14.0,
+    width: float = 0.1,
+    period: float = 0.24,
+    duty_cycle: float = 0.5,
+    tooth_depth: float = 0.08,
+    tooth_side: int = -1,  # -1 for bottom, 1 for top
+    layer: tuple = (1, 0)
+):
+    """
+    Creates a straight waveguide with periodic rectangular teeth on one side.
+    Constructed from primitives to allow arbitrary sub-wavelength features.
+    """
+    c = gf.Component()
+    
+    # 1. Main backbone waveguide
+    backbone = c << gf.components.rectangle(
+        size=(length, width), 
+        layer=layer, 
+        centered=True
+    )
+    
+    # 2. Add periodic teeth
+    tooth_width = period * duty_cycle
+    n_teeth = int(length // period)
+    
+    # Calculate Y offset for teeth
+    # Side -1: shift down. Side 1: shift up.
+    tooth_y_offset = (width / 2 + tooth_depth / 2) * tooth_side
+    
+    for i in range(n_teeth):
+        x = -length/2 + i * period + period/2 
+        tooth = c << gf.components.rectangle(
+            size=(tooth_width, tooth_depth), 
+            layer=layer, 
+            centered=True
+        )
+        tooth.move((x, tooth_y_offset))
+        
+    # 3. Add ports manually
+    c.add_port("o1", center=(-length/2, 0), width=width, orientation=180, layer=layer)
+    c.add_port("o2", center=(length/2, 0), width=width, orientation=0, layer=layer)
+    
+    return c
+
+@gf.cell
+def grating_coupler_device():
+    c = gf.Component()
+    
+    # --- Geometric Parameters ---
+    # Derived to match footprint ~18.24 x 0.7 um
+    L_grating = 14.5
+    w_backbone = 0.12     # Width of the grating waveguide backbone
+    w_return = 0.12       # Width of the return loop waveguide
+    w_center = 0.04       # Width of the central rail
+    tooth_depth = 0.08
+    gap_center = 0.06     # Gap between central rail and grating teeth
+    
+    # Vertical pitch: Center-to-Center distance between central rail and grating backbone
+    y_pitch = w_center/2 + gap_center + tooth_depth + w_backbone/2
+    
+    # --- Cross Section Definition ---
+    # We define a custom cross-section that allows extremely tight bends (radius_min=0).
+    # We use functools.partial to create a callable that GDSFactory components can use 
+    # to generate the cross-section on the fly with the correct constraints.
+    nano_xs = functools.partial(
+        gf.cross_section.cross_section,
+        width=w_backbone, 
+        layer=(1, 0), 
+        radius_min=0  # IMPORTANT: Disable radius check for nanophotonic bends
+    )
+
+    # --- 1. Central Waveguide ---
+    center_wg = c << gf.components.rectangle(size=(L_grating, w_center), layer=(1,0), centered=True)
+    
+    # --- 2. Top Branch ---
+    # Grating (Teeth on bottom: -1)
+    wg_top = c << grating_waveguide(
+        length=L_grating, width=w_backbone, 
+        tooth_depth=tooth_depth, tooth_side=-1
+    )
+    wg_top.movey(y_pitch)
+    
+    # U-Bend (Right Side)
+    # Calculate radius to fit return path snugly
+    bend_gap = 0.1 
+    radius_u = (w_backbone/2 + bend_gap + w_return/2) / 2  # Approx 0.11 um
+    
+    # Note: radius_min=0 in nano_xs prevents ValueError here
+    bend_top = c << gf.components.bend_euler(radius=radius_u, angle=180, cross_section=nano_xs)
+    bend_top.connect("o1", wg_top.ports["o2"])
+    
+    # Return Path (Top)
+    L_return = L_grating * 0.85
+    return_top = c << gf.components.straight(length=L_return, cross_section=nano_xs)
+    return_top.connect("o1", bend_top.ports["o2"])
+    
+    # Taper (Top)
+    taper_top = c << gf.components.taper(length=1.5, width1=w_return, width2=0.01, layer=(1,0))
+    taper_top.connect("o1", return_top.ports["o2"])
+    
+    # Input Tail (Top Left)
+    # Angle -25 creates a curve that goes "Up/North" when connected to a West-facing port
+    bend_in_top = c << gf.components.bend_euler(radius=3.0, angle=-25, cross_section=nano_xs)
+    bend_in_top.connect("o1", wg_top.ports["o1"]) 
+
+    # --- 3. Bottom Branch ---
+    # Grating (Teeth on top: 1)
+    wg_bot = c << grating_waveguide(
+        length=L_grating, width=w_backbone, 
+        tooth_depth=tooth_depth, tooth_side=1
+    )
+    wg_bot.movey(-y_pitch)
+    
+    # U-Bend (Left Side)
+    bend_bot = c << gf.components.bend_euler(radius=radius_u, angle=180, cross_section=nano_xs)
+    bend_bot.connect("o1", wg_bot.ports["o1"]) 
+    
+    # Return Path (Bottom)
+    return_bot = c << gf.components.straight(length=L_return, cross_section=nano_xs)
+    return_bot.connect("o1", bend_bot.ports["o2"])
+    
+    # Taper (Bottom)
+    taper_bot = c << gf.components.taper(length=1.5, width1=w_return, width2=0.01, layer=(1,0))
+    taper_bot.connect("o1", return_bot.ports["o2"])
+    
+    # Input Tail (Bottom Right)
+    # Angle -25 creates a curve "Down/South" when connected to an East-facing port
+    bend_in_bot = c << gf.components.bend_euler(radius=3.0, angle=-25, cross_section=nano_xs)
+    bend_in_bot.connect("o1", wg_bot.ports["o2"])
+
+    # --- Expose Ports ---
+    c.add_port("o1", port=bend_in_top.ports["o2"])
+    c.add_port("o2", port=bend_in_bot.ports["o2"])
+
+    return c
+
+# Create and save
+if __name__ == "__main__":
+    device = grating_coupler_device()
+    device.write_gds("grating_device.gds")
+    device.show()

@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:35.396707",
+      "api_duration_seconds": 49.62209486961365,
+      "usage": {
+        "input_tokens": 8194,
+        "output_tokens": 2909,
+        "total_tokens": 19592
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'DPort' object has no attribute 'position'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:26.607398",
+      "api_duration_seconds": 14.614848852157593,
+      "usage": {
+        "input_tokens": 11131,
+        "output_tokens": 2774,
+        "total_tokens": 14363
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')\nAttributeError: 'ManhattanRoute' object has no attribute 'references'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:42.758522",
+      "api_duration_seconds": 14.28709602355957,
+      "usage": {
+        "input_tokens": 13959,
+        "output_tokens": 2835,
+        "total_tokens": 17214
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'tuple' object has no attribute 'instance'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 33284,
+    "output_tokens": 8518,
+    "total_tokens": 51169
+  }
+}

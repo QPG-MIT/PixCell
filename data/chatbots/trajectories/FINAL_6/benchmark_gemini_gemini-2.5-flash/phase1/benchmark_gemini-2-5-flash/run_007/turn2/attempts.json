@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:49.821138",
+      "api_duration_seconds": 78.98028898239136,
+      "usage": {
+        "input_tokens": 8499,
+        "output_tokens": 2543,
+        "total_tokens": 26896
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 2 validation errors for CrossSection\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=<function create_cross_sh...function at 0x151480f40>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nlayer\n  Extra inputs are not permitted [type=extra_forbidden, input_value=(1, 0), input_type=tuple]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidde",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:10.183576",
+      "api_duration_seconds": 14.997085809707642,
+      "usage": {
+        "input_tokens": 11208,
+        "output_tokens": 2348,
+        "total_tokens": 14621
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function create_cross_sh...function at 0x134570f40>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:26.812102",
+      "api_duration_seconds": 21.16617703437805,
+      "usage": {
+        "input_tokens": 13665,
+        "output_tokens": 2284,
+        "total_tokens": 18649
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function create_cross_sh...function at 0x138780f40>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 33372,
+    "output_tokens": 7175,
+    "total_tokens": 60166
+  }
+}

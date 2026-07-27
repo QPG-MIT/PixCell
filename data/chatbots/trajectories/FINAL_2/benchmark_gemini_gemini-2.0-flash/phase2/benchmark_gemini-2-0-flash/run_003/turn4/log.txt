@@ -1,0 +1,60 @@
+Turn 4 Response:
+
+Okay, I understand. The current raster output shows the main rectangle, the bottom extension, and the four top extensions using tapers, but the tapers are not positioned correctly and they are not connected. They should be rectangles connected to the main block.
+
+Here's the improved code, addressing the issues:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+
+    # Main rectangle
+    main_rect = c << gf.components.rectangle(size=(25, 7), layer=layer, centered=True)
+
+    # Bottom extension
+    bottom_extension_width = 3
+    bottom_extension_height = 2
+    bottom_extension = c << gf.components.rectangle(size=(bottom_extension_width, bottom_extension_height), layer=layer, centered=True)
+    bottom_extension.move( (0, -4.5) ) # shift it down
+
+    # Four top extensions (rectangles)
+    top_extension_width = 2
+    top_extension_height = 3
+    top_extension_base_width = 4
+
+    # Calculate x positions
+    num_extensions = 4
+    total_base_width = num_extensions * top_extension_base_width
+    total_spacing_width = 25 - total_base_width
+    spacing = total_spacing_width / (num_extensions + 1)
+
+    x_positions = []
+    current_x = -12.5 + spacing + top_extension_base_width/2
+    for _ in range(num_extensions):
+        x_positions.append(current_x)
+        current_x += top_extension_base_width + spacing
+    
+    for x in x_positions:
+        # use rectangle for top extension
+        top_extension = c << gf.components.rectangle(size=(top_extension_width, top_extension_height), layer=layer, centered=True)
+
+        # move to the right position
+        top_extension.move((x - top_extension_width/2, 3.5+top_extension_height/2))
+
+    return c
+
+device = my_device()
+device.show()
+device.write_gds("my_device.gds")
+```
+
+Key changes and explanations:
+
+* **Replaced `gf.components.taper` with `gf.components.rectangle`:** The top extensions should be rectangles, not tapers.
+* **Corrected the y movement for the top extensions**: I was moving the origin. Now the rectangle is moved from its center. I also flipped the coordinate to be 3.5 + top extension height /2. This will move the top extensions to the top part of the rectangle.
+
+This revised code should generate the desired shape more accurately.  The top extensions are now rectangles connected to the main block. The y coordinates now are correct and are now connected to the top part of the main rectangle.

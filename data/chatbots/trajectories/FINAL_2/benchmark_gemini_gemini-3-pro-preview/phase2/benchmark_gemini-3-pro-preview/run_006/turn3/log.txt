@@ -1,0 +1,105 @@
+Turn 3 Response:
+
+The error `TypeError: straight() got an unexpected keyword argument 'layer'` occurs because the `gf.components.straight` function (and the `straight` primitive in general) typically relies on a `cross_section` definition to handle layer and width properties, rather than accepting them as direct arguments.
+
+I have updated the script to:
+1.  **Define a CrossSection** specifically for the waveguides using `gf.cross_section.cross_section`.
+2.  **Pass this CrossSection** to the `straight` component.
+3.  **Adjust Taper Dimensions** to `2.4um` wide at the base (close to the 2.5um pitch), which will better replicate the "solid" look where the outputs join the MMI body, matching the target image.
+
+Here is the corrected and improved script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def mmi_1x4_vertical():
+    """
+    Parametric 1x4 MMI component recreation.
+    Footprint: 10um (width) x 25um (height).
+    Oriented Vertically: Input Bottom, Outputs Top.
+    """
+    c = gf.Component()
+
+    # --- Dimensions Setup ---
+    # Construct horizontally (along X), then rotate.
+    
+    # Target Constraints
+    total_width_target = 10.0   # Final Width (X-axis after rotation)
+    total_height_target = 25.0  # Final Height (Y-axis after rotation)
+
+    # Internal Dimensions (Horizontal Build Frame)
+    # Lengths (will become Vertical Height)
+    len_body = 8.0              # Length of the rectangular mixing region
+    len_input_taper = 3.0       # Length of the input taper
+    len_output_taper = 4.0      # Length of the output tapers
+    # Remaining length assigned to straight waveguides to meet 25um height
+    len_output_wg = total_height_target - (len_body + len_input_taper + len_output_taper) # = 10.0
+
+    # Widths (will become Horizontal Width)
+    width_mmi_body = total_width_target
+    width_wg = 0.8                       # Width of the straight waveguides
+    # Width of taper at MMI interface (set close to pitch 2.5um to minimize gaps)
+    width_taper_max = 2.4                
+    
+    # Define Cross Section for the straight waveguides (Fixes the TypeError)
+    xs_wg = gf.cross_section.cross_section(width=width_wg, layer=(1, 0))
+
+    # Container for horizontal construction
+    mmi_internal = gf.Component("mmi_internal_build")
+
+    # --- 1. MMI Body (Central Rectangle) ---
+    body = mmi_internal << gf.components.rectangle(
+        size=(len_body, width_mmi_body),
+        layer=(1, 0),
+        centered=True
+    )
+
+    # --- 2. Input Section (Left side -> Becomes Bottom) ---
+    # Taper widens from waveguide width to MMI interface width
+    taper_in = mmi_internal << gf.components.taper(
+        length=len_input_taper,
+        width1=width_wg,
+        width2=width_taper_max,
+        layer=(1, 0)
+    )
+    # Align the wide end of the taper with the left edge of the body
+    taper_in.move((-len_body/2 - len_input_taper, 0))
+
+    # --- 3. Output Section (Right side -> Becomes Top) ---
+    n_outputs = 4
+    pitch = width_mmi_body / n_outputs
+    y_offsets = [(i - (n_outputs - 1) / 2) * pitch for i in range(n_outputs)]
+
+    for y in y_offsets:
+        # A. Output Taper (Wide -> Narrow)
+        t_out = mmi_internal << gf.components.taper(
+            length=len_output_taper,
+            width1=width_taper_max,
+            width2=width_wg,
+            layer=(1, 0)
+        )
+        # Position at right edge of body
+        t_out.move((len_body/2, y))
+        
+        # B. Straight Output Waveguide
+        # Uses the defined cross_section instead of direct layer/width args
+        wg_out = mmi_internal << gf.components.straight(
+            length=len_output_wg,
+            cross_section=xs_wg
+        )
+        # Connect start of waveguide to end of taper
+        wg_out.connect("o1", t_out.ports["o2"])
+
+    # --- 4. Final Assembly & Rotation ---
+    # Add to main cell and rotate 90 degrees CCW
+    ref = c << mmi_internal
+    ref.rotate(90)
+
+    return c
+
+# Create and save
+device = mmi_1x4_vertical()
+device.write_gds("mmi_1x4_vertical.gds")
+device.show()
+```

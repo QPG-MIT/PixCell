@@ -1,0 +1,90 @@
+import gdsfactory as gf
+import math
+
+@gf.cell
+def recreate_device_v4():
+    """
+    Turn 4: High-precision reconstruction.
+    Adjusts the flare timing and width ratios to better match the target image.
+    Targets a total footprint of 40.0um x 1.7um.
+    """
+    c = gf.Component("refined_target_v4")
+    
+    # 1. Global Constraints
+    L_TOTAL = 40.0
+    H_TOTAL = 1.7
+    LAYER = (1, 0)
+    
+    # 2. Central Needle
+    # Starts at x=0. Consists of a short straight section and a long sharp taper.
+    W_MID_BASE = 0.28
+    L_MID_STRAIGHT = 4.0
+    L_MID_TAPER = 28.0 
+    
+    mid_xs = gf.cross_section.cross_section(width=W_MID_BASE, layer=LAYER)
+    m_straight = c << gf.components.straight(length=L_MID_STRAIGHT, cross_section=mid_xs)
+    # Tapering to 1nm for a sharp needle point
+    m_taper = c << gf.components.taper(length=L_MID_TAPER, width1=W_MID_BASE, width2=0.001, layer=LAYER)
+    m_taper.connect("o1", m_straight.ports["o2"])
+    
+    # 3. Side Arms
+    X_INDENT = 4.0      # Start offset from the left
+    W_SIDE_IN = 0.16    # Initial thin width
+    W_SIDE_OUT = 0.46   # Final expanded width
+    GAP_INIT = 0.08     # Small initial gap for tight coupling
+    
+    # Calculate Y-offsets (Center-to-Center)
+    # y_final is calculated such that the outer edges align exactly at H_TOTAL
+    y_start = (W_MID_BASE / 2) + GAP_INIT + (W_SIDE_IN / 2)
+    y_final = (H_TOTAL / 2) - (W_SIDE_OUT / 2)
+    dy = y_final - y_start
+    
+    # Path construction for the flare
+    length_side = L_TOTAL - X_INDENT
+    num_pts = 100
+    pts = []
+    
+    # The flare starts late (around x=20 relative to arm start)
+    x_flare_start = 20.0
+    x_flare_end = 32.0
+    
+    for i in range(num_pts):
+        x = (i / (num_pts - 1)) * length_side
+        if x < x_flare_start:
+            y = 0
+        elif x > x_flare_end:
+            y = dy
+        else:
+            # Cosine-based S-bend for smoother transition
+            t = (x - x_flare_start) / (x_flare_end - x_flare_start)
+            y = dy * (1 - math.cos(math.pi * t)) / 2
+        pts.append((x, y))
+    
+    side_path = gf.Path(pts)
+    xs_start = gf.cross_section.cross_section(width=W_SIDE_IN, layer=LAYER)
+    xs_end = gf.cross_section.cross_section(width=W_SIDE_OUT, layer=LAYER)
+    
+    # Linear width transition combined with the curved path
+    trans = gf.path.transition(xs_start, xs_end, width_type='linear')
+    side_arm_comp = gf.path.extrude_transition(side_path, trans)
+    
+    # Add Top Arm
+    top = c << side_arm_comp
+    top.move((X_INDENT, y_start))
+    
+    # Add Bottom Arm (Symmetrical Mirror)
+    bot = c << side_arm_comp
+    bot.mirror(p1=(0, 0), p2=(1, 0))
+    bot.move((X_INDENT, -y_start))
+    
+    return c
+
+if __name__ == "__main__":
+    device = recreate_device_v4()
+    
+    # Dimensions check
+    print(f"Footprint Verification:")
+    print(f"Total Width:  {device.dxsize:.3f} um")
+    print(f"Total Height: {device.dysize:.3f} um")
+    
+    device.write_gds("device_v4.gds")

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.857984",
+      "api_duration_seconds": 10.294243812561035,
+      "usage": {
+        "input_tokens": 4407,
+        "output_tokens": 716,
+        "total_tokens": 5123
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'Path' object has no attribute 'translate'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:21.919206",
+      "api_duration_seconds": 6.571070909500122,
+      "usage": {
+        "input_tokens": 5148,
+        "output_tokens": 776,
+        "total_tokens": 5924
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'np'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:29.984485",
+      "api_duration_seconds": 6.527756929397583,
+      "usage": {
+        "input_tokens": 5951,
+        "output_tokens": 787,
+        "total_tokens": 6738
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15506,
+    "output_tokens": 2279,
+    "total_tokens": 17785
+  }
+}

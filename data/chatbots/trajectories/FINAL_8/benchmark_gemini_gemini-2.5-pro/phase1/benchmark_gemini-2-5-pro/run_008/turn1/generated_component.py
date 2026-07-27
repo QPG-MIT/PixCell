@@ -1,0 +1,112 @@
+import gdsfactory as gf
+from gdsfactory.cross_section import Section, CrossSection
+
+@gf.cell
+def create_device():
+    """
+    Creates the device geometry based on the provided image and footprint.
+
+    The device is constructed parametrically by defining a multi-line cross-section
+    and extruding it along paths calculated to fit the specified footprint.
+    """
+    c = gf.Component()
+
+    # --- 1. Define Parameters from Constraints and Design Choices ---
+    
+    # Footprint constraints
+    footprint_width = 120.0
+    footprint_height = 4.0
+
+    # Design choices for the geometry
+    bend_angle = 15.0  # A small angle to keep the device shallow
+    bend_radius = 10.0 # A reasonable radius for a smooth bend
+    num_lines = 5
+    line_width = 0.1
+    line_gap = 0.1
+
+    # --- 2. Calculate Dependent Geometric Parameters ---
+
+    # To calculate the exact dimensions, create a temporary bend to measure its extent
+    dummy_bend = gf.components.bend_euler(radius=bend_radius, angle=bend_angle)
+    bend_dx = dummy_bend.dx  # Horizontal extent of the bend
+    bend_dy = dummy_bend.dy  # Vertical extent of the bend
+
+    # Calculate the length of the central straight sections
+    straight_length = footprint_width - 2 * bend_dx
+
+    # Define the multi-line cross-section
+    pitch = line_width + line_gap
+    # Calculate offsets to center the group of lines around the path
+    offsets = [(i - (num_lines - 1) / 2) * pitch for i in range(num_lines)]
+    
+    sections = [
+        Section(width=line_width, offset=offset, layer=(1, 0)) for offset in offsets
+    ]
+    xs_multi = CrossSection(sections=sections)
+    
+    # Calculate the vertical position of the top/bottom arms
+    # The total height is determined by the center of the arm path (y_center),
+    # the bend's vertical rise (bend_dy), and the extent of the cross-section.
+    cross_section_height = (num_lines - 1) * pitch + line_width
+    y_max_offset = cross_section_height / 2
+    
+    # From the footprint constraint: footprint_height = 2 * (y_center + bend_dy + y_max_offset)
+    y_center = (footprint_height / 2.0) - bend_dy - y_max_offset
+
+    # --- 3. Create Basic Building Block Components ---
+
+    # Create the path for the right-side arm (straight + bend)
+    path_arm = gf.Path()
+    path_arm.append(gf.path.straight(length=straight_length / 2))
+    path_arm.append(gf.path.euler(radius=bend_radius, angle=bend_angle))
+
+    # Create the arm component by extruding the path
+    arm_right = gf.path.extrude(path_arm, cross_section=xs_multi)
+
+    # Create the central straight component
+    middle_section = gf.components.straight(
+        length=straight_length, cross_section=xs_multi
+    )
+
+    # --- 4. Assemble the Final Device ---
+
+    # Add and position the four arms using mirroring
+    # Top-right arm
+    tr = c << arm_right
+    tr.movey(y_center)
+
+    # Top-left arm (mirrored horizontally)
+    tl = c << arm_right
+    tl.mirror()
+    tl.movey(y_center)
+
+    # Bottom-right arm (mirrored vertically)
+    br = c << arm_right
+    br.mirror(p1=(0, 0), p2=(1, 0))
+    br.movey(-y_center)
+
+    # Bottom-left arm (mirrored across both axes)
+    bl = c << arm_right
+    bl.mirror() # mirror y
+    bl.mirror(p1=(0, 0), p2=(1, 0)) # mirror x
+    bl.movey(-y_center)
+
+    # Add and position the central straight section
+    # The straight component's origin is at one end, so center it.
+    mid = c << middle_section
+    mid.movex(-straight_length / 2)
+
+    return c
+
+if __name__ == "__main__":
+    # Instantiate the component
+    device = create_device()
+
+    # Display the component
+    device.show()
+
+    # Verify the footprint
+    # FIX: The component's size is accessed through the `size_info` attribute.
+    # The correct syntax is `device.size_info.size`.
+    print(f"Device created with footprint: {device.size_info.size}")
+    print(f"Expected footprint: [{120.0}, {4.0}]")

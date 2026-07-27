@@ -1,0 +1,106 @@
+Turn 3 Response:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def grating_coupler(
+    length: float = 8.0,
+    height: float = 0.7,
+    center_spacing: float = 0.2,
+    width: float = 0.3,
+    n_slits: int = 11,
+    slit_width: float = 0.1,
+    layer: tuple[int, int] = (1, 0),
+) -> gf.Component:
+    solid = gf.components.rectangle(size=(length, height), layer=layer, centered=True)
+    
+    slits = gf.Component()
+    step = length / n_slits
+    for i in range(n_slits):
+        slit = slits << gf.components.rectangle(size=(slit_width, height + 0.01), layer=layer, centered=True)
+        slit.movex((i + 0.5) * step - length / 2)
+    
+    grating = gf.boolean(solid, slits, operation="not", layer=layer)
+    
+    grating.add_port("upper_o1", center=(-length / 2, center_spacing), width=width, orientation=180, layer=layer)
+    grating.add_port("upper_o2", center=(length / 2, center_spacing), width=width, orientation=0, layer=layer)
+    grating.add_port("lower_o1", center=(-length / 2, -center_spacing), width=width, orientation=180, layer=layer)
+    grating.add_port("lower_o2", center=(length / 2, -center_spacing), width=width, orientation=0, layer=layer)
+    
+    return grating
+
+@gf.cell
+def my_device() -> gf.Component:
+    c = gf.Component()
+    layer = (1, 0)
+    width = 0.3
+    gap = 0.1
+    center_spacing = gap / 2 + width / 2  # 0.2
+    end_spacing = 0.002
+    dy_bend = center_spacing - end_spacing  # ~0.198
+    middle_length = 8.0
+    total_length = 18.24
+    side_length = (total_length - middle_length) / 2  # 5.12
+
+    # Middle grating coupler
+    middle = c << grating_coupler(
+        length=middle_length,
+        height=0.7,
+        center_spacing=center_spacing,
+        width=width,
+        n_slits=11,
+        slit_width=0.1,
+        layer=layer,
+    )
+
+    # Cross sections
+    cs_narrow = gf.cross_section.cross_section(width=0.002, layer=layer)
+    cs_wide = gf.cross_section.cross_section(width=width, layer=layer)
+
+    # Transitions
+    trans_wide = gf.path.transition(cs_narrow, cs_wide, width_type='linear')
+    trans_narrow = gf.path.transition(cs_wide, cs_narrow, width_type='linear')
+
+    # Left upper
+    path_lu = gf.Path([(0, end_spacing), (side_length, center_spacing)])
+    tlu_comp = gf.path.extrude_transition(path_lu, trans_wide)
+    tlu = c << tlu_comp
+    dest_center = middle.ports["upper_o1"].center
+    src_center = tlu_comp.ports["o2"].center
+    translation = tuple(np.array(dest_center) - np.array(src_center))
+    tlu.move(translation)
+
+    # Left lower
+    path_ll = gf.Path([(0, -end_spacing), (side_length, -center_spacing)])
+    tll_comp = gf.path.extrude_transition(path_ll, trans_wide)
+    tll = c << tll_comp
+    dest_center = middle.ports["lower_o1"].center
+    src_center = tll_comp.ports["o2"].center
+    translation = tuple(np.array(dest_center) - np.array(src_center))
+    tll.move(translation)
+
+    # Right upper
+    path_ru = gf.Path([(0, center_spacing), (side_length, end_spacing)])
+    tru_comp = gf.path.extrude_transition(path_ru, trans_narrow)
+    tru = c << tru_comp
+    dest_center = middle.ports["upper_o2"].center
+    src_center = tru_comp.ports["o1"].center
+    translation = tuple(np.array(dest_center) - np.array(src_center))
+    tru.move(translation)
+
+    # Right lower
+    path_rl = gf.Path([(0, -center_spacing), (side_length, -end_spacing)])
+    trl_comp = gf.path.extrude_transition(path_rl, trans_narrow)
+    trl = c << trl_comp
+    dest_center = middle.ports["lower_o2"].center
+    src_center = trl_comp.ports["o1"].center
+    translation = tuple(np.array(dest_center) - np.array(src_center))
+    trl.move(translation)
+
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")
+```

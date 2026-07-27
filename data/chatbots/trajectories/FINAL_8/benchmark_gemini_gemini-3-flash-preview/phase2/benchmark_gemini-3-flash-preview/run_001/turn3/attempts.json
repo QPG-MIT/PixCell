@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:25:15.980993",
+      "api_duration_seconds": 62.21187400817871,
+      "usage": {
+        "input_tokens": 5215,
+        "output_tokens": 1213,
+        "total_tokens": 13252
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: smooth(): Not enough distance between points to to fit curves.Try reducing the radius or spacing the points out farther",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:26:19.479162",
+      "api_duration_seconds": 24.748883962631226,
+      "usage": {
+        "input_tokens": 6482,
+        "output_tokens": 1020,
+        "total_tokens": 9533
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: smooth(): Not enough distance between points to to fit curves.Try reducing the radius or spacing the points out farther",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:26:45.489814",
+      "api_duration_seconds": 31.05085015296936,
+      "usage": {
+        "input_tokens": 7556,
+        "output_tokens": 1270,
+        "total_tokens": 11328
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 19253,
+    "output_tokens": 3503,
+    "total_tokens": 34113
+  }
+}

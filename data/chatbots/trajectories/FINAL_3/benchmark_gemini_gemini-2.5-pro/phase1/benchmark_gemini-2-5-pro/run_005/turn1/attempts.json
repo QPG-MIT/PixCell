@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.626017",
+      "api_duration_seconds": 82.14884972572327,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 1172,
+        "total_tokens": 12828
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'bend_s_gdsfactorypcomponentspbendspbend_s_S20_1p5_N99_C_34ff0fd1' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:33.545109",
+      "api_duration_seconds": 34.458866119384766,
+      "usage": {
+        "input_tokens": 3584,
+        "output_tokens": 1409,
+        "total_tokens": 7974
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:14.520051",
+      "api_duration_seconds": 13.423906087875366,
+      "usage": {
+        "input_tokens": 5012,
+        "output_tokens": 1374,
+        "total_tokens": 6462
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10941,
+    "output_tokens": 3955,
+    "total_tokens": 27264
+  }
+}

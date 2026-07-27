@@ -1,0 +1,166 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+
+
+def snap_even_dbu(width_um: float) -> float:
+    """Snap a width (in um) to an even number of dbu (required by SymmetricalCrossSection)."""
+    dbu = gf.kcl.dbu  # um per database unit (e.g., 0.001 um for 1 nm)
+    n = int(round(width_um / dbu))
+    if n < 2:
+        n = 2
+    if n % 2 == 1:
+        n += 1
+    return n * dbu
+
+
+def _arm(
+    *,
+    length_taper: float,
+    length_parallel: float,
+    length_diverge: float,
+    length_out: float,
+    dy_diverge: float,
+    w_in: float,
+    w_out: float,
+    layer: tuple[int, int],
+    r_diverge: float = 25.0,
+) -> gf.Component:
+    """Outer arm: long width taper while parallel, then very smooth divergence."""
+    c = gf.Component()
+
+    w_in = snap_even_dbu(w_in)
+    w_out = snap_even_dbu(w_out)
+
+    xs_in = gf.cross_section.strip(width=w_in, layer=layer)
+    xs_out = gf.cross_section.strip(width=w_out, layer=layer)
+
+    # 1) Long gentle taper (parallel region)
+    p_taper = gf.path.straight(length=length_taper)
+    t = gf.path.transition(xs_in, xs_out, width_type="sine")
+    taper = c << gf.path.extrude_transition(p_taper, t)
+
+    # 2) Continue parallel at final width
+    par = c << gf.path.extrude(gf.path.straight(length=length_parallel), cross_section=xs_out)
+    par.connect("o1", taper.ports["o2"])
+
+    # 3) Smooth divergence (less “bulgy” than bend_s in raster)
+    p_div = gf.path.smooth(
+        points=[
+            (0.0, 0.0),
+            (0.55 * length_diverge, 0.0),
+            (length_diverge, dy_diverge),
+        ],
+        radius=r_diverge,
+    )
+    div = c << gf.path.extrude(p_div, cross_section=xs_out)
+    div.connect("o1", par.ports["o2"])
+
+    # 4) Output straight
+    out = c << gf.path.extrude(gf.path.straight(length=length_out), cross_section=xs_out)
+    out.connect("o1", div.ports["o2"])
+
+    c.add_port("o1", port=taper.ports["o1"])
+    c.add_port("o2", port=out.ports["o2"])
+    return c
+
+
+@gf.cell
+def recreated_device_v3(
+    # Target footprint (um)
+    length_total: float = 40.0,
+    height_total: float = 1.7,
+    # Segmenting: long gradual taper, late split
+    length_taper: float = 18.0,
+    length_parallel: float = 8.0,
+    length_diverge: float = 10.0,
+    # Outer widths (um)
+    w_outer_in: float = 0.18,
+    w_outer_out: float = 0.38,
+    # Left-side center offsets (um) to keep a visible white gap on the left
+    y_outer_left: float = 0.32,
+    # Middle stub (thin wedge that ends early)
+    length_mid: float = 26.0,
+    w_mid_in: float = 0.10,
+    w_mid_out: float = 0.004,  # NOTE: must be even dbu (0.003 um fails for 1 nm dbu)
+    mid_dy: float = -0.06,
+    layer: tuple[int, int] = (1, 0),
+) -> gf.Component:
+    c = gf.Component()
+
+    # Snap widths to even dbu to avoid SymmetricalCrossSection validation errors
+    w_outer_in = snap_even_dbu(w_outer_in)
+    w_outer_out = snap_even_dbu(w_outer_out)
+    w_mid_in = snap_even_dbu(w_mid_in)
+    w_mid_out = snap_even_dbu(w_mid_out)
+
+    length_out = length_total - (length_taper + length_parallel + length_diverge)
+    if length_out <= 0:
+        raise ValueError("length_total too small for the chosen segment lengths.")
+
+    # Match total Y footprint: total height = 2*y_right + w_outer_out
+    y_outer_right = (height_total - w_outer_out) / 2.0
+    dy_outer = y_outer_right - y_outer_left
+
+    # --- Outer arms (top/bottom) ---
+    arm_top = _arm(
+        length_taper=length_taper,
+        length_parallel=length_parallel,
+        length_diverge=length_diverge,
+        length_out=length_out,
+        dy_diverge=+dy_outer,
+        w_in=w_outer_in,
+        w_out=w_outer_out,
+        layer=layer,
+        r_diverge=25.0,
+    )
+    arm_bot = _arm(
+        length_taper=length_taper,
+        length_parallel=length_parallel,
+        length_diverge=length_diverge,
+        length_out=length_out,
+        dy_diverge=-dy_outer,
+        w_in=w_outer_in,
+        w_out=w_outer_out,
+        layer=layer,
+        r_diverge=25.0,
+    )
+
+    top = c << arm_top
+    bot = c << arm_bot
+    top.move((0, +y_outer_left))
+    bot.move((0, -y_outer_left))
+
+    # --- Middle thin stub: smooth path + width transition to (almost) zero ---
+    xs_mid1 = gf.cross_section.strip(width=w_mid_in, layer=layer)
+    xs_mid2 = gf.cross_section.strip(width=w_mid_out, layer=layer)
+    tmid = gf.path.transition(xs_mid1, xs_mid2, width_type="sine")
+
+    p_mid = gf.path.smooth(
+        points=[
+            (0.0, 0.0),
+            (0.65 * length_mid, 0.0),
+            (length_mid, mid_dy),
+        ],
+        radius=60.0,
+    )
+    mid = c << gf.path.extrude_transition(p_mid, tmid)
+
+    # --- Ports ---
+    c.add_port("in_top", port=top.ports["o1"])
+    c.add_port("in_mid", port=mid.ports["o1"])
+    c.add_port("in_bot", port=bot.ports["o1"])
+    c.add_port("out_top", port=top.ports["o2"])
+    c.add_port("out_bot", port=bot.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    d = recreated_device_v3()
+    d.show()
+    d.write_gds("recreated_device_v3.gds")
+```
+
+This fixes the crash by ensuring **all cross-section widths are snapped to an even number of dbu**, and specifically changes `w_mid_out` from `0.003` to `0.004` µm (for a 1 nm dbu, `0.003 µm = 3 dbu` is invalid, `0.004 µm = 4 dbu` is valid).

@@ -1,0 +1,101 @@
+Turn 2 Response:
+
+Based on the analysis of the original image and the feedback render, the previous geometry had an incorrect aspect ratio for the central MMI body (it was too tall). The visual reference shows a "squat" rectangular body (wider than it is tall) with prominent, long output tapers.
+
+Here is the corrected Python script. It adjusts the `body_height` to be smaller than the `body_width`, increases the taper lengths, and tunes the pitch to match the visual proportions within the `[25, 10]` footprint.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def mmi_1x4_vertical_geometry():
+    """
+    Recreates the vertical 1x4 MMI geometry based on visual analysis.
+    Key Adjustments:
+    - Reduced body height to match the wide-rectangle aspect ratio of the reference.
+    - Extended output tapers to match the prominent "finger" look.
+    - Tuned pitch and widths to fit the 10um width constraint with appropriate gaps.
+    """
+    c = gf.Component()
+    
+    # Layer definition (Standard waveguide layer)
+    layer_wg = (1, 0)
+
+    # --- Geometric Parameters ---
+    
+    # 1. MMI Body
+    # The reference image shows a body that is wider than it is tall.
+    # We constrain width to 10um.
+    body_width = 10.0
+    body_height = 6.0    # Adjusted to create a roughly ~1.6:1 (W:H) aspect ratio
+    
+    # 2. Output Tapers (Top)
+    # These appear long and slender in the original image.
+    out_taper_len = 9.0  # Increased length to match visual proportions
+    out_width_base = 1.9 # Base width (wide end at MMI interface)
+    out_width_tip = 0.6  # Tip width (waveguide end)
+    out_pitch = 2.4      # Spacing between output ports
+    
+    # 3. Input Taper (Bottom)
+    in_taper_len = 6.0
+    in_width_base = 3.0  # The input taper base appears slightly wider than outputs
+    in_width_tip = 0.6
+
+    # --- Construction ---
+
+    # 1. Place the central MMI Body
+    # Centered at (0,0) for easier port placement
+    body = c << gf.components.rectangle(
+        size=(body_width, body_height),
+        layer=layer_wg,
+        centered=True
+    )
+
+    # 2. Create and Place Output Tapers (Top)
+    # We create one taper component and reference it 4 times
+    taper_out_cmp = gf.components.taper(
+        length=out_taper_len,
+        width1=out_width_base,
+        width2=out_width_tip,
+        layer=layer_wg
+    )
+    
+    num_outputs = 4
+    # Calculate indices to center the array: e.g., -1.5, -0.5, 0.5, 1.5
+    indices = [i - (num_outputs - 1) / 2 for i in range(num_outputs)]
+    
+    for i in indices:
+        x_pos = i * out_pitch
+        
+        ref_out = c << taper_out_cmp
+        
+        # Rotate 90 degrees: Taper points UP
+        # Origin (width1) stays at (0,0) before move
+        ref_out.rotate(90)
+        
+        # Move to the top edge of the body (y = +height/2) at the correct x-offset
+        ref_out.move((x_pos, body_height / 2))
+
+    # 3. Create and Place Input Taper (Bottom)
+    taper_in_cmp = gf.components.taper(
+        length=in_taper_len,
+        width1=in_width_base,
+        width2=in_width_tip,
+        layer=layer_wg
+    )
+    
+    ref_in = c << taper_in_cmp
+    
+    # Rotate -90 degrees: Taper points DOWN
+    ref_in.rotate(-90)
+    
+    # Move to the bottom edge of the body (y = -height/2)
+    ref_in.move((0, -body_height / 2))
+
+    return c
+
+if __name__ == "__main__":
+    device = mmi_1x4_vertical_geometry()
+    device.write_gds("mmi_1x4_corrected.gds")
+    device.show()
+```

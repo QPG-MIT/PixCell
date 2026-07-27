@@ -1,0 +1,184 @@
+Looking at this image, I can see what appears to be a photonic device with two parallel waveguides that come together in the middle and then separate again. This looks like a directional coupler or a 2x2 coupler structure.
+
+Let me analyze the shape more carefully:
+- On the left side, there are two waveguide ports at different vertical positions
+- These waveguides bend/route towards each other to run parallel in the middle (the coupling region)
+- On the right side, they bend apart again to two separate output ports
+
+The footprint constraint is [120, 4] μm, so 120 μm wide and 4 μm tall.
+
+Looking at the structure:
+1. Top left: A waveguide comes from the upper left, bends down toward the center
+2. Bottom left: A waveguide comes from the lower left, bends up toward the center  
+3. In the middle: Two waveguides run parallel (coupling region)
+4. Top right: The upper waveguide bends up and exits to the upper right
+5. Bottom right: The lower waveguide bends down and exits to the lower right
+
+This is essentially a symmetric 2x2 directional coupler structure.
+
+Let me think about how to construct this:
+
+The structure appears to be:
+- Two S-bends on the left bringing the waveguides together
+- A straight coupling section in the middle
+- Two S-bends on the right separating the waveguides
+
+Looking at the image more carefully:
+- The device is horizontally elongated
+- The vertical separation at the ends is larger than in the middle
+- The S-bends are smooth curves
+
+For a 120 μm x 4 μm footprint:
+- The total width is 120 μm
+- The total height is 4 μm
+
+Let me estimate the geometry:
+- Port separation at ends: maybe ~3.5 μm apart (since total height is 4 μm and waveguide has some width)
+
+
+- The gap between waveguides in the coupling region appears quite tight, probably around 0.2-0.3 μm for effective evanescent coupling. The S-bend transitions on each side likely span roughly 30 μm, while the central straight coupling section takes up the remaining 60 μm of the device length.
+
+Now I need to implement this geometry in code. I'll set up the waveguide parameters: 0.5 μm width for the guides themselves, 3.0 μm separation at the input/output ports, and 0.2 μm gap where they run parallel. The S-bends will transition the waveguides from their separated port positions down to the tight coupling gap over their 30 μm length, then the straight section maintains that coupling over 60 μm before the second S-bend expands them back out.
+
+For the top and bottom paths, I'm creating matching S-bend components that curve inward by the calculated offset, connecting them with a straight coupling section. The bottom waveguide mirrors this geometry.
+
+Then I'm placing these components into the cell and connecting them sequentially—the top path starts at the upper port position, with each segment connecting to the previous one's output. The bottom path follows the same pattern but positioned at the negative port separation, with its S-bends curving in the opposite direction to create the symmetric coupling structure.
+
+Finally, I'm exposing the four ports: the input ports from each S-bend entrance and the output ports from each S-bend exit, which allows external connections to this directional coupler component.
+
+Looking more carefully at the device proportions, the aspect ratio appears to be roughly 30:1 given the 120 μm length and 4 μm height. The S-bends take up about a quarter of the total length on each end, with the straight coupling section occupying the middle half. For the waveguide dimensions, the width seems to be around 0.5 μm based on the height ratio, and the port spacing is approximately 3.5-4 μm center-to-center with a very tight coupling gap between the waveguides.
+
+Refining the estimates: the S-bends are likely closer to 25 μm each, leaving about 70 μm for the coupling region where the waveguides run parallel. Now I'll implement this with the actual code structure, starting with the component definition and design parameters.
+
+The waveguide width is set to 0.5 μm with ports separated 3.5 μm vertically. In the coupling region, the gap between guides is 0.3 μm, giving a center-to-center spacing of 0.8 μm. I need to calculate the vertical offset required for the S-bends to transition from the input ports to this tighter coupling spacing—that's roughly 1.35 μm on each side.
+
+For the top waveguide path, I'm creating an S-bend that curves downward by this offset amount, positioning it at the upper port location. Then a straight section runs through the coupling region where the two guides interact. Finally, another S-bend curves back upward to return to the original height at the output port.
+
+The bottom waveguide mirrors this structure but inverted—an S-bend curves upward into the coupling zone, a straight section traverses it, and then an S-bend curves back down. Each component connects sequentially, with the bottom path offset downward by the port separation distance.
+
+Once both waveguides are positioned, the device exposes four external ports: the input and output of the top path, and the input and output of the bottom path. The complete structure is then returned and saved as a GDS file for fabrication. For the bottom waveguide, the input S-bend moves right and up to enter the coupling region, while the output S-bend moves right and down to exit. The total length checks out at 120 μm with the S-bends and coupling section, and the vertical span from port to port is 3.5 μm with the waveguide width accounting for the full 4 μm envelope.
+
+Now I need to reconsider the geometry more carefully. The port_separation represents center-to-center spacing, so the top waveguide sits at +1.75 μm and the bottom at -1.75 μm. Including the 0.25 μm half-width on each side gives me a total height of 4.0 μm. In the coupling region, the separation between waveguide centers is determined by the gap plus the waveguide width, which comes to 0.8 μm, and this affects how much vertical displacement occurs during the S-bends. sbend_length = 25.0  # horizontal length of each S-bend transition
+    coupling_length = 70.0  # length of parallel coupling section
+    
+    # Cross section definition
+    xs = gf.cross_section.cross_section(width=waveguide_width, layer=(1, 0))
+    
+    # Calculate the vertical displacement for S-bends
+    coupling_separation = coupling_gap + waveguide_width  # center-to-center in coupling region
+    dy = (port_separation - coupling_separation) / 2  # how much each waveguide must move vertically
+    
+    # === TOP WAVEGUIDE (starts at top-left, bends down, then back up) ===
+    # Input S-bend: bends downward toward coupling region
+    top_sbend_in = c << gf.components.bend_s(
+        size=(sbend_length, dy), cross_section=xs
+    )
+
+Now I'll set up the S-bend transitions with the calculated vertical displacement and define the coupling section where the waveguides run parallel. The top waveguide bends down by the displacement amount, couples with the bottom waveguide, then bends back up to its original height. _separation / 2))
+    
+    # Straight section in coupling region
+    bot_straight = c << gf.components.straight(length=coupling_length, cross_section=xs)
+    bot_straight.connect("o1", bot_sbend_in.ports["o2"])
+    
+    # Output S-bend: bends downward back to port level
+    bot_sbend_out = c << gf.components.bend_s(size=(sbend_length, -dy), cross_section=xs)
+    bot_sbend_out.connect("o1", bot_straight.ports["o2"])
+    
+    # Add external ports
+    c.add_port("o1", port=top_sbend_in.ports["o1"])
+    c.add_port("o2", port=bot_sbend_in.ports["o1"])
+
+The bottom waveguide mirrors the top structure—it bends upward into the coupling region with an S-bend, travels through a straight section, then bends back down to its original level. Finally, I'm exposing the input ports from both waveguides as the component's external ports.
+
+Looking at the reference image more carefully, the central coupling section appears to dominate the overall length while the S-bends are relatively compact. The waveguides sit very close together in that middle region. I should recalibrate the dimensions: reducing the S-bend length to 25 μm and extending the coupling section to 70 μm would better match the proportions shown, keeping the total around 120 μm.
+
+For the gap between the parallel waveguides, a spacing of 0.2-0.3 μm aligns with typical directional coupler designs. Let me proceed with these refined parameters and implement the structure using gdsfactory.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_2x2():
+    """2x2 directional coupler with symmetric S-bend transitions for a 120 μm × 4 μm footprint."""
+    c = gf.Component()
+    
+    # Design parameters
+    waveguide_width = 0.5  # um
+    total_height = 4.0  # um
+    coupling_gap = 0.2  # um
+    sbend_length = 25.0  # um
+    coupling_length = 70.0  # um
+    
+    # Port separation spans the full device height
+    port_separation = total_height - waveguide_width
+    
+    # Cross section
+    xs = gf.cross_
+
+section.cross_section(width=waveguide_width, layer=(1, 0))
+    
+    # Vertical displacement needed for S-bends
+    coupling_separation = coupling_gap + waveguide_width
+    dy = (port_separation - coupling_separation) / 2
+    
+    # TOP WAVEGUIDE
+    top_sbend_in = c << gf.components.bend_s(size=(sbend_length, -dy), cross_section=xs)
+    top_sbend_in.move((0, port_separation / 2))
+    
+    top_straight = c << gf.components.straight(length=coupling_length, cross_section=xs)
+    top_straight.connect("o1", top_sbend_in.ports["o2"])
+    
+    top_sbend_out = c << gf.components.bend_s(size=(sbend_length, dy), cross_section=xs)
+    top_sbend_out.connect("o1", top_straight.ports["o2"])
+    
+    # BOTTOM WAVEGUIDE
+    bottom_sbend_in = c << gf.components.bend_s(size=(sbend_length, dy), cross_section=xs)
+    bottom_sbend_in.move((0, -port_separation / 2))
+    
+    bottom_straight = c << gf.components.straight(length=coupling_length, cross_section=xs)
+    bottom_straight.connect("o1", bottom_sbend_in.ports["o2"])
+    
+    bottom_sbend_out = c << gf.components.bend_s(size=(sbend_length, -dy), cross_section=xs)
+    bottom_sbend_out.connect("o1", bottom_straight.ports["o2"])
+    
+    # Add ports
+    c.add_port("in1", port=top_sbend_in.ports["o1"])
+    c.add_port("in2", port=bottom_sbend_in.ports["o1"])
+    c.add_port("out1", port=top_sbend_out.ports["o2"])
+    c.add_port("out2", port=bottom_sbend_out.ports["o2"])
+    
+    return c
+```
+
+The cross-section is defined with the specified waveguide width and layer. The vertical displacement for the S-bends is calculated to position the waveguides at the coupling gap distance during the parallel section. The top and bottom waveguides are built symmetrically, each with an input S-bend that transitions from the port separation to the coupling separation, a straight coupling section, and an output S-bend that transitions back to the original port separation. Ports are added at the input and output locations. 0.2 + 0.5 = 0.7 μm, so dy works out to (3.5 - 0.7) / 2 = 1.4 μm. This gives each S-bend a reasonable aspect ratio of about 18:1 over the 25 μm horizontal span. The geometry checks out, so I'll proceed with the implementation.
+
+Setting up the geometric parameters: waveguide width of 0.5 μm, total device height of 4 μm, coupling gap of 0.2 μm, S-bend sections of 25 μm each, and a 70 μm coupling region for a total length of 120 μm. I'll define the cross-section and calculate the vertical spacing—port separation is 3.5 μm center-to-center, and the coupling separation combines the gap with the waveguide width.
+
+Now I'm building the top waveguide path: an S-bend input that displaces downward by 1.4 μm toward the coupling region, positioned at the upper port. The middle section runs straight through the coupling region, connecting to the input bend's output. The output S-bend will move the waveguide back up to its original height.
+
+For the bottom waveguide, I'm mirroring this structure: an S-bend that curves upward toward the coupling region from the lower port, a straight coupling section, and an output S-bend that returns the waveguide to its starting position.
+
+Then I'm exposing the four ports—the input and output ports for both the top and bottom waveguides—so external connections can be made to this directional coupler. Finally, the function returns the completed component, and the script generates and saves it as a GDS file. The S-bends bring the waveguides together for evanescent coupling in the middle section, then separate them at the outputs. I'm confident the structure is correct based on the image—the top path curves down then back up, while the bottom path curves up then back down, creating the symmetric coupling region in between.
+
+Let me refine the implementation with cleaner parameter definitions and documentation. The design uses a 0.5 μm waveguide width with 0.2 μm coupling gap and 25 μm S-bend transitions to achieve the desired 120 μm × 4 μm footprint. top_sbend_out = c << gf.components.bend_s(
+        size=(sbend_length, vertical_offset), 
+        cross_section=xs
+    )
+    top_sbend_out.connect("o1", top_coupling.ports["o2"])
+    
+    # === Build bottom waveguide arm ===
+    bot_sbend_in = c << gf.components.bend_s(
+        size=(sbend_length, vertical_offset), 
+        cross_section=xs
+    )
+    bot_sbend_in.move((0, -port_separation / 2))
+    
+    bot_coupling = c << gf.components.straight(
+        length=coupling_length, 
+        cross_section=xs
+    )
+    bot_coupling.connect("o1", bot_sbend_in.ports["o2"])
+
+Now I'm completing the bottom arm by adding the output S-bend that mirrors the top path, then positioning the bottom input S-bend with opposite vertical displacement and connecting the bottom coupling section to it.
+
+Finally, I define the four ports mapping to the input and output ports of both arms, then instantiate the device and write it to a GDS file.

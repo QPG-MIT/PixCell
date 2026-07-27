@@ -1,0 +1,39 @@
+{
+  "run_id": 4,
+  "seed": 1335,
+  "model": "qwen/qwen3-vl-235b-a22b-instruct",
+  "provider": "openrouter",
+  "turns": {
+    "turn1": {
+      "success": true,
+      "attempts": 1,
+      "usage": {
+        "input_tokens": 2955,
+        "output_tokens": 518,
+        "total_tokens": 3473
+      },
+      "duration_seconds": 21.953,
+      "final_sse": 294565.0,
+      "final_iou": 0.3076552437361914
+    },
+    "turn2": {
+      "success": false,
+      "attempts": 3,
+      "usage": {
+        "input_tokens": 9326,
+        "output_tokens": 1096,
+        "total_tokens": 10422
+      },
+      "duration_seconds": 189.72,
+      "final_sse": null,
+      "final_iou": null
+    }
+  },
+  "cumulative_usage": {
+    "input_tokens": 12281,
+    "output_tokens": 1614,
+    "total_tokens": 13895
+  },
+  "total_api_calls": 4,
+  "total_successful_turns": 1
+}

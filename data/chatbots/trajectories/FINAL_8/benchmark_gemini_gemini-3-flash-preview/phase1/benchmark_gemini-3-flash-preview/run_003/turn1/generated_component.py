@@ -1,0 +1,94 @@
+import gdsfactory as gf
+
+@gf.cell
+def make_horn(width_outer=98.0, width_waist=80.0, height=1.3, layer=(1, 0)):
+    """
+    Creates a single horn structure (top/bottom piece).
+    Uses circles to create concave side cutouts and rectangles for internal slits.
+    """
+    c = gf.Component()
+    
+    # 1. Create the base rectangular body
+    base = gf.components.rectangle(size=(width_outer, height), layer=layer, centered=True)
+    
+    # 2. Create concave cutouts for the hourglass effect
+    # We place two circles on the left and right to subtract from the base rectangle
+    r = 15.0  # Curvature radius
+    x_offset = (width_waist / 2) + r
+    
+    c_cutout_geom = gf.Component()
+    
+    # FIX: Get the reference first, then move the reference
+    left_circle_ref = c_cutout_geom << gf.components.circle(radius=r, layer=layer)
+    left_circle_ref.movex(-x_offset)
+    
+    right_circle_ref = c_cutout_geom << gf.components.circle(radius=r, layer=layer)
+    right_circle_ref.movex(x_offset)
+    
+    # Create the hourglass body using a boolean 'not'
+    body = gf.boolean(A=base, B=c_cutout_geom, operation="not", layer=layer)
+    
+    # 3. Create the 4 horizontal slits that divide the horn into 5 stripes
+    slits_geom = gf.Component()
+    slit_w = width_outer + 2.0
+    slit_h = 0.1
+    
+    # Positions relative to the center of the horn height (1.3um)
+    slit_y_positions = [-0.35, -0.1, 0.15, 0.4]
+    for y in slit_y_positions:
+        s_ref = slits_geom << gf.components.rectangle(size=(slit_w, slit_h), layer=layer, centered=True)
+        s_ref.movey(y)
+        
+    # Final horn geometry with slits removed
+    horn_shape = gf.boolean(A=body, B=slits_geom, operation="not", layer=layer)
+    c.add_ref(horn_shape)
+    
+    return c
+
+@gf.cell
+def recreate_device():
+    """
+    Assembles the full device matching the 120um x 4um footprint.
+    """
+    c = gf.Component("recreated_device")
+    LAYER = (1, 0)
+    W_TOTAL = 120.0
+    
+    # --- 1. Central Bars (5 horizontal lines) ---
+    bar_h = 0.12
+    bar_g = 0.12
+    n_center = 5
+    
+    for i in range(n_center):
+        y_pos = (i - (n_center - 1) / 2) * (bar_h + bar_g)
+        # FIX: Capture reference, then move reference
+        rect_ref = c << gf.components.rectangle(size=(W_TOTAL, bar_h), layer=LAYER, centered=True)
+        rect_ref.movey(y_pos)
+        
+    # --- 2. Horns (Top and Bottom) ---
+    # Parameters tuned to fit within the 4um total height
+    horn_comp = make_horn(width_outer=98.0, width_waist=82.0, height=1.3, layer=LAYER)
+    
+    # Placement offset from center (y=0)
+    y_horn_center = 1.32
+    
+    # Top Horn
+    t_horn = c << horn_comp
+    t_horn.movey(y_horn_center)
+    
+    # Bottom Horn
+    b_horn = c << horn_comp
+    b_horn.mirror_y()  # Transform the reference
+    b_horn.movey(-y_horn_center)
+    
+    return c
+
+if __name__ == "__main__":
+    # Generate the device
+    device = recreate_device()
+    
+    # Output footprint verification
+    print(f"Device Footprint: {device.xsize:.2f}um x {device.ysize:.2f}um")
+    
+    # Save GDS file
+    device.write_gds("device_layout.gds")

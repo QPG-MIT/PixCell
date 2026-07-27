@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.085930",
+      "api_duration_seconds": 297.30562376976013,
+      "usage": {
+        "input_tokens": 3171,
+        "output_tokens": 1625,
+        "total_tokens": 32903
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.075 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:15:13.674874",
+      "api_duration_seconds": 139.0882842540741,
+      "usage": {
+        "input_tokens": 4843,
+        "output_tokens": 1713,
+        "total_tokens": 20308
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'straight_gdsfactorypcomponentspwaveguidespstraight_L14p_29c4758f' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:17:33.958337",
+      "api_duration_seconds": 75.65675592422485,
+      "usage": {
+        "input_tokens": 6613,
+        "output_tokens": 1843,
+        "total_tokens": 15028
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.06 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14627,
+    "output_tokens": 5181,
+    "total_tokens": 68239
+  }
+}

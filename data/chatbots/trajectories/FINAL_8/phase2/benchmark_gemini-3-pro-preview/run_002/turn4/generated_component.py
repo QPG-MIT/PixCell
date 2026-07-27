@@ -1,0 +1,119 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_reconstruction_v3():
+    """
+    Refined reconstruction of the directional coupler.
+    
+    Adjustments from visual feedback:
+    - Compacted central bus (width/gap 0.12um) to allow deeper S-bends.
+    - Moved outer rails closer to center to increase the 'flare' amplitude (dy).
+    - Tuned rail thickness (0.75um) for correct visual weight ratio.
+    """
+    c = gf.Component()
+
+    # --- Global Dimensions ---
+    total_length = 120.0
+    footprint_height = 4.0
+    max_y_abs = footprint_height / 2.0
+    
+    # Longitudinal Geometry
+    # Shortened slightly to make the bend curve steeper/more pronounced
+    bend_length = 12.0 
+    straight_length = total_length - (2 * bend_length)
+
+    # --- Cross-sectional Parameters ---
+    # 1. Central Bus: Tighter packing to free up vertical space
+    n_inner_lines = 4
+    inner_width = 0.12
+    inner_gap = 0.12
+    
+    # 2. Outer Rails: Substantial thickness
+    rail_width = 0.75 
+    
+    # 3. Gap between Central Bus and Outer Rail
+    bus_to_rail_gap = 0.15
+
+    # --- Geometry Calculation ---
+    
+    # Height of the inner 4-line stack
+    bus_stack_height = (n_inner_lines * inner_width) + ((n_inner_lines - 1) * inner_gap)
+    # Y-coordinate of the top of the bus
+    bus_top_y = bus_stack_height / 2.0
+    
+    # Position of the Outer Rail (Straight Section)
+    # Placed closer to center than previous iterations
+    rail_inner_edge_y = bus_top_y + bus_to_rail_gap
+    rail_center_y_straight = rail_inner_edge_y + (rail_width / 2.0)
+    rail_outer_edge_y = rail_inner_edge_y + rail_width
+    
+    # S-Bend Height (dy) Calculation
+    # We want the port at the end of the bend to touch the +/- 2.0um limit.
+    # The straight section sits lower. The bend travels from straight -> edge.
+    # dy is the remaining distance from the rail's current edge to the boundary.
+    dy = max_y_abs - rail_outer_edge_y - 0.01 # 0.01um margin for safety
+    
+    if dy <= 0:
+        print("Warning: Geometry exceeds footprint constraints!")
+        dy = 0
+
+    # --- Define Cross Sections ---
+    xs_inner = gf.cross_section.cross_section(width=inner_width, layer=(1, 0))
+    xs_rail = gf.cross_section.cross_section(width=rail_width, layer=(1, 0))
+
+    # --- Construction: 1. Central Bus ---
+    for i in range(n_inner_lines):
+        offset = i * (inner_width + inner_gap)
+        # Centering the stack at Y=0
+        y = -bus_stack_height/2 + inner_width/2 + offset
+        
+        wg = c << gf.components.straight(length=total_length, cross_section=xs_inner)
+        wg.x = 0
+        wg.y = y
+
+    # --- Construction: 2. Top Rail ---
+    # Straight section (Middle)
+    top_str = c << gf.components.straight(length=straight_length, cross_section=xs_rail)
+    top_str.x = 0
+    top_str.y = rail_center_y_straight
+    
+    # Left Bend (Flares UP to the left)
+    # Input (high) -> Straight (low). We need a drop (-dy).
+    bend_top_L = c << gf.components.bend_s(size=(bend_length, -dy), cross_section=xs_rail)
+    bend_top_L.connect("o2", top_str.ports["o1"])
+    
+    # Right Bend (Flares UP to the right)
+    # Straight (low) -> Output (high). We need a rise (+dy).
+    bend_top_R = c << gf.components.bend_s(size=(bend_length, dy), cross_section=xs_rail)
+    bend_top_R.connect("o1", top_str.ports["o2"])
+
+    # --- Construction: 3. Bottom Rail ---
+    # Symmetric to top
+    
+    # Straight section (Middle)
+    bot_str = c << gf.components.straight(length=straight_length, cross_section=xs_rail)
+    bot_str.x = 0
+    bot_str.y = -rail_center_y_straight
+    
+    # Left Bend (Flares DOWN to the left)
+    # Input (low) -> Straight (high). We need a rise (+dy relative to start).
+    bend_bot_L = c << gf.components.bend_s(size=(bend_length, dy), cross_section=xs_rail)
+    bend_bot_L.connect("o2", bot_str.ports["o1"])
+    
+    # Right Bend (Flares DOWN to the right)
+    # Straight (high) -> Output (low). We need a drop (-dy).
+    bend_bot_R = c << gf.components.bend_s(size=(bend_length, -dy), cross_section=xs_rail)
+    bend_bot_R.connect("o1", bot_str.ports["o2"])
+
+    # --- Expose Ports ---
+    c.add_port("o1", port=bend_top_L.ports["o1"])
+    c.add_port("o2", port=bend_bot_L.ports["o1"])
+    c.add_port("o3", port=bend_top_R.ports["o2"])
+    c.add_port("o4", port=bend_bot_R.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = device_reconstruction_v3()
+    device.show()
+    device.write_gds("reconstructed_coupler_v3.gds")

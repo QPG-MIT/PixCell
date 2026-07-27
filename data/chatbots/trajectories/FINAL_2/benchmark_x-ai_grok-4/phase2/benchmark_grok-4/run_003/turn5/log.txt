@@ -1,0 +1,49 @@
+Turn 5 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+
+    # Dimensions
+    footprint_width = 25
+    footprint_height = 10
+    wide = footprint_width / 4  # 6.25
+    bottom_wide = wide
+    pitch = wide
+    h_base = 2
+    h_taper_exposed = footprint_height - h_base  # Adjusted to fit
+    h_bottom = 1
+    overlap = 0.1
+
+    centers = [-1.5 * pitch, -0.5 * pitch, 0.5 * pitch, 1.5 * pitch]
+
+    # Base (positioned from y=h_bottom to y=h_bottom + h_base)
+    base = gf.components.rectangle(size=(footprint_width, h_base), layer=layer, centered=True)
+    base_ref = c << base
+    base_ref.move((0, h_bottom + h_base / 2))
+
+    # Positioned bottom taper
+    bottom_length = h_bottom + overlap
+    bottom_tap = gf.components.taper(length=bottom_length, width1=bottom_wide, width2=0, layer=layer)
+    bottom_ref = c << bottom_tap
+    bottom_ref.rotate(-90)
+    bottom_ref.move((0, h_bottom + overlap))
+
+    # Positioned top tapers
+    top_length = h_taper_exposed + overlap
+    for cx in centers:
+        top_tap = gf.components.taper(length=top_length, width1=wide, width2=0, layer=layer)
+        top_ref = c << top_tap
+        top_ref.rotate(90)
+        top_ref.move((cx, h_bottom + h_base - overlap))
+
+    return c
+
+# Create and save
+device = my_device()
+device.write_gds("my_device.gds")
+```

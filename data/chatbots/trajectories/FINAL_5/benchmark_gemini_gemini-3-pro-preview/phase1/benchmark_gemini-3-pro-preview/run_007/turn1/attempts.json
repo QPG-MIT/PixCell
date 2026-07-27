@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:55:12.710265",
+      "api_duration_seconds": 168.32851481437683,
+      "usage": {
+        "input_tokens": 3171,
+        "output_tokens": 1803,
+        "total_tokens": 18843
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:58:02.315434",
+      "api_duration_seconds": 62.35826015472412,
+      "usage": {
+        "input_tokens": 5477,
+        "output_tokens": 1811,
+        "total_tokens": 10867
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.5 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:59:05.944215",
+      "api_duration_seconds": 81.46854400634766,
+      "usage": {
+        "input_tokens": 7333,
+        "output_tokens": 1675,
+        "total_tokens": 15167
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: taper_gdsfactorypcomponentsptapersptaper_L1_W0p25_W0p05_1eb48c63_-6688_451_A150, Cell name: taper_gdsfactorypcomponentsptapersptaper_L1_W0p25_W0p05_1eb48c63\nInstance name: taper_gdsfactorypcomponentsptapersptaper_L1_W0p25_W0p05_1eb48c63_6688_-451_A33",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15981,
+    "output_tokens": 5289,
+    "total_tokens": 44877
+  }
+}

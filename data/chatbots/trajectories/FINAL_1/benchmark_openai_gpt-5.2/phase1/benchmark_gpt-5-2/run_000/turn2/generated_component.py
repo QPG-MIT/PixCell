@@ -1,0 +1,89 @@
+import gdsfactory as gf
+
+
+@gf.cell
+def trident_splitter(
+    length_total: float = 40.0,
+    height_total: float = 1.7,
+    layer: tuple[int, int] = (1, 0),
+    arm_w: float = 0.24,
+    mid_w: float = 0.18,
+    y0: float = 0.45,          # input arm center offset (top/bot)
+    dy_split: float = 0.25,    # additional offset added by the split (+top / -bot)
+    L_parallel: float = 24.0,  # long parallel run before divergence
+    L_s: float = 10.0,         # S-bend horizontal length (controls gentleness)
+    L_out: float = 6.0,        # straight output after divergence
+    L_mid: float = 22.0,       # middle guide length (stops earlier)
+):
+    """
+    Recreates the reference "trident" closer to the original PNG:
+    - three separate inputs on the left (no overlap / no slab)
+    - middle straight terminates early
+    - top/bottom stay parallel for long distance, then gently diverge near the right
+    Uses only parametric primitives (straight, bend_s) and port connections.
+    """
+
+    # Basic consistency checks
+    if abs((L_parallel + L_s + L_out) - length_total) > 1e-6:
+        raise ValueError("Require L_parallel + L_s + L_out == length_total")
+
+    # Quick height sanity (approx; ignores discretization)
+    approx_height = 2 * (y0 + abs(dy_split)) + arm_w
+    if approx_height > height_total + 1e-3:
+        raise ValueError(
+            f"Approx height {approx_height:.3f}um exceeds height_total={height_total}um. "
+            f"Reduce y0/dy_split/arm_w."
+        )
+
+    c = gf.Component()
+
+    xs_arm = gf.cross_section.strip(width=arm_w, layer=layer)
+    xs_mid = gf.cross_section.strip(width=mid_w, layer=layer)
+
+    # Building blocks
+    st_par = gf.components.straight(length=L_parallel, cross_section=xs_arm)
+    st_out = gf.components.straight(length=L_out, cross_section=xs_arm)
+
+    sb_top = gf.components.bend_s(size=(L_s, +dy_split), cross_section=xs_arm)
+    sb_bot = gf.components.bend_s(size=(L_s, -dy_split), cross_section=xs_arm)
+
+    mid_st = gf.components.straight(length=L_mid, cross_section=xs_mid)
+
+    # --- TOP arm: straight -> S-bend -> straight ---
+    top1 = c << st_par
+    top1.move((0, y0))
+
+    top2 = c << sb_top
+    top2.connect("o1", top1.ports["o2"])
+
+    top3 = c << st_out
+    top3.connect("o1", top2.ports["o2"])
+
+    # --- BOTTOM arm: straight -> S-bend -> straight ---
+    bot1 = c << st_par
+    bot1.move((0, -y0))
+
+    bot2 = c << sb_bot
+    bot2.connect("o1", bot1.ports["o2"])
+
+    bot3 = c << st_out
+    bot3.connect("o1", bot2.ports["o2"])
+
+    # --- MIDDLE: straight only, terminates early ---
+    mid = c << mid_st
+    # centered at y=0 by default
+
+    # External ports
+    c.add_port("in_top", port=top1.ports["o1"])
+    c.add_port("in_mid", port=mid.ports["o1"])
+    c.add_port("in_bot", port=bot1.ports["o1"])
+    c.add_port("out_top", port=top3.ports["o2"])
+    c.add_port("out_bot", port=bot3.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    c = trident_splitter()
+    c.show()
+    c.write_gds("trident_splitter.gds")

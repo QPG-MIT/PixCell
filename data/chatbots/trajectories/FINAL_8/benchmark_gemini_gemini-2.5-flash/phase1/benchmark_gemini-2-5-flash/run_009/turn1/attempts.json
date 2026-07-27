@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:10.015002",
+      "api_duration_seconds": 190.95290327072144,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 12460,
+        "total_tokens": 39381
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"length = {length} needs to be > 0\")\nValueError: length = -17.28 needs to be > 0",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:22.350668",
+      "api_duration_seconds": 66.37398910522461,
+      "usage": {
+        "input_tokens": 14858,
+        "output_tokens": 2984,
+        "total_tokens": 29635
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(component)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:22:30.089171",
+      "api_duration_seconds": 26.888020992279053,
+      "usage": {
+        "input_tokens": 17891,
+        "output_tokens": 2779,
+        "total_tokens": 23356
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 35098,
+    "output_tokens": 18223,
+    "total_tokens": 92372
+  }
+}

@@ -1,0 +1,98 @@
+Turn 3 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def patterned_racetrack_resonator():
+    """
+    Constructs a solid outer racetrack and subtracts an intricate inner void profile 
+    to create the specific 'chain-link' slotted waveguide structure.
+    Coordinates are carefully calculated to perfectly abut and prevent boolean artifacts.
+    """
+    c = gf.Component("patterned_racetrack")
+    LAYER = (1, 0)
+    
+    # ==========================================
+    # 1. BASE SOLID SHAPE (Outer Racetrack)
+    # ==========================================
+    # Footprint: 5.5 x 3.0 um
+    # Outer radius = 1.5 um, Straight length = 2.5 um
+    c_outer = gf.Component("outer_base")
+    
+    c_outer << gf.components.rectangle(size=(2.5, 3.0), centered=True, layer=LAYER)
+    
+    circ_outer = gf.components.circle(radius=1.5, layer=LAYER)
+    (c_outer << circ_outer).move((-1.25, 0))
+    (c_outer << circ_outer).move((1.25, 0))
+    
+    # Merge into a single solid polygon
+    base_solid = gf.boolean(A=c_outer, B=c_outer, operation="or", layer=LAYER)
+
+    # ==========================================
+    # 2. INNER VOIDS (To be subtracted)
+    # ==========================================
+    c_inner = gf.Component("inner_voids")
+    
+    # --- A. Central Narrow Gap ---
+    # Width 2.0 (from x=-1.0 to x=1.0), Height 0.8
+    c_inner << gf.components.rectangle(size=(2.0, 0.8), centered=True, layer=LAYER)
+    
+    # --- B. Tapers ---
+    # Left Taper: Wide end (2.0) at x=-1.25, Narrow end (0.8) at x=-1.0
+    # The default taper has its o1 port (width1) at x=0
+    taper_l = gf.components.taper(length=0.25, width1=2.0, width2=0.8, layer=LAYER)
+    (c_inner << taper_l).move((-1.25, 0))
+    
+    # Right Taper: Narrow end (0.8) at x=1.0, Wide end (2.0) at x=1.25
+    taper_r = gf.components.taper(length=0.25, width1=0.8, width2=2.0, layer=LAYER)
+    (c_inner << taper_r).move((1.0, 0))
+    
+    # --- C. Clean Inner Semi-Circles ---
+    # Radius 1.0, cleanly masked to avoid bulging into straight sections
+    c_circ_inner = gf.Component("circ_inner")
+    c_circ_inner << gf.components.circle(radius=1.0, layer=LAYER)
+    
+    # Right Semi-Circle (x > 0 part)
+    c_mask_r = gf.Component("mask_r")
+    (c_mask_r << gf.components.rectangle(size=(1.1, 2.2), centered=True, layer=LAYER)).move((0.55, 0))
+    semi_r = gf.boolean(A=c_circ_inner, B=c_mask_r, operation="and", layer=LAYER)
+    (c_inner << semi_r).move((1.25, 0))
+    
+    # Left Semi-Circle (x < 0 part)
+    c_mask_l = gf.Component("mask_l")
+    (c_mask_l << gf.components.rectangle(size=(1.1, 2.2), centered=True, layer=LAYER)).move((-0.55, 0))
+    semi_l = gf.boolean(A=c_circ_inner, B=c_mask_l, operation="and", layer=LAYER)
+    (c_inner << semi_l).move((-1.25, 0))
+    
+    # --- D. Rectangular Slots (Chain Links) ---
+    # Placed within the thick straight rails. 
+    # Thick rails are 1.1um high, centered at +/- 0.95.
+    slot = gf.components.rectangle(size=(0.55, 0.3), centered=True, layer=LAYER)
+    
+    # Top slots
+    (c_inner << slot).move((-0.425, 0.95))  # Top Left
+    (c_inner << slot).move((0.425, 0.95))   # Top Right
+    
+    # Bottom slots
+    (c_inner << slot).move((-0.425, -0.95)) # Bottom Left
+    (c_inner << slot).move((0.425, -0.95))  # Bottom Right
+    
+    # Merge inner voids into a single polygon
+    inner_solid = gf.boolean(A=c_inner, B=c_inner, operation="or", layer=LAYER)
+
+    # ==========================================
+    # 3. FINAL BOOLEAN SUBTRACTION
+    # ==========================================
+    # Carve the complex inner void out of the solid outer base
+    final_geom = gf.boolean(A=base_solid, B=inner_solid, operation="not", layer=LAYER)
+    
+    c << final_geom
+    
+    return c
+
+
+if __name__ == "__main__":
+    device = patterned_racetrack_resonator()
+    device.write_gds("patterned_racetrack_resonator.gds")
+```

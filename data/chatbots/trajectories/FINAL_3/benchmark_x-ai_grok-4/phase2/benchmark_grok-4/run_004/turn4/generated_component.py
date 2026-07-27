@@ -1,0 +1,65 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    length_s = 30
+    length_center = 120 - 2 * length_s
+    port_y = 1.75
+    overlap = 0.5
+
+    # Left top
+    slope = -port_y / length_s
+    end_x = length_s + overlap
+    end_y = 0 + slope * overlap
+    path_lt = gf.Path([(0, port_y), (end_x, end_y)])
+    left_top = path_lt.extrude(xs)
+    ref_lt = c << left_top
+
+    # Left bottom
+    slope = port_y / length_s
+    end_x = length_s + overlap
+    end_y = 0 + slope * overlap
+    path_lb = gf.Path([(0, -port_y), (end_x, end_y)])
+    left_bottom = path_lb.extrude(xs)
+    ref_lb = c << left_bottom
+
+    # Center straight
+    center = gf.components.straight(length=length_center, cross_section=xs)
+    ref_c = c << center
+    ref_c.move((length_s, 0))
+
+    # Right top
+    start_x = length_s + length_center
+    slope = port_y / length_s
+    new_start_x = start_x - overlap
+    new_start_y = 0 - slope * overlap
+    end_x = start_x + length_s
+    end_y = port_y
+    path_rt = gf.Path([(new_start_x, new_start_y), (end_x, end_y)])
+    right_top = path_rt.extrude(xs)
+    ref_rt = c << right_top
+
+    # Right bottom
+    slope = -port_y / length_s
+    new_start_x = start_x - overlap
+    new_start_y = 0 - slope * overlap
+    end_x = start_x + length_s
+    end_y = -port_y
+    path_rb = gf.Path([(new_start_x, new_start_y), (end_x, end_y)])
+    right_bottom = path_rb.extrude(xs)
+    ref_rb = c << right_bottom
+
+    # Optional: Expose ports (though not necessary for pure geometry recreation)
+    c.add_port("left_bottom", port=ref_lb.ports["o1"])
+    c.add_port("left_top", port=ref_lt.ports["o1"])
+    c.add_port("right_bottom", port=ref_rb.ports["o2"])
+    c.add_port("right_top", port=ref_rt.ports["o2"])
+
+    return c
+
+# Create and save
+device = my_device()
+device.write_gds("my_device.gds")

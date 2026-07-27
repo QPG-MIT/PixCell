@@ -1,0 +1,150 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def custom_device_new_image():
+    """
+    Recreates the device geometry from the new image using GDSFactory
+    parametric primitives and boolean operations.
+    The total footprint is estimated to be 3.0 um wide and 5.5 um high.
+    """
+    c = gf.Component("custom_device_new_image")
+    layer = (1, 0)
+
+    # --- 1. Central Horizontal Bar with Holes ---
+    bar_height = 0.6
+    bar_width = 2.0
+    hole_size = 0.3
+    
+    # Calculate horizontal distance from the bar's center to the center of each hole.
+    # Based on the image, the margin from the bar's edge to the hole's edge appears to be 0.2 units.
+    # (Bar_width / 2) - (margin + hole_size / 2)
+    # 1.0 - (0.2 + 0.15) = 1.0 - 0.35 = 0.65. This gives a large gap.
+    # Let's use the previous calculation for visual match:
+    # If the left edge of the bar is at x = -1.0 and right edge at x = 1.0,
+    # and assuming a left margin of 0.5 for the first hole,
+    # then the left hole starts at x = -1.0 + 0.5 = -0.5. Its center is at -0.5 + 0.3/2 = -0.35.
+    # This results in a smaller margin and a middle gap of 0.4.
+    hole_dist_from_center = 0.35 
+
+    # Create the base rectangular bar
+    base_bar_comp = gf.components.rectangle(size=(bar_width, bar_height), centered=True, layer=layer)
+    
+    # Create the two square holes. .copy() is used before .movex() to avoid modifying cached primitives.
+    hole_left_comp = gf.components.rectangle(size=(hole_size, hole_size), centered=True, layer=layer).copy().movex(-hole_dist_from_center)
+    hole_right_comp = gf.components.rectangle(size=(hole_size, hole_size), centered=True, layer=layer).copy().movex(hole_dist_from_center)
+
+    # Subtract the holes from the base bar using boolean NOT operations.
+    bar_with_holes_temp = gf.boolean(base_bar_comp, hole_left_comp, "not", layer=layer)
+    central_bar_with_holes = gf.boolean(bar_with_holes_temp, hole_right_comp, "not", layer=layer)
+    
+    # Add the final central bar component to the main component.
+    c << central_bar_with_holes
+
+    # --- 2. Left/Right Connector Blocks ---
+    # These connectors are constructed using a sequence of rectangles and tapers,
+    # combined with boolean OR operations to form the complex stepped shape.
+    
+    # Initialize the current x-coordinate for building the right-side connector,
+    # starting from the right edge of the central bar.
+    current_x = bar_width / 2 
+
+    # Segment 1: Short horizontal extension (width = bar_height)
+    seg1_length = 0.1
+    rect_ext = gf.components.rectangle(size=(seg1_length, bar_height), centered=True, layer=layer).copy()
+    rect_ext.movex(current_x + seg1_length / 2)
+    current_x += seg1_length
+    
+    # Segment 2: First taper/step out (from width 0.6 to 1.0)
+    seg2_length = 0.1
+    seg2_width_end = 1.0
+    taper_1 = gf.components.taper(length=seg2_length, width1=bar_height, width2=seg2_width_end, layer=layer).copy()
+    taper_1.center = (current_x + seg2_length / 2, 0) 
+    current_x += seg2_length
+    
+    # Segment 3: Straight section (width = 1.0)
+    seg3_length = 0.1
+    rect_mid = gf.components.rectangle(size=(seg3_length, seg2_width_end), centered=True, layer=layer).copy()
+    rect_mid.movex(current_x + seg3_length / 2)
+    current_x += seg3_length
+    
+    # Segment 4: Second taper/step out (from width 1.0 to 1.4)
+    seg4_length = 0.1
+    seg4_width_end = 1.4
+    taper_2 = gf.components.taper(length=seg4_length, width1=seg2_width_end, width2=seg4_width_end, layer=layer).copy()
+    taper_2.center = (current_x + seg4_length / 2, 0)
+    current_x += seg4_length
+    
+    # Segment 5: Final straight section (width = 1.4)
+    seg5_length = 0.1
+    rect_end = gf.components.rectangle(size=(seg5_length, seg4_width_end), centered=True, layer=layer).copy()
+    rect_end.movex(current_x + seg5_length / 2)
+    # At this point, current_x (1.5) is the rightmost edge of the entire central structure.
+
+    # Combine all right-side connector segments using boolean OR operations.
+    right_connector_temp1 = gf.boolean(rect_ext, taper_1, "or", layer=layer)
+    right_connector_temp2 = gf.boolean(right_connector_temp1, rect_mid, "or", layer=layer)
+    right_connector_temp3 = gf.boolean(right_connector_temp2, taper_2, "or", layer=layer)
+    right_connector = gf.boolean(right_connector_temp3, rect_end, "or", layer=layer)
+
+    c << right_connector # Add the constructed right connector to the main component.
+
+    # Left Connector: Create by mirroring the right connector across the y-axis.
+    left_connector = c << right_connector.copy().mirror(p1=(0,1), p2=(0,0))
+
+    # --- 3. Top and Bottom Curved Wings ---
+    # These are approximated as segments of hollow ellipses that are then cut by a rectangle.
+    
+    # Overall device height is 5.5 um, meaning it spans from y=-2.75 to y=2.75.
+
+    # Parameters for the top wing's outer ellipse
+    outer_wing_x_radius = 1.3  # Half-width, resulting in total width 2.6
+    outer_wing_y_radius = 0.85 # Half-height, resulting in total height 1.7. 
+                               # Adjusted so the top of the wing is at y = 1.9 + 0.85 = 2.75 (max Y of device).
+    outer_wing_center_y = 1.9  # Vertical center of the full ellipse before cutting.
+                               # This places the bottom of the full ellipse at y = 1.9 - 0.85 = 1.05.
+
+    outer_ellipse_comp = gf.components.ellipse(radii=(outer_wing_x_radius, outer_wing_y_radius), layer=layer).copy()
+    outer_ellipse_comp.movey(outer_wing_center_y)
+    
+    # Parameters for the top wing's inner ellipse (creates the hollow part)
+    inner_wing_x_radius = 1.0  # Half-width, resulting in total width 2.0
+    inner_wing_y_radius = 0.6  # Half-height, total height 1.2. Adjusted proportionally to outer ellipse.
+    inner_wing_center_y = 1.9
+
+    inner_ellipse_comp = gf.components.ellipse(radii=(inner_wing_x_radius, inner_wing_y_radius), layer=layer).copy()
+    inner_ellipse_comp.movey(inner_wing_center_y)
+    
+    # Create the hollow elliptical shape for the top wing by subtracting the inner from the outer.
+    top_wing_raw = gf.boolean(outer_ellipse_comp, inner_ellipse_comp, "not", layer=layer)
+
+    # Cut the bottom part of the top wing to match the image's straight cut-off.
+    # The cut-off line for the top wing appears to be around y=1.2.
+    cut_y_level = 1.2
+    
+    # Create a large rectangle that covers everything from the bottom of the device's footprint 
+    # up to the `cut_y_level`. This rectangle will be subtracted from the raw top wing.
+    cutter_width = 5.0 # Make the cutter wider than the device to ensure full horizontal cut.
+    cutter_height = cut_y_level - (-2.75) # Height from device's min_y (-2.75) to the cut_y_level (1.2).
+    
+    cutter_for_top = gf.components.rectangle(size=(cutter_width, cutter_height), centered=False, layer=layer).copy()
+    cutter_for_top.xmin = -cutter_width / 2 # Horizontally center the cutter.
+    cutter_for_top.ymin = -2.75 # Position the bottom edge of the cutter at the device's minimum Y.
+
+    # Perform the boolean NOT operation to cut the top wing.
+    top_wing_final = gf.boolean(top_wing_raw, cutter_for_top, "not", layer=layer)
+    c << top_wing_final
+
+    # Bottom Wing: Create by mirroring the final top wing across the y-axis (horizontal mirroring).
+    bottom_wing_final = c << top_wing_final.copy().mirror(p1=(0,1), p2=(0,0))
+
+    return c
+
+# Create the device and save it to a GDS file
+if __name__ == "__main__":
+    device = custom_device_new_image()
+    device.write_gds("custom_device_new_image.gds")
+    device.plot() # This line displays the generated GDS in a new window.
+```

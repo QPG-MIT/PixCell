@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.894185",
+      "api_duration_seconds": 121.5543360710144,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 1326,
+        "total_tokens": 14326
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bend_euler'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:12.848000",
+      "api_duration_seconds": 20.40255308151245,
+      "usage": {
+        "input_tokens": 3708,
+        "output_tokens": 1298,
+        "total_tokens": 5567
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Cross section with width 0 is not allowed. [type=value_error, input_value={'width': 0, 'enclosure':...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:34.584208",
+      "api_duration_seconds": 32.502339124679565,
+      "usage": {
+        "input_tokens": 5536,
+        "output_tokens": 1331,
+        "total_tokens": 8760
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\"Provide exactly one of 'cross_section' or 'layer'\")\nValueError: Provide exactly one of 'cross_section' or 'layer'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11593,
+    "output_tokens": 3955,
+    "total_tokens": 28653
+  }
+}

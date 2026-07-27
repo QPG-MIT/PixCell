@@ -1,0 +1,87 @@
+import gdsfactory as gf
+
+@gf.cell
+def dense_coupler_array():
+    """
+    Parametric recreation of the dense waveguide array.
+    Method: Boolean Subtraction.
+    1. Create a solid rectangular slab (120um x 4um).
+    2. Create 4 "Gap" paths that fan in from the edges to the center.
+    3. Subtract Gaps from Slab to produce the waveguides.
+    """
+    c = gf.Component()
+
+    # 1. Device Dimensions
+    length = 120.0
+    width = 4.0
+    
+    # Longitudinal Sections
+    # Split the 120um length into: Taper | Straight | Taper
+    l_taper = 25.0
+    l_straight = 70.0  # Center region length
+    # Check: 25 + 70 + 25 = 120.0 (Matches total)
+
+    # 2. Define the "Negative" Mask (The Gaps)
+    mask = gf.Component()
+    
+    # Gap Parameters
+    gap_width = 0.25  # Slightly wider to ensure visibility in render
+    xs_gap = gf.cross_section.cross_section(width=gap_width, layer=(2, 0)) # Temp layer
+
+    # Y-coordinates for the 4 gaps
+    # We define the Y positions at the "Outer" edge (Input/Output) and "Center" (Coupling region)
+    # The gaps are symmetric around Y=0.
+    # Top-to-bottom order:
+    y_outer = [1.6, 0.6, -0.6, -1.6]   # Wide spacing at IO
+    y_center = [0.75, 0.25, -0.25, -0.75] # Tight spacing in center
+    
+    # Construct the paths for each gap
+    for y_o, y_c in zip(y_outer, y_center):
+        # A. Left Taper (S-Bend fan-in)
+        # Position: Starts at x = -60 (Left edge)
+        bend_left = mask << gf.components.bend_s(
+            size=(l_taper, y_c - y_o), 
+            cross_section=xs_gap
+        )
+        bend_left.move((-length/2, y_o))
+        
+        # B. Center Straight Section
+        straight = mask << gf.components.straight(
+            length=l_straight, 
+            cross_section=xs_gap
+        )
+        straight.connect("o1", bend_left.ports["o2"])
+        
+        # C. Right Taper (S-Bend fan-out)
+        # Note: The y-drop is inverted (y_o - y_c) to go back out
+        bend_right = mask << gf.components.bend_s(
+            size=(l_taper, y_o - y_c),
+            cross_section=xs_gap
+        )
+        bend_right.connect("o1", straight.ports["o2"])
+
+    # 3. Create the Main Body Slab
+    # A solid block that covers the entire footprint
+    slab = gf.components.rectangle(
+        size=(length, width), 
+        layer=(1, 0), 
+        centered=True
+    )
+
+    # 4. Apply Boolean Subtraction
+    # Result = Slab (Solid) - Mask (Gaps)
+    # This leaves the waveguides behind.
+    final_geometry = gf.boolean(
+        A=slab,
+        B=mask,
+        operation="not",
+        layer=(1, 0)
+    )
+
+    c.add_ref(final_geometry)
+    return c
+
+# Generate and display
+device = dense_coupler_array()
+device.write_gds("dense_coupler_array.gds")
+device.show()

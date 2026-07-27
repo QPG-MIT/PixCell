@@ -1,0 +1,78 @@
+import gdsfactory as gf
+
+@gf.cell
+def create_complex_device():
+    """
+    Recreates the device silhouette from the image.
+    Footprint: 10um width x 25um height.
+    """
+    c = gf.Component("device_silhouette")
+    layer = (1, 0)
+
+    # 1. MAIN BODY
+    # A rectangle 10um wide and 12um tall.
+    body_w = 10.0
+    body_h = 12.0
+    body = gf.components.rectangle(size=(body_w, body_h), layer=layer, centered=True)
+
+    # 2. TOP PINS (4 units)
+    # Each pin consists of a taper and a straight section.
+    pin_taper_h = 4.0
+    pin_straight_h = 4.0
+    pin_base_w = 1.2
+    pin_tip_w = 0.6
+    
+    # Create the pin sub-assembly
+    pin_sub = gf.Component("single_top_pin")
+    taper_top = pin_sub << gf.components.taper(
+        length=pin_taper_h, width1=pin_base_w, width2=pin_tip_w, layer=layer
+    )
+    straight_top = pin_sub << gf.components.straight(
+        length=pin_straight_h, 
+        cross_section=gf.cross_section.cross_section(width=pin_tip_w, layer=layer)
+    )
+    straight_top.connect("o1", taper_top.ports["o2"])
+    
+    # Create a container for all pins to perform a single boolean
+    pins_container = gf.Component("all_pins")
+    
+    # Distribute 4 pins across the top edge (y = 6)
+    x_offsets = [-3.75, -1.25, 1.25, 3.75]
+    for x in x_offsets:
+        p = pins_container << pin_sub
+        p.rotate(90)
+        p.move((x, body_h / 2))
+
+    # 3. BOTTOM PIN (1 unit)
+    # A single tapered protrusion at the bottom center.
+    bot_h = 5.0
+    bot_base_w = 2.0
+    bot_tip_w = 0.8
+    taper_bot = pins_container << gf.components.taper(
+        length=bot_h, width1=bot_base_w, width2=bot_tip_w, layer=layer
+    )
+    taper_bot.rotate(-90)
+    taper_bot.move((0, -body_h / 2))
+
+    # 4. FINAL ASSEMBLY VIA BOOLEAN
+    # Merges the body and all pins into a single solid shape as seen in the PNG.
+    final_device = gf.boolean(
+        A=body, 
+        B=pins_container, 
+        operation="or", 
+        layer=layer
+    )
+    
+    return final_device
+
+if __name__ == "__main__":
+    # Generate the component
+    device = create_complex_device()
+    
+    # EXPLICITLY SAVE TO GDS FILE
+    filename = "recreated_device.gds"
+    device.write_gds(filename)
+    
+    print(f"Success: GDS file '{filename}' has been created.")
+    print(f"Total Height: {device.ysize} um") # Should be 25.0
+    print(f"Total Width: {device.xsize} um")  # Should be 10.0

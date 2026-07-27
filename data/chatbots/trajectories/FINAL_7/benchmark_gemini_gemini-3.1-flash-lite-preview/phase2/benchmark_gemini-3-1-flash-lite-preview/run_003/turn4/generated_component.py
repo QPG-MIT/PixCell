@@ -1,0 +1,57 @@
+import gdsfactory as gf
+
+@gf.cell
+def racetrack_device():
+    c = gf.Component()
+    
+    # 1. Define custom cross-section
+    # We set radius and radius_min to 0.5 to support our small bend requirement
+    xs = gf.cross_section.cross_section(
+        width=0.5, 
+        layer=(1, 0), 
+        radius=0.5, 
+        radius_min=0.5
+    )
+    
+    # 2. Geometry Parameters
+    straight_len = 2.0
+    gap = 1.0
+    
+    # 3. Create the Straight "Rails"
+    # Straights are length 2.0, positioned at y = +/- 0.5
+    top_wg = c << gf.components.straight(length=straight_len, cross_section=xs)
+    bot_wg = c << gf.components.straight(length=straight_len, cross_section=xs)
+    
+    top_wg.movey(gap / 2)
+    bot_wg.movey(-gap / 2)
+    
+    # 4. Add the Rectangular Features
+    # 4 Rectangles: two on top, two on bottom. 
+    # They are centered horizontally on the 2.0um straights.
+    rect = gf.components.rectangle(size=(0.6, 0.8), layer=(1, 0), centered=True)
+    
+    # Add rectangles to the top straight
+    r1 = c << rect
+    r1.movex(-0.5).movey(gap / 2)
+    
+    r2 = c << rect
+    r2.movex(0.5).movey(gap / 2)
+    
+    # Add rectangles to the bottom straight
+    r3 = c << rect
+    r3.movex(-0.5).movey(-gap / 2)
+    
+    r4 = c << rect
+    r4.movex(0.5).movey(-gap / 2)
+    
+    # 5. Route the Connections
+    # We use route_single to connect the left and right sides.
+    # By passing our custom 'xs', the router respects our 0.5 radius.
+    gf.routing.route_single(c, top_wg.ports["o1"], bot_wg.ports["o1"], cross_section=xs)
+    gf.routing.route_single(c, top_wg.ports["o2"], bot_wg.ports["o2"], cross_section=xs)
+    
+    return c
+
+# Generate and save
+device = racetrack_device()
+device.write_gds("racetrack_device.gds")

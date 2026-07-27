@@ -1,0 +1,125 @@
+Turn 5 Response:
+
+The current design is very close to the target, but based on the comparison between the rasterized output and the target image, several adjustments to the proportions are needed:
+
+1.  **Vertical Proportions**: The top "prongs" in the target image appear taller relative to the body than in the current code. The body height should be slightly reduced to allocate more vertical space to the input and output waveguides while maintaining the 10µm total height constraint.
+2.  **Top Flare Geometry**: The "flare" section (transition from body to straight waveguide) of the top ports in the target image is taller and more gradual. The current code has a very short, sharp flare. I will increase the flare height and reduce the straight section length slightly to compensate.
+3.  **Bottom Port**: The bottom port in the target is a distinct trapezoid, longer than the current "blunt" version. I will lengthen it and adjust its base width to be proportional to the wider gaps between the top ports.
+4.  **Spacing**: The pitch (spacing) of the top ports will be adjusted slightly to 5.8µm to better match the "wide but centered" look of the target, ensuring the outer prongs aren't too close to the edge.
+
+Here is the optimized code:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_mmi_1x4_final():
+    """
+    Final optimized 1x4 MMI.
+    - Matches 25um x 10um footprint.
+    - Adjusted vertical budget: Body (4.8um), Top Ports (3.7um), Bottom Port (1.5um).
+    - Top ports have a taller, more gradual flare (1.6um).
+    - Bottom port is a distinct 1.5um long trapezoid.
+    """
+    c = gf.Component()
+
+    # --- Geometric Constraints & Parameters ---
+    # Total Footprint: 25.0um x 10.0um
+    
+    # Vertical Budget (Sum = 10.0um)
+    # Reduced body height to allow for taller top prongs and distinct bottom port
+    h_body = 4.8
+    h_bot_section = 1.5
+    h_top_section = 3.7   # 4.8 + 1.5 + 3.7 = 10.0
+    
+    # Horizontal Dimensions
+    w_body = 25.0
+    
+    # Top Ports Parameters
+    n_ports = 4
+    pitch = 5.8            # Spacing between ports
+    w_top_stick = 0.85     # Width of the straight section
+    w_top_base = 2.1       # Width of the flare base at the body
+    
+    h_top_flare = 1.6      # Taller flare for smoother transition
+    h_top_stick = h_top_section - h_top_flare # Remaining length for straight part
+
+    # Bottom Port Parameters
+    w_bot_tip = 1.8        # Width at the bottom tip
+    w_bot_base = 3.5       # Width at the connection to body
+    
+    # --- 1. Main Body ---
+    # Centered rectangle
+    body = c << gf.components.rectangle(
+        size=(w_body, h_body), 
+        layer=(1, 0), 
+        centered=True
+    )
+    
+    # --- 2. Top Ports (Composite) ---
+    # Helper to create a single prong: Straight -> Flare -> Base
+    def create_prong():
+        p = gf.Component()
+        
+        # Straight part (top)
+        s = p << gf.components.taper(
+            length=h_top_stick,
+            width1=w_top_stick,
+            width2=w_top_stick,
+            layer=(1, 0)
+        )
+        
+        # Flare part (bottom, connecting to body)
+        f = p << gf.components.taper(
+            length=h_top_flare,
+            width1=w_top_stick,
+            width2=w_top_base,
+            layer=(1, 0)
+        )
+        
+        # Connect flare narrow end (o1) to straight end (o2)
+        # Taper default is left-to-right. We align them horizontally here.
+        s.move((0, 0))
+        f.connect("o1", s.ports["o2"])
+        
+        # Expose ports
+        p.add_port("base", port=f.ports["o2"]) # Wide end
+        p.add_port("tip", port=s.ports["o1"])  # Narrow end
+        return p
+
+    prong_template = create_prong()
+    
+    # Calculate x positions centered around 0
+    indices = [i - (n_ports - 1) / 2 for i in range(n_ports)]
+    x_positions = [idx * pitch for idx in indices]
+    
+    for x in x_positions:
+        ref = c << prong_template
+        # Rotate -90: Tip moves to Top, Base moves to Bottom
+        ref.rotate(-90)
+        # Move base to the top edge of the MMI body
+        ref.move(origin=ref.ports["base"].center, destination=(x, h_body / 2))
+
+    # --- 3. Bottom Port ---
+    # Single blunt taper
+    taper_bot = gf.components.taper(
+        length=h_bot_section, 
+        width1=w_bot_tip, 
+        width2=w_bot_base,
+        layer=(1, 0)
+    )
+    ref_bot = c << taper_bot
+    
+    # Rotate 90: Tip (w1) at Bottom, Base (w2) at Top
+    ref_bot.rotate(90)
+    
+    # Move Base ('o2') to the bottom edge of the body
+    ref_bot.move(origin=ref_bot.ports["o2"].center, destination=(0, -h_body / 2))
+
+    return c
+
+if __name__ == "__main__":
+    component = device_mmi_1x4_final()
+    component.show()
+    component.write_gds("mmi_1x4_final.gds")
+```

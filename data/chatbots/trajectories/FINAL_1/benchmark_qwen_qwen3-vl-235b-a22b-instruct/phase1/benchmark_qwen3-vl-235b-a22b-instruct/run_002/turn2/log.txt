@@ -1,0 +1,144 @@
+Turn 2 Response:
+
+Looking at the rendered image versus the original, I can see the issue: my previous implementation created three separate waveguides, but the original image shows a single continuous structure where the outer waveguides are connected to the central one and curve outward symmetrically.
+
+The key insight is that this is not three separate waveguides, but rather a single structure with a central straight section that splits into two curved sections. The original image shows a "Y" shape or a "splitter" configuration where the central waveguide bifurcates into two curved arms.
+
+Let me revise the code to create this continuous structure using parametric primitives:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def y_splitter_device():
+    c = gf.Component()
+    
+    # Define cross-section (1.7um wide as per footprint constraint)
+    xs = gf.cross_section.cross_section(width=1.7, layer=(1, 0))
+    
+    # Create the central straight waveguide
+    central_wg = c << gf.components.straight(length=20.0, cross_section=xs)
+    central_wg.move((0, 0))
+    
+    # Create the top curved arm
+    # Start with an Euler bend that curves upward
+    top_bend = c << gf.components.bend_euler(radius=10.0, angle=45, cross_section=xs)
+    top_bend.connect("o1", central_wg.ports["o2"])
+    
+    # Create the bottom curved arm (mirror of top)
+    bottom_bend = c << gf.components.bend_euler(radius=10.0, angle=-45, cross_section=xs)
+    bottom_bend.connect("o1", central_wg.ports["o2"])
+    
+    # Add ports for all connections
+    c.add_port("in", port=central_wg.ports["o1"])
+    c.add_port("top_out", port=top_bend.ports["o2"])
+    c.add_port("bottom_out", port=bottom_bend.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = y_splitter_device()
+device.write_gds("y_splitter_device.gds")
+```
+
+Wait, I need to reconsider. Looking at the original image again, it appears to be a structure where there's a central waveguide that's straight, and then two waveguides on either side that start straight and then curve outward. The key is that all three waveguides appear to be separate but aligned.
+
+Let me revise again with a better understanding:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def curved_waveguide_array():
+    c = gf.Component()
+    
+    # Define cross-section (1.7um wide as per footprint constraint)
+    xs = gf.cross_section.cross_section(width=1.7, layer=(1, 0))
+    
+    # Create central straight waveguide
+    central_wg = c << gf.components.straight(length=40.0, cross_section=xs)
+    central_wg.move((0, 0))
+    
+    # Create top waveguide - starts straight then curves upward
+    top_straight = c << gf.components.straight(length=20.0, cross_section=xs)
+    top_straight.move((0, 1.7))  # Position above central waveguide
+    
+    # Create Euler bend for top waveguide
+    top_bend = c << gf.components.bend_euler(radius=10.0, angle=45, cross_section=xs)
+    top_bend.connect("o1", top_straight.ports["o2"])
+    
+    # Create bottom waveguide - starts straight then curves downward
+    bottom_straight = c << gf.components.straight(length=20.0, cross_section=xs)
+    bottom_straight.move((0, -1.7))  # Position below central waveguide
+    
+    # Create Euler bend for bottom waveguide
+    bottom_bend = c << gf.components.bend_euler(radius=10.0, angle=-45, cross_section=xs)
+    bottom_bend.connect("o1", bottom_straight.ports["o2"])
+    
+    # Add ports for all waveguides
+    c.add_port("central_in", port=central_wg.ports["o1"])
+    c.add_port("central_out", port=central_wg.ports["o2"])
+    c.add_port("top_in", port=top_straight.ports["o1"])
+    c.add_port("top_out", port=top_bend.ports["o2"])
+    c.add_port("bottom_in", port=bottom_straight.ports["o1"])
+    c.add_port("bottom_out", port=bottom_bend.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = curved_waveguide_array()
+device.write_gds("curved_waveguide_array.gds")
+```
+
+Actually, looking at the original image once more, I think I need to adjust the approach. The image shows three parallel waveguides where the outer two curve outward while the central one remains straight. The key is that the central waveguide is continuous while the outer ones start straight and then curve.
+
+Let me create a more accurate representation:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def curved_waveguide_structure():
+    c = gf.Component()
+    
+    # Define cross-section (1.7um wide as per footprint constraint)
+    xs = gf.cross_section.cross_section(width=1.7, layer=(1, 0))
+    
+    # Create central straight waveguide (full length)
+    central_wg = c << gf.components.straight(length=40.0, cross_section=xs)
+    central_wg.move((0, 0))
+    
+    # Create top waveguide - starts straight then curves upward
+    # The top waveguide should start at the same position as the central one
+    # but offset vertically, then curve outward
+    top_straight = c << gf.components.straight(length=20.0, cross_section=xs)
+    top_straight.move((0, 1.7))  # Position above central waveguide
+    
+    # Create Euler bend for top waveguide that curves outward
+    top_bend = c << gf.components.bend_euler(radius=10.0, angle=45, cross_section=xs)
+    top_bend.connect("o1", top_straight.ports["o2"])
+    
+    # Create bottom waveguide - starts straight then curves downward
+    bottom_straight = c << gf.components.straight(length=20.0, cross_section=xs)
+    bottom_straight.move((0, -1.7))  # Position below central waveguide
+    
+    # Create Euler bend for bottom waveguide that curves outward
+    bottom_bend = c << gf.components.bend_euler(radius=10.0, angle=-45, cross_section=xs)
+    bottom_bend.connect("o1", bottom_straight.ports["o2"])
+    
+    # Add ports for all waveguides
+    c.add_port("central_in", port=central_wg.ports["o1"])
+    c.add_port("central_out", port=central_wg.ports["o2"])
+    c.add_port("top_in", port=top_straight.ports["o1"])
+    c.add_port("top_out", port=top_bend.ports["o2"])
+    c.add_port("bottom_in", port=bottom_straight.ports["o1"])
+    c.add_port("bottom_out", port=bottom_bend.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = curved_waveguide_structure()
+device.write_gds("curved_waveguide_structure.gds")
+```
+
+This should create the structure shown in the original image, with three waveguides where the central one is straight and the outer ones start straight and then curve outward.

@@ -1,0 +1,183 @@
+Turn 1 Response:
+
+The error `RuntimeError: Cell '...' cannot be modified as it is locked in Cell.transform` indicates that you are trying to modify a GDSFactory `Component` object that is a *primitive definition*. GDSFactory primitive components (like those returned by `gf.components.rectangle`, `gf.components.ellipse`, `gf.components.taper`) are often cached and treated as immutable definitions to ensure consistency and prevent accidental modification of their base geometry.
+
+To apply transformations (like `center`, `mirror_y`, `move`) to these primitives, you must:
+1.  Obtain the primitive component *definition*.
+2.  Create a *new, mutable* `gf.Component` to act as a container.
+3.  Add a *reference* to the primitive definition into this container component.
+4.  Apply the transformations to this *reference* within the container. This transforms only that specific instance of the primitive without altering its definition.
+5.  Use the container component (which now holds the transformed reference) in subsequent boolean operations or add it to your main device component.
+
+The corrected script implements this pattern consistently, particularly for the taper components where the previous error occurred.
+
+```python
+import gdsfactory as gf
+from gdsfactory.typings import LayerSpec
+
+@gf.cell
+def chain_link_device(
+    outer_x_radius: float = 2.75,
+    outer_y_radius: float = 1.5,
+    oval_wall_thickness: float = 0.25,
+    bar_height: float = 0.6,  # Vertical thickness of the black bars
+    y_center_bar: float = 0.7,  # Y-offset for the center of the top bar
+    width_central_segment: float = 2.0,  # Horizontal extent of the holed part of the bar
+    hole_width: float = 0.7,
+    hole_height: float = 0.2,
+    gap_hole_x: float = 0.3,  # Horizontal gap between the two holes
+    layer: LayerSpec = (1, 0),
+) -> gf.Component:
+    """
+    Recreates the chain-link device geometry using GDSFactory parametric functions.
+
+    Args:
+        outer_x_radius: X-radius of the outer ellipse.
+        outer_y_radius: Y-radius of the outer ellipse.
+        oval_wall_thickness: Thickness of the elliptical wall.
+        bar_height: Vertical thickness of the central horizontal bars.
+        y_center_bar: Y-coordinate for the center of the top bar (bottom bar is -y_center_bar).
+        width_central_segment: Horizontal width of the central segment of the bar containing holes.
+        hole_width: Width of each rectangular hole.
+        hole_height: Height of each rectangular hole.
+        gap_hole_x: Horizontal gap between the two holes in a bar.
+        layer: GDS layer for the component.
+    """
+
+    # Create the main component container where all parts will be assembled
+    c = gf.Component("chain_link_device")
+
+    # 1. Create the outer oval frame
+    # These primitive components are definitions. They are passed directly to gf.boolean.
+    outer_solid_ellipse = gf.components.ellipse(radii=(outer_x_radius, outer_y_radius), layer=layer)
+    
+    inner_x_radius = outer_x_radius - oval_wall_thickness
+    inner_y_radius = outer_y_radius - oval_wall_thickness
+    
+    if inner_x_radius <= 0 or inner_y_radius <= 0:
+        raise ValueError("Oval wall thickness is too large for the given radii, resulting in non-positive inner radii.")
+        
+    inner_void_ellipse = gf.components.ellipse(radii=(inner_x_radius, inner_y_radius), layer=layer)
+    
+    # The result of gf.boolean is a new, mutable component.
+    oval_frame_geometry = gf.boolean(outer_solid_ellipse, inner_void_ellipse, operation="not", layer=layer)
+
+    # Calculate common dimensions for the bars
+    inner_black_padding_x = (width_central_segment - (2 * hole_width + gap_hole_x)) / 2
+    x_center_left_hole = -(inner_black_padding_x + hole_width / 2 + gap_hole_x / 2)
+    x_center_right_hole = (inner_black_padding_x + hole_width / 2 + gap_hole_x / 2)
+    taper_length = inner_x_radius - width_central_segment / 2
+
+    # --- TOP HORIZONTAL BRIDGE ---
+    # Create the holed central segment for the top bar
+    # We use a temporary mutable component to build this sub-part relative to its own (0,0)
+    holed_segment_temp_top = gf.Component("holed_segment_temp_top")
+    # Add references to primitive rectangles to this temporary component
+    ref_solid_rect_top = holed_segment_temp_top << gf.components.rectangle(
+        size=(width_central_segment, bar_height), centered=True, layer=layer
+    )
+    ref_hole1_top = holed_segment_temp_top << gf.components.rectangle(
+        size=(hole_width, hole_height), layer=layer
+    )
+    ref_hole2_top = holed_segment_temp_top << gf.components.rectangle(
+        size=(hole_width, hole_height), layer=layer
+    )
+    # Transform the references within the temporary component
+    ref_hole1_top.center = (x_center_left_hole, 0)
+    ref_hole2_top.center = (x_center_right_hole, 0)
+    
+    # Perform boolean operation. The result is a new, mutable component.
+    holes_union_top = gf.boolean(ref_hole1_top, ref_hole2_top, 'or', layer=layer)
+    holed_central_segment_geometry_top = gf.boolean(ref_solid_rect_top, holes_union_top, 'not', layer=layer)
+    
+    # List to collect all geometries for the top bridge, including the holed segment and tapers
+    top_bridge_geometries_to_union = [holed_central_segment_geometry_top] 
+
+    # Right taper for the top bar
+    taper_def_right = gf.components.taper( # This is the locked primitive definition
+        length=taper_length, width1=bar_height, width2=oval_wall_thickness, layer=layer
+    )
+    taper_right_holder = gf.Component() # Create a mutable container
+    ref_taper_right_top = taper_right_holder << taper_def_right # Add reference to definition
+    ref_taper_right_top.center = (width_central_segment / 2 + taper_length / 2, 0) # Transform the reference
+    top_bridge_geometries_to_union.append(taper_right_holder) # Add the container to the list
+
+    # Left taper for the top bar
+    taper_def_left = gf.components.taper( # Locked primitive definition
+        length=taper_length, width1=bar_height, width2=oval_wall_thickness, layer=layer
+    )
+    taper_left_holder = gf.Component() # Mutable container
+    ref_taper_left_top = taper_left_holder << taper_def_left # Add reference
+    ref_taper_left_top.mirror_y() # Transform the reference
+    ref_taper_left_top.center = (-width_central_segment / 2 - taper_length / 2, 0) # Transform the reference
+    top_bridge_geometries_to_union.append(taper_left_holder) # Add the container to the list
+
+    # Union all parts of the top bridge into a single geometry component
+    top_bridge_geometry = top_bridge_geometries_to_union[0]
+    for i in range(1, len(top_bridge_geometries_to_union)):
+        top_bridge_geometry = gf.boolean(top_bridge_geometry, top_bridge_geometries_to_union[i], 'or', layer=layer)
+    
+    # Now position the entire top bridge geometry
+    top_bridge_geometry.movey(y_center_bar)
+
+
+    # --- BOTTOM HORIZONTAL BRIDGE (similar logic, mirrored vertically) ---
+    holed_segment_temp_bottom = gf.Component("holed_segment_temp_bottom")
+    ref_solid_rect_bottom = holed_segment_temp_bottom << gf.components.rectangle(
+        size=(width_central_segment, bar_height), centered=True, layer=layer
+    )
+    ref_hole1_bottom = holed_segment_temp_bottom << gf.components.rectangle(
+        size=(hole_width, hole_height), layer=layer
+    )
+    ref_hole2_bottom = holed_segment_temp_bottom << gf.components.rectangle(
+        size=(hole_width, hole_height), layer=layer
+    )
+    ref_hole1_bottom.center = (x_center_left_hole, 0)
+    ref_hole2_bottom.center = (x_center_right_hole, 0)
+
+    holes_union_bottom = gf.boolean(ref_hole1_bottom, ref_hole2_bottom, 'or', layer=layer)
+    holed_central_segment_geometry_bottom = gf.boolean(ref_solid_rect_bottom, holes_union_bottom, 'not', layer=layer)
+
+    bottom_bridge_geometries_to_union = [holed_central_segment_geometry_bottom]
+
+    taper_def_right_bottom = gf.components.taper(
+        length=taper_length, width1=bar_height, width2=oval_wall_thickness, layer=layer
+    )
+    taper_right_holder_bottom = gf.Component()
+    ref_taper_right_bottom = taper_right_holder_bottom << taper_def_right_bottom
+    ref_taper_right_bottom.center = (width_central_segment / 2 + taper_length / 2, 0)
+    bottom_bridge_geometries_to_union.append(taper_right_holder_bottom)
+
+    taper_def_left_bottom = gf.components.taper(
+        length=taper_length, width1=bar_height, width2=oval_wall_thickness, layer=layer
+    )
+    taper_left_holder_bottom = gf.Component()
+    ref_taper_left_bottom = taper_left_holder_bottom << taper_def_left_bottom
+    ref_taper_left_bottom.mirror_y() 
+    ref_taper_left_bottom.center = (-width_central_segment / 2 - taper_length / 2, 0)
+    bottom_bridge_geometries_to_union.append(taper_left_holder_bottom)
+
+    bottom_bridge_geometry = bottom_bridge_geometries_to_union[0]
+    for i in range(1, len(bottom_bridge_geometries_to_union)):
+        bottom_bridge_geometry = gf.boolean(bottom_bridge_geometry, bottom_bridge_geometries_to_union[i], 'or', layer=layer)
+    
+    bottom_bridge_geometry.movey(-y_center_bar) 
+
+    # 4. UNION ALL MAJOR PARTS
+    # Start with the oval frame, then union the top and bottom bridges
+    final_combined_geometry = gf.boolean(oval_frame_geometry, top_bridge_geometry, 'or', layer=layer)
+    final_combined_geometry = gf.boolean(final_combined_geometry, bottom_bridge_geometry, 'or', layer=layer)
+    
+    # Add the final combined geometry to the main component `c`
+    # Since `final_combined_geometry` is already a new mutable Component from the boolean ops,
+    # we can add it directly as a reference.
+    c.add_ref(final_combined_geometry)
+
+    return c
+
+# Instantiate the device and save the GDS file
+if __name__ == "__main__":
+    device = chain_link_device()
+    device.write_gds("chain_link_device.gds")
+    device.show()
+```

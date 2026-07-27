@@ -1,0 +1,72 @@
+Turn 2 Response:
+
+To recreate the smooth, continuous curves from the original image, we need to remove the straight coupling section entirely. 
+
+The original device consists of pure curves that reach a minimum gap exactly at the center before immediately diverging again. We can perfectly replicate this by placing two S-bends back-to-back for both the top and bottom waveguides, splitting the total length of `18.0` exactly in half.
+
+Here is the corrected script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler() -> gf.Component:
+    """
+    Creates a continuous curve directional coupler matching the target footprint [18, 3].
+    
+    The geometry uses back-to-back S-bends with zero straight section in the middle,
+    which matches the smooth continuous curvature seen in the original target image.
+    """
+    c = gf.Component("directional_coupler")
+
+    # Define standard cross section
+    wg_width = 0.5
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Derive Parameters from Footprint Constraints ---
+    # Total length = 18.0. Since we use two back-to-back S-bends, each dx is 9.0
+    total_length = 18.0
+    dx_bend = total_length / 2.0 
+
+    # Total height = 3.0. Center of top/bottom ports is +/- 1.25
+    # (1.25 + half-width 0.25 = 1.5 top edge. -1.25 - 0.25 = -1.5 bottom edge. Total = 3.0)
+    port_y = 1.25
+
+    # Estimate the minimum gap at the center based on visual proportion
+    min_gap = 0.2
+    
+    # Calculate the Y shift (dy) for the S-bends to reach the desired center gap
+    center_y = (min_gap + wg_width) / 2.0  # Y coordinate at the closest approach
+    dy_bend = port_y - center_y            # 1.25 - 0.35 = 0.9
+
+    # Create S-bend primitives
+    bend_down = gf.components.bend_s(size=(dx_bend, -dy_bend), cross_section=xs)
+    bend_up = gf.components.bend_s(size=(dx_bend, dy_bend), cross_section=xs)
+
+    # --- Assemble Top Waveguide ---
+    top_left = c << bend_down
+    top_right = c << bend_up
+
+    top_left.move((0, port_y))
+    top_right.connect("o1", top_left.ports["o2"])
+
+    # --- Assemble Bottom Waveguide ---
+    bot_left = c << bend_up
+    bot_right = c << bend_down
+
+    bot_left.move((0, -port_y))
+    bot_right.connect("o1", bot_left.ports["o2"])
+
+    # --- Expose External Ports ---
+    c.add_port("o1", port=top_left.ports["o1"])   # Top left input
+    c.add_port("o2", port=bot_left.ports["o1"])   # Bottom left input
+    c.add_port("o3", port=top_right.ports["o2"])  # Top right output
+    c.add_port("o4", port=bot_right.ports["o2"])  # Bottom right output
+
+    return c
+
+if __name__ == "__main__":
+    # Create and save the device to GDS file
+    device = directional_coupler()
+    device.write_gds("directional_coupler.gds")
+```

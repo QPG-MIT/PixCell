@@ -1,0 +1,129 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_dense_coupler_array(
+    length: float = 120.0,
+    height: float = 4.0,
+    w_wg: float = 0.09,
+    g_wg: float = 0.08,
+    w_cap: float = 0.6,
+    bend_length: float = 20.0,
+) -> gf.Component:
+    """
+    Creates a dense waveguide coupler array with a straight central bundle and 
+    flared outer bundles. The outer bundles consist of thin waveguides and a 
+    thick outer cap, flaring outwards at the ends to fill the height constraint.
+    """
+    c = gf.Component()
+    
+    # ---------------------------------------------------------
+    # Derived Parameters
+    # ---------------------------------------------------------
+    pitch = w_wg + g_wg
+    n_center = 5
+    n_outer_thin = 3
+    
+    # Vertical Spacing Configuration (at the waist/center)
+    # These gaps determine how tight the bundle is in the middle straight section.
+    gap_center_to_outer = 0.14
+    gap_thin_to_cap = 0.1
+    
+    # Cross sections
+    xs_thin = gf.cross_section.cross_section(width=w_wg, layer=(1, 0))
+    xs_cap = gf.cross_section.cross_section(width=w_cap, layer=(1, 0))
+    
+    # ---------------------------------------------------------
+    # 1. Center Bundle (Straight)
+    # ---------------------------------------------------------
+    # The center bundle consists of 5 straight waveguides centered at Y=0.
+    for i in range(-(n_center//2), n_center//2 + 1):
+        y = i * pitch
+        wg = c << gf.components.straight(length=length, cross_section=xs_thin)
+        wg.center = (0, y)
+    
+    # Calculate the Y coordinate of the top edge of the center bundle
+    y_center_max_edge = (n_center // 2) * pitch + w_wg / 2
+    
+    # ---------------------------------------------------------
+    # 2. Outer Bundles (Calculations)
+    # ---------------------------------------------------------
+    # We calculate the vertical stack at the "waist" (center of the device) 
+    # to determine how much vertical space remains for the flare.
+    
+    # Y-position of the center of the first thin line in the outer bundle
+    y_waist_outer_start = y_center_max_edge + gap_center_to_outer + w_wg/2
+    
+    # Calculate relative Y-offsets for the lines in the outer group (relative to the first line)
+    # Thin lines are just spaced by pitch
+    offsets = [i * pitch for i in range(n_outer_thin)]
+    
+    # The thick cap is placed after the last thin line
+    y_last_thin = offsets[-1]
+    y_cap_center_rel = y_last_thin + w_wg/2 + gap_thin_to_cap + w_cap/2
+    offsets.append(y_cap_center_rel)
+    
+    # Calculate the absolute top edge of the entire structure at the waist
+    y_waist_top_edge = y_waist_outer_start + y_cap_center_rel + w_cap/2
+    
+    # Calculate Flare Magnitude
+    # The device should fill the specified `height` at the ends.
+    # Max Y allowed is height / 2.
+    y_max = height / 2.0
+    dy_flare = y_max - y_waist_top_edge
+    
+    # If the waist is already thicker than the constraint, clamp flare to 0
+    if dy_flare < 0:
+        dy_flare = 0.0
+    
+    # ---------------------------------------------------------
+    # 3. Construct Outer Bundles
+    # ---------------------------------------------------------
+    straight_section_len = length - 2 * bend_length
+    
+    def add_flared_bundle(is_top: bool):
+        """Adds the group of flared waveguides (thin lines + cap) for top or bottom."""
+        sign = 1.0 if is_top else -1.0
+        
+        # Base Y for the first line of the group at the WAIST
+        y_base = y_waist_outer_start * sign
+        
+        # Iterate over the group components (3 thin lines + 1 thick cap)
+        for i, offset in enumerate(offsets):
+            is_cap = (i == len(offsets) - 1)
+            xs = xs_cap if is_cap else xs_thin
+            
+            # Center Y position of this specific line at the WAIST (straight section)
+            y_waist = y_base + (offset * sign)
+            
+            # --- Build the Path ---
+            # 1. Middle Straight Section
+            st = c << gf.components.straight(length=straight_section_len, cross_section=xs)
+            st.center = (0, y_waist)
+            
+            # 2. Left S-Bend (Entry Flare)
+            # For TOP: Starts high (left) -> curves DOWN to waist. dy = -dy_flare.
+            # For BOT: Starts low (left) -> curves UP to waist. dy = +dy_flare.
+            # bend_s connects Input -> Output. We attach Output to Straight Input.
+            bend_dy_left = -dy_flare * sign
+            
+            bl = c << gf.components.bend_s(size=(bend_length, bend_dy_left), cross_section=xs)
+            bl.connect("o2", st.ports["o1"])
+            
+            # 3. Right S-Bend (Exit Flare)
+            # For TOP: Curves UP from waist. dy = +dy_flare.
+            # For BOT: Curves DOWN from waist. dy = -dy_flare.
+            bend_dy_right = dy_flare * sign
+            
+            br = c << gf.components.bend_s(size=(bend_length, bend_dy_right), cross_section=xs)
+            br.connect("o1", st.ports["o2"])
+
+    # Generate Top and Bottom groups
+    add_flared_bundle(is_top=True)
+    add_flared_bundle(is_top=False)
+
+    return c
+
+if __name__ == "__main__":
+    device = device_dense_coupler_array()
+    device.write_gds("dense_coupler_array.gds")
+    device.show()

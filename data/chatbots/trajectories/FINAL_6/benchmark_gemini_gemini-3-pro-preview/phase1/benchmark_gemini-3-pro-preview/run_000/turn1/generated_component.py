@@ -1,0 +1,120 @@
+import gdsfactory as gf
+
+@gf.cell
+def star_coupler_device():
+    """
+    Creates a 4-pointed star geometric device within a 4.7um x 4.7um footprint.
+    Constructed using intersecting ellipses and rectangular ports.
+    """
+    c = gf.Component()
+    
+    # =========================================================================
+    # Parameters
+    # =========================================================================
+    # Total device extent constraint
+    footprint_size = 4.7
+    half_size = footprint_size / 2.0  # 2.35 um
+    
+    # Geometry parameters estimated from visual proportions
+    port_width = 0.4
+    port_length = 0.6
+    
+    # Ellipse dimensions
+    # Major radius is slightly larger than the port start position to ensure 
+    # the ellipse 'bulge' overlaps the straight port section cleanly.
+    e_major = 1.95 
+    e_minor = 0.75  # Controls the width of the lobes
+    
+    layer = (1, 0)
+
+    # =========================================================================
+    # Primitives: Central Body (Intersecting Ellipses)
+    # =========================================================================
+    
+    # Horizontal Ellipse
+    # Creates the East-West lobes
+    ellipse_h = c << gf.components.ellipse(
+        radii=(e_major, e_minor), 
+        layer=layer
+    )
+    
+    # Vertical Ellipse
+    # Creates the North-South lobes
+    ellipse_v = c << gf.components.ellipse(
+        radii=(e_minor, e_major), 
+        layer=layer
+    )
+
+    # =========================================================================
+    # Primitives: Ports (Rectangular Extensions)
+    # =========================================================================
+    
+    # Define a generic rectangle for the straight port sections
+    # centered=True facilitates easier rotation and placement
+    rect_primitive = gf.components.rectangle(
+        size=(port_length, port_width), 
+        layer=layer, 
+        centered=True
+    )
+    
+    # Calculate placement offset
+    # We want the outer edge of the rectangle to align with 'half_size' (2.35)
+    # Center of rectangle = Edge - (Length / 2)
+    offset_dist = half_size - (port_length / 2.0)
+
+    # Place Port 1 (East)
+    p1 = c << rect_primitive
+    p1.move((offset_dist, 0))
+    c.add_port(
+        name="o1", 
+        center=(half_size, 0), 
+        width=port_width, 
+        orientation=0, 
+        layer=layer
+    )
+
+    # Place Port 2 (West)
+    p2 = c << rect_primitive
+    p2.move((-offset_dist, 0))
+    c.add_port(
+        name="o2", 
+        center=(-half_size, 0), 
+        width=port_width, 
+        orientation=180, 
+        layer=layer
+    )
+
+    # Place Port 3 (North)
+    p3 = c << rect_primitive
+    p3.rotate(90)
+    p3.move((0, offset_dist))
+    c.add_port(
+        name="o3", 
+        center=(0, half_size), 
+        width=port_width, 
+        orientation=90, 
+        layer=layer
+    )
+
+    # Place Port 4 (South)
+    p4 = c << rect_primitive
+    p4.rotate(90)
+    p4.move((0, -offset_dist))
+    c.add_port(
+        name="o4", 
+        center=(0, -half_size), 
+        width=port_width, 
+        orientation=270, 
+        layer=layer
+    )
+
+    return c
+
+if __name__ == "__main__":
+    # Create the device and verify
+    component = star_coupler_device()
+    component.show()  # Opens in KLayout/GDS viewer
+    
+    # Verify footprint
+    print(f"Device size: {component.size_info.width} x {component.size_info.height}")
+    component.write_gds("star_coupler.gds")

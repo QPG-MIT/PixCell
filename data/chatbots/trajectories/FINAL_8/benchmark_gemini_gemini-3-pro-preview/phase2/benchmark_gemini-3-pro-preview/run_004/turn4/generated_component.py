@@ -1,0 +1,121 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_120_4():
+    """
+    Parametric reproduction of the coupled waveguide grating device.
+    
+    Target Features:
+    - Footprint: 120um (width) x 4um (height).
+    - Orientation: Horizontal.
+    - Structure: A central stack of 10 waveguides (5 pairs).
+    - Inner waveguides are straight.
+    - Outer waveguides fan out adiabatically towards the edges.
+    - Top/Bottom edges are bounded by solid blocks ("cladding") with curved inner profiles.
+    """
+    c = gf.Component()
+
+    # ==========================================
+    # 1. Geometric Parameters
+    # ==========================================
+    L_total = 120.0
+    H_total = 4.0
+    x_half = L_total / 2
+    y_max_bound = H_total / 2
+    
+    # Waveguide & Grating Parameters
+    n_pairs = 5                 # 5 pairs = 10 lines total
+    pitch = 0.28                # Vertical pitch between lines
+    w_wg = 0.22                 # Waveguide width
+    gap_wg = pitch - w_wg       # Gap between waveguides
+    
+    # Defines how much the outer lines fan out at the edges (x = +/- 60)
+    # The fanning increases for lines further from the center
+    fan_coefficient = 0.20      
+    
+    # Resolution for curves
+    num_points = 201
+    x_vals = np.linspace(-x_half, x_half, num_points)
+    
+    # Layer definition
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=w_wg, layer=layer)
+
+    # ==========================================
+    # 2. Generate Horizontal Waveguide Stack
+    # ==========================================
+    # We generate the top half (positive y) and mirror for the bottom half.
+    # Indices 0, 1, 2 are treated as mostly straight/rigid.
+    # Indices 3, 4 (outermost) curve outwards.
+    
+    y_outer_boundary_curve = None # To store the shape for the solid block
+    
+    for i in range(n_pairs):
+        # Base y-position for straight lines (center of the line)
+        # i=0 is the first line above y=0
+        y_base = (i + 0.5) * pitch
+        
+        # Curvature Model: y(x) = y_base + A * x^2
+        # Apply curvature only to the outer lines to mimic the fanning effect
+        if i >= 3:
+            # Calculate A such that at x=L/2, the offset is proportional to index
+            # This creates the "expanding" gap look at the edges
+            offset_at_edge = fan_coefficient * (i - 2) 
+            A = offset_at_edge / (x_half**2)
+        else:
+            A = 0.0
+            
+        y_profile = y_base + A * x_vals**2
+        
+        # Create Path
+        pts = list(zip(x_vals, y_profile))
+        p = gf.Path(pts)
+        
+        # Extrude Top Line
+        # gf.path.extrude returns a Component, so we add it as a reference
+        ref_top = c << gf.path.extrude(p, xs)
+        
+        # Extrude Bottom Line (Mirror across X-axis)
+        ref_bot = c << gf.path.extrude(p, xs)
+        # References DO support the mirror method
+        ref_bot.mirror(p1=(0,0), p2=(1,0))
+        
+        # Store the profile of the outermost line (index 4) for block generation
+        if i == (n_pairs - 1):
+            y_outer_boundary_curve = y_profile
+
+    # ==========================================
+    # 3. Generate Outer Solid Blocks
+    # ==========================================
+    # These blocks fill the space from the outermost waveguide to the device boundary (y=2.0)
+    
+    # Define the inner edge of the block (just above the last waveguide)
+    gap_to_block = 0.18
+    y_block_inner = y_outer_boundary_curve + (w_wg / 2) + gap_to_block
+    
+    # Define Polygon Vertices for Top Block
+    # 1. Top edge (Left to Right) at y = 2.0
+    pts_top_block = []
+    for x in x_vals:
+        pts_top_block.append((x, y_max_bound))
+        
+    # 2. Bottom edge (Right to Left) following the curve
+    for k in range(len(x_vals)-1, -1, -1):
+        pts_top_block.append((x_vals[k], y_block_inner[k]))
+        
+    # Add Top Block
+    c.add_polygon(pts_top_block, layer=layer)
+    
+    # Calculate Vertices for Bottom Block (Manual Mirror of Top across X-axis)
+    # We simply negate the y-coordinate for every point in the top block polygon
+    pts_bot_block = [(x, -y) for x, y in pts_top_block]
+    
+    # Add Bottom Block
+    c.add_polygon(pts_bot_block, layer=layer)
+
+    return c
+
+if __name__ == "__main__":
+    device = device_120_4()
+    device.write_gds("device_120_4.gds")

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.504562",
+      "api_duration_seconds": 7.7463538646698,
+      "usage": {
+        "input_tokens": 4408,
+        "output_tokens": 725,
+        "total_tokens": 5133
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"{cross_section!r} not in {cross_sections}\")\nValueError: 'xs_sc' not in ['strip', 'strip_no_ports', 'rib', 'rib_bbox', 'rib2', 'nitride', 'strip_rib_tip', 'strip_nitride_tip', 'slot', 'rib_with_trenches', 'l_with_trenches', 'metal1', 'metal2', 'metal3', 'gs', 'gsg', 'metal_routing', 'heater_metal', 'npp', 'pin', 'pn', 'pn_with_trenches', 'pn_with_trenches_asymmetric', 'l_wg_doped_with_trenches', 'strip_heater_metal_undercut', 'strip_heater_metal', 'strip_heater_doped', 'rib",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:18.748358",
+      "api_duration_seconds": 8.161761999130249,
+      "usage": {
+        "input_tokens": 5358,
+        "output_tokens": 843,
+        "total_tokens": 6201
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_3/benchmark_gemini_gemini-2.0-flash/phase1/benchmark_gemini-2-0-flash/run_003/turn1/generated_component.py\", line 60, in <module>\n    mzi = mach_zehnder(length=100.0, gap=0.2, bend_radius=10.0, cross_section=\"strip\")\n  File \"/Users/a",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:28.312510",
+      "api_duration_seconds": 9.887396812438965,
+      "usage": {
+        "input_tokens": 6755,
+        "output_tokens": 1066,
+        "total_tokens": 7821
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'function' object has no attribute 'width'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16521,
+    "output_tokens": 2634,
+    "total_tokens": 19155
+  }
+}

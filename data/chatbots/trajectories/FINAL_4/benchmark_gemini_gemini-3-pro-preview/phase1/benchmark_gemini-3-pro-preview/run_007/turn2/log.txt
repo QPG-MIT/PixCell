@@ -1,0 +1,83 @@
+Turn 2 Response:
+
+To address the `AttributeError` caused by accessing the internal `.component` attribute of a reference (which varies across GDSFactory versions), I have rewritten the script to instantiate the component primitives once and then create multiple references to them.
+
+This version uses geometric mirroring to ensure the right half of the device is a perfect continuation of the left half, guaranteeing the smooth "pinched" waist observed in the reference image.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler_fixed():
+    """
+    Creates a symmetric directional coupler matching the visual profile 
+    and footprint [18, 3] using parametric S-bends and geometric mirroring.
+    """
+    c = gf.Component()
+
+    # --- Geometric Constraints ---
+    length = 18.0
+    total_height = 3.0
+    
+    # Tuned dimensions based on visual aspect ratio
+    # The waveguides are relatively thick (approx 0.8um) with a narrow gap (0.2um)
+    wg_width = 0.8
+    gap_min = 0.2
+    
+    # Calculated parameters
+    half_length = length / 2
+    
+    # Y-coordinates for the waveguide centers
+    # 1. Input Y: Aligned to the top/bottom limits of the 3um footprint
+    # Top WG Center = 1.5 - (0.8/2) = 1.1
+    y_input_top = (total_height / 2) - (wg_width / 2)
+    
+    # 2. Waist Y: Just above the central gap
+    # Top WG Center = (0.2/2) + (0.8/2) = 0.5
+    y_waist_top = (gap_min / 2) + (wg_width / 2)
+    
+    # Calculate the vertical drop for the S-bend (Input -> Waist)
+    dy_drop = y_waist_top - y_input_top  # Value is -0.6
+
+    # Define Cross Section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Define Primitives ---
+    # We create the component objects once to be referenced multiple times.
+    
+    # Top bend primitive: S-bend dropping down
+    # size=(x_dist, y_dist). 
+    bend_top_comp = gf.components.bend_s(size=(half_length, dy_drop), cross_section=xs)
+    
+    # Bottom bend primitive: S-bend rising up
+    # y_dist is -dy_drop (positive)
+    bend_bot_comp = gf.components.bend_s(size=(half_length, -dy_drop), cross_section=xs)
+
+    # --- Assembly ---
+    
+    # 1. Top Left Arm
+    tl = c << bend_top_comp
+    tl.move((0, y_input_top))
+
+    # 2. Top Right Arm (Mirrored Top Left)
+    # We add a reference to the SAME component, move it to the start position, 
+    # and then mirror it horizontally across the center of the device (x = half_length).
+    tr = c << bend_top_comp
+    tr.move((0, y_input_top))
+    tr.mirror(p1=(half_length, 0), p2=(half_length, 1))
+
+    # 3. Bottom Left Arm
+    bl = c << bend_bot_comp
+    bl.move((0, -y_input_top)) # Symmetric negative Y position
+    
+    # 4. Bottom Right Arm (Mirrored Bottom Left)
+    br = c << bend_bot_comp
+    br.move((0, -y_input_top))
+    br.mirror(p1=(half_length, 0), p2=(half_length, 1))
+
+    return c
+
+# Create and save
+device = symmetric_coupler_fixed()
+device.write_gds("symmetric_coupler_fixed.gds")
+```

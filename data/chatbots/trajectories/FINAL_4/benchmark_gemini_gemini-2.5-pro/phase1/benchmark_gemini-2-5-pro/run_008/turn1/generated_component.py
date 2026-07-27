@@ -1,0 +1,102 @@
+import gdsfactory as gf
+import os
+
+@gf.cell
+def create_wavy_coupler():
+    """
+    Creates a wavy directional coupler based on the provided image and footprint.
+
+    The geometry is constructed by creating a single wavy waveguide unit and then
+    assembling two mirrored and separated instances of it.
+    """
+    # 1. Define device parameters based on footprint and visual analysis
+    footprint_width = 18.0
+    footprint_height = 3.0
+
+    # Assume a plausible waveguide width
+    waveguide_width = 0.8
+
+    # Derive vertical separation of centerlines at the ends from total height
+    # Total Height = centerline_gap + waveguide_width
+    centerline_gap_at_ends = footprint_height - waveguide_width
+
+    # Define the amplitude of the sinusoidal centerline path
+    wave_amplitude = 0.5
+
+    # The horizontal length of one half-period of the wave
+    half_period_length = footprint_width / 2.0
+
+    # 2. Define a common cross-section for the waveguides
+    xs = gf.cross_section.cross_section(width=waveguide_width)
+
+    # 3. Create a cell for a single wavy waveguide unit (one full period)
+    # This unit will curve up first, then down.
+    @gf.cell
+    def wavy_waveguide_unit():
+        c = gf.Component()
+        # S-bend curving up
+        s_bend_up = c << gf.components.bend_s(
+            size=(half_period_length, wave_amplitude), cross_section=xs
+        )
+        # S-bend curving down
+        s_bend_down = c << gf.components.bend_s(
+            size=(half_period_length, -wave_amplitude), cross_section=xs
+        )
+
+        # Connect the two S-bends to form a full wave period
+        s_bend_down.connect("o1", s_bend_up.ports["o2"])
+
+        # Add ports to the unit cell
+        c.add_port("o1", port=s_bend_up.ports["o1"])
+        c.add_port("o2", port=s_bend_down.ports["o2"])
+        return c
+
+    # 4. Assemble the final device
+    c = gf.Component("wavy_coupler_from_image")
+
+    # Instantiate the wavy waveguide unit
+    wave_unit = wavy_waveguide_unit()
+
+    # Add the bottom waveguide (curves up, then down)
+    bottom_wave = c << wave_unit
+
+    # Add the top waveguide (curves down, then up) by mirroring the unit
+    top_wave = c << wave_unit
+    top_wave.mirror(p1=(0, 0), p2=(1, 0))  # Mirror across the x-axis
+
+    # 5. Position the two waveguides vertically
+    # The vertical shift is half of the centerline gap
+    vertical_shift = centerline_gap_at_ends / 2.0
+    top_wave.movey(vertical_shift)
+    bottom_wave.movey(-vertical_shift)
+
+    # Center the entire component at (0, 0)
+    c.movex(-footprint_width / 2.0)
+
+    # 6. Add and rename ports for the final device
+    c.add_port("o1", port=top_wave.ports["o1"])
+    c.add_port("o2", port=top_wave.ports["o2"])
+    c.add_port("o3", port=bottom_wave.ports["o1"])
+    c.add_port("o4", port=bottom_wave.ports["o2"])
+
+    return c
+
+# --- FIX ---
+# The following lines were previously commented out, preventing file generation.
+# They are now active.
+
+# Instantiate the final component
+device = create_wavy_coupler()
+
+# Define the output filename
+output_filename = "wavy_coupler.gds"
+
+# Save the component to a GDS file
+device.write_gds(output_filename)
+
+# Optional: Display the component in a viewer if available (e.g., in a Jupyter notebook)
+# device.show()
+
+# Provide confirmation to the user
+print(f"Successfully generated GDS file: '{output_filename}'")
+print(f"File saved at: {os.path.abspath(output_filename)}")

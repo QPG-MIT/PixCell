@@ -1,0 +1,81 @@
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_directional_coupler_exact(
+    total_length: float = 120.0,
+    port_pitch: float = 3.2,
+    gap: float = 0.1,
+    wg_width: float = 0.8,
+    coupling_length: float = 70.0,
+    sbend_x_length: float = 15.0
+) -> gf.Component:
+    """
+    Creates a symmetric directional coupler matching the visual proportions 
+    of the target image while exactly maintaining the [120, 4] bounding footprint.
+    """
+    c = gf.Component("directional_coupler_exact")
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Geometry Calculations ---
+    # Calculate the remaining length for the straight sections at the ports
+    port_straight_length = (total_length - coupling_length - (2 * sbend_x_length)) / 2.0
+    
+    # Center-to-center pitch of waveguides in the coupling region
+    pitch_mid = wg_width + gap
+    
+    # Y-shift required for the S-bends to transition from outer pitch to inner gap
+    sbend_y = (port_pitch - pitch_mid) / 2.0
+
+    # --- Create Parametric Primitives ---
+    str_port = gf.components.straight(length=port_straight_length, cross_section=xs)
+    str_mid = gf.components.straight(length=coupling_length, cross_section=xs)
+
+    # Top bends shift DOWN (-Y) going inward, UP (+Y) going outward
+    bend_top_in = gf.components.bend_s(size=(sbend_x_length, -sbend_y), cross_section=xs)
+    bend_top_out = gf.components.bend_s(size=(sbend_x_length, sbend_y), cross_section=xs)
+
+    # Bottom bends shift UP (+Y) going inward, DOWN (-Y) going outward
+    bend_bot_in = gf.components.bend_s(size=(sbend_x_length, sbend_y), cross_section=xs)
+    bend_bot_out = gf.components.bend_s(size=(sbend_x_length, -sbend_y), cross_section=xs)
+
+    # --- Assembly: Top Arm ---
+    t_in = c << str_port
+    t_b_in = c << bend_top_in
+    t_mid = c << str_mid
+    t_b_out = c << bend_top_out
+    t_out = c << str_port
+
+    # Position center and chain connections outward to ensure symmetry and centering at X=0
+    t_mid.move((-coupling_length / 2.0, pitch_mid / 2.0))
+    t_b_in.connect("o2", t_mid.ports["o1"])
+    t_in.connect("o2", t_b_in.ports["o1"])
+    
+    t_b_out.connect("o1", t_mid.ports["o2"])
+    t_out.connect("o1", t_b_out.ports["o2"])
+
+    # --- Assembly: Bottom Arm ---
+    b_in = c << str_port
+    b_b_in = c << bend_bot_in
+    b_mid = c << str_mid
+    b_b_out = c << bend_bot_out
+    b_out = c << str_port
+
+    # Position center and chain connections outward
+    b_mid.move((-coupling_length / 2.0, -pitch_mid / 2.0))
+    b_b_in.connect("o2", b_mid.ports["o1"])
+    b_in.connect("o2", b_b_in.ports["o1"])
+    
+    b_b_out.connect("o1", b_mid.ports["o2"])
+    b_out.connect("o1", b_b_out.ports["o2"])
+
+    # --- Expose External Ports ---
+    c.add_port("o1", port=b_in.ports["o1"])   # Bottom-Left
+    c.add_port("o2", port=t_in.ports["o1"])   # Top-Left
+    c.add_port("o3", port=b_out.ports["o2"])  # Bottom-Right
+    c.add_port("o4", port=t_out.ports["o2"])  # Top-Right
+
+    return c
+
+if __name__ == "__main__":
+    device = symmetric_directional_coupler_exact()
+    device.write_gds("directional_coupler_exact.gds")

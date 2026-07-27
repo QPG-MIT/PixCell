@@ -1,0 +1,104 @@
+Turn 4 Response:
+
+To match the target device more closely within the $120 \times 4\,\mu\text{m}$ footprint, we need to adjust the spatial distribution of the elements and the composition of the side bundles.
+
+### Key Observations & Improvements:
+1.  **Bundle Composition:** The target image shows each side bundle consists of **four thin lines** located closer to the center and **one very thick bar** on the outside.
+2.  **Relative Positioning:** The thick bar is the "innermost" part of the bend (it has the smallest radius when curving away from the center). 
+3.  **Vertical Extensions:** The "horns" curve sharply and then extend vertically to the edges of the $4\,\mu\text{m}$ height constraint.
+4.  **Proportions:** The central 5 lines span the full $120\,\mu\text{m}$ width, while the horizontal sections of the side bundles are shorter (approximately $85\,\mu\text{m}$), allowing space for the curves.
+
+### Updated GDSFactory Script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreated_device():
+    """
+    Recreates the device with high fidelity to the target image.
+    Uses a multi-section cross-section for the bundles to ensure 
+    perfect alignment during bends.
+    """
+    c = gf.Component("recreated_device_v5")
+    
+    # --- Constraints & Dimensions ---
+    L_MAX = 120.0
+    H_MAX = 4.0
+    layer = (1, 0)
+    
+    # Visual Parameters
+    w_thin = 0.05    # Width of thin lines
+    pitch = 0.15     # Pitch between lines
+    w_thick = 0.7    # Width of the outer thick bar
+    r_bend = 1.2     # Radius for the "horns"
+    l_bundle = 85.0  # Length of horizontal bundle section
+    v_ext = 0.6      # Vertical extension length
+    
+    # 1. Middle Group (5 straight thin lines)
+    # These span the full 120um width.
+    mid_xs = gf.cross_section.cross_section(width=w_thin, layer=layer)
+    for i in range(-2, 3):
+        m = c << gf.components.straight(length=L_MAX, cross_section=mid_xs)
+        m.y = i * pitch
+        m.x = 0
+
+    # 2. Side Bundles (Top and Bottom)
+    # Cross-section contains 4 thin lines and 1 thick bar.
+    # In GDSFactory, positive offset is 'left' of the path direction.
+    def get_bundle_xs(is_top=True):
+        sign = 1 if is_top else -1
+        sections = []
+        # Add 4 thin lines
+        for i in range(4):
+            sections.append(gf.cross_section.Section(width=w_thin, offset=sign * (i * pitch), layer=layer))
+        # Add 1 thick bar with a larger offset to create the gap seen in the image
+        sections.append(gf.cross_section.Section(width=w_thick, offset=sign * 0.9, layer=layer))
+        
+        return gf.cross_section.cross_section(sections=sections, radius_min=0.2)
+
+    def add_bundle(y_base, is_top=True):
+        sign = 1 if is_top else -1
+        xs = get_bundle_xs(is_top=is_top)
+        
+        # Main horizontal section
+        main = c << gf.components.straight(length=l_bundle, cross_section=xs)
+        main.y = y_base
+        main.x = 0
+        
+        # Right "Horn": Bend 90 degrees away from center, then extend
+        br = c << gf.components.bend_euler(radius=r_bend, angle=90 * sign, cross_section=xs)
+        br.connect("o1", main.ports["o2"])
+        er = c << gf.components.straight(length=v_ext, cross_section=xs)
+        er.connect("o1", br.ports["o2"])
+        
+        # Left "Horn": Bend 90 degrees away from center, then extend
+        bl = c << gf.components.bend_euler(radius=r_bend, angle=-90 * sign, cross_section=xs)
+        bl.connect("o1", main.ports["o1"])
+        el = c << gf.components.straight(length=v_ext, cross_section=xs)
+        el.connect("o1", bl.ports["o2"])
+
+    # Position side bundles with a distinct gap from the middle group.
+    # y=0.6 and y=-0.6 ensures they sit symmetrically within the 4um height.
+    add_bundle(y_base=0.6, is_top=True)
+    add_bundle(y_base=-0.6, is_top=False)
+
+    # Center the entire assembly
+    c.center = (0, 0)
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    device = recreated_device()
+    
+    # Save as GDS
+    device.write_gds("recreated_device_v5.gds")
+    
+    # Display the result
+    device.show()
+```
+
+### Key Changes Explained:
+*   **Cross-Section Logic:** The `bundle_offsets` are now calculated relative to a `y_base`. For the top bundle, we use positive offsets to place lines further up. Because the thick bar has the largest offset ($+0.9\,\mu\text{m}$) and the bend turns UP ($+90^\circ$), it behaves as the "inner" part of the bend (closest to the center of the arc), matching the target image's geometry.
+*   **Gap Refinement:** A larger offset for the thick bar ($0.9\,\mu\text{m}$) creates the clear visual separation between the four thin lines and the solid block.
+*   **Scale and Fit:** The bundle length ($85\,\mu\text{m}$) vs. total length ($120\,\mu\text{m}$) matches the visual ratio of the target. The vertical extensions ($0.6\,\mu\text{m}$) ensure the "horns" approach the footprint boundaries.

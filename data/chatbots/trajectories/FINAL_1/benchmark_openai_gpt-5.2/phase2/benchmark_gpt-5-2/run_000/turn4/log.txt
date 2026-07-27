@@ -1,0 +1,165 @@
+Turn 4 Response:
+
+Key visual mismatches vs. the target (from your current raster):
+
+1. **Outer arms start too “far apart” and don’t feel like a tight trident near the input.**  
+   In the target, the three prongs are closer together on the left, then the outer arms peel away later/more strongly.
+
+2. **The outer-arm divergence looks a bit “bendy”/abrupt at the start of the split.**  
+   Your cubic Bezier has zero slope at the start, but it still introduces curvature fairly quickly. The target looks more like an *ease-in/ease-out* offset (very gentle onset and gentle finish).
+
+3. **The middle prong taper is too short.**  
+   The target’s center arm is more of a long wedge (tapering for a longer distance) and it terminates roughly just before the outer arms begin their main divergence.
+
+Below is an improved version that directly addresses those three items:
+
+- **Tighter input spacing**: reduce `y0` and increase `dy_split` so the outputs still hit the height limit.
+- **Smoother “late split”**: replace Bezier with a **quintic smoothstep** offset profile (0 slope *and* 0 second-derivative at both ends).
+- **Longer middle wedge**: make the middle taper-out long (and end just before the outer-arm curve begins).
+- **Smoother tapers**: use `gf.path.extrude_transition(... width_type="sine")` for input and middle-output tapers.
+
+```python
+import numpy as np
+import gdsfactory as gf
+
+
+def smoothstep5(s: np.ndarray) -> np.ndarray:
+    """Quintic smoothstep: f(0)=0 f(1)=1, and f'(0)=f'(1)=f''(0)=f''(1)=0."""
+    return 6 * s**5 - 15 * s**4 + 10 * s**3
+
+
+def smooth_taper_sine(length: float, w1: float, w2: float, layer=(1, 0)) -> gf.Component:
+    """Sine-profile width transition along a straight path."""
+    xs1 = gf.cross_section.strip(width=w1, layer=layer)
+    xs2 = gf.cross_section.strip(width=w2, layer=layer)
+    tr = gf.path.transition(xs1, xs2, width_type="sine")
+    p = gf.path.straight(length)
+    return gf.path.extrude_transition(p, tr)
+
+
+@gf.cell
+def trident_splitter(
+    length_total: float = 40.0,
+    height_total: float = 1.7,
+    layer: tuple[int, int] = (1, 0),
+    # widths (tuned to look closer to the target)
+    arm_w: float = 0.22,
+    mid_w: float = 0.12,
+    arm_w_in: float = 0.06,
+    mid_w_in: float = 0.05,
+    mid_w_tip: float = 0.01,
+    # vertical placement (tighter at input, strong split later)
+    y0: float = 0.29,
+    dy_split: float = 0.445,  # y_out = y0 + dy_split ~ 0.735
+    # horizontal partition (kept at 40um total)
+    L_taper_in: float = 5.0,
+    L_parallel: float = 22.0,
+    L_curve: float = 10.0,
+    L_out: float = 3.0,
+    # middle guide (ends right before the split begins)
+    L_mid_straight: float = 10.0,
+    L_mid_taper_out: float = 11.0,  # long wedge, matches target better
+    # sampling
+    n_curve: int = 121,
+):
+    """
+    Trident-like splitter closer to the reference:
+    - tighter prong spacing at input (smaller y0)
+    - stronger late split (larger dy_split but still within 1.7um height)
+    - outer arm split uses quintic smoothstep offset for gentler curvature onset/finish
+    - middle prong has a long taper wedge and terminates before the main split
+    - smooth (sine) tapers for inputs and middle wedge
+    """
+
+    # --- Checks ---
+    if abs((L_taper_in + L_parallel + L_curve + L_out) - length_total) > 1e-9:
+        raise ValueError("Require L_taper_in + L_parallel + L_curve + L_out == length_total")
+
+    # Height check using worst-case (outer arm at output)
+    y_out = y0 + dy_split
+    ymax = max(abs(y0), abs(y_out)) + arm_w / 2
+    if 2 * ymax > height_total + 1e-3:
+        raise ValueError(
+            f"Exceeds height_total: 2*ymax={2*ymax:.3f}um > {height_total}um. "
+            f"Reduce y0/dy_split/arm_w."
+        )
+
+    # Middle should end before (or near) the start of the outer-arm curve
+    x_curve_start = L_taper_in + L_parallel
+    x_mid_end = L_taper_in + L_mid_straight + L_mid_taper_out
+    if x_mid_end > x_curve_start + 1e-6:
+        raise ValueError(
+            f"Middle ends too late (x_mid_end={x_mid_end:.3f}) > curve start "
+            f"(x_curve_start={x_curve_start:.3f}). Reduce L_mid_* or increase L_parallel."
+        )
+
+    c = gf.Component()
+
+    xs_arm = gf.cross_section.strip(width=arm_w, layer=layer)
+
+    # --- Outer arms: constant-width body with very smooth late divergence ---
+    def arm_body(dy: float) -> gf.Component:
+        # Points are defined starting at the end of the input taper.
+        pts = [(0.0, 0.0), (L_parallel, 0.0)]
+
+        s = np.linspace(0.0, 1.0, n_curve)
+        f = smoothstep5(s)
+        xs = L_parallel + s * L_curve
+        ys = dy * f
+
+        # Avoid duplicating (L_parallel, 0) already in pts
+        for x, y in zip(xs[1:], ys[1:]):
+            pts.append((float(x), float(y)))
+
+        pts.append((L_parallel + L_curve + L_out, dy))
+
+        p = gf.Path(pts)
+        return gf.path.extrude(p, cross_section=xs_arm)
+
+    arm_top_body = arm_body(+dy_split)
+    arm_bot_body = arm_body(-dy_split)
+
+    # --- Smooth input tapers (sine width profile) ---
+    taper_arm_in = smooth_taper_sine(L_taper_in, arm_w_in, arm_w, layer=layer)
+
+    top_tin = c << taper_arm_in
+    top_tin.move((0, y0))
+    top_body = c << arm_top_body
+    top_body.connect("o1", top_tin.ports["o2"])
+
+    bot_tin = c << taper_arm_in
+    bot_tin.move((0, -y0))
+    bot_body = c << arm_bot_body
+    bot_body.connect("o1", bot_tin.ports["o2"])
+
+    # --- Middle: smooth taper-in + straight + long smooth taper-to-tip (wedge) ---
+    taper_mid_in = smooth_taper_sine(L_taper_in, mid_w_in, mid_w, layer=layer)
+
+    xs_mid = gf.cross_section.strip(width=mid_w, layer=layer)
+    mid_st = gf.components.straight(length=L_mid_straight, cross_section=xs_mid)
+
+    taper_mid_out = smooth_taper_sine(L_mid_taper_out, mid_w, mid_w_tip, layer=layer)
+
+    mid_in = c << taper_mid_in
+    mid_s = c << mid_st
+    mid_s.connect("o1", mid_in.ports["o2"])
+    mid_out = c << taper_mid_out
+    mid_out.connect("o1", mid_s.ports["o2"])
+
+    # --- Ports ---
+    c.add_port("in_top", port=top_tin.ports["o1"])
+    c.add_port("in_mid", port=mid_in.ports["o1"])
+    c.add_port("in_bot", port=bot_tin.ports["o1"])
+    c.add_port("out_top", port=top_body.ports["o2"])
+    c.add_port("out_bot", port=bot_body.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    c = trident_splitter()
+    c.show()
+    c.write_gds("trident_splitter.gds")
+```
+
+If you share the original target image again at full resolution (or tell me the **approximate x-position where the middle prong ends** and the **final top/bottom center y** you want), I can tune `L_mid_*`, `y0`, `dy_split`, and the split profile to match it even more tightly.

@@ -1,0 +1,93 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_1x4_mmi():
+    """
+    1x4 MMI Splitter.
+    Reconstructed to fit the [25, 10] um footprint with vertical orientation.
+    Height (Y) = 25 um
+    Width (X) = 10 um
+    """
+    c = gf.Component()
+
+    # --- Dimensions & Parameters ---
+    # Layer definition
+    layer = (1, 0)
+
+    # Footprint Constraints: Width=10, Height=25
+    
+    # 1. Main MMI Body
+    # Visually, the body is a substantial block. 
+    # To fit the 10um width and leave room for tapers within 25um height:
+    mmi_width = 10.0
+    mmi_height = 10.0 
+
+    # 2. Output Tapers (Top)
+    # These are long and slender in the original image.
+    taper_length_out = 11.0
+    taper_width_out_base = 2.0  # Wide base
+    taper_width_out_tip = 0.6   # Narrow tip
+
+    # 3. Input Taper (Bottom)
+    # Shorter and stubbier than the top ones.
+    taper_length_in = 4.0
+    taper_width_in_base = 2.0
+    taper_width_in_tip = 0.6
+
+    # 4. Spacing
+    num_ports = 4
+    # Distribute 4 ports across 10um width. 
+    # Pitch = 2.5um allows for 2.0um wide bases with 0.5um gaps.
+    port_pitch = 2.5 
+
+    # --- Geometry Construction ---
+
+    # 1. Create Main Body
+    # Centered at (0,0)
+    body = c << gf.components.rectangle(
+        size=(mmi_width, mmi_height), 
+        layer=layer, 
+        centered=True
+    )
+
+    # 2. Create and Place Output Tapers (Top)
+    # Define the taper primitive
+    taper_out_comp = gf.components.taper(
+        length=taper_length_out,
+        width1=taper_width_out_base,
+        width2=taper_width_out_tip,
+        layer=layer
+    )
+
+    # Calculate x-offsets for the port array
+    # Centers: [-3.75, -1.25, 1.25, 3.75]
+    offsets = [(i - (num_ports - 1) / 2) * port_pitch for i in range(num_ports)]
+
+    for x_offset in offsets:
+        ref = c << taper_out_comp
+        ref.rotate(90)  # Rotate to point Up
+        # Move to position: x=offset, y=top_edge_of_body
+        ref.move((x_offset, mmi_height / 2))
+
+    # 3. Create and Place Input Taper (Bottom)
+    taper_in_comp = gf.components.taper(
+        length=taper_length_in,
+        width1=taper_width_in_base,
+        width2=taper_width_in_tip,
+        layer=layer
+    )
+
+    ref_in = c << taper_in_comp
+    ref_in.rotate(-90) # Rotate to point Down
+    # Move to position: x=0 (center), y=bottom_edge_of_body
+    ref_in.move((0, -mmi_height / 2))
+
+    return c
+
+if __name__ == "__main__":
+    # Generate and save the device
+    device = device_1x4_mmi()
+    device.write_gds("device_1x4_mmi.gds")
+    
+    # Optional: Display the component
+    # device.show()

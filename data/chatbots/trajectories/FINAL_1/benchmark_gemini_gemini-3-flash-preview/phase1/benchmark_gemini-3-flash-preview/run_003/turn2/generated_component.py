@@ -1,0 +1,66 @@
+import gdsfactory as gf
+
+@gf.cell
+def realistic_tapered_coupler():
+    """
+    Recreates the tapered coupler with smooth paths and transitions.
+    Footprint: 40um x 1.7um
+    """
+    c = gf.Component("tapered_coupler_v2")
+    
+    # --- 1. Design Parameters ---
+    l_total = 40.0
+    l_in = 3.0      # Short initial straight section
+    l_taper = 27.0  # Length of the central taper
+    l_out = 10.0    # S-bend region
+    
+    w_core_in = 0.6
+    w_core_tip = 0.05
+    w_side_in = 0.15
+    w_side_out = 0.45
+    
+    # Target gap at start and at the tip of the core
+    gap_start = 0.12
+    gap_mid = 0.05
+    
+    # --- 2. Central Core Construction ---
+    # We combine a straight section and a taper
+    core_in = c << gf.components.straight(length=l_in, width=w_core_in)
+    core_taper = c << gf.components.taper(length=l_taper, width1=w_core_in, width2=w_core_tip)
+    core_taper.connect("o1", core_in.ports["o2"])
+    
+    # --- 3. Side Arm Path Construction ---
+    # Calculate Y-coordinates for the center-line of the side arms
+    # y = (core_width / 2) + gap + (arm_width / 2)
+    y_start = (w_core_in / 2) + gap_start + (w_side_in / 2)   # ~0.5
+    y_mid = (w_core_tip / 2) + gap_mid + (w_side_out / 2)    # ~0.3
+    y_final = (1.7 / 2) - (w_side_out / 2)                   # 0.625 (reaches footprint edge)
+    
+    # Define control points for the top arm path
+    points_top = [
+        (0, y_start),
+        (l_in, y_start),
+        (l_in + l_taper, y_mid),
+        (l_total, y_final)
+    ]
+    
+    # Create smooth paths for top and bottom
+    path_top = gf.path.smooth(points=points_top, radius=8.0)
+    path_bot = gf.path.smooth(points=[(x, -y) for x, y in points_top], radius=8.0)
+    
+    # --- 4. Extrusion with Width Transition ---
+    # Create a transition from thin input to wide output
+    xs_start = gf.cross_section.cross_section(width=w_side_in, layer=(1, 0))
+    xs_end = gf.cross_section.cross_section(width=w_side_out, layer=(1, 0))
+    trans = gf.path.transition(xs_start, xs_end, width_type='sine')
+    
+    # Extrude the paths into components
+    c << gf.path.extrude_transition(path_top, trans)
+    c << gf.path.extrude_transition(path_bot, trans)
+    
+    return c
+
+if __name__ == "__main__":
+    device = realistic_tapered_coupler()
+    device.show()
+    device.write_gds("improved_coupler.gds")

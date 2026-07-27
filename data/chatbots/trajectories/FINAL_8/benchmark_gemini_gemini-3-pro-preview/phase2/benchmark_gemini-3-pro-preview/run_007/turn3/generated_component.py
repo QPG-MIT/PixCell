@@ -1,0 +1,101 @@
+import gdsfactory as gf
+
+@gf.cell
+def dense_coupler_array():
+    """
+    Parametric recreation of the dense waveguide array.
+    Method: Boolean Subtraction (Slab - Gaps).
+    This creates a solid silicon block (120x4) and cuts 4 curved gaps into it
+    to define 5 separate waveguide regions (3 thin central stripes, 2 wide outer blocks).
+    """
+    c = gf.Component()
+
+    # 1. Device Dimensions
+    length = 120.0
+    width = 4.0
+    
+    # Longitudinal Sections
+    # Split the 120um length into: Taper (30) | Straight (60) | Taper (30)
+    l_center = 60.0
+    l_taper = (length - l_center) / 2  # 30.0
+
+    # 2. Define the "Negative" Mask (The Gaps)
+    mask = gf.Component()
+    
+    # Gap Parameters
+    # Width set to 0.35um to ensure distinct white lines in the render
+    gap_width = 0.35 
+    xs_gap = gf.cross_section.cross_section(width=gap_width, layer=(2, 0))
+
+    # Y-coordinates for the 4 gaps
+    # We define symmetric positions relative to y=0.
+    
+    # Center Config (x ~ 0): Tight packing for coupling
+    # Defines the spacing in the straight section.
+    y_c_top_outer = 1.25
+    y_c_top_inner = 0.45
+    
+    # Outer Config (x ~ +/- 60): Fan out for input/output
+    # Defines the spacing at the edges of the device.
+    y_o_top_outer = 1.65
+    y_o_top_inner = 0.65
+    
+    # Full arrays of y-coordinates for the 4 gaps (Top to Bottom)
+    y_center = [y_c_top_outer, y_c_top_inner, -y_c_top_inner, -y_c_top_outer]
+    y_outer = [y_o_top_outer, y_o_top_inner, -y_o_top_inner, -y_o_top_outer]
+    
+    # Construct the paths for each gap
+    for y_o, y_c in zip(y_outer, y_center):
+        # A. Left Taper (S-Bend fan-in)
+        # Start at left edge (-length/2, y_o) -> transition to y_c
+        dy_left = y_c - y_o
+        bend_left = mask << gf.components.bend_s(
+            size=(l_taper, dy_left), 
+            cross_section=xs_gap
+        )
+        bend_left.move((-length/2, y_o))
+        
+        # B. Center Straight Section
+        # Maintains y_c for the coupling length
+        straight = mask << gf.components.straight(
+            length=l_center, 
+            cross_section=xs_gap
+        )
+        straight.connect("o1", bend_left.ports["o2"])
+        
+        # C. Right Taper (S-Bend fan-out)
+        # Transition from y_c back to y_o
+        dy_right = y_o - y_c
+        bend_right = mask << gf.components.bend_s(
+            size=(l_taper, dy_right),
+            cross_section=xs_gap
+        )
+        bend_right.connect("o1", straight.ports["o2"])
+
+    # 3. Create the Main Body Slab
+    # A solid block that covers the entire footprint (120x4).
+    # This represents the unpatterned material.
+    slab = gf.components.rectangle(
+        size=(length, width), 
+        layer=(1, 0), 
+        centered=True
+    )
+
+    # 4. Apply Boolean Subtraction
+    # Result = Slab (Solid) - Mask (Gaps)
+    # This cuts the gaps out of the solid block, leaving the waveguides behind.
+    final_geometry = gf.boolean(
+        A=slab,
+        B=mask,
+        operation="not",
+        layer=(1, 0)
+    )
+
+    c.add_ref(final_geometry)
+    return c
+
+# Generate and display
+if __name__ == "__main__":
+    device = dense_coupler_array()
+    device.write_gds("dense_coupler_array.gds")
+    device.show()

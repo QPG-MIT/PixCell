@@ -1,0 +1,94 @@
+import gdsfactory as gf
+
+@gf.cell
+def parametric_device():
+    """
+    Recreates the device with correct alignment and density.
+    Footprint: 120um x 4um.
+    Structure: Central straight bus with concentric bent waveguides on top/bottom, 
+               all aligned to the device center.
+    """
+    c = gf.Component()
+
+    # --- Dimensions & Parameters ---
+    total_length = 120.0
+    
+    # High-density settings to fit the image aesthetic and constraints
+    wg_width = 0.15   
+    gap = 0.1         
+    pitch = wg_width + gap
+    
+    # Custom cross-section allowing tight bends (radius < 10um)
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0), radius_min=0.1)
+
+    # --- 1. Center Bundle ---
+    # 5 parallel straight lines
+    n_center = 5
+    
+    for i in range(n_center):
+        y_loc = (i - (n_center - 1) / 2) * pitch
+        
+        wg = c << gf.components.straight(length=total_length, cross_section=xs)
+        wg.y = y_loc
+        wg.x = 0  # <--- FIX: Explicitly center the straight waveguide at x=0
+
+    # --- 2. Outer Bundles (Top & Bottom) ---
+    # These wrap around the center. The straight length decreases as radius increases
+    # to ensure the vertical ends align perfectly at x = +/- 60um.
+    n_outer = 4
+    
+    # Start immediately above the center bundle
+    y_center_max = ((n_center - 1) / 2) * pitch
+    y_top_start = y_center_max + pitch
+    
+    r_min = 0.5 # Inner bend radius
+
+    for i in range(n_outer):
+        radius = r_min + i * pitch
+        y_pos = y_top_start + i * pitch
+        
+        # Calculate straight length so (Radius + Straight + Radius) = Total Length
+        l_straight = total_length - 2 * radius
+        
+        # Define primitives
+        bend = gf.components.bend_euler(radius=radius, angle=90, cross_section=xs)
+        straight = gf.components.straight(length=l_straight, cross_section=xs)
+        
+        # --- Top Half (Bends UP) ---
+        s_top = c << straight
+        s_top.y = y_pos
+        s_top.x = 0 # Center at x=0
+        
+        # Right Bend (East -> North)
+        br_top = c << bend
+        br_top.connect("o1", s_top.ports["o2"])
+        
+        # Left Bend (West -> North) -> Mirror Horizontal
+        bl_top = c << bend
+        bl_top.mirror(p1=(0,0), p2=(0,1)) 
+        bl_top.connect("o1", s_top.ports["o1"])
+        
+        # --- Bottom Half (Bends DOWN) ---
+        s_bot = c << straight
+        s_bot.y = -y_pos # Mirror Y position
+        s_bot.x = 0      # Center at x=0
+        
+        # Right Bend (East -> South) -> Mirror Vertical
+        br_bot = c << bend
+        br_bot.mirror(p1=(0,0), p2=(1,0))
+        br_bot.connect("o1", s_bot.ports["o2"])
+        
+        # Left Bend (West -> South) -> Rotate 180
+        bl_bot = c << bend
+        bl_bot.rotate(180)
+        bl_bot.connect("o1", s_bot.ports["o1"])
+
+    return c
+
+if __name__ == "__main__":
+    device = parametric_device()
+    device.write_gds("parametric_device.gds")
+    try:
+        device.show()
+    except:
+        print("GDS file written (display not available).")

@@ -1,0 +1,102 @@
+The error occurs because I'm trying to move/transform cells that are locked. In GDSFactory, when you use primitives like `gf.components.rectangle()`, they return locked cells that cannot be modified directly. 
+
+To fix this, I need to:
+1. Add references to the component using `<<` operator
+2. Transform the references, not the original components
+3. Or use a different approach with manual polygon creation
+
+Let me rewrite the script using references properly:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def chain_link_device():
+    """
+    Creates a chain-link shaped device with an elliptical outer ring
+    and two horizontal bars with rectangular windows.
+    """
+    c = gf.Component()
+    
+    # Dimensions based on footprint constraint [3.0, 5.5]
+    total_width = 5.5
+    total_height = 3.0
+    
+    # Outer ellipse parameters
+    outer_rx = total_width / 2  # 2.75
+    outer_ry = total_height / 2  # 1.5
+    
+    # Inner ellipse (to create ring)
+    ring_thickness = 0.38
+    inner_rx = outer_rx - ring_thickness
+    inner_ry = outer_ry - ring_thickness
+    
+    # Create outer and inner ellipses
+    outer_ellipse = gf.components.ellipse(radii=(outer_rx, outer_ry), layer=(1, 0))
+    inner_ellipse = gf.components.ellipse(radii=(inner_rx, inner_ry), layer=(1, 0))
+    
+    # Create the ring using boolean NOT
+    ring = gf.boolean(outer_ellipse, inner_ellipse, operation="not", layer=(1, 0))
+    
+    # Bar parameters
+    bar_height = 0.5
+    bar_width = 2.2
+    window_width = 0.6
+    window_height = 0.25
+    gap_between_windows = 0.25
+    bar_offset = 0.38
+    x_offset = (window_width + gap_between_windows) / 2
+    
+    # Create top and bottom bars with window cutouts positioned symmetrically around the center
+    top_bar_rect = gf.components.rectangle(size=(bar_width, bar_height), layer=(1, 0), centered=True)
+    bottom_bar_rect = gf.components.rectangle(size=(bar_width, bar_height), layer=(1, 0), centered=True)
+
+```
+
+I realize the issue—I can't just move references and expect boolean operations to work correctly. I need to build each component with its geometry already positioned, then add those to the main cell. Creating separate helper functions or individual components for each bar section with windows pre-cut would be cleaner than trying to manipulate references after placement.
+
+Let me restructure this by defining the components with their final positions baked in:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def chain_link_device():
+    """
+    Creates a chain-link shaped device with an elliptical outer ring
+    and two horizontal bars with rectangular windows.
+    """
+    c = gf.Component()
+    
+    # Dimensions based on footprint constraint [3.0, 5.5]
+    total_width = 5.5
+    total_
+```
+
+I need to complete the partial thought. Let me continue from the next thinking:
+
+height = 3.0
+    
+    # Outer ellipse parameters
+    outer_rx = total_width / 2  # 2.75
+    outer_ry = total_height / 2  # 1.5
+    
+    # Inner ellipse (to create ring)
+    ring_thickness = 0.38
+    inner_rx = outer_rx - ring_thickness
+    inner_ry = outer_ry - ring_thickness
+    
+    # Create outer and inner ellipses
+    outer_ellipse = gf.components.ellipse(radii=(outer_rx, outer_ry), layer=(1, 0))
+    inner_ellipse = gf.components.ellipse(radii=(inner_rx, inner_ry), layer=(1, 0))
+    
+    # Create the ring using boolean NOT
+    ring = gf.boolean(outer_ellipse, inner_ellipse, operation="not", layer=(1, 0))
+
+I'm setting up the ellipse dimensions with the outer radius being half the total width and height, then subtracting the ring thickness to get the inner dimensions. The ring itself is created by taking the boolean difference between the outer and inner ellipses.
+
+Next I need to define the bar structure with specific dimensions—a bar that's 2.2 units wide and 0.5 units tall, with small windows cut into it. The windows are 0.6 wide by 0.25 tall with 0.25 unit gaps between them, positioned 0.38 units from center. I'm creating a helper function to position rectangles at specific coordinates.
+
+For the top bar, I position the main rectangle at the center offset, then subtract two window cutouts using boolean operations—one on each side. The bottom bar follows the same pattern with its own positioned windows.
+
+Then I combine all the structural elements together, starting with the ring and progressively adding the top and bottom bars through boolean union operations to create the final device geometry.

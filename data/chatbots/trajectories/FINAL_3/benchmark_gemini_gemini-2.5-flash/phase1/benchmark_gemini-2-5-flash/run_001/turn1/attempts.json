@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:07.895792",
+      "api_duration_seconds": 56.328279972076416,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 2991,
+        "total_tokens": 15237
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:05.768302",
+      "api_duration_seconds": 11.554301977157593,
+      "usage": {
+        "input_tokens": 5843,
+        "output_tokens": 2058,
+        "total_tokens": 8443
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'tuple' object is not callable",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:18.961822",
+      "api_duration_seconds": 25.401410818099976,
+      "usage": {
+        "input_tokens": 7924,
+        "output_tokens": 2163,
+        "total_tokens": 14074
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'tuple' object is not callable",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16112,
+    "output_tokens": 7212,
+    "total_tokens": 37754
+  }
+}

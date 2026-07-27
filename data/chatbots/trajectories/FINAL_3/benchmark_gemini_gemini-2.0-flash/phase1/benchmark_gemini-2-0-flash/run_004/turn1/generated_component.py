@@ -1,0 +1,75 @@
+import gdsfactory as gf
+from gdsfactory.components import bend_euler, straight
+from gdsfactory.cross_section import strip
+
+
+@gf.cell
+def mzi_coupler(
+    length_straight: float = 10.0,
+    length_coupler: float = 10.0,
+    gap: float = 0.2,
+    radius: float = 10.0,
+    cross_section=strip,
+) -> gf.Component:
+    """Creates a MZI coupler structure using gdsfactory components.
+
+    Args:
+        length_straight: length of straight waveguide sections.
+        length_coupler: length of the coupler waveguide sections.
+        gap: gap between the coupler waveguides.
+        radius: radius of the bend.
+        cross_section: cross section function for the waveguide.
+
+    Returns:
+        A gdsfactory Component representing the MZI coupler.
+    """
+
+    c = gf.Component("mzi_coupler")
+
+    # Define the basic components
+    bend = bend_euler(radius=radius, cross_section=cross_section)
+    straight_wg = straight(length=length_straight, cross_section=cross_section)
+    coupler = gf.components.coupler_straight(
+        length=length_coupler, gap=gap, cross_section=cross_section
+    )
+
+    # Add the components as references
+    bend1 = c << bend
+    bend2 = c << bend
+    bend3 = c << bend
+    bend4 = c << bend
+    straight1 = c << straight_wg
+    straight2 = c << straight_wg
+    coupler1 = c << coupler
+    coupler2 = c << coupler
+
+    # Place the components and connect them
+    # First coupler
+    bend1.connect("o1", coupler1.ports["o1"])
+    bend2.connect("o1", coupler1.ports["o3"])
+
+    # Top arm
+    straight1.connect("o1", bend1.ports["o2"])
+    bend3.connect("o1", straight1.ports["o2"])
+
+    # Bottom arm
+    straight2.connect("o1", bend2.ports["o2"])
+    bend4.connect("o1", straight2.ports["o2"])
+
+    # Second coupler
+    coupler2.connect("o1", bend3.ports["o2"])
+    coupler2.connect("o3", bend4.ports["o2"])
+
+    # Add ports
+    c.add_port("o1", port=coupler1.ports["o2"])
+    c.add_port("o2", port=coupler1.ports["o4"])
+    c.add_port("o3", port=coupler2.ports["o2"])
+    c.add_port("o4", port=coupler2.ports["o4"])
+
+    return c
+
+
+if __name__ == "__main__":
+    c = mzi_coupler(length_straight=40, length_coupler=40)
+    c.show()
+    c.write_gds("mzi_coupler.gds")

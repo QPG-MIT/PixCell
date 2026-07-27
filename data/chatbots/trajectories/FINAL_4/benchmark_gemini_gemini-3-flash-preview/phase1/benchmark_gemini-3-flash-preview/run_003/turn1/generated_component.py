@@ -1,0 +1,67 @@
+import gdsfactory as gf
+
+@gf.cell
+def adiabatic_coupler_recreation():
+    """
+    Recreates the symmetric coupler geometry using S-bend primitives.
+    Footprint constraint: 18um x 3um
+    """
+    c = gf.Component("symmetric_adiabatic_coupler")
+    
+    # 1. Configuration Constants
+    length = 18.0         # Total device length
+    height = 3.0         # Total device height
+    width = 0.5          # Waveguide width
+    center_gap = 0.1     # Gap at the narrowest point
+    
+    # 2. Vertical Calculation
+    # At the ends (x=0 and x=18), we want the edges to touch the footprint boundaries.
+    # Edge at 1.5um -> Center at 1.5 - (width/2) = 1.25um
+    y_start_top = (height / 2) - (width / 2) 
+    
+    # At the center (x=9), we want the narrow gap.
+    # Center of top waveguide = (gap/2) + (width/2) = 0.05 + 0.25 = 0.3um
+    y_center_top = (center_gap / 2) + (width / 2)
+    
+    # Total vertical drop for one S-bend segment
+    dy = y_start_top - y_center_top # 0.95um
+    
+    # 3. Create Cross-Section
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    # 4. Construct Top Arm
+    # The top arm is two mirrored S-bends
+    top_left = c << gf.components.bend_s(size=(length/2, -dy), cross_section=xs)
+    top_right = c << gf.components.bend_s(size=(length/2, dy), cross_section=xs)
+    
+    # Position the top arm
+    top_left.movey(y_start_top)
+    top_right.connect("o1", top_left.ports["o2"])
+    
+    # 5. Construct Bottom Arm
+    # The bottom arm mirrors the top geometry across the X-axis
+    bot_left = c << gf.components.bend_s(size=(length/2, dy), cross_section=xs)
+    bot_right = c << gf.components.bend_s(size=(length/2, -dy), cross_section=xs)
+    
+    # Position the bottom arm
+    bot_left.movey(-y_start_top)
+    bot_right.connect("o1", bot_left.ports["o2"])
+    
+    # 6. Expose Ports
+    c.add_port("o1", port=top_left.ports["o1"])
+    c.add_port("o2", port=top_right.ports["o2"])
+    c.add_port("o3", port=bot_left.ports["o1"])
+    c.add_port("o4", port=bot_right.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Initialize the component
+    device = adiabatic_coupler_recreation()
+    
+    # EXPLICITLY WRITE THE GDS FILE
+    # This creates 'coupler.gds' in your current working directory
+    device.write_gds("coupler.gds")
+    
+    print("GDS file 'coupler.gds' has been generated.")
+    print(f"Final Dimensions: {device.size_info.width:.1f}um x {device.size_info.height:.1f}um")

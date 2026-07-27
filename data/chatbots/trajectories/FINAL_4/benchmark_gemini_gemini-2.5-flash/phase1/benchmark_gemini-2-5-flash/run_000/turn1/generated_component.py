@@ -1,0 +1,117 @@
+import gdsfactory as gf
+from gdsfactory.typings import LayerSpec # Import LayerSpec from gdsfactory.typings
+
+@gf.cell
+def create_single_wavy_band(width: float = 0.8, initial_dy: float = 0.6, length: float = 18.0, layer: LayerSpec = (1, 0)) -> gf.Component:
+    """
+    Creates a single wavy band composed of two S-bends.
+    The centerline of the band starts at (0,0), displaces vertically by initial_dy at length/2,
+    and returns to (length, 0).
+
+    Args:
+        width: The width of the band.
+        initial_dy: The vertical displacement of the centerline at the midpoint (length/2).
+                    Positive for an upward wave, negative for a downward wave.
+        length: The total horizontal length of the band.
+        layer: GDS layer for the band (e.g., (1, 0)).
+    
+    Returns:
+        A gdsfactory Component representing the wavy band.
+    """
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=width, layer=layer)
+    
+    half_length = length / 2
+    
+    # First S-bend: path goes from (0,0) to (half_length, initial_dy)
+    s1 = c << gf.components.bend_s(size=(half_length, initial_dy), cross_section=xs)
+    
+    # Second S-bend: Its local path goes from (0,0) to (half_length, -initial_dy).
+    # When connected, its start point will be at s1.ports["o2"] (half_length, initial_dy).
+    # Its end point will therefore be (half_length + half_length, initial_dy - initial_dy) = (length, 0).
+    s2 = c << gf.components.bend_s(size=(half_length, -initial_dy), cross_section=xs)
+    s2.connect("o1", s1.ports["o2"])
+    
+    # Add ports to the component for external connection
+    c.add_port("o1", port=s1.ports["o1"])
+    c.add_port("o2", port=s2.ports["o2"])
+    
+    return c
+
+@gf.cell
+def wavy_channel_device() -> gf.Component:
+    """
+    Recreates the geometry from the provided image: two parallel wavy bands
+    forming a channel that narrows in the middle.
+    The device is designed to fit a footprint of [18, 3] micrometers.
+
+    Returns:
+        A gdsfactory Component containing the two wavy bands.
+    """
+    c = gf.Component("wavy_channel_device")
+    
+    # Device parameters derived from image analysis and footprint constraint
+    total_length = 18.0  # From footprint_um[0]
+    total_height = 3.0   # From footprint_um[1]
+    
+    band_width = 0.8     # Estimated width of the black bands from image
+    
+    # Calculate wave_dy:
+    # Based on `band_width = 0.8` and `total_height = 3.0`
+    # Gap at ends = `total_height - 2 * band_width = 3.0 - 2 * 0.8 = 1.4 um`
+    # Gap at middle = `gap_ends - 2 * wave_dy`.
+    # Visually estimating `gap_middle = 0.2 um`.
+    # So, `0.2 = 1.4 - 2 * wave_dy` => `2 * wave_dy = 1.2` => `wave_dy = 0.6`.
+    wave_dy = 0.6
+    layer = (1, 0)
+    
+    # Calculate the Y-reference points for placing the bands' centerlines at their ends
+    # The top band's top edge should be at `y = total_height` at its ends.
+    # So its centerline (which is at `y=0` for `create_single_wavy_band`) should move to `total_height - band_width / 2`.
+    y_ref_top_band = total_height - band_width / 2
+    
+    # The bottom band's bottom edge should be at `y = 0` at its ends.
+    # So its centerline should move to `band_width / 2`.
+    y_ref_bottom_band = band_width / 2
+    
+    # Create the top wavy band
+    # Its centerline path starts at Y=0, dips to Y=-wave_dy, then returns to Y=0.
+    top_band_ref = c << create_single_wavy_band(
+        width=band_width,
+        initial_dy=-wave_dy,  # Negative `dy` to make the wave dip downwards
+        length=total_length,
+        layer=layer
+    )
+    # Position the band so its start/end centerline points are at `y_ref_top_band`
+    top_band_ref.movey(y_ref_top_band)
+    
+    # Create the bottom wavy band
+    # Its centerline path starts at Y=0, rises to Y=+wave_dy, then returns to Y=0.
+    bottom_band_ref = c << create_single_wavy_band(
+        width=band_width,
+        initial_dy=wave_dy,   # Positive `dy` to make the wave rise upwards
+        length=total_length,
+        layer=layer
+    )
+    # Position the band so its start/end centerline points are at `y_ref_bottom_band`
+    bottom_band_ref.movey(y_ref_bottom_band)
+    
+    # Add ports to the main component for potential connection in larger designs
+    c.add_port("o1_top", port=top_band_ref.ports["o1"])
+    c.add_port("o2_top", port=top_band_ref.ports["o2"])
+    c.add_port("o1_bot", port=bottom_band_ref.ports["o1"])
+    c.add_port("o2_bot", port=bottom_band_ref.ports["o2"])
+    
+    return c
+
+# Example usage to visualize and save the GDS
+if __name__ == "__main__":
+    device = wavy_channel_device()
+    
+    # Verify the footprint
+    print(f"Device bounds: x_min={device.xmin}, y_min={device.ymin}, x_max={device.xmax}, y_max={device.ymax}")
+    # Expected: x_min=0.0, y_min=0.0, x_max=18.0, y_max=3.0
+
+    # To plot (requires KLayout or similar GDS viewer installed for gf.show)
+    # gf.show(device) 
+    device.write_gds("wavy_channel_device.gds")

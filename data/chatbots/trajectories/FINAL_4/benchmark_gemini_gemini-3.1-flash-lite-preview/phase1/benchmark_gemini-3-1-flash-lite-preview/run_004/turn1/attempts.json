@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:14.909610",
+      "api_duration_seconds": 25.116209030151367,
+      "usage": {
+        "input_tokens": 3157,
+        "output_tokens": 857,
+        "total_tokens": 7787
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:10:41.366557",
+      "api_duration_seconds": 20.047200679779053,
+      "usage": {
+        "input_tokens": 4045,
+        "output_tokens": 786,
+        "total_tokens": 7902
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:11:02.953107",
+      "api_duration_seconds": 21.886162996292114,
+      "usage": {
+        "input_tokens": 4850,
+        "output_tokens": 727,
+        "total_tokens": 9057
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.components' has no attribute 'chain'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12052,
+    "output_tokens": 2370,
+    "total_tokens": 24746
+  }
+}

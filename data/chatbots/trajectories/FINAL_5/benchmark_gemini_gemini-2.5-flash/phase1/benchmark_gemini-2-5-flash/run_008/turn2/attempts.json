@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:21:17.257791",
+      "api_duration_seconds": 122.39198184013367,
+      "usage": {
+        "input_tokens": 8431,
+        "output_tokens": 4332,
+        "total_tokens": 37336
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: circle() got an unexpected keyword argument 'centered'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:23:20.984798",
+      "api_duration_seconds": 20.633437871932983,
+      "usage": {
+        "input_tokens": 12789,
+        "output_tokens": 3789,
+        "total_tokens": 17001
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'circle_gdsfactorypcomponentspshapespcircle_R0p15_AR2p5_L1_0' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:23:42.902540",
+      "api_duration_seconds": 28.52329993247986,
+      "usage": {
+        "input_tokens": 16637,
+        "output_tokens": 3579,
+        "total_tokens": 23060
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'circle_gdsfactorypcomponentspshapespcircle_R0p15_AR2p5_L1_0' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 37857,
+    "output_tokens": 11700,
+    "total_tokens": 77397
+  }
+}

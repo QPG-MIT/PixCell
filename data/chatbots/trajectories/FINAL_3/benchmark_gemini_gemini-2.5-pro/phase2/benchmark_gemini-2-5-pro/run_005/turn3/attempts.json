@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:22:34.715902",
+      "api_duration_seconds": 107.402508020401,
+      "usage": {
+        "input_tokens": 3646,
+        "output_tokens": 1563,
+        "total_tokens": 17555
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function create_crossing...<lambda> at 0x12ee78f40>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:24:23.333536",
+      "api_duration_seconds": 23.879618167877197,
+      "usage": {
+        "input_tokens": 5317,
+        "output_tokens": 1586,
+        "total_tokens": 8328
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function create_crossing...<lambda> at 0x129b80ea0>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:24:48.452754",
+      "api_duration_seconds": 46.87574481964111,
+      "usage": {
+        "input_tokens": 7011,
+        "output_tokens": 1920,
+        "total_tokens": 12967
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')\nAttributeError: 'Info' object has no attribute 'path'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15974,
+    "output_tokens": 5069,
+    "total_tokens": 38850
+  }
+}

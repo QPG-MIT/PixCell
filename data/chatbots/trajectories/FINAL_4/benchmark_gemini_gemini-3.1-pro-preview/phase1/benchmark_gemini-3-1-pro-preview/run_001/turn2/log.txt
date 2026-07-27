@@ -1,0 +1,101 @@
+Turn 2 Response:
+
+The error occurs because the 18x3 µm footprint constraint forces the S-bends into a geometry where their minimum bend radius (~7.6 µm) is smaller than the default minimum bend radius allowed by `gdsfactory` (10.0 µm). 
+
+To fix this, we must explicitly override the `radius` and `radius_min` properties in the cross-section definition to allow for tighter bends without raising an exception.
+
+Here is the corrected and fully functional script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler() -> gf.Component:
+    """
+    Creates a symmetric directional coupler with a straight coupling region 
+    and S-bend transitions to match the target geometry.
+    The total footprint is bounded strictly to 18x3 um.
+    """
+    c = gf.Component("symmetric_coupler")
+    
+    # Structural parameters
+    wg_width = 0.5
+    gap = 0.2
+    
+    # By default, gdsfactory enforces a minimum bend radius of 10.0 um.
+    # The compact 18x3 footprint forces S-bends with a minimum radius around 7.6 um.
+    # We relax the radius constraints in the cross-section to allow this geometry.
+    xs = gf.cross_section.cross_section(
+        width=wg_width, 
+        layer=(1, 0), 
+        radius=1.0, 
+        radius_min=1.0
+    )
+    
+    # Footprint constraints
+    total_length = 18.0
+    total_height = 3.0
+    
+    # --- Proportions ---
+    # Assign 1/3 of the length to the straight coupling region and 1/3 to each S-bend
+    L_c = 6.0
+    L_s = (total_length - L_c) / 2.0  # 6.0 um
+    
+    # --- Y-Axis Offsets ---
+    # To satisfy the total height of 3.0 um, the outer edge is at +/- 1.5.
+    outer_center = (total_height / 2.0) - (wg_width / 2.0)  # y = 1.25
+    
+    # The inner edges in the coupling region are separated by the gap
+    inner_center = (gap / 2.0) + (wg_width / 2.0)           # y = 0.35
+    
+    # The vertical displacement (dy) for each S-bend to bridge outer and inner
+    dy = outer_center - inner_center                        # dy = 0.9
+    
+    # --- Component Primitives ---
+    straight_mid = gf.components.straight(length=L_c, cross_section=xs)
+    
+    # S-bends for the Top arm (moving down, then up)
+    sbend_top_in = gf.components.bend_s(size=(L_s, -dy), cross_section=xs)
+    sbend_top_out = gf.components.bend_s(size=(L_s, dy), cross_section=xs)
+    
+    # S-bends for the Bottom arm (moving up, then down)
+    sbend_bot_in = gf.components.bend_s(size=(L_s, dy), cross_section=xs)
+    sbend_bot_out = gf.components.bend_s(size=(L_s, -dy), cross_section=xs)
+    
+    # --- Assembly: Top Arm ---
+    t_in = c << sbend_top_in
+    t_mid = c << straight_mid
+    t_out = c << sbend_top_out
+    
+    # Position the input port of the top S-bend
+    t_in.movey(outer_center)
+    
+    # Connect segments
+    t_mid.connect("o1", t_in.ports["o2"])
+    t_out.connect("o1", t_mid.ports["o2"])
+    
+    # --- Assembly: Bottom Arm ---
+    b_in = c << sbend_bot_in
+    b_mid = c << straight_mid
+    b_out = c << sbend_bot_out
+    
+    # Position the input port of the bottom S-bend
+    b_in.movey(-outer_center)
+    
+    # Connect segments
+    b_mid.connect("o1", b_in.ports["o2"])
+    b_out.connect("o1", b_mid.ports["o2"])
+    
+    # --- External Ports ---
+    c.add_port("o1", port=t_in.ports["o1"])
+    c.add_port("o2", port=b_in.ports["o1"])
+    c.add_port("o3", port=t_out.ports["o2"])
+    c.add_port("o4", port=b_out.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    device = symmetric_coupler()
+    # Write the GDS file
+    device.write_gds("symmetric_coupler.gds")
+```

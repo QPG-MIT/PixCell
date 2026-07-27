@@ -1,0 +1,40 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_device():
+    c = gf.Component("optical_device")
+
+    # Cross-section parameters
+    xs = gf.cross_section.cross_section(width=10, layer=(1, 0))
+
+    # Horizontal bars
+    num_bars = 5  # Number of horizontal bars
+    spacing = 20   # Spacing between bars
+
+    for i in range(num_bars):
+        y_offset = (i - (num_bars - 1) / 2) * spacing
+        bar = c << gf.components.straight(length=100, cross_section=xs)
+        bar.movey(y_offset)
+        bar.movex(-50) # center around (0,0)
+
+    return c
+
+device = create_device()
+device.write_gds("optical_device.gds")
+device.show()
+```
+
+**Reasoning for the changes:**
+
+1. **Simplified Structure:** The original code was overly complex and attempted to mimic the previous image, which had a very different structure.  The target image is a simple set of horizontal bars.
+2. **Loop for Bars:**  Instead of creating each bar individually, a loop iterates `num_bars` times to create and position each straight waveguide. This makes the code more concise and scalable.
+3. **Clear Spacing Parameter:**  The `spacing` variable controls the vertical distance between the bars, allowing for easy adjustment.
+4. **Centering:** added movex to center the bar around the (0,0) coordinate.
+5. **Width Parameter:** Changed the cross section to be wider
+6. **Simplified Cross Section:** Used default cross section values, but set layer and width.
+7. **Removed Unnecessary Components:** The code no longer includes unnecessary bends or components.
+
+This revised code directly addresses the requirements of the problem, resulting in a much simpler and accurate representation of the image.  It also adheres to the specified parametric function requirement. I have analyzed the image, and chosen straight lines with the same thickness as the distance between them.

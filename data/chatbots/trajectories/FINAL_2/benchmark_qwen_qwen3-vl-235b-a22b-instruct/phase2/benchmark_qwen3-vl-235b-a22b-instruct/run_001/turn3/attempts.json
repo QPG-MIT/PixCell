@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:29:01.566377",
+      "api_duration_seconds": 98.51321530342102,
+      "usage": {
+        "input_tokens": 5185,
+        "output_tokens": 3078,
+        "total_tokens": 8263
+      },
+      "success": false,
+      "failure_type": "no_code_extracted",
+      "error_message": null,
+      "code_extracted": false
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:30:40.080352",
+      "api_duration_seconds": 107.83234667778015,
+      "usage": {
+        "input_tokens": 13711,
+        "output_tokens": 2775,
+        "total_tokens": 16486
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_2/benchmark_qwen_qwen3-vl-235b-a22b-instruct/phase2/benchmark_qwen3-vl-235b-a22b-instruct/run_001/turn3/generated_component.py\", line 139, in <module>\n    device = recreate_shape()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/pytho",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:32:29.238828",
+      "api_duration_seconds": 55.837905168533325,
+      "usage": {
+        "input_tokens": 16984,
+        "output_tokens": 1379,
+        "total_tokens": 18363
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 35880,
+    "output_tokens": 7232,
+    "total_tokens": 43112
+  }
+}

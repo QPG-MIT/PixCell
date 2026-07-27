@@ -1,0 +1,113 @@
+import gdsfactory as gf
+
+@gf.cell
+def create_prong(
+    base_width: float = 4.0,
+    top_width: float = 2.0,
+    taper_height: float = 2.0,
+    straight_height: float = 2.0,
+) -> gf.Component:
+    """Creates a single vertical prong component with a tapered base.
+
+    The component's origin (0, 0) is at the center of its base line.
+
+    Args:
+        base_width: Width at the bottom of the taper.
+        top_width: Width of the straight section and top of the taper.
+        taper_height: Height of the tapered section.
+        straight_height: Height of the top straight section.
+    """
+    c = gf.Component()
+
+    # Create the tapered base. A standard taper's length is along x, so we rotate it.
+    taper = c << gf.components.taper(
+        length=taper_height, width1=base_width, width2=top_width
+    )
+    taper.rotate(90)
+    taper.ymin = 0  # Position the base of the taper at y=0
+
+    # Create the straight top section
+    straight = c << gf.components.rectangle(size=(top_width, straight_height))
+    # Place it directly on top of the taper
+    straight.ymin = taper.ymax
+
+    return c
+
+
+@gf.cell
+def recreated_device() -> gf.Component:
+    """
+    Recreates the device from the image using parametric gdsfactory components.
+
+    The final shape is created by a boolean union of its constituent parts.
+    """
+    # --- 1. Define Dimensions based on footprint and image proportions ---
+    body_width = 25.0
+    body_height = 5.0
+
+    prong_base_width = 4.0
+    prong_top_width = 2.0
+    prong_taper_height = 2.0
+    prong_straight_height = 2.0
+    prong_gap = 3.0
+    prong_center_spacing = prong_base_width + prong_gap  # 7.0
+
+    bottom_taper_height = 1.0
+    bottom_taper_top_width = 4.0
+    bottom_taper_bottom_width = 2.0
+
+    # This component will hold the individual parts before the union operation
+    parts = gf.Component("parts")
+
+    # --- 2. Create and Position Primitives ---
+
+    # Main rectangular body, centered at the origin
+    body = parts << gf.components.rectangle(size=(body_width, body_height), centered=True)
+
+    # Create a reusable cell for the prong
+    prong_cell = create_prong(
+        base_width=prong_base_width,
+        top_width=prong_top_width,
+        taper_height=prong_taper_height,
+        straight_height=prong_straight_height,
+    )
+    
+    # FIX: Instead of creating an array object, create four individual instances in a loop.
+    # This avoids API incompatibilities with array instance types.
+    
+    # Calculate the starting x-position to center the group of four prongs.
+    # The total span of the prong centers is (num_prongs - 1) * spacing.
+    total_prongs_span = (4 - 1) * prong_center_spacing
+    start_x = -total_prongs_span / 2
+    
+    # The y-position for the bottom of each prong is the top of the main body.
+    y_pos = body.ymax
+
+    # Add the four prong instances
+    for i in range(4):
+        x_pos = start_x + i * prong_center_spacing
+        prong_ref = parts << prong_cell
+        prong_ref.origin = (x_pos, y_pos)
+
+    # Bottom tapered protrusion
+    bottom_taper = parts << gf.components.taper(
+        length=bottom_taper_height,
+        width1=bottom_taper_top_width,
+        width2=bottom_taper_bottom_width,
+    )
+    # Rotate to point downwards and attach to the bottom of the body
+    bottom_taper.rotate(-90)
+    bottom_taper.centerx = body.centerx
+    bottom_taper.ymax = body.ymin
+
+    # --- 3. Perform Boolean Union ---
+    # Merge all polygons in the 'parts' component into a single shape
+    c = gf.geometry.union(parts, layer=(1, 0))
+    c.name = "recreated_device"
+    return c
+
+
+# Create an instance of the component to view or export
+final_device = recreated_device()
+# final_device.show() # to display in klayout
+# final_device.write_gds("recreated_device.gds")

@@ -1,0 +1,120 @@
+import gdsfactory as gf
+
+@gf.cell
+def custom_coupler_crossover_shape() -> gf.Component:
+    """
+    Recreates the geometry shown in the image (crossover) using GDSFactory parametric functions.
+    This version uses gf.components.bend_s to achieve smooth, rounded crossover shapes,
+    matching the visual style of the target image.
+
+    The device consists of two waveguides that start separated, bend towards each other,
+    cross over in the central section, and then bend away to swap their final vertical positions.
+
+    The total footprint is 120um x 4um, with the waveguides having a width of 0.5um.
+    """
+    c = gf.Component("custom_coupler_crossover_shape")
+    
+    # Define the cross-section for the waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    # Device footprint constraints
+    total_length = 120.0  # Total length of the device in um
+    total_height = 4.0    # Total height (vertical span) of the device in um
+
+    # Calculate waveguide offsets based on total_height and waveguide_width
+    waveguide_width = xs.width
+    
+    # Y-coordinate for the center of the outer waveguides (topmost and bottommost input/output position)
+    outer_y_offset = total_height / 2 - waveguide_width / 2 # = 2.0 - 0.25 = 1.75 um
+
+    # Define horizontal segments for the device structure
+    L_straight_end = 20.0  # Length of the straight input/output sections
+    
+    # The remaining length is dedicated to the two S-bends forming the crossover
+    L_crossover_section = total_length - 2 * L_straight_end
+    
+    # Each S-bend (half of the full crossover) covers half of the crossover length
+    # and half of the total y-shift (from outer_y_offset to 0, or 0 to outer_y_offset)
+    s_bend_dx = L_crossover_section / 2
+    s_bend_dy = outer_y_offset # This is the y-offset for one 'half-S' section
+
+    # --- Top Waveguide Construction (starts high, ends low) ---
+    # 1. Straight input segment
+    wg_top_in = c << gf.components.straight(length=L_straight_end, cross_section=xs)
+    wg_top_in.movey(outer_y_offset) # Position the entire segment at the top initial Y-level
+
+    # 2. First S-bend: from (+outer_y_offset) to (0)
+    # The dy for this bend is negative as it goes downwards
+    s_bend_top1 = c << gf.components.bend_s(size=(s_bend_dx, -s_bend_dy), cross_section=xs)
+    s_bend_top1.connect("o1", wg_top_in.ports["o2"]) # Connect to the end of the straight input
+
+    # 3. Second S-bend: from (0) to (-outer_y_offset)
+    # The dy for this bend is also negative as it continues downwards
+    s_bend_top2 = c << gf.components.bend_s(size=(s_bend_dx, -s_bend_dy), cross_section=xs)
+    s_bend_top2.connect("o1", s_bend_top1.ports["o2"]) # Connect to the end of the first S-bend
+
+    # 4. Straight output segment
+    wg_top_out = c << gf.components.straight(length=L_straight_end, cross_section=xs)
+    wg_top_out.connect("o1", s_bend_top2.ports["o2"]) # Connect to the end of the second S-bend
+
+
+    # --- Bottom Waveguide Construction (starts low, ends high) ---
+    # 1. Straight input segment
+    wg_bot_in = c << gf.components.straight(length=L_straight_end, cross_section=xs)
+    wg_bot_in.movey(-outer_y_offset) # Position the entire segment at the bottom initial Y-level
+
+    # 2. First S-bend: from (-outer_y_offset) to (0)
+    # The dy for this bend is positive as it goes upwards
+    s_bend_bot1 = c << gf.components.bend_s(size=(s_bend_dx, s_bend_dy), cross_section=xs)
+    s_bend_bot1.connect("o1", wg_bot_in.ports["o2"]) # Connect to the end of the straight input
+
+    # 3. Second S-bend: from (0) to (+outer_y_offset)
+    # The dy for this bend is also positive as it continues upwards
+    s_bend_bot2 = c << gf.components.bend_s(size=(s_bend_dx, s_bend_dy), cross_section=xs)
+    s_bend_bot2.connect("o1", s_bend_bot1.ports["o2"]) # Connect to the end of the first S-bend
+
+    # 4. Straight output segment
+    wg_bot_out = c << gf.components.straight(length=L_straight_end, cross_section=xs)
+    wg_bot_out.connect("o1", s_bend_bot2.ports["o2"]) # Connect to the end of the second S-bend
+
+    # --- Expose the input/output ports of the main component ---
+    # Standard 2x2 port naming convention: o1 (top-left), o2 (bottom-left),
+    # o3 (top-right), o4 (bottom-right).
+    # For a crossover, inputs o1 and o2 swap positions to outputs o4 and o3 respectively.
+    c.add_port("o1", port=wg_top_in.ports["o1"])   # Input port for the waveguide starting at top-left
+    c.add_port("o2", port=wg_bot_in.ports["o1"])   # Input port for the waveguide starting at bottom-left
+    
+    # Output ports are swapped due to the crossover
+    c.add_port("o3", port=wg_bot_out.ports["o2"])  # Output port for the waveguide that started at bottom-left (now top-right)
+    c.add_port("o4", port=wg_top_out.ports["o2"])  # Output port for the waveguide that started at top-left (now bottom-right)
+
+    return c
+
+if __name__ == "__main__":
+    # Create an instance of the custom coupler shape
+    my_device = custom_coupler_crossover_shape()
+    
+    # Print the bounding box and dimensions to verify against the footprint constraint
+    bbox = my_device.bbox()
+    
+    # Access width and height directly from the DBox object
+    width = bbox.width()
+    height = bbox.height()
+    
+    print(f"Device Bounding Box: {bbox}")
+    print(f"Device Width: {width:.3f} um, Height: {height:.3f} um")
+    
+    # Check against the desired footprint
+    expected_width = 120.0
+    expected_height = 4.0
+    print(f"Expected Width: {expected_width} um, Expected Height: {expected_height} um")
+
+    # Assertions to ensure the dimensions are as expected within a small tolerance
+    assert abs(width - expected_width) < 1e-3, f"Width mismatch: Expected {expected_width}, Got {width}"
+    assert abs(height - expected_height) < 1e-3, f"Height mismatch: Expected {expected_height}, Got {height}"
+    
+    # Save the component to a GDSII file
+    my_device.write_gds("custom_coupler_crossover_shape.gds")
+    
+    # Display the component using the GDSFactory viewer (requires KLayout or similar)
+    # gf.show(my_device) # Uncomment to view the generated GDS in KLayout

@@ -1,0 +1,110 @@
+import numpy as np
+import gdsfactory as gf
+from gdsfactory.cross_section import Section, CrossSection
+
+def create_s_bend_path(L, y_straight, y_end, L_straight):
+    """
+    Creates a perfectly smooth S-bend path using a raised cosine transition.
+    This ensures perfectly horizontal tangents at both the start and end of the transitions.
+    """
+    L_trans = (L - L_straight) / 2.0
+    
+    # Left transition (flaring inwards to straight section)
+    x_left = np.linspace(-L/2, -L_straight/2, 200)
+    t_left = (x_left - (-L/2)) / L_trans
+    y_left = y_end + (y_straight - y_end) * (1 - np.cos(np.pi * t_left)) / 2
+    
+    # Center straight section
+    x_mid = np.array([-L_straight/2, L_straight/2])
+    y_mid = np.array([y_straight, y_straight])
+    
+    # Right transition (flaring outwards to ends)
+    x_right = np.linspace(L_straight/2, L/2, 200)
+    t_right = (x_right - L_straight/2) / L_trans
+    y_right = y_straight + (y_end - y_straight) * (1 - np.cos(np.pi * t_right)) / 2
+    
+    x_all = np.concatenate([x_left, x_mid, x_right])
+    y_all = np.concatenate([y_left, y_mid, y_right])
+    
+    return gf.Path(np.column_stack((x_all, y_all)))
+
+def build_multiline_cross_section(widths, gaps, layer):
+    """
+    Dynamically builds a complex CrossSection of multiple parallel waveguides.
+    This guarantees perfectly constant gaps during bends.
+    """
+    sections_list = []
+    total_width = sum(widths) + sum(gaps)
+    # Start from the bottom edge
+    current_y = -total_width / 2 
+    
+    for i in range(len(widths)):
+        w = widths[i]
+        center_offset = current_y + w / 2
+        sections_list.append(Section(width=w, offset=center_offset, layer=layer, name=f"sec_{i}"))
+        
+        current_y += w
+        if i < len(gaps):
+            current_y += gaps[i]
+            
+    return CrossSection(sections=sections_list)
+
+@gf.cell
+def mode_converter_coupler():
+    c = gf.Component("mode_converter_coupler")
+    layer = (1, 0)
+    
+    # --- Global Footprint Restrictions ---
+    L = 120.0
+    L_straight = 60.0 # Length of the completely flat central region
+    
+    # --- 1. Center Bus ---
+    w_c = 0.08
+    g_c = 0.06
+    center_widths = [w_c] * 5
+    center_gaps = [g_c] * 4
+    xs_center = build_multiline_cross_section(center_widths, center_gaps, layer)
+    
+    path_center = gf.Path([(-L/2, 0), (L/2, 0)])
+    c << gf.path.extrude(path_center, cross_section=xs_center)
+    
+    # --- 2. Upper Block ---
+    w_in = 0.25   # Thick inner boundary
+    w_thin = 0.06 # Thin slot separators
+    g_t = 0.06    # Gaps inside the block
+    w_out = 0.35  # Thickest outer boundary
+    
+    upper_widths = [w_in, w_thin, w_thin, w_thin, w_thin, w_out]
+    upper_gaps = [g_t] * 5
+    xs_upper = build_multiline_cross_section(upper_widths, upper_gaps, layer)
+    
+    # Calculate geometric positions to satisfy max Y bounding box = 2.0
+    total_width_upper = sum(upper_widths) + sum(upper_gaps) # 1.14
+    
+    y_center_bus_edge = (5 * w_c + 4 * g_c) / 2 # 0.32
+    gap_to_block = 0.06
+    
+    y_straight_inner_edge = y_center_bus_edge + gap_to_block # 0.38
+    y_straight_center = y_straight_inner_edge + total_width_upper / 2 # 0.95
+    
+    y_end_outer_edge = 2.0 # Force exact footprint bound
+    y_end_center = y_end_outer_edge - total_width_upper / 2 # 1.43
+    
+    path_upper = create_s_bend_path(L, y_straight_center, y_end_center, L_straight)
+    c << gf.path.extrude(path_upper, cross_section=xs_upper)
+    
+    # --- 3. Lower Block (Mirrored) ---
+    # We invert the widths/gaps so the thick outer boundary stays on the outside (bottom)
+    lower_widths = upper_widths[::-1]
+    lower_gaps = upper_gaps[::-1]
+    xs_lower = build_multiline_cross_section(lower_widths, lower_gaps, layer)
+    
+    # Path is mirrored exactly across the X-axis
+    path_lower = create_s_bend_path(L, -y_straight_center, -y_end_center, L_straight)
+    c << gf.path.extrude(path_lower, cross_section=xs_lower)
+    
+    return c
+
+if __name__ == "__main__":
+    c = mode_converter_coupler()
+    c.write_gds("mode_converter_coupler.gds")

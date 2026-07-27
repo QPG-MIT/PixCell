@@ -1,0 +1,120 @@
+import gdsfactory as gf
+
+@gf.cell
+def dense_coupler_array():
+    """
+    Parametric recreation of the dense waveguide array using Boolean subtraction.
+    
+    Structure:
+    - Footprint: 120um x 4um
+    - A solid silicon slab (120x4) is cut by 4 S-shaped gaps.
+    - Result: 3 central tapered waveguides and 2 outer solid blocks.
+    """
+    c = gf.Component()
+
+    # 1. Device Dimensions
+    L = 120.0
+    W = 4.0
+    
+    # Longitudinal Segmentation
+    # Split roughly into thirds for the taper/straight/taper profile
+    l_center = 40.0
+    l_taper = (L - l_center) / 2  # 40.0
+    
+    # Extension to ensure the gaps cut all the way through the slab edge
+    extension = 2.0 
+
+    # 2. Define the Mask (The Gaps)
+    # We build a separate component containing the negative space
+    mask = gf.Component()
+    
+    gap_width = 0.25 
+    xs_gap = gf.cross_section.cross_section(width=gap_width)
+
+    # Y-coordinates for the 4 gaps
+    # Center Region: Tight coupling spacing
+    # Outer Region: Fanned out for mode expansion/input connection
+    
+    # Gap centers in the middle (Coupling region)
+    # Creates ~350nm wide waveguides between gaps
+    y_c_list = [0.9, 0.3, -0.3, -0.9]
+    
+    # Gap centers at the edges (Ports)
+    # Flares out to ~1.0um pitch
+    y_o_list = [1.7, 0.7, -0.7, -1.7]
+    
+    # Construct the 4 gap paths
+    for y_o, y_c in zip(y_o_list, y_c_list):
+        # We build the path segment by segment using 'connect' to ensure continuity
+        
+        # A. Start Extension (Left, outside device)
+        start_stub = mask << gf.components.straight(length=extension, cross_section=xs_gap)
+        start_stub.move((-L/2 - extension, y_o))
+        
+        # B. Left Taper (S-Bend Fan-in)
+        dy_left = y_c - y_o
+        bend_left = mask << gf.components.bend_s(
+            size=(l_taper, dy_left), 
+            cross_section=xs_gap
+        )
+        bend_left.connect("o1", start_stub.ports["o2"])
+        
+        # C. Center Straight Section
+        straight = mask << gf.components.straight(
+            length=l_center, 
+            cross_section=xs_gap
+        )
+        straight.connect("o1", bend_left.ports["o2"])
+        
+        # D. Right Taper (S-Bend Fan-out)
+        dy_right = y_o - y_c
+        bend_right = mask << gf.components.bend_s(
+            size=(l_taper, dy_right),
+            cross_section=xs_gap
+        )
+        bend_right.connect("o1", straight.ports["o2"])
+        
+        # E. End Extension (Right, outside device)
+        end_stub = mask << gf.components.straight(length=extension, cross_section=xs_gap)
+        end_stub.connect("o1", bend_right.ports["o2"])
+
+    # 3. Create the Main Body Slab
+    # A solid block covering the device footprint
+    slab_comp = gf.Component()
+    slab_ref = slab_comp << gf.components.rectangle(
+        size=(L, W), 
+        layer=(1, 0), 
+        centered=True
+    )
+
+    # 4. Apply Boolean Subtraction
+    # Geometry = Slab - Mask
+    final_geometry = gf.boolean(
+        A=slab_comp,
+        B=mask,
+        operation="not",
+        layer=(1, 0)
+    )
+
+    c.add_ref(final_geometry)
+    
+    # 5. Add Ports (located at the waveguide centers at the input)
+    # Based on y_o_list [1.7, 0.7, -0.7, -1.7], the WG centers are roughly:
+    # Top WG: between 1.7 and 0.7 -> y=1.2
+    # Center WG: between 0.7 and -0.7 -> y=0.0
+    # Bottom WG: between -0.7 and -1.7 -> y=-1.2
+    
+    c.add_port("o1", center=(-L/2, 1.2), width=0.8, orientation=180, layer=(1,0))
+    c.add_port("o2", center=(-L/2, 0.0), width=1.0, orientation=180, layer=(1,0))
+    c.add_port("o3", center=(-L/2, -1.2), width=0.8, orientation=180, layer=(1,0))
+    
+    c.add_port("o4", center=(L/2, 1.2), width=0.8, orientation=0, layer=(1,0))
+    c.add_port("o5", center=(L/2, 0.0), width=1.0, orientation=0, layer=(1,0))
+    c.add_port("o6", center=(L/2, -1.2), width=0.8, orientation=0, layer=(1,0))
+
+    return c
+
+if __name__ == "__main__":
+    device = dense_coupler_array()
+    device.show()
+    device.write_gds("dense_coupler_array.gds")

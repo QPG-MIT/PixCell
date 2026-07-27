@@ -1,0 +1,156 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def wavy_coupler(
+    strip_width: float = 0.75, # Adjusted based on visual analysis for a thicker look
+    gap_center: float = 0.2,   # Minimum gap between strips at the center (x=0)
+    gap_outer: float = 1.5,    # Adjusted to ensure total height is 3um with new strip_width
+    length: float = 18.0,
+    npoints: int = 201,        # Increased points for smoother curve definition
+    layer: tuple = (1, 0),
+) -> gf.Component:
+    """
+    Creates a device with two wavy parallel strips that form a coupler.
+    The gap between the strips narrows towards the center and widens at the ends.
+
+    The geometry is defined using two smooth paths, extruded with a constant
+    cross-section. The paths' centerlines follow a cosine-like function to
+    create the desired wavy shape and gap variation.
+
+    Args:
+        strip_width: Width of each individual strip.
+        gap_center: Minimum gap between the two strips at the center (x=0).
+        gap_outer: Gap between the two strips at the ends (x=-length/2, x=length/2).
+        length: Total length of the device along the x-axis.
+        npoints: Number of points to sample the path for smooth curves.
+        layer: GDS layer for the strips.
+    """
+    c = gf.Component()
+    
+    # Define the cross-section for the strips
+    xs = gf.cross_section.cross_section(width=strip_width, layer=layer)
+
+    # Calculate y-coordinates for the centerlines of the strips
+    # The device is designed to be symmetric around y=0.
+
+    # Y-coordinate of the top strip's centerline at the device center (x=0)
+    # The strip's bottom edge is at gap_center/2, so centerline is gap_center/2 + strip_width/2
+    y_top_centerline_at_0 = gap_center / 2 + strip_width / 2
+    
+    # Y-coordinate of the bottom strip's centerline at the device center (x=0)
+    # The strip's top edge is at -gap_center/2, so centerline is -gap_center/2 - strip_width/2
+    y_bottom_centerline_at_0 = -(gap_center / 2 + strip_width / 2)
+
+    # Y-coordinate of the top strip's centerline at the device ends (x = +/-length/2)
+    y_top_centerline_at_ends = gap_outer / 2 + strip_width / 2
+    
+    # Y-coordinate of the bottom strip's centerline at the device ends (x = +/-length/2)
+    y_bottom_centerline_at_ends = -(gap_outer / 2 + strip_width / 2)
+
+    # Generate x-coordinates for path definition, spanning from -length/2 to length/2
+    x_coords = np.linspace(-length / 2, length / 2, npoints)
+
+    points_top = []
+    points_bottom = []
+    
+    # Calculate constants for the cosine function for both strips
+    # The cosine function np.cos(2 * np.pi * x / length) ranges from -1 (at ends) to 1 (at center).
+    # For the top strip: we want y_top_centerline_at_0 (dip) at center (cos=1)
+    # and y_top_centerline_at_ends (peak) at ends (cos=-1).
+    # y = C + A * cos(theta)
+    # C + A = y_top_centerline_at_0
+    # C - A = y_top_centerline_at_ends
+    C_top = (y_top_centerline_at_0 + y_top_centerline_at_ends) / 2
+    A_top = (y_top_centerline_at_0 - y_top_centerline_at_ends) / 2 # This will be negative
+
+    # For the bottom strip: we want y_bottom_centerline_at_0 (peak) at center (cos=1)
+    # and y_bottom_centerline_at_ends (dip) at ends (cos=-1).
+    # C + A = y_bottom_centerline_at_0
+    # C - A = y_bottom_centerline_at_ends
+    C_bottom = (y_bottom_centerline_at_0 + y_bottom_centerline_at_ends) / 2
+    A_bottom = (y_bottom_centerline_at_0 - y_bottom_centerline_at_ends) / 2 # This will be positive
+
+    for x in x_coords:
+        # Calculate y-coordinates for the top strip's centerline
+        # Cosine function ensures horizontal tangents at x = +/- length/2 (peaks/troughs)
+        y_top = C_top + A_top * np.cos(2 * np.pi * x / length)
+        points_top.append((x, y_top))
+        
+        # Calculate y-coordinates for the bottom strip's centerline
+        y_bottom = C_bottom + A_bottom * np.cos(2 * np.pi * x / length)
+        points_bottom.append((x, y_bottom))
+
+    # Create Path objects from the generated points
+    path_top = gf.Path(points_top)
+    path_bottom = gf.Path(points_bottom)
+
+    # Extrude the paths with the defined cross-section to create the GDS geometry
+    c << gf.path.extrude(path_top, cross_section=xs)
+    c << gf.path.extrude(path_bottom, cross_section=xs)
+
+    # Add ports to the ends of the strips for potential connection
+    # Ports are added at the centerline of the strips at the ends (x = +/- length/2)
+    # The orientation is set to match typical waveguide flow (180 for input, 0 for output)
+    c.add_port(
+        name="o1",
+        center=(x_coords[0], y_top_centerline_at_ends),
+        orientation=180,  # Facing left
+        cross_section=xs,
+    )
+    c.add_port(
+        name="o2",
+        center=(x_coords[-1], y_top_centerline_at_ends),
+        orientation=0,  # Facing right
+        cross_section=xs,
+    )
+    c.add_port(
+        name="o3",
+        center=(x_coords[0], y_bottom_centerline_at_ends),
+        orientation=180,  # Facing left
+        cross_section=xs,
+    )
+    c.add_port(
+        name="o4",
+        center=(x_coords[-1], y_bottom_centerline_at_ends),
+        orientation=0,  # Facing right
+        cross_section=xs,
+    )
+
+    return c
+
+# --- Main execution block ---
+# Parameters derived from the provided footprint and visual analysis:
+# Footprint constraint: {"footprint_um": [18, 3]}
+# This implies length = 18.0 um.
+# Total height = 2 * strip_width + gap_outer.
+# With strip_width = 0.75 um: 2 * 0.75 + gap_outer = 1.5 + gap_outer.
+# Footprint height = 3.0 um, so 1.5 + gap_outer = 3.0 => gap_outer = 1.5 um.
+# Visually, gap_center appears quite small, keeping 0.2 um.
+
+# Create the component using the determined parameters
+device = wavy_coupler(
+    strip_width=0.75,   # Increased for a thicker appearance
+    gap_center=0.2,
+    gap_outer=1.5,      # Adjusted to maintain 3um total height
+    length=18.0,
+    npoints=201,        # Increased points for potentially smoother rendering
+    layer=(1, 0)
+)
+
+# Save the GDS file
+file_path = "wavy_coupler.gds"
+device.write_gds(file_path)
+
+# Optional: Print info for debugging or verification
+print(f"GDS file saved to: {file_path}")
+
+# Fix: The error "TypeError: 'DBox' object is not subscriptable" occurs because
+# `device.bbox()` returns a `DBox` object, which has attributes like `xmin`,
+# `xmax`, `ymin`, `ymax`, but cannot be indexed like a list or NumPy array.
+bbox = device.bbox() 
+print(f"Component bounding box: {bbox}")
+
+# Assert footprint dimensions using DBox attributes
+assert np.isclose(bbox.xmax - bbox.xmin, 18.0), f"X dimension mismatch: {bbox.xmax - bbox.xmin} vs 18.0"
+assert np.isclose(bbox.ymax - bbox.ymin, 3.0), f"Y dimension mismatch: {bbox.ymax - bbox.ymin} vs 3.0"

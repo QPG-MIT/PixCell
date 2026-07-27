@@ -1,0 +1,53 @@
+{
+  "turn": 4,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:33:44.318736",
+      "api_duration_seconds": 156.28392601013184,
+      "usage": {
+        "input_tokens": 5076,
+        "output_tokens": 3434,
+        "total_tokens": 8510
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o1' is not a valid port name or index. Available ports: []\"",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:36:21.926086",
+      "api_duration_seconds": 118.5244300365448,
+      "usage": {
+        "input_tokens": 8568,
+        "output_tokens": 2587,
+        "total_tokens": 11155
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\"Must specify layer or cross_section\")\nValueError: Must specify layer or cross_section",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:38:21.682707",
+      "api_duration_seconds": 83.76235699653625,
+      "usage": {
+        "input_tokens": 11195,
+        "output_tokens": 1867,
+        "total_tokens": 13062
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'DInstancePorts' object has no attribute 'items'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 24839,
+    "output_tokens": 7888,
+    "total_tokens": 32727
+  }
+}

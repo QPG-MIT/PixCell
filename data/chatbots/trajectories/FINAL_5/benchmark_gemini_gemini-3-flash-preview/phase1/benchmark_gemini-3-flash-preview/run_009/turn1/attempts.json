@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.888640",
+      "api_duration_seconds": 108.69290399551392,
+      "usage": {
+        "input_tokens": 3171,
+        "output_tokens": 1498,
+        "total_tokens": 14499
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:00.060491",
+      "api_duration_seconds": 21.054519176483154,
+      "usage": {
+        "input_tokens": 4696,
+        "output_tokens": 1273,
+        "total_tokens": 7555
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.12 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:22.723931",
+      "api_duration_seconds": 14.567340612411499,
+      "usage": {
+        "input_tokens": 6015,
+        "output_tokens": 1284,
+        "total_tokens": 7648
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Width of symmetrical cross sections must have be a multiple of 2 dbu. This could cause cross sections and extrusions to become unsymmetrical otherwise. [type=value_error, input_value={'width': 5, 'enclosure':...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the followin",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13882,
+    "output_tokens": 4055,
+    "total_tokens": 29702
+  }
+}

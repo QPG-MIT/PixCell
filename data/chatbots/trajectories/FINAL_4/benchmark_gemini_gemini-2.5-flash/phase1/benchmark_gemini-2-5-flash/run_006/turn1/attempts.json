@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.487920",
+      "api_duration_seconds": 59.42427110671997,
+      "usage": {
+        "input_tokens": 2344,
+        "output_tokens": 2124,
+        "total_tokens": 14886
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:10.486516",
+      "api_duration_seconds": 7.679601192474365,
+      "usage": {
+        "input_tokens": 4487,
+        "output_tokens": 1054,
+        "total_tokens": 5974
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'samples'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:20.513070",
+      "api_duration_seconds": 7.210844993591309,
+      "usage": {
+        "input_tokens": 5570,
+        "output_tokens": 971,
+        "total_tokens": 6715
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12401,
+    "output_tokens": 4149,
+    "total_tokens": 27575
+  }
+}

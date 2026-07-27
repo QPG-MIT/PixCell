@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.876078",
+      "api_duration_seconds": 126.75172591209412,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 2907,
+        "total_tokens": 24084
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:18.123073",
+      "api_duration_seconds": 27.648478984832764,
+      "usage": {
+        "input_tokens": 5764,
+        "output_tokens": 2206,
+        "total_tokens": 12171
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_5/benchmark_gemini_gemini-2.5-flash/phase1/benchmark_gemini-2-5-flash/run_003/turn1/generated_component.py\", line 137, in <module>\n    device = device_from_image()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packag",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:47.408633",
+      "api_duration_seconds": 27.00449824333191,
+      "usage": {
+        "input_tokens": 8517,
+        "output_tokens": 2387,
+        "total_tokens": 14499
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function device_from_ima...width_fn at 0x1261f76a0>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16630,
+    "output_tokens": 7500,
+    "total_tokens": 50754
+  }
+}

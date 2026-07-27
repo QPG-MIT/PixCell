@@ -1,0 +1,75 @@
+import gdsfactory as gf
+
+@gf.cell
+def star_cross_device_v2():
+    """
+    Creates a 4-fold symmetric device with tapered elliptical petals and rectangular stubs.
+    Corrects the center geometry to have sharp inward corners and smooths the tip transition.
+    Footprint constrained to 4.7um x 4.7um.
+    """
+    # 1. Define Dimensions
+    target_footprint = 4.7
+    radius = target_footprint / 2.0  # 2.35 um
+    
+    # Stub parameters
+    stub_len = 0.5
+    stub_width = 0.18
+    # Stub position: Aligned to the outer edge (radius)
+    # Starts at x = 1.85, Ends at x = 2.35
+    stub_center_x = radius - stub_len / 2.0
+    
+    # Petal parameters
+    petal_width = 0.85
+    
+    # OFFSET STRATEGY:
+    # To get sharp inward corners at the center (0,0), the ellipse must be narrower 
+    # at the origin than in its middle. We achieve this by shifting the ellipse 
+    # so it starts at a small negative x value.
+    petal_start_x = -0.15  # Small overlap past center to ensure connection
+    
+    # To ensure a smooth transition to the stub, the ellipse effectively "ends"
+    # slightly after the stub starts.
+    # Stub starts at 1.85. Ending ellipse at 1.90 gives a width at 1.85 that is
+    # closer to the stub width (0.18), reducing the geometric step size.
+    petal_end_x = 1.90
+    
+    # Calculate Ellipse Geometry based on start/end points
+    petal_total_len = petal_end_x - petal_start_x
+    rx = petal_total_len / 2.0
+    ry = petal_width / 2.0
+    petal_center_x = petal_start_x + rx
+
+    # 2. Construct Single Arm
+    # We build the geometry in a temporary component
+    arm_geo = gf.Component()
+    
+    # Create Petal (Ellipse)
+    # Shifted to the calculated center position
+    e = arm_geo << gf.components.ellipse(radii=(rx, ry), layer=(1, 0))
+    e.move((petal_center_x, 0))
+    
+    # Create Stub (Rectangle)
+    s = arm_geo << gf.components.rectangle(size=(stub_len, stub_width), layer=(1, 0), centered=True)
+    s.move((stub_center_x, 0))
+    
+    # Fuse primitives into a single polygon for the arm
+    # This cleans up the internal overlap before we rotate
+    arm_shape = gf.boolean(e, s, operation="or", layer=(1, 0))
+    
+    # 3. Assemble Full Device
+    c = gf.Component()
+    
+    # Add 4 rotated copies of the fused arm
+    for angle in [0, 90, 180, 270]:
+        ref = c << arm_shape
+        ref.rotate(angle)
+        
+    return c
+
+if __name__ == "__main__":
+    device = star_cross_device_v2()
+    device.show()
+    device.write_gds("star_cross_device_v2.gds")
+    
+    # Print stats
+    print(f"Device Size: {device.size_info.width:.2f} x {device.size_info.height:.2f} um")

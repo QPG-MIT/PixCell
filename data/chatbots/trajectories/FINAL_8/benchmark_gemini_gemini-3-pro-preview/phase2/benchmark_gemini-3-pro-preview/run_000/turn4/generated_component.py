@@ -1,0 +1,119 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_120_4_v4():
+    """
+    Creates a fan-in/fan-out device with 3 bundles of 5 waveguides.
+    Footprint: 120um x 4um.
+    """
+    c = gf.Component()
+
+    # 1. Dimensions & Constraints
+    L = 120.0
+    H = 4.0
+    
+    # Waveguide Parameters
+    # Adjusted for 5 lines per bundle with high density
+    n_lines = 5
+    width = 0.1
+    gap = 0.12 
+    pitch = width + gap  # 0.22 um
+
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+
+    # Longitudinal sections (Target has a prominent straight section)
+    l_bend = 20.0
+    l_straight = L - 2 * l_bend  # 80.0
+
+    # ---------------------------------------------------------
+    # 2. Vertical Calculation
+    # ---------------------------------------------------------
+    
+    # A. Middle Bundle (Straight, centered at Y=0)
+    # Centers relative to 0: e.g., -2p, -p, 0, p, 2p
+    y_mid_centers = [(i - (n_lines - 1) / 2.0) * pitch for i in range(n_lines)]
+    
+    # Topmost center of the middle bundle (index 4)
+    y_mid_top_center = y_mid_centers[-1] 
+
+    # B. Top Bundle "Packed" Positions (Center of device)
+    # We maintain the pitch pattern to create a uniform look in the center.
+    # The first line of the top bundle is 1 pitch away from the top of the middle bundle.
+    y_top_packed_start_center = y_mid_top_center + pitch
+    
+    # Calculate the center of the TOPMOST line in the packed state
+    # This is the 5th line (index n-1) of the top bundle
+    y_top_packed_max_center = y_top_packed_start_center + (n_lines - 1) * pitch
+    
+    # C. Top Bundle "Fanned" Positions (Edges of device)
+    # The top bundle pushes out to the boundary Y = H/2 = 2.0
+    # Center of the topmost line at the edge:
+    y_top_fanned_max_center = (H / 2.0) - (width / 2.0)
+    
+    # D. Displacement (dy)
+    # How much the bundle moves vertically from the Edge (Fanned) to the Center (Packed)
+    # dy should be negative (moving down)
+    dy = y_top_packed_max_center - y_top_fanned_max_center
+
+    # ---------------------------------------------------------
+    # 3. Middle Bundle Construction
+    # ---------------------------------------------------------
+    for y in y_mid_centers:
+        s = c << gf.components.straight(length=L, cross_section=xs)
+        s.move((-L/2, y))
+
+    # ---------------------------------------------------------
+    # 4. Top Bundle Construction
+    # ---------------------------------------------------------
+    # Define the shape of a single line in the top bundle:
+    # Starts high -> Bend Down (S-bend) -> Straight -> Bend Up (S-bend)
+    trace_top = gf.Component("trace_top")
+    
+    # Part 1: S-bend moving IN (down)
+    b1 = trace_top << gf.components.bend_s(size=(l_bend, dy), cross_section=xs)
+    
+    # Part 2: Straight interaction region
+    st = trace_top << gf.components.straight(length=l_straight, cross_section=xs)
+    st.connect("o1", b1.ports["o2"])
+    
+    # Part 3: S-bend moving OUT (up) - reverse displacement
+    b2 = trace_top << gf.components.bend_s(size=(l_bend, -dy), cross_section=xs)
+    b2.connect("o1", st.ports["o2"])
+    
+    # Array the top traces
+    for i in range(n_lines):
+        # Calculate start Y position for this line in the Fanned (input) state
+        # We know the topmost line is at y_top_fanned_max_center.
+        # Lower lines are offset by pitch.
+        y_fanned = y_top_fanned_max_center - (n_lines - 1 - i) * pitch
+        
+        ref = c << trace_top
+        ref.move((-L/2, y_fanned))
+
+    # ---------------------------------------------------------
+    # 5. Bottom Bundle Construction (Symmetric)
+    # ---------------------------------------------------------
+    # Bottom bundle moves UP from Fanned to Packed.
+    # Displacement is -dy (positive value).
+    
+    trace_bot = gf.Component("trace_bot")
+    b1b = trace_bot << gf.components.bend_s(size=(l_bend, -dy), cross_section=xs)
+    stb = trace_bot << gf.components.straight(length=l_straight, cross_section=xs)
+    stb.connect("o1", b1b.ports["o2"])
+    b2b = trace_bot << gf.components.bend_s(size=(l_bend, dy), cross_section=xs)
+    b2b.connect("o1", stb.ports["o2"])
+
+    # Array the bottom traces
+    # Mirror coordinates of top bundle
+    for i in range(n_lines):
+        y_fanned_top = y_top_fanned_max_center - (n_lines - 1 - i) * pitch
+        y_fanned_bot = -y_fanned_top
+        
+        ref = c << trace_bot
+        ref.move((-L/2, y_fanned_bot))
+
+    return c
+
+if __name__ == "__main__":
+    component = device_120_4_v4()
+    component.write_gds("device_120_4_v4.gds")
