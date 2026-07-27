@@ -869,7 +869,8 @@ def _collect_bundle(
                         protocol["study_id"],
                         run.hypothesis_id,
                         run.arm_id,
-                    )
+                    ),
+                    source_git_sha=source_git_sha,
                 ),
             }
             for run in runs

@@ -19,8 +19,9 @@ from typing import Any, Literal
 from .attempt_store import AttemptKey, AttemptStore, RunKey, StoredRecord
 
 
-TRACKING_SCHEMA_VERSION = "pixcell-baseline-wandb-mirror-v1"
+TRACKING_SCHEMA_VERSION = "pixcell-baseline-wandb-mirror-v2"
 _METRIC_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_./-]{0,127}$")
+_SOURCE_GIT_SHA = re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?$")
 _WANDB_ENVIRONMENT_LOCK = threading.RLock()
 
 
@@ -36,12 +37,19 @@ class TrackingResult:
     tracking_error_relative_path: str | None = None
 
 
-def deterministic_wandb_run_id(run_key: RunKey) -> str:
+def deterministic_wandb_run_id(
+    run_key: RunKey,
+    *,
+    source_git_sha: str,
+) -> str:
     """Return the stable W&B run ID used for create-or-resume."""
 
+    if not _SOURCE_GIT_SHA.fullmatch(source_git_sha):
+        raise TrackingContractError("source_git_sha must be a Git object SHA")
     canonical = json.dumps(
         {
             "schema_version": TRACKING_SCHEMA_VERSION,
+            "source_git_sha": source_git_sha,
             **run_key.as_dict(),
         },
         ensure_ascii=True,
@@ -144,6 +152,7 @@ class WandbMetricsMirror:
         *,
         store: AttemptStore,
         project: str,
+        source_git_sha: str,
         entity: str | None = None,
         group: str | None = None,
         wandb_dir: Path | None = None,
@@ -151,8 +160,11 @@ class WandbMetricsMirror:
     ) -> None:
         if not project.strip():
             raise TrackingContractError("W&B project must be non-empty")
+        if not _SOURCE_GIT_SHA.fullmatch(source_git_sha):
+            raise TrackingContractError("source_git_sha must be a Git object SHA")
         self.store = store
         self.project = project
+        self.source_git_sha = source_git_sha
         self.entity = entity
         self.group = group
         if self.group is not None and not self.group.strip():
@@ -222,6 +234,7 @@ class WandbMetricsMirror:
             "id": run_id,
             "name": (
                 f"{run_key.study_id}/{run_key.hypothesis_id}/{run_key.arm_id}"
+                f"@{self.source_git_sha[:12]}"
             ),
             # The baseline runner keeps one session per arm open while arms
             # execute concurrently. W&B otherwise returns the process-global
@@ -277,7 +290,10 @@ class WandbRunSession:
     def __init__(self, *, mirror: WandbMetricsMirror, run_key: RunKey) -> None:
         self.mirror = mirror
         self.run_key = run_key
-        self.run_id = deterministic_wandb_run_id(run_key)
+        self.run_id = deterministic_wandb_run_id(
+            run_key,
+            source_git_sha=mirror.source_git_sha,
+        )
         self._run: Any | None = None
         self._closed = False
         self._last_context: tuple[
