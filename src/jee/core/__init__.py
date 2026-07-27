@@ -14,7 +14,9 @@ from .gds_raster_compare import (
 
 from .compute_sse import compute_sse_metrics
 
-from .calibrate_boundary import calculate_calibration
+# Calibration has a single owner: the verifier. jee re-exports it so every
+# existing `from jee.core import calculate_calibration` keeps working.
+from michaelangelo.core.calibrate_boundary import calculate_calibration
 
 from .compare_fixed import (
     load_calibration,

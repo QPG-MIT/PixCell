@@ -65,7 +65,7 @@ Scale factors:
 ## The Calculation
 
 ```python
-# From jee/core/calibrate_boundary.py
+# From michaelangelo/core/calibrate_boundary.py
 
 def calculate_calibration(reference_image, footprint_length_um, footprint_width_um):
     img = load_image(reference_image)
@@ -359,8 +359,8 @@ The system uses asymmetric verification:
 
 | File | Purpose |
 |------|---------|
-| `jee/core/calibrate_boundary.py` | Core calibration calculation |
-| `michaelangelo/core/calibrate_boundary.py` | Copy used by Michaelangelo |
+| `michaelangelo/core/calibrate_boundary.py` | Core calibration calculation (canonical, single owner) |
+| `jee/core/__init__.py` | Re-exports `calculate_calibration` for the optimizer |
 | `michaelangelo/core/compare_absolute.py` | Rasterize GDS and compute metrics |
 | `jee/core/compute_sse.py` | Compute SSE between images |
 | `jee/core/gds_raster_compare.py` | Alternative rasterization for JEE |
