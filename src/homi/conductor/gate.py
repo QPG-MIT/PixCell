@@ -9,7 +9,6 @@ analysis, and (3) optionally proves the declared knob moves real geometry.
 
 from __future__ import annotations
 
-import ast
 import re
 import subprocess
 import sys
@@ -19,97 +18,10 @@ from pathlib import Path
 
 from PIL import Image
 
+from homi.conductor.source_policy import purity_violations
+
 #: A recomputed IoU must match the worker's claim within this (workflow JS: 0.005).
 IOU_CLAIM_TOLERANCE = 0.005
-
-_PURITY_PATTERNS = (
-    r"\badd_polygon\b",
-    r"\bfrom_polygon\b",
-)
-
-# The permitted component vocabulary (paper Table 1). The historical check was
-# a stencil BLACKLIST (mzi|ring|coupler|splitter|mmi families); since the
-# 2026-07-12 re-audit the gate enforces the catalog as a WHITELIST instead:
-# any other gf.components call is a violation. This also resolves the latent
-# blacklist tension where the permitted primitives `ring` and
-# `coupler_straight` matched the ring/coupler stencil families.
-_CATALOG_COMPONENTS = frozenset({
-    "rectangle", "circle", "ring", "cross", "triangle", "ellipse",
-    "regular_polygon", "L", "straight", "bend_euler", "bend_circular",
-    "bend_s", "taper", "coupler_straight",
-})
-_COMPONENT_REF = re.compile(r"\b(?:gf|gdsfactory)\.(?:components|c)\.(\w+)")
-_COMPONENT_FROM_IMPORT = re.compile(r"from\s+gdsfactory\.components\s+import\s+([^\n]+)")
-_COMPONENT_ALIAS = re.compile(r"import\s+gdsfactory\.components\s+as\s+(\w+)")
-
-
-def _non_catalog_components(source: str) -> list[str]:
-    """Whitelist check: every component reference must be in the Table-1 catalog."""
-    hits: list[str] = []
-    for m in _COMPONENT_REF.finditer(source):
-        if m.group(1) not in _CATALOG_COMPONENTS:
-            hits.append(f"non-catalog component: {m.group(0)}")
-    for m in _COMPONENT_FROM_IMPORT.finditer(source):
-        for segment in m.group(1).split(","):
-            words = segment.split()
-            if not words:
-                continue
-            name = words[0]
-            if name == "*":
-                hits.append("non-catalog component import: wildcard")
-            elif name not in _CATALOG_COMPONENTS:
-                hits.append(f"non-catalog component import: {name}")
-    for m in _COMPONENT_ALIAS.finditer(source):
-        alias = m.group(1)
-        for ref in re.finditer(rf"\b{re.escape(alias)}\.(\w+)", source):
-            if ref.group(1) not in _CATALOG_COMPONENTS:
-                hits.append(f"non-catalog component: {ref.group(0)}")
-    return hits
-
-# Tracer detection (re-audit 2026-07-12, issue #74): six archived cells traced
-# their raster instead of constructing geometry — four by reading an image at
-# runtime and emitting one rectangle per pixel run, two by embedding the same
-# scanline dump as a literal coordinate list. Whitelisted primitives, defeated
-# contract. The boundary drawn there: per-feature physical dimensions and path
-# control points are within contract (largest compliant cell: 112 coordinate
-# tuples / 344 numeric literals); runtime image reads and raster-pitch
-# scanline dumps are violations (smallest tracer: ~575 tuples / 2303
-# literals). Thresholds sit between with wide margins on both sides.
-_IMAGE_READ_PATTERNS = (
-    r"(?:from|import)\s+(?:PIL|cv2|imageio|skimage|matplotlib\.image)\b",
-    r"\bImage\.open\b",
-    r"\bimread\s*\(",
-)
-_COORD_TUPLE_LIMIT = 256
-_NUMERIC_LITERAL_LIMIT = 1024
-
-
-def _is_number(node: ast.expr) -> bool:
-    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
-        node = node.operand
-    return isinstance(node, ast.Constant) and isinstance(node.value, (int, float))
-
-
-def _coordinate_dump_stats(source: str) -> tuple[int, int]:
-    """(coordinate tuples summed over all literal lists, total numeric literals)."""
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return 0, 0
-    tuples = 0
-    numerics = 0
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
-            numerics += 1
-        if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
-            tuples += sum(
-                1
-                for elt in node.elts
-                if isinstance(elt, (ast.Tuple, ast.List))
-                and len(elt.elts) >= 2
-                and all(_is_number(e) for e in elt.elts)
-            )
-    return tuples, numerics
 
 # Same top-level `<name> = <number>` pattern homi.spec_optimization uses.
 _ASSIGNMENT = r"(\b{name}\s*(?::\s*[^=]+)?\s*=\s*)(-?\d+\.?\d*)"
@@ -123,29 +35,6 @@ class GateResult:
     purity: list[str]
     knob: dict | None
     verified: bool
-
-
-def purity_violations(source: str) -> list[str]:
-    """Primitives-contract check by source analysis.
-
-    Rejects non-catalog component calls (Table-1 whitelist), raw polygon
-    emission, and — since the 2026-07-12 re-audit (issue #74) — raster
-    tracing: runtime image reads inside the device script, and embedded
-    scanline dumps (literal coordinate lists far beyond any per-feature
-    measurement).
-    """
-    hits: list[str] = []
-    for pattern in _PURITY_PATTERNS:
-        hits.extend(m.group(0) for m in re.finditer(pattern, source))
-    hits.extend(_non_catalog_components(source))
-    for pattern in _IMAGE_READ_PATTERNS:
-        hits.extend(f"image-read: {m.group(0)}" for m in re.finditer(pattern, source))
-    tuples, numerics = _coordinate_dump_stats(source)
-    if tuples >= _COORD_TUPLE_LIMIT:
-        hits.append(f"coordinate-dump: {tuples} literal coordinate tuples")
-    if numerics >= _NUMERIC_LITERAL_LIMIT:
-        hits.append(f"numeric-dump: {numerics} numeric literals")
-    return hits
 
 
 def recompute_metrics(gds: Path | str, target_png: Path | str, calibration: Path | str) -> dict:
