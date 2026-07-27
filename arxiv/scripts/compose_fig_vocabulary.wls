@@ -771,14 +771,14 @@ groupColors = <|
 |>;
 
 fig2Prims = {
-  panelField[{1.4, 14.35}, {26.8, 35.8}],
-  panelField[{34.5, 14.35}, {98.7, 35.8}],
+  panelField[{1.4, 14.35}, {31.0, 35.8}],
+  panelField[{39.0, 14.35}, {98.7, 35.8}],
   panelField[{1.4, 0.45}, {44.0, 9.65}],
   panelField[{61.5, 0.45}, {98.7, 9.65}],
   panelHeading["A", "From geometric primitives to a PCell", 1.5, 37.8],
   panelHeading["B", "Same PCell source, new geometry", 1.5, 11.15],
   groupText["Exact instances", {2.0, 35.0}],
-  groupText["Connected cell", {35.4, 35.0}],
+  groupText["Connected cell", {39.9, 35.0}],
   rule,
   AbsoluteThickness[0.52],
   Line[{{1.5, 12.8}, {98.5, 12.8}}]
@@ -805,19 +805,19 @@ AppendTo[
   {
     displayText[
       "four straights",
-      {14.8, 31.25},
+      {15.2, 31.25},
       6.10,
       {Left, Center}
     ],
     text[
       Row[{symLs, " = 8.0 ", mu}],
-      {14.8, 29.85},
+      {15.2, 29.85},
       5.00,
       {Left, Center}
     ],
     text[
       Row[{symW, " = 0.50 ", mu}],
-      {14.8, 28.60},
+      {15.2, 28.60},
       5.00,
       {Left, Center}
     ]
@@ -873,13 +873,13 @@ AppendTo[
   {
     displayText[
       "four S-bends",
-      {14.8, 25.15},
+      {15.2, 25.15},
       6.10,
       {Left, Center}
     ],
     text[
       Row[{symLb, " = 18.0 ", mu}],
-      {14.8, 23.70},
+      {15.2, 23.70},
       5.00,
       {Left, Center}
     ],
@@ -888,7 +888,7 @@ AppendTo[
         deltaY, " = ",
         Style["\[PlusMinus]", FontFamily -> mathFont], "3.0 ", mu
       }],
-      {14.8, 22.45},
+      {15.2, 22.45},
       5.00,
       {Left, Center}
     ]
@@ -919,26 +919,26 @@ AppendTo[
   {
     displayText[
       "coupling section",
-      {14.8, 18.45},
+      {15.2, 18.45},
       6.10,
       {Left, Center}
     ],
     text[
       Row[{symLc, " = 10.0 ", mu}],
-      {14.8, 16.95},
+      {15.2, 16.95},
       5.00,
       {Left, Center}
     ],
     text[
       Row[{symG, " = 0.25 ", mu}],
-      {14.8, 15.70},
+      {15.2, 15.70},
       5.00,
       {Left, Center}
     ],
-    arrowLine[{27.4, 25.3}, {34.0, 25.3}],
+    arrowLine[{31.7, 25.3}, {38.5, 25.3}],
     codeText[
       Column[{"8 calls", "connect(...)"}, Alignment -> Center, Spacings -> 0.05],
-      {30.7, 27.25},
+      {35.1, 27.25},
       4.90
     ]
   }
@@ -948,7 +948,7 @@ AppendTo[
 semanticGroups = f2["semantic_groups"];
 semanticSpec = specFor[
   allGroupPolys[semanticGroups],
-  {{35.3, 98.1}, {21.0, 28.8}},
+  {{39.8, 98.1}, {21.0, 28.8}},
   True
 ];
 AppendTo[
