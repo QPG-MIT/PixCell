@@ -40,7 +40,7 @@ CACHE_VENV="$PLUGIN_DATA/venv"
 # [workbench] so the marimo explorer the skills advertise actually runs from
 # a plugin-only install
 # Pinned to an immutable commit at the release cut — bump deliberately, never float.
-INSTALL_SPEC="${PIXCELL_INSTALL_SPEC:-pixcell[workbench] @ git+https://github.com/QPG-MIT/PixCell@00580b9325e1f095f3599f0fd1b2738fb3cd61bc}"
+INSTALL_SPEC="${PIXCELL_INSTALL_SPEC:-pixcell[workbench] @ git+https://github.com/QPG-MIT/PixCell@78afdddd718e80028f9ebca7d98380b646cf7aa3}"
 
 # Map known console scripts to modules, for interpreters whose bindir lacks the
 # entry point (e.g. PIXCELL_PYTHON pointing at a bare interpreter). Sets $MODULE.
