@@ -685,10 +685,10 @@ supports the quantitative claims below.
 \includegraphics[width=\linewidth]{fig1_emergence.pdf}
 \caption{\textbf{Model evaluation and target-level benchmark matrix.}
 (a)~The same 13 configurations used in (b), grouped by base model. The left
-axis reports usable score $U$: the mean over all eight targets after assigning
+axis reports visual score $U$: the mean over all eight targets after assigning
 zero to every source-violating program. The right axis reports median
 API-list-price-equivalent cost per target on a logarithmic scale. Blue denotes
-OpenAI and orange Anthropic.
+OpenAI and red Anthropic.
 (b)~Independently recomputed raw IoU across F1--F8 in the same row order.
 The color scale runs from 0 to 1; $\times$ marks a program containing
 prohibited source constructs. Its geometric score remains visible here but
@@ -920,21 +920,25 @@ advantage for either representation class.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.96\linewidth]{fig_sidewall_stacks.pdf}
-\caption{\textbf{From blind reconstruction to full-wave function and
+\includegraphics[width=\linewidth]{fig_sidewall_stacks.pdf}
+\caption{\textbf{From agent reconstruction to full-wave function and
 fabrication sensitivity.}
 (a)~Normalized E-field intensity reported for the shallow-etched rib splitter
 of Nguyen \emph{et al.}~\cite{splitter2020}, reproduced under CC BY 4.0.
-(b)~The exact silhouette supplied to the worker and the executed
-primitives-only program. The source text and panel~(a) were withheld.
-(c)~Independently normalized top-view $|E|^{2}$ for the program's
-SOI-retargeted descendant; the same run measures split balance $0.50000$ and
-total monitored transmission $0.787$. Panels~(a) and (c) use different
-geometries, domains, and material models, so their comparison is qualitative.
-(d)~Coupling ratio of a fixed reconstructed coupler mask on three stack
-models. (e,f)~Split balance and transmission for a mirror-symmetric splitter
-control, using a separately retargeted fixture on each stack. The TFLN model
-is isotropic.}
+(b)~The exact silhouette supplied to the worker and its executed
+primitives-only reconstruction.
+(c)~Positive forward Poynting-flux density at the mid-plane of the
+SOI-retargeted realization,
+$S_x^+=\max[\frac{1}{2}\operatorname{Re}(E_yH_z^\ast-E_zH_y^\ast),0]$,
+normalized to its peak over an upstream $x=5$--$15\,\mu$m reference window.
+The mode monitors give $T=0.7873$ and $b=0.500001$. Panels (a) and (c) use
+different observables, geometries, domains, material models, and
+normalizations, so their comparison is qualitative.
+(d)~Left: coupling ratio of one fixed reconstructed coupler mask under
+uniform sidewall tilt. Right: split balance and monitored transmission
+for separately retargeted mirror-symmetric splitter controls. Markers are
+simulated samples and straight segments are guides to the eye. The TFLN
+model is isotropic.}
 \label{fig:sidewall}\label{fig:trident}\label{fig:sourcevsours}
 \end{figure*}
 
@@ -961,14 +965,14 @@ agrees within $2.9\%$ for the tested MZI, whereas the SiN coupling ratio
 does not. Accordingly, the coupler checks in Table~\ref{tab:twoarm} should
 be read only as tier-0 evaluator outcomes.
 
-F1 provides an end-to-end check. The worker received the standardized
-silhouette and its $40.0\times1.7\,\mu\mathrm{m}^{2}$ footprint; the source text
-and published field panel were withheld. Its primitives-only program achieved
+F1 provides an end-to-end check. The worker received only the standardized
+silhouette and its $40.0\times1.7\,\mu\mathrm{m}^{2}$ footprint, not the source
+text or published field panel. Its primitives-only program achieved
 an IoU of $0.947$. Retargeting then derived a simplified 220-nm SOI realization
 from that program. At $1550$\,nm, full-wave simulation yields symmetric
 two-output flow, split balance $0.50000$, and monitored transmission $0.787$
-(Fig.~\ref{fig:sidewall}a--c). The shallow-etched rib source and our full-height
-strip fixture differ in geometry, domain, and field normalization
+(Fig.~\ref{fig:sidewall}(a)--(c)). The shallow-etched rib source and our full-height
+strip fixture differ in geometry, domain, field observable, and normalization
 \cite{splitter2020}. Their comparison supports the intended splitting function
 qualitatively, not numerical replication of the published field or loss.
 
@@ -985,7 +989,7 @@ crossing at approximately $12.2^{\circ}$ and $11.0^{\circ}$,
 respectively. Both curves fall again at $45^{\circ}$. On SOI, six samples
 from $0^{\circ}$ through $12.5^{\circ}$ remain between $0.640$ and
 $0.752$ (mean $0.694$), followed by larger oscillations at higher angles
-(Fig.~\ref{fig:sidewall}d).
+(Fig.~\ref{fig:sidewall}(d), left).
 
 A mirror-symmetric $1{\times}2$ splitter provides a control. Uniform
 sidewall tilt preserves its left-right mirror symmetry even though it can
@@ -994,7 +998,7 @@ the simulated split balance ranges from $0.4982$ to $0.5072$, for a
 maximum deviation of $0.0072$ from $0.5$. Total transmission changes
 substantially, including an SOI increase from $0.787$ at vertical walls to
 $0.935$ at $15^{\circ}$ followed by a decrease to $0.581$ at
-$45^{\circ}$ (Fig.~\ref{fig:sidewall}e,f). In these two modeled devices,
+$45^{\circ}$ (Fig.~\ref{fig:sidewall}(d), right). In these two modeled devices,
 sidewall angle strongly affects an asymmetry-dependent coupling ratio while
 leaving a symmetry-protected balance nearly fixed. These sweeps use the
 draft-fidelity grid of the tier-1 harness: four small-angle SOI samples
@@ -1039,10 +1043,11 @@ algorithms or a claim of parity with frontier agents.
 \includegraphics[width=\linewidth]{fig_rl_training.pdf}
 \caption{\textbf{Recorded telemetry for the reported 95-step lineage.}
 (a)~Raw IoU on the fixed, seed-disjoint synthetic evaluation pool at scheduled
-checkpoints through cumulative step 85; dotted lines mark stage boundaries.
+checkpoints through cumulative step 85; vertical rules mark stage boundaries.
 L2 and L3 increase from $0.147$ and $0.159$ to $0.294$ and $0.332$.
-(b)~Recorded L4 training IoU and one-sample measurements on the
-training-excluded benchmark. The final markers give the first $k{=}8$ draw,
+(b)~The thin crimson trace and its five-step mean show recorded L4 training
+IoU; open blue markers show one-sample measurements on the training-excluded
+benchmark. Green markers give the first $k{=}8$ draw,
 with eval@1 $0.240$ and best@8 $0.443$. The benchmark falls during the
 13-figure stage and recovers during the 18-figure stage, but the sequential
 design does not identify corpus size as the cause. The runs predate
@@ -1055,8 +1060,9 @@ per-evaluation cache clearing, so the curves are diagnostic.}
 \includegraphics[width=\linewidth]{fig_rl_gallery.pdf}
 \caption{\textbf{Best-of-eight programs from the fully re-scored draw.}
 Each target is paired with the highest-IoU program from Table~\ref{tab:rl}.
-Maroon denotes overlap,
-pink spurious material, and black missed material. Large-scale topology is
+Maroon denotes overlap, pink candidate-only material, and black target-only
+material.
+Large-scale topology is
 often present, while widths, gaps, and repeated-feature counts remain
 imprecise. F5 has one executable attempt at IoU $0.246$, after failing in all
 eight attempts of the first draw.}
@@ -1203,29 +1209,7 @@ cross-figure performance. The reported lineage scores higher but includes
 scorer-selected distillation with critic-configured provenance; the design
 does not identify the cause of the difference.
 
-\begin{table}[t]
-\centering\small
-\caption{Fully re-scored archived $k{=}8$ evaluation at the final checkpoint
-and temperature $1.0$. ``Executable'' counts attempts that produced a scored
-GDS; eval@1 is mean IoU and best@8 is the maximum across the eight attempts.}
-\label{tab:rl}
-\begin{ruledtabular}
-\begin{tabular}{lccc}
-Device & executable & eval@1 & best@8 \\
-\hline
-F1 & 7/8 & 0.248 & 0.440 \\
-F2 & 7/8 & 0.396 & 0.599 \\
-F3 & 8/8 & 0.193 & 0.451 \\
-F4 & 5/8 & 0.347 & 0.637 \\
-F5 & 1/8 & 0.031 & 0.246 \\
-F6 & 5/8 & 0.215 & 0.557 \\
-F7 & 7/8 & 0.209 & 0.303 \\
-F8 & 8/8 & 0.393 & 0.497 \\
-\hline
-all/mean & 48/64 & 0.254 & 0.466 \\
-\end{tabular}
-\end{ruledtabular}
-\end{table}
+\input{table_rl.tex}
 
 The archived replicate also permits a source-compliance audit. Sixty-three of
 64 programs pass the current primitive whitelist. The remaining program calls

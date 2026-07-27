@@ -31,11 +31,22 @@ TABLE_PATH = REPO / "arxiv" / "table_retargeting.tex"
 
 INK = "#17191c"
 SOFT_INK = "#555a60"
-PASS = "#246b5a"
-PASS_FILL = "#e2eee9"
-MISS = "#7e858a"
-MISS_FILL = "#f1f2f2"
 MISS_EDGE = "#cfd2d4"
+STACK_COLORS = {
+    "soi220": "#315e9f",
+    "sin400": "#a31f34",
+    "tfln400": "#267c5a",
+}
+STACK_FILLS = {
+    "soi220": "#eaf0f7",
+    "sin400": "#f6eaed",
+    "tfln400": "#eaf4ef",
+}
+STACK_PASS_FILLS = {
+    "soi220": "#d7e2f0",
+    "sin400": "#f0d9de",
+    "tfln400": "#d7e9e1",
+}
 
 plt.rcParams.update(
     {
@@ -173,12 +184,17 @@ def _render_cross_stack(data: dict) -> None:
     tolerance = float(data["tolerance_rel"])
     matrix = data["opus48m"]["design_stack"]
 
-    # Match the white-page Iowan/STIX hierarchy used by Figures 1, 2, 5,
-    # 6, 8, and 9.  The matrix is deliberately rectangular: forcing square
-    # cells left a large unused gutter in a single-column figure and made the
-    # visible content appear right-aligned.
-    figure = plt.figure(figsize=(3.42, 2.36), facecolor="white")
-    axes = figure.add_axes([0.340, 0.225, 0.640, 0.605])
+    # The matrix itself is physically square. Row labels occupy a true left
+    # column and share the same anchor as its heading; they do not consume an
+    # invisible y-tick gutter that pushes the matrix off-center.
+    figure = plt.figure(figsize=(3.42, 3.10), facecolor="white")
+    matrix_left = 0.300
+    matrix_bottom = 0.140
+    matrix_width = 0.660
+    matrix_height = matrix_width * figure.get_figwidth() / figure.get_figheight()
+    axes = figure.add_axes(
+        [matrix_left, matrix_bottom, matrix_width, matrix_height]
+    )
 
     for row, design in enumerate(stacks):
         for column, evaluated in enumerate(stacks):
@@ -190,8 +206,12 @@ def _render_cross_stack(data: dict) -> None:
                     (column + inset, row + inset),
                     1 - 2 * inset,
                     1 - 2 * inset,
-                    facecolor=PASS_FILL if passes else MISS_FILL,
-                    edgecolor=PASS if passes else MISS_EDGE,
+                    facecolor=(
+                        STACK_PASS_FILLS[design]
+                        if passes
+                        else STACK_FILLS[design]
+                    ),
+                    edgecolor=STACK_COLORS[design] if passes else MISS_EDGE,
                     linewidth=1.05 if passes else 0.55,
                 )
             )
@@ -208,8 +228,9 @@ def _render_cross_stack(data: dict) -> None:
 
     axes.set_xlim(0, len(stacks))
     axes.set_ylim(len(stacks), 0)
+    axes.set_aspect("equal", adjustable="box")
     axes.set_xticks([index + 0.5 for index in range(len(stacks))])
-    axes.set_yticks([index + 0.5 for index in range(len(stacks))])
+    axes.set_yticks([])
     axes.set_xticklabels(
         [labels[stack].rsplit(" ", 1)[0] + "\n" + labels[stack].rsplit(" ", 1)[1]
          for stack in stacks],
@@ -217,19 +238,13 @@ def _render_cross_stack(data: dict) -> None:
         color=INK,
         linespacing=0.98,
     )
-    axes.set_yticklabels(
-        [labels[stack] for stack in stacks],
-        fontsize=8.0,
-        color=INK,
-    )
     axes.tick_params(axis="x", length=0, pad=4.2)
-    axes.tick_params(axis="y", length=0, pad=5.0)
     axes.set_xlabel("Evaluated stack", fontsize=8.4, color=INK, labelpad=4.2)
     for spine in axes.spines.values():
         spine.set_visible(False)
 
     figure.text(
-        0.004,
+        0.018,
         0.955,
         "Analytic FSR (nm)",
         ha="left",
@@ -248,7 +263,7 @@ def _render_cross_stack(data: dict) -> None:
     )
     figure.add_artist(
         Line2D(
-            [0.004, 0.980],
+            [0.018, 0.980],
             [0.905, 0.905],
             transform=figure.transFigure,
             color=INK,
@@ -256,14 +271,28 @@ def _render_cross_stack(data: dict) -> None:
         )
     )
     figure.text(
-        0.004,
-        0.825,
+        0.018,
+        0.855,
         "Geometry tuned for",
         ha="left",
         va="center",
         fontsize=8.4,
         color=INK,
     )
+    for row, stack in enumerate(stacks):
+        row_y = (
+            matrix_bottom
+            + matrix_height * (1.0 - (row + 0.5) / len(stacks))
+        )
+        figure.text(
+            0.018,
+            row_y,
+            labels[stack],
+            ha="left",
+            va="center",
+            fontsize=8.0,
+            color=INK,
+        )
 
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     pdf_path = FIGURE_DIR / "fig_cross_matrix.pdf"

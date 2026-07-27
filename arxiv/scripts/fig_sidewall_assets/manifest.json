@@ -1,0 +1,60 @@
+{
+  "source_repository": {
+    "name": "QPG-MIT/PixCell-running",
+    "commit": "b2c07631d2225ddd82247c413b0f45cac4bb2978"
+  },
+  "assets": {
+    "published_field": {
+      "asset": "published_field.png",
+      "sha256": "323b95e95b5cec2c0b18bd5fbbaa1de2a010d3eac21aa6e6ba9f68034e825555",
+      "source_pdf_sha256": "5b3f8a7b69b656660cdf4095cb801d99d3b8cb2d04d33f19254353a5041d4fc0",
+      "source": "database/papers/1.pdf, page 3, image object 133 (1033 x 421 px)",
+      "license": "CC BY 4.0"
+    },
+    "target": {
+      "asset": "target.png",
+      "sha256": "0fbd3bb59c59f81b606be1b5d8d948b941b73ca240d4bb31ba9c9d72e6808d3c"
+    },
+    "reconstruction": {
+      "asset": "reconstruction.png",
+      "sha256": "e7f629f86e69d460ae4f111926b92a0c1814de4aec1e73aa4d5dad3c7ec93349",
+      "source_device_sha256": "b3ab3f40dbc1e51ea835d038b3a7c4c13d6d7d29cf4d260413f77c204539e9d5"
+    },
+    "reconstruction_metrics": {
+      "asset": "reconstruction_metrics.json",
+      "sha256": "f4bdcf7229ac41b96768d57d1ef4b070ff041d5de4a748818437dab73fa92470"
+    },
+    "forward_power_density": {
+      "asset": "forward_power_density.npz",
+      "sha256": "fa195107c1abe219d45c52c9317877be666ffac2f4c5a6d3f19657a2e286cdcd",
+      "source_hdf5_sha256": "133b5d0412ca03da766f43a7408c9e9f5ec7a55f6f46d49589ed833db6027205",
+      "definition": "Sx = 0.5 * Re(Ey * conj(Hz) - Ez * conj(Hy)) at the z-mid-plane"
+    },
+    "coupler_stacks": {
+      "asset": "coupler_stacks_matrix.json",
+      "sha256": "07a13c4ab4983e5bcc557e56461ae94fde0bb6705c539f32ed000241a63847ee"
+    },
+    "coupler_soi_dense": {
+      "asset": "coupler_soi_dense_matrix.json",
+      "sha256": "11e4c7b65d1baca60dfdcb2ea24ae3440b01aea84bb8a1c509ef01cd5376f4ab"
+    },
+    "coupler_sin": {
+      "asset": "coupler_sin_matrix.json",
+      "sha256": "47952250c71f4f04f56482c4f315e36174cc612245a47b28d4118471c88bcadb"
+    },
+    "splitter_control": {
+      "asset": "splitter_control_matrix.json",
+      "sha256": "3b49a203d8e45a1b8d88425b86e3318150bb66f568d040a9395ce8853899327f"
+    }
+  },
+  "display_contract": {
+    "field_x_range_um": [4.0, 63.0],
+    "input_reference_window_um": [5.0, 15.0],
+    "expected_reconstruction_iou": 0.9472900448835663,
+    "expected_soi_vertical_balance": 0.5000011391656013,
+    "expected_soi_vertical_total_transmission": 0.7873068617020931,
+    "expected_control_max_balance_deviation": 0.007150799084162829,
+    "expected_sin_first_crossing_deg": 12.204618759456377,
+    "expected_tfln_first_crossing_deg": 10.989933622502832
+  }
+}
