@@ -1,0 +1,297 @@
+{
+  "name": "Lightium TFLN",
+  "version": "1.0",
+  "foundry": "Lightium",
+  "description": "Lightium's 600nm X-cut Thin Film Lithium Niobate platform on 8.2um SiO2 BOX. Supports 20 possible waveguide cross-sections with 3 TFLN etch layers.",
+
+  "layers": {
+    "PAYLOAD": {
+      "name": "PAYLOAD",
+      "gds_number": 0,
+      "datatype": 0,
+      "purpose": "marker",
+      "description": "Outline of the design block. Not a process layer. All structures must be fully covered by PAYLOAD.",
+      "color": "#808080"
+    },
+    "TFLN_WG1": {
+      "name": "TFLN_WG1",
+      "gds_number": 10,
+      "datatype": 0,
+      "purpose": "core",
+      "description": "First TFLN etch layer: 400nm etch depth in 600nm LNOI. Primary waveguide layer.",
+      "thickness_nm": 600,
+      "etch_depth_nm": 400,
+      "sidewall_angle_deg": 55,
+      "material_name": "LN_Xcut",
+      "min_width_nm": 100,
+      "min_spacing_nm": 400,
+      "color": "#2E86AB"
+    },
+    "TFLN_WG2": {
+      "name": "TFLN_WG2",
+      "gds_number": 11,
+      "datatype": 0,
+      "purpose": "core",
+      "description": "Second TFLN etch layer: 100nm etch depth in 200nm LNOI. Shallow etch for mode converters.",
+      "thickness_nm": 200,
+      "etch_depth_nm": 100,
+      "sidewall_angle_deg": 55,
+      "material_name": "LN_Xcut",
+      "min_width_nm": 100,
+      "min_spacing_nm": 400,
+      "color": "#3498DB"
+    },
+    "TFLN_WG3": {
+      "name": "TFLN_WG3",
+      "gds_number": 12,
+      "datatype": 0,
+      "purpose": "core",
+      "description": "Third TFLN etch layer: 200nm etch depth in 200nm LNOI. Full etch in thin film region.",
+      "thickness_nm": 200,
+      "etch_depth_nm": 200,
+      "sidewall_angle_deg": 55,
+      "material_name": "LN_Xcut",
+      "min_width_nm": 100,
+      "min_spacing_nm": 400,
+      "color": "#1ABC9C"
+    },
+    "a-Si_WG": {
+      "name": "a-Si_WG",
+      "gds_number": 15,
+      "datatype": 0,
+      "purpose": "core",
+      "description": "Amorphous silicon layer - 1um of a-Si. Sidewall angle > 80 degrees.",
+      "thickness_nm": 1000,
+      "material_name": "aSi",
+      "min_width_nm": 100,
+      "color": "#9B59B6"
+    },
+    "MET1": {
+      "name": "MET1",
+      "gds_number": 100,
+      "datatype": 0,
+      "purpose": "metal",
+      "description": "First metal layer - 1.5um copper. For electrodes and routing.",
+      "thickness_nm": 1500,
+      "material_name": "Cu",
+      "min_width_nm": 1000,
+      "min_spacing_nm": 1000,
+      "color": "#F18F01"
+    },
+    "VIA": {
+      "name": "VIA",
+      "gds_number": 101,
+      "datatype": 0,
+      "purpose": "via",
+      "description": "VIA access layer - 300nm copper. Must be engulfed by MET1 and MET2 with 1um margin.",
+      "thickness_nm": 300,
+      "material_name": "Cu",
+      "min_width_nm": 1000,
+      "min_spacing_nm": 1000,
+      "color": "#C73E1D"
+    },
+    "MET2": {
+      "name": "MET2",
+      "gds_number": 102,
+      "datatype": 0,
+      "purpose": "metal",
+      "description": "Second metal layer - 1.5um copper. For electrodes and routing.",
+      "thickness_nm": 1500,
+      "material_name": "Cu",
+      "min_width_nm": 1000,
+      "min_spacing_nm": 1000,
+      "color": "#E67E22"
+    },
+    "PAD_ACCESS": {
+      "name": "PAD_ACCESS",
+      "gds_number": 110,
+      "datatype": 0,
+      "purpose": "via",
+      "description": "VIA opening for pads - 500nm. Must be engulfed by MET2 with 1um margin.",
+      "thickness_nm": 500,
+      "min_width_nm": 1000,
+      "min_spacing_nm": 1000,
+      "color": "#D35400"
+    },
+    "PAD": {
+      "name": "PAD",
+      "gds_number": 111,
+      "datatype": 0,
+      "purpose": "pad",
+      "description": "Aluminum pad definition - 1.2um aluminum. PAD_ACCESS must be engulfed by PAD with 1um margin.",
+      "thickness_nm": 1200,
+      "material_name": "Al",
+      "min_width_nm": 1000,
+      "color": "#FFD700"
+    },
+    "CLD_OPEN": {
+      "name": "CLD_OPEN",
+      "gds_number": 200,
+      "datatype": 0,
+      "purpose": "cladding",
+      "description": "Cladding opening for optical access. Forbidden on top of BOX oxide or copper.",
+      "min_width_nm": 4000,
+      "min_spacing_nm": 4000,
+      "color": "#89CFF0"
+    },
+    "DEEP_GRID": {
+      "name": "DEEP_GRID",
+      "gds_number": 210,
+      "datatype": 0,
+      "purpose": "trench",
+      "description": "Chip release borders. Provides smooth facets for edge couplers. 150um DEEP_GRID around chip is mandatory.",
+      "min_width_nm": 10000,
+      "min_spacing_nm": 5000,
+      "color": "#4A4E69"
+    }
+  },
+
+  "materials": {
+    "LN_Xcut": {
+      "name": "LN_Xcut",
+      "n_ordinary": 2.211,
+      "n_extraordinary": 2.138,
+      "is_anisotropic": true,
+      "crystal_cut": "X-cut",
+      "wavelength_nm": 1550,
+      "clad_n": 1.44,
+      "description": "X-cut Lithium Niobate. n_o in X,Z planes, n_e in Y axis for EO modulation."
+    },
+    "aSi": {
+      "name": "aSi",
+      "n_ordinary": 3.5,
+      "n_extraordinary": null,
+      "is_anisotropic": false,
+      "wavelength_nm": 1550,
+      "clad_n": 1.44,
+      "description": "Amorphous silicon for mode conversion and high-confinement structures."
+    },
+    "Cu": {
+      "name": "Cu",
+      "n_ordinary": 0.25,
+      "n_extraordinary": null,
+      "is_anisotropic": false,
+      "wavelength_nm": 1550,
+      "description": "Copper for electrodes. Optical index not relevant for metal layers."
+    },
+    "Al": {
+      "name": "Al",
+      "n_ordinary": 1.44,
+      "n_extraordinary": null,
+      "is_anisotropic": false,
+      "wavelength_nm": 1550,
+      "description": "Aluminum for bond pads."
+    },
+    "SiO2": {
+      "name": "SiO2",
+      "n_ordinary": 1.44,
+      "n_extraordinary": null,
+      "is_anisotropic": false,
+      "wavelength_nm": 1550,
+      "description": "Silicon dioxide cladding."
+    }
+  },
+
+  "cross_sections": {
+    "WG1_rib": {
+      "name": "WG1_rib",
+      "film_thickness_nm": 600,
+      "etch_depth_nm": 400,
+      "slab_thickness_nm": 200,
+      "sidewall_angle_deg": 55,
+      "material_name": "LN_Xcut",
+      "cladding_material": "SiO2",
+      "description": "Primary waveguide: 400nm etch in 600nm TFLN, 200nm slab remaining."
+    },
+    "WG2_shallow": {
+      "name": "WG2_shallow",
+      "film_thickness_nm": 200,
+      "etch_depth_nm": 100,
+      "slab_thickness_nm": 100,
+      "sidewall_angle_deg": 55,
+      "material_name": "LN_Xcut",
+      "cladding_material": "SiO2",
+      "description": "Shallow etch: 100nm etch in 200nm TFLN, 100nm slab remaining."
+    },
+    "WG3_full": {
+      "name": "WG3_full",
+      "film_thickness_nm": 200,
+      "etch_depth_nm": 200,
+      "slab_thickness_nm": 0,
+      "sidewall_angle_deg": 55,
+      "material_name": "LN_Xcut",
+      "cladding_material": "SiO2",
+      "description": "Full etch: 200nm etch in 200nm TFLN, strip waveguide."
+    },
+    "WG1_strip": {
+      "name": "WG1_strip",
+      "film_thickness_nm": 600,
+      "etch_depth_nm": 600,
+      "slab_thickness_nm": 0,
+      "sidewall_angle_deg": 55,
+      "material_name": "LN_Xcut",
+      "cladding_material": "SiO2",
+      "description": "Fully etched strip waveguide in 600nm TFLN."
+    },
+    "aSi_strip": {
+      "name": "aSi_strip",
+      "film_thickness_nm": 1000,
+      "etch_depth_nm": 1000,
+      "slab_thickness_nm": 0,
+      "sidewall_angle_deg": 80,
+      "material_name": "aSi",
+      "cladding_material": "SiO2",
+      "description": "Amorphous silicon strip waveguide, 1um thick."
+    }
+  },
+
+  "design_rules": [
+    {
+      "rule_name": "min_width_wg1",
+      "layer_name": "TFLN_WG1",
+      "min_value_um": 0.1,
+      "description": "Minimum width for TFLN_WG1 layer"
+    },
+    {
+      "rule_name": "min_spacing_wg1",
+      "layer_name": "TFLN_WG1",
+      "min_value_um": 0.4,
+      "description": "Minimum spacing for TFLN_WG1 layer"
+    },
+    {
+      "rule_name": "min_gap_design",
+      "layer_name": "TFLN_WG1",
+      "min_value_um": 0.56,
+      "description": "Minimum design gap (accounts for sidewall angle: Gap_design = Gap_fab + 560nm)"
+    },
+    {
+      "rule_name": "min_width_metal",
+      "layer_name": "MET1",
+      "min_value_um": 1.0,
+      "description": "Minimum feature size for metal layers"
+    },
+    {
+      "rule_name": "min_spacing_metal",
+      "layer_name": "MET1",
+      "min_value_um": 1.0,
+      "description": "Minimum spacing for metal layers"
+    },
+    {
+      "rule_name": "min_deep_grid",
+      "layer_name": "DEEP_GRID",
+      "min_value_um": 10.0,
+      "description": "Minimum feature size for chip release"
+    },
+    {
+      "rule_name": "deep_grid_border",
+      "layer_name": "DEEP_GRID",
+      "min_value_um": 150.0,
+      "description": "Mandatory DEEP_GRID width around chip perimeter"
+    }
+  ],
+
+  "substrate_material": "Si",
+  "box_thickness_um": 8.2,
+  "source_pdf": "Lightium_TFLN_platform_DesignRule_V1_13.11.2023.pdf",
+  "parsing_confidence": 1.0
+}

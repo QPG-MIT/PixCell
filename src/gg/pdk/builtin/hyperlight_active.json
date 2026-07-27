@@ -1,0 +1,174 @@
+{
+  "name": "HyperLight Active",
+  "version": "1.0",
+  "foundry": "HyperLight",
+  "description": "HyperLight Corporation's Active Run TFLN platform. 350nm ridge on 150nm slab (500nm total LN film). Supports electro-optic modulators with GSG electrodes.",
+
+  "layers": {
+    "LN_RIDGE": {
+      "name": "LN_RIDGE",
+      "gds_number": 1,
+      "datatype": 0,
+      "purpose": "core",
+      "description": "Lithium Niobate ridge waveguide - 350nm ridge height on 150nm slab.",
+      "thickness_nm": 500,
+      "etch_depth_nm": 350,
+      "sidewall_angle_deg": 70,
+      "material_name": "LN",
+      "min_width_nm": 250,
+      "min_spacing_nm": 400,
+      "color": "#2E86AB"
+    },
+    "LN_SLAB": {
+      "name": "LN_SLAB",
+      "gds_number": 2,
+      "datatype": 0,
+      "purpose": "slab",
+      "description": "Lithium Niobate slab region - 150nm remaining after ridge etch.",
+      "thickness_nm": 150,
+      "material_name": "LN",
+      "color": "#A23B72"
+    },
+    "METAL1": {
+      "name": "METAL1",
+      "gds_number": 10,
+      "datatype": 0,
+      "purpose": "metal",
+      "description": "First metal layer for electrodes.",
+      "material_name": "Au",
+      "color": "#F18F01"
+    },
+    "MVIA2": {
+      "name": "MVIA2",
+      "gds_number": 11,
+      "datatype": 0,
+      "purpose": "via",
+      "description": "Via layer connecting Metal1 to Metal2.",
+      "color": "#C73E1D"
+    },
+    "METAL2": {
+      "name": "METAL2",
+      "gds_number": 12,
+      "datatype": 0,
+      "purpose": "metal",
+      "description": "Second metal layer for electrodes and routing.",
+      "material_name": "Au",
+      "color": "#E67E22"
+    },
+    "METAL3": {
+      "name": "METAL3",
+      "gds_number": 13,
+      "datatype": 0,
+      "purpose": "metal",
+      "description": "Third metal layer (top) for electrodes and routing.",
+      "material_name": "Au",
+      "color": "#D35400"
+    },
+    "PAD_OPENING": {
+      "name": "PAD_OPENING",
+      "gds_number": 20,
+      "datatype": 0,
+      "purpose": "pad",
+      "description": "Pad opening layer for bond pad access.",
+      "color": "#FFD700"
+    },
+    "HR": {
+      "name": "HR",
+      "gds_number": 30,
+      "datatype": 0,
+      "purpose": "heater",
+      "description": "Heater resistor layer for thermo-optic phase shifters.",
+      "color": "#E63946"
+    }
+  },
+
+  "materials": {
+    "LN": {
+      "name": "LN",
+      "n_ordinary": 2.208018,
+      "n_extraordinary": 2.139906,
+      "is_anisotropic": true,
+      "crystal_cut": "X-cut",
+      "wavelength_nm": 1550,
+      "clad_n": 1.45,
+      "description": "X-cut Lithium Niobate. Measured indices: n_e=2.148348 @ 1310nm, n_o=2.217666 @ 1310nm; n_e=2.139906 @ 1550nm, n_o=2.208018 @ 1550nm."
+    },
+    "LN_1310": {
+      "name": "LN_1310",
+      "n_ordinary": 2.217666,
+      "n_extraordinary": 2.148348,
+      "is_anisotropic": true,
+      "crystal_cut": "X-cut",
+      "wavelength_nm": 1310,
+      "clad_n": 1.45,
+      "description": "X-cut Lithium Niobate indices at 1310nm."
+    },
+    "Au": {
+      "name": "Au",
+      "n_ordinary": 0.55,
+      "n_extraordinary": null,
+      "is_anisotropic": false,
+      "wavelength_nm": 1550,
+      "description": "Gold for electrodes."
+    },
+    "SiO2": {
+      "name": "SiO2",
+      "n_ordinary": 1.45,
+      "n_extraordinary": null,
+      "is_anisotropic": false,
+      "wavelength_nm": 1550,
+      "description": "Silicon dioxide cladding (ILD layers)."
+    }
+  },
+
+  "cross_sections": {
+    "ridge_350": {
+      "name": "ridge_350",
+      "film_thickness_nm": 500,
+      "etch_depth_nm": 350,
+      "slab_thickness_nm": 150,
+      "sidewall_angle_deg": 70,
+      "material_name": "LN",
+      "cladding_material": "SiO2",
+      "description": "Standard HyperLight ridge waveguide: 350nm ridge on 150nm slab."
+    }
+  },
+
+  "design_rules": [
+    {
+      "rule_name": "min_line",
+      "layer_name": "LN_RIDGE",
+      "min_value_um": 0.25,
+      "description": "Minimum line/feature size for optical layer"
+    },
+    {
+      "rule_name": "min_space",
+      "layer_name": "LN_RIDGE",
+      "min_value_um": 0.4,
+      "description": "Minimum space between features for optical layer"
+    },
+    {
+      "rule_name": "overlay_misalignment",
+      "min_value_um": 0.1,
+      "max_value_um": 0.1,
+      "description": "Layer-to-layer overlay misalignment (6-sigma)"
+    },
+    {
+      "rule_name": "waveguide_width_1550",
+      "layer_name": "LN_RIDGE",
+      "min_value_um": 1.5,
+      "description": "Recommended waveguide width for 1550nm operation (< 0.3 dB/cm loss)"
+    },
+    {
+      "rule_name": "waveguide_width_1310",
+      "layer_name": "LN_RIDGE",
+      "min_value_um": 1.3,
+      "description": "Recommended waveguide width for 1310nm operation (< 0.3 dB/cm loss)"
+    }
+  ],
+
+  "substrate_material": "Si",
+  "box_thickness_um": 4.7,
+  "source_pdf": "HyperLight MPW Active Preliminary Design Sheet 1.pdf",
+  "parsing_confidence": 1.0
+}

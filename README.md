@@ -105,9 +105,11 @@ commands.
 │   ├── metadata/                 Catalog, checksums, audits, and source reports
 │   └── scripts/                  Deterministic build, validation, render, and export tools
 ├── src/                          The installable engine (Python packages)
+│   ├── gg/                       The 7 MCP servers and built-in PDK data
+│   ├── homi/                     Engine hub: CLI, dispatch, conductor gate, studio, workbench
 │   ├── jee/                      Classical parameter optimization (SSE minimization)
 │   ├── michaelangelo/            Visual verifier: IoU and Dice at calibrated absolute scale
-│   └── weber/                    Explorer and workbench generation
+│   └── weber/                    Parameter analysis for the workbench and optimizer
 ├── .env.example                  Optional API-key template; the core loop needs none
 ├── LICENSE                       Repository-wide MIT license
 └── README.md                     Project overview, installation, and entry points
