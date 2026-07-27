@@ -1,4 +1,4 @@
-"""Render Figure 4: source-panel standardization into frozen benchmark inputs.
+"""Render Figure 4: source-panel standardization into target renders.
 
 The publication source crops and their hashes live in
 ``fig_extraction_assets/manifest.json``. Frozen output masks are reused from
@@ -116,7 +116,7 @@ def _add_card(
     rect: tuple[float, float, float, float],
     image: np.ndarray,
     left_label: str,
-    right_label: str,
+    right_label: str | None,
     *,
     binary: bool = False,
 ) -> None:
@@ -153,15 +153,16 @@ def _add_card(
         fontweight="bold",
         color=INK,
     )
-    card.text(
-        0.96,
-        0.91,
-        right_label,
-        ha="right",
-        va="center",
-        fontsize=11.5,
-        color=INK,
-    )
+    if right_label:
+        card.text(
+            0.96,
+            0.91,
+            right_label,
+            ha="right",
+            va="center",
+            fontsize=11.5,
+            color=INK,
+        )
 
     image_ax = card.inset_axes([0.035, 0.045, 0.93, 0.735])
     if binary:
@@ -225,7 +226,7 @@ def main() -> None:
             (0.015, y, 0.425, height),
             example["source_image"],
             target_id,
-            example["source_label"],
+            None,
         )
         _add_process_arrow(
             fig,
@@ -235,7 +236,7 @@ def main() -> None:
             fig,
             (0.56, y, 0.425, height),
             example["target_image"],
-            "frozen input",
+            "target render",
             footprint,
             binary=True,
         )
