@@ -1,7 +1,8 @@
 % fig_phases_standalone.tex — iterative API harness (Fig. 6, fig:phases)
 % Build from the repository root:
 %   tectonic arxiv/scripts/fig_phases_standalone.tex --outdir <output-dir>
-% Style: white-page serif typography with the PixCell RGB semantic palette.
+% Style: serif black/gray line work with the single muted-blue accent used by
+% Figure 7.
 \documentclass[border=5pt]{standalone}
 \usepackage[T1]{fontenc}
 \usepackage{stix2}
@@ -12,9 +13,7 @@
 \definecolor{ink}{HTML}{17191C}
 \definecolor{inksoft}{HTML}{555A60}
 \definecolor{rulegray}{HTML}{A9ADB2}
-\definecolor{pixblue}{HTML}{315E9F}
-\definecolor{pixred}{HTML}{A31F34}
-\definecolor{pixgreen}{HTML}{267C5A}
+\definecolor{accent}{RGB}{60,126,193}
 
 \begin{document}
 \begin{tikzpicture}[
@@ -23,6 +22,12 @@
   every node/.style={font=\small, text=ink},
   stageletter/.style={font=\normalsize},
   stagetitle/.style={font=\normalsize\bfseries, anchor=west},
+  groupfield/.style={
+    draw=ink,
+    line width=0.72pt,
+    rounded corners=1.5pt,
+    fill=gray!8
+  },
   process/.style={
     draw=ink,
     line width=0.72pt,
@@ -33,8 +38,8 @@
     inner sep=3.5pt,
     align=center
   },
-  model/.style={process, draw=pixred, text=pixred},
-  verifier/.style={process, draw=pixgreen, text=pixgreen},
+  model/.style={process},
+  verifier/.style={process},
   stack/.style={
     draw=ink,
     line width=0.62pt,
@@ -53,17 +58,17 @@
   },
   dataflow/.style={
     -{Stealth[length=2.15mm,width=1.55mm]},
-    draw=pixblue,
-    line width=0.82pt
+    draw=ink,
+    line width=0.78pt
   },
   selectedflow/.style={
     -{Stealth[length=2.15mm,width=1.55mm]},
-    draw=pixgreen,
-    line width=0.82pt
+    draw=ink,
+    line width=0.78pt
   },
   feedback/.style={
     -{Stealth[length=2.05mm,width=1.45mm]},
-    draw=pixred,
+    draw=accent,
     line width=0.78pt,
     densely dashed
   },
@@ -71,32 +76,23 @@
   smalllabel/.style={font=\footnotesize, align=center},
 ]
 
-% Shared controller: the model proposes programs; the external harness owns
-% execution, scoring, selection, and the feedback returned on the next turn.
-\draw[inksoft, line width=0.58pt]
-  (4.78,6.00) -- (20.90,6.00);
-\draw[inksoft, line width=0.58pt]
-  (4.78,6.00) -- (4.78,5.78)
-  (20.90,6.00) -- (20.90,5.78);
-\node[font=\footnotesize\itshape, text=inksoft, fill=white, inner xsep=5pt]
-  at (12.84,6.00)
-  {external pipeline controls execution, ranking, selection, and returned feedback};
+% Figure 7's restrained group treatment: a pale gray field, black border,
+% and a single header rule. The three boxes replace the old colored phases.
+\draw[groupfield] (0.05,0.70) rectangle (4.28,5.30);
+\draw[groupfield] (4.40,0.70) rectangle (13.25,5.30);
+\draw[groupfield] (13.38,0.70) rectangle (21.20,5.30);
 
-% Stage headings and restrained separators.
-\node[stageletter, anchor=west] at (0.08,5.28) {A};
-\node[stagetitle] at (0.48,5.28) {Frozen reference};
-\draw[ink, line width=0.70pt] (0.08,4.91) -- (4.18,4.91);
+\node[stageletter, anchor=west] at (0.20,4.96) {A};
+\node[stagetitle] at (0.58,4.96) {Frozen reference};
+\draw[ink, line width=0.58pt] (0.18,4.57) -- (4.15,4.57);
 
-\node[stageletter, anchor=west] at (4.72,5.28) {B};
-\node[stagetitle] at (5.12,5.28) {Parallel proposal round};
-\draw[ink, line width=0.70pt] (4.72,4.91) -- (13.10,4.91);
+\node[stageletter, anchor=west] at (4.55,4.96) {B};
+\node[stagetitle] at (4.93,4.96) {Parallel proposal round};
+\draw[ink, line width=0.58pt] (4.53,4.57) -- (13.12,4.57);
 
-\node[stageletter, anchor=west] at (13.48,5.28) {C};
-\node[stagetitle] at (13.88,5.28) {Survivor refinement};
-\draw[ink, line width=0.70pt] (13.48,4.91) -- (21.05,4.91);
-
-\draw[rulegray, line width=0.48pt] (4.43,0.65) -- (4.43,5.48);
-\draw[rulegray, line width=0.48pt] (13.28,0.65) -- (13.28,5.48);
+\node[stageletter, anchor=west] at (13.53,4.96) {C};
+\node[stagetitle] at (13.91,4.96) {Survivor refinement};
+\draw[ink, line width=0.58pt] (13.51,4.57) -- (21.07,4.57);
 
 % ---------------------------------------------------------------------------
 % A — prepare the immutable target and physical calibration once per device.
@@ -109,21 +105,21 @@
   (0.39,3.64) -- (0.73,3.64)
   (0.39,3.38) -- (1.25,3.38)
   (0.39,3.23) -- (1.14,3.23);
-\draw[pixred, line width=0.78pt]
+\draw[ink, line width=0.78pt]
   (0.42,2.76) .. controls (0.68,3.02) and (0.98,2.50) .. (1.31,2.78);
-\draw[pixred, line width=0.78pt]
+\draw[ink, line width=0.78pt]
   (0.42,2.58) .. controls (0.69,2.84) and (0.99,2.32) .. (1.31,2.60);
-\draw[pixblue, line width=0.48pt, densely dashed]
+\draw[inksoft, line width=0.48pt, densely dashed]
   (0.33,2.43) rectangle (1.41,3.09);
 \node[smalllabel] at (0.87,1.91) {source figure};
 
 % Standardization/calibration arrow.
 \draw[dataflow] (1.59,3.00) -- (2.43,3.00);
-\node[font=\scriptsize, text=pixblue]
+\node[font=\scriptsize]
   at (2.01,4.30) {standardize $+$ calibrate};
 
 % Frozen benchmark bundle.
-\draw[pixblue, line width=0.78pt, rounded corners=1.4pt, fill=white]
+\draw[ink, line width=0.72pt, rounded corners=1.4pt, fill=white]
   (2.50,1.90) rectangle (4.16,4.08);
 \draw[ink, line width=1.32pt]
   (2.69,3.53) .. controls (3.00,3.75) and (3.29,3.31) .. (3.97,3.54);
@@ -135,7 +131,7 @@
   {footprint $W{\times}H$};
 \node[font=\scriptsize] at (3.33,2.14)
   {calibration $\kappa_x,\kappa_y$};
-\node[note] at (3.33,1.42) {prepared once per device};
+\node[note] at (2.16,1.24) {prepared once per device};
 
 % The same frozen reference is supplied to every independent seed.
 \draw[dataflow] (4.16,3.00) -- (4.95,3.00);
@@ -160,7 +156,7 @@
 
 \draw[feedback]
   (verify1.south) -- ++(0,-0.72) -| (propose1.south);
-\node[smalllabel, text=pixred, fill=white, inner xsep=3pt]
+\node[smalllabel, fill=white, inner xsep=3pt]
   at (8.79,2.28) {signed difference $\Delta$};
 \node[font=\small\bfseries] at (8.79,1.60) {two turns per seed};
 \node[note] at (8.79,1.25)
@@ -168,20 +164,19 @@
 
 % ---------------------------------------------------------------------------
 % C — only survivors receive up to three additional diff-guided turns.
-\node[smalllabel] at (14.10,4.13) {survivors};
 \node[stack] (survback) at (13.97,3.36) {$s_{(k)}$};
 \node[stack] (survmid)  at (14.09,3.18) {$\vdots$};
 \node[stack] (survfront) at (14.21,3.00) {$s_{(1)}$};
 
 % Rank all seed candidates, then retain the high-scoring subset.
 \draw[selectedflow] (rank.east) -- (survfront.west)
-  node[midway, above=10pt, font=\footnotesize, text=pixgreen] {top-$k$};
+  node[pos=0.15, below=9pt, font=\footnotesize] {top-$k$};
 
 \node[model, minimum width=1.30cm] (revise) at (15.72,3.00) {revise};
 \node[process, minimum width=1.30cm] (execute2) at (17.22,3.00) {execute};
 \node[verifier, minimum width=1.30cm] (verify2) at (18.72,3.00) {verify};
 \node[process, minimum width=1.46cm, font=\footnotesize\ttfamily]
-  (best) at (20.33,3.00) {best.py\\best.gds};
+  (best) at (20.18,3.00) {best.py\\best.gds};
 
 \draw[flow] (survfront.east) -- (revise.west);
 \draw[flow] (revise.east) -- (execute2.west);
@@ -190,13 +185,12 @@
 
 \draw[feedback]
   (verify2.south) -- ++(0,-0.72) -| (revise.south);
-\node[smalllabel, text=pixred, fill=white, inner xsep=3pt]
+\node[smalllabel, fill=white, inner xsep=3pt]
   at (17.22,2.28) {signed difference $\Delta$};
 \node[font=\small\bfseries] at (17.22,1.60)
   {$\leq 3$ additional turns};
 \node[note] at (17.22,1.25)
   {early stop after repeated degradation};
-\node[note] at (20.33,2.22) {retained program};
 
 \end{tikzpicture}
 \end{document}
