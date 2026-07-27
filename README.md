@@ -93,10 +93,14 @@ commands.
 
 ```text
 .
-├── arxiv/                        Paper source, exactly what is submitted to arXiv
+├── arxiv/                        Paper source, as seen on arXiv
 │   ├── figures/                  The 15 figure PDFs the manuscript includes
 │   └── scripts/                  Figure generators and FIGURES.md
 ├── assets/                       README branding, the method film, and the rendered paper PDF
+├── data/                         The measured record behind the paper (data/README.md = the card)
+│   ├── agents/                   July era: the 104-cell matrix + catalog + PDK campaigns
+│   ├── benchmark/                The 8 device input fixtures and their source panels
+│   └── chatbots/                 June era: analysis, aggregates, trajectories, curated runs
 ├── dataset/                      Accepted-only L0-L4 image-to-code curriculum
 │   ├── data/{l0,...,l4}/         One Parquet training shard per curriculum level
 │   ├── factory/
@@ -104,6 +108,7 @@ commands.
 │   ├── galleries/                Visual overview of the full release and each level
 │   ├── metadata/                 Catalog, checksums, audits, and source reports
 │   └── scripts/                  Deterministic build, validation, render, and export tools
+├── projects/                     The tool's workspace (ships with the worked example)
 ├── src/                          The installable engine (Python packages)
 │   ├── benchmarking/             Chatbot-style benchmark harness
 │   ├── flex/                     Tidy3D FDTD integration (cloud spend is human-gated)
@@ -116,6 +121,7 @@ commands.
 ├── .env.example                  Optional API-key template; the core loop needs none
 ├── .github/                      CI: locked fresh-install sync + the full suite on push
 ├── .mcp.json                     Binds the 7 MCP servers when an agent opens the clone
+├── CITATION.cff                  How to cite (arXiv id pending)
 ├── LICENSE                       Repository-wide MIT license
 ├── README.md                     Project overview, installation, and entry points
 ├── pyproject.toml                Package definition: pixcell 1.0.0 (the engine imports as homi)

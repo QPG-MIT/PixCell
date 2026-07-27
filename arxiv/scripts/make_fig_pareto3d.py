@@ -42,7 +42,7 @@ C_FRONTIER = "#327162"
 AGENTS = json.loads((FIG / "agent_table.json").read_text())
 
 JUNE_CAP = {m["model"]: m["expected_usable_iou"]
-            for m in json.loads((REPO / "benchmark_results/real_success_data.json").read_text())}
+            for m in json.loads((REPO / "data/chatbots/aggregates/real_success_data.json").read_text())}
 # order-of-magnitude per-device cost: ~40 pipeline calls x public rates
 JUNE_COST = {
     "Gemini-2.0-Flash": 0.034, "Qwen-VL-Instruct": 0.14, "Gemini-2.5-Flash": 0.18,
