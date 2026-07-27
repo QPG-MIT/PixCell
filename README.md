@@ -95,7 +95,7 @@ commands.
 .
 ├── arxiv/                        Paper source, exactly what is submitted to arXiv
 │   ├── figures/                  The 15 figure PDFs the manuscript includes
-│   └── scripts/                  Figure generators and FIGURES.md; left out of the upload
+│   └── scripts/                  Figure generators and FIGURES.md
 ├── assets/                       README branding, the method film, and the rendered paper PDF
 ├── dataset/                      Accepted-only L0-L4 image-to-code curriculum
 │   ├── data/{l0,...,l4}/         One Parquet training shard per curriculum level
