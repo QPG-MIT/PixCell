@@ -287,6 +287,7 @@ def _(INK_TABLE_ESM, KNOB_PANEL_ESM, LIGHT_TABLE_ESM, anywidget, traitlets):
 
 @app.cell
 def _(PROJECTS, REPO, base64, json, mo, subprocess, tempfile):
+    import sys
     import os as _os
     import shutil as _shutil
     import time as _time
@@ -295,8 +296,8 @@ def _(PROJECTS, REPO, base64, json, mo, subprocess, tempfile):
 
     STUDIO_SYSTEM = (
         "You are the PixCell conductor inside `homi studio` (a chat panel; the "
-        "human also sees a live device table). You work in this repository "
-        f"({REPO}) with its .venv and skills.\n\n"
+        "human also sees a live device table). Workspace root: "
+        f"{REPO}. Python interpreter: {sys.executable}.\n\n"
         "YOU ARE THE ORCHESTRATOR, NEVER THE WORKER. You never write device "
         "geometry yourself, never author or iterate a recreation script in "
         "your own session, never run the recreate loop by hand. Every stage "

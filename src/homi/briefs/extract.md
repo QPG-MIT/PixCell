@@ -29,10 +29,10 @@ Do it AGENT-FIRST — use your own eyes, no VLM API scoring:
 
 Tooling: if you have MCP tools, these are the mcp__homi-mj__* family. Without MCP
 tools (e.g. a Codex worker), the same functions are importable from the installed
-package: .venv/bin/python -c "from homi.paper_processing import analyze_pdf_figures,
+package: {{PYTHON}} -c "from homi.paper_processing import analyze_pdf_figures,
 crop_region, generate_bw_variants, refine_bw_image, get_gemini_client" — the B&W
-generators take client=get_gemini_client() (the key is in .env at the repo root;
-load it). For page rendering use PyMuPDF (fitz) directly at ~2x zoom. If no
+generators take client=get_gemini_client(), which reads GEMINI_API_KEY from the
+environment or a .env file. For page rendering use PyMuPDF (fitz) directly at ~2x zoom. If no
 create_footprint_json tool is available, write the JSON yourself:
 {"footprint_um": [L, W]}. View rendered images with your own vision.
 

@@ -135,7 +135,14 @@ def dispatch_agent(
     spec = STAGES[stage]  # KeyError on unknown stage is the contract
     timeout = timeout_s or spec.timeout_s
     os.makedirs(workdir, exist_ok=True)
-    brief = briefs.render(spec.brief, **{**spec.extra_vars, **brief_vars})
+    # PYTHON: the interpreter the worker should use — this dispatch's own env
+    # (an installed package has no repo-relative .venv to point at)
+    import sys as _sys
+
+    brief = briefs.render(
+        spec.brief,
+        **{"PYTHON": _sys.executable, **spec.extra_vars, **brief_vars},
+    )
     backend = (run.backend if run is not None
                else workspace.resolve_backend(probe=not dry_run))
     legacy = _legacy_backend_name(backend, cli)
@@ -249,6 +256,11 @@ def open_headless_session(workdir: str, *, model: str | None = None,
 # --- extraction wrappers (stable public surface) -----------------------------
 
 
+def _dispatch_python() -> str:
+    import sys as _sys
+    return _sys.executable
+
+
 def build_extractor_brief(pdf_path: str, output_dir: str, hint: str | None = None) -> str:
     """The self-contained brief handed to the extractor agent (pure)."""
     return briefs.render(
@@ -257,6 +269,7 @@ def build_extractor_brief(pdf_path: str, output_dir: str, hint: str | None = Non
         OUTPUT_DIR=output_dir,
         HINT_LINE=f"Device hint: {hint}\n" if hint else "",
         INPUT_NOTE="",
+        PYTHON=_dispatch_python(),
     )
 
 
