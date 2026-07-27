@@ -112,7 +112,9 @@ commands.
 │   ├── jee/                      Classical parameter optimization (SSE minimization)
 │   ├── michaelangelo/            Visual verifier: IoU and Dice at calibrated absolute scale
 │   └── weber/                    Parameter analysis for the workbench and optimizer
+├── tests/                        The engine's test suite (studio E2E under tests/studio/)
 ├── .env.example                  Optional API-key template; the core loop needs none
+├── .github/                      CI: locked fresh-install sync + the full suite on push
 ├── .mcp.json                     Binds the 7 MCP servers when an agent opens the clone
 ├── LICENSE                       Repository-wide MIT license
 ├── README.md                     Project overview, installation, and entry points
