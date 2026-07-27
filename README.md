@@ -79,7 +79,7 @@ pixcell generate projects/my_device                # blind agent recreation + ga
 pixcell retarget device.py --stack sin400.json --spec spec.json
 pixcell explore  projects/my_device/output/best.py --launch   # per-device workbench
 pixcell simulate projects/my_device/output/best.gds  # FDTD draft; a human presses Start
-pixcell serve                                      # the 7 MCP servers · `pixcell api` for REST
+pixcell serve                                      # the 7 MCP servers · `pixcell api` for REST (localhost-only by default)
 ```
 
 ## Dataset

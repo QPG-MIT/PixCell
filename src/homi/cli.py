@@ -286,7 +286,9 @@ Examples:
 
     # --- api ---
     p_api = subparsers.add_parser("api", help="Start the REST API server")
-    p_api.add_argument("--host", type=str, default="0.0.0.0")
+    p_api.add_argument("--host", type=str, default="127.0.0.1",
+                       help="Bind address (default 127.0.0.1 — local only; "
+                            "pass 0.0.0.0 only to expose deliberately)")
     p_api.add_argument("--port", type=int, default=8000)
     p_api.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
 
