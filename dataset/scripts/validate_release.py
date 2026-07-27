@@ -644,10 +644,41 @@ def validate_release(
                 raise ReleaseError(
                     f"{path.relative_to(root)}: forbidden package imports {forbidden}"
                 )
-    card = DatasetCard.load(str(root / "README.md"))
+    card_path = root / "README.md"
+    card_text = card_path.read_text(encoding="utf-8")
+    if any(mark in card_text for mark in ("—", "–", "·")):
+        raise ReleaseError("dataset card contains decorative dash or separator marks")
+    card = DatasetCard.load(str(card_path))
     card_data = card.data.to_dict()
     if card_data.get("license") != "mit":
         raise ReleaseError("dataset card must declare the MIT license")
+    expected_card_metadata = {
+        "pretty_name": "PixCell Dataset",
+        "language": ["en", "code"],
+        "annotations_creators": ["expert-generated", "machine-generated"],
+        "source_datasets": ["original"],
+        "task_categories": ["image-text-to-text"],
+        "size_categories": ["1K<n<10K"],
+        "tags": [
+            "image",
+            "text",
+            "code",
+            "python",
+            "code-generation",
+            "vision-language",
+            "photonics",
+            "gds",
+            "gdsfactory",
+            "image-to-code",
+            "multimodal",
+            "synthetic",
+            "curriculum-learning",
+            "datasets",
+        ],
+    }
+    for field, expected in expected_card_metadata.items():
+        if card_data.get(field) != expected:
+            raise ReleaseError(f"dataset card metadata drift for {field}")
     configs = card_data.get("configs")
     if not isinstance(configs, list):
         raise ReleaseError("dataset card has no configurations")
@@ -681,6 +712,37 @@ def validate_release(
         name = str(record["config_name"])
         if record.get("data_files") != expected_data_files[name]:
             raise ReleaseError(f"dataset card data_files drift for {name}")
+    expected_dataset_info = [
+        {
+            "config_name": "all",
+            "splits": [{"name": "train", "num_examples": 738}],
+        },
+        {
+            "config_name": "core-v1",
+            "splits": [{"name": "train", "num_examples": 738}],
+        },
+        *[
+            {
+                "config_name": level,
+                "splits": [
+                    {
+                        "name": "train",
+                        "num_examples": count,
+                    }
+                ],
+            }
+            for level, count in zip(LEVELS, (177, 215, 118, 120, 108), strict=True)
+        ],
+        {
+            "config_name": "depth-v1",
+            "splits": [
+                {"name": "train", "num_examples": 3468},
+                {"name": "validation", "num_examples": 1092},
+            ],
+        },
+    ]
+    if card_data.get("dataset_info") != expected_dataset_info:
+        raise ReleaseError("dataset card split metadata drift")
     catalog = read_json(root / "metadata" / "catalog.json")
     if catalog.get("schema_version") != SCHEMA_VERSION:
         raise ReleaseError("catalog schema version drift")

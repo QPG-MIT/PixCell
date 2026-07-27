@@ -1,14 +1,23 @@
 ---
-pretty_name: "PixCell Dataset: Representation-First Image-to-Code Curriculum"
+pretty_name: "PixCell Dataset"
 license: mit
 language:
   - en
+  - code
+annotations_creators:
+  - expert-generated
+  - machine-generated
+source_datasets:
+  - original
 task_categories:
-  - image-to-text
+  - image-text-to-text
 tags:
   - image
+  - text
   - code
   - python
+  - code-generation
+  - vision-language
   - photonics
   - gds
   - gdsfactory
@@ -16,6 +25,7 @@ tags:
   - multimodal
   - synthetic
   - curriculum-learning
+  - datasets
 size_categories:
   - 1K<n<10K
 configs:
@@ -64,25 +74,66 @@ configs:
         path: depth-v1/data/train-*.parquet
       - split: validation
         path: depth-v1/data/validation-*.parquet
+dataset_info:
+  - config_name: all
+    splits:
+      - name: train
+        num_examples: 738
+  - config_name: core-v1
+    splits:
+      - name: train
+        num_examples: 738
+  - config_name: l0
+    splits:
+      - name: train
+        num_examples: 177
+  - config_name: l1
+    splits:
+      - name: train
+        num_examples: 215
+  - config_name: l2
+    splits:
+      - name: train
+        num_examples: 118
+  - config_name: l3
+    splits:
+      - name: train
+        num_examples: 120
+  - config_name: l4
+    splits:
+      - name: train
+        num_examples: 108
+  - config_name: depth-v1
+    splits:
+      - name: train
+        num_examples: 3468
+      - name: validation
+        num_examples: 1092
 ---
 
 # PixCell Dataset
 
-PixCell pairs high-visibility photonic component images and physical footprint
-context with verified primitive-only GDSFactory programs. It is published in
-two complementary configurations:
+The PixCell Dataset is a verified image-to-code curriculum for photonic
+geometry. Each row pairs a high-visibility component image and physical
+footprint context with a complete primitive-only GDSFactory program.
 
-| Configuration | Rows | Representations | Splits |
-|---|---:|---:|---|
-| `core-v1` | 738 | 547 | `train`: 738 |
-| `depth-v1` | 4,560 | 547 | `train`: 3,468 · `validation`: 1,092 |
+## Choose a configuration
 
-[Core gallery](galleries/all.png) · [L0](galleries/l0.png) ·
-[L1](galleries/l1.png) · [L2](galleries/l2.png) ·
-[L3](galleries/l3.png) · [L4](galleries/l4.png) ·
+| Configuration | Best for | Rows | Splits |
+|---|---|---:|---|
+| `core-v1` | Curriculum training and compact task sampling | 738 | `train`: 738 |
+| `depth-v1` | Image-to-code SFT and parameter recovery | 4,560 | `train`: 3,468, `validation`: 1,092 |
+| `l0` through `l4` | Individual stages of the core curriculum | 108 to 215 | `train` |
+
+`all` is the default compatibility alias for `core-v1`. Versioned work should
+pass both the configuration and matching revision.
+
+[Core gallery](galleries/all.png), [L0](galleries/l0.png),
+[L1](galleries/l1.png), [L2](galleries/l2.png),
+[L3](galleries/l3.png), [L4](galleries/l4.png),
 [Depth overview](depth-v1/galleries/overview.png)
 
-## Load from Hugging Face
+## Load
 
 ```bash
 pip install "datasets[vision]"
@@ -112,35 +163,46 @@ row["target_image"]   # canonical physical-aspect raster
 row["footprint_um"]   # physical width and height
 ```
 
-No custom loader or `trust_remote_code` is required.
+The Parquet files load directly through `datasets`.
 
 ## Curriculum
 
-The levels teach the permitted vocabulary before asking for complete photonic
-components.
+The five levels progress from the permitted primitive catalog to complete
+photonic components.
 
 | Level | Rows | Representations | Contents |
 |---|---:|---:|---|
-| **L0 — primitives** | 177 | 93 | The 22-item PixCell primitive catalog, constructor modes, useful orientations, and scale calibration. |
-| **L1 — operations** | 215 | 127 | Translation, rotation, reflection, alignment, spacing, connection, path construction, Booleans, repetition, arrays, and routing. |
-| **L2 — compositions** | 118 | 99 | Small relational assemblies, connected chains, branches, repeated carriers, arrays, and radial banks. |
-| **L3 — structures** | 120 | 120 | Authored multi-zone systems with routes, branches, defects, repeated media, and cyclic organization. |
-| **L4 — components** | 108 | 108 | Couplers, MMIs, splitters, interferometers, resonators, crossings, gratings, cavities, converters, and free-propagation structures. |
+| **L0: primitives** | 177 | 93 | The 22-item primitive catalog, constructor modes, useful orientations, and scale calibration. |
+| **L1: operations** | 215 | 127 | Translation, rotation, reflection, alignment, spacing, connection, path construction, Booleans, repetition, arrays, and routing. |
+| **L2: compositions** | 118 | 99 | Small relational assemblies, connected chains, branches, repeated carriers, arrays, and radial banks. |
+| **L3: structures** | 120 | 120 | Authored multi-zone systems with routes, branches, defects, repeated media, and cyclic organization. |
+| **L4: components** | 108 | 108 | Couplers, MMIs, splitters, interferometers, resonators, crossings, gratings, cavities, converters, and free-propagation structures. |
 
-`all` is the default configuration and currently contains the same rows as
-`core-v1`. The `l0` through `l4` configurations expose individual levels.
-Use both the `core-v1` configuration and `revision="core-v1"` to pin this
-release.
+`depth-v1` retains the complete core and adds seven controlled geometry
+settings to 546 representation anchors.
 
-`depth-v1` retains all 738 core rows. It adds seven controlled, model-visible
-geometry realizations to 546 of the 547 approved representation anchors; one
-anchor remains anchor-only because its sole exposed literal changes global
-placement rather than visible shape. Its validation split holds out parameter
-settings, not representation classes: every representation remains present in
-training. Use the `depth-v1`
-configuration and `revision="depth-v1"` together to pin it. The repository
-revision selects the published release, while the configuration selects its
-Parquet files.
+## Split design
+
+The split holds out parameter settings within known representations.
+
+| Split | Contents | Rows |
+|---|---|---:|
+| `train` | All 738 core rows plus five new settings for each of 546 expanded representations | 3,468 |
+| `validation` | Two further settings for each expanded representation | 1,092 |
+
+```text
+train      738 + (5 * 546) = 3,468
+validation         2 * 546 = 1,092
+```
+
+Training receives the anchors and most controlled settings. Validation receives
+a fixed parameter holdout for every expanded representation. This gives a
+76/24 training-to-validation ratio and keeps all 547 representations available
+during training.
+
+Exact image-plus-instruction pairs and code hashes stay unique across the two
+splits. `leakage_group_id` records related aliases and dependencies. Use that
+field to construct a group-disjoint split for unseen-representation studies.
 
 ## Row contract
 
@@ -150,42 +212,45 @@ Parquet files.
 | Supervised target | `code` |
 | Physical reference | `target_image`, `footprint_um` |
 | Curriculum identity | `level`, `family`, `concept_id`, `representation_id`, `grammar_id`, `variation_role` |
-| Split integrity | `leakage_group_id` |
+| Alias and dependency grouping | `leakage_group_id` |
 | Construction metadata | `primitive_calls`, `prerequisite_ids`, `port_signature_json`, `parameters_json`, `topology_json` |
-| Integrity and provenance | SHA-256 fields, `view_policy`, source digest, generator version |
+| Integrity and provenance | SHA-256 fields, `view_policy`, source digest, and generator version |
 
 `image` is a maximum-visibility view: thin gaps, rails, teeth, bends, and
-defects are enlarged when needed to remain legible. It may not preserve
-physical aspect ratio. The class-blind `instruction` supplies the footprint
-and per-axis display magnification; `target_image` preserves the canonical
-physical aspect.
+defects remain legible through declared per-axis display magnification. The
+class-blind `instruction` supplies that display scale and the physical
+footprint. `target_image` preserves the physical aspect ratio.
 
 The full schema and release inventory are in
 [`metadata/catalog.json`](metadata/catalog.json).
 The additional `depth-v1` lineage and controlled-variation fields are
 documented in [`depth-v1/README.md`](depth-v1/README.md).
 
-## Admission
+## Construction and quality
 
-Only admitted rows are published. Rejected proposals, quarantine candidates,
-failed builds, private benchmark figures, and RL rollouts are excluded.
+Core examples enumerate primitives, operations, compositions, structures, and
+photonic components. The depth builder identifies live geometry parameters and
+emits a fixed schedule of controlled, visible settings.
 
-Admission checks compilation and execution, primitive-only source purity,
-declared ports and connectivity, structural witnesses, calibrated geometry,
-footprint agreement, and artifact hashes. The core policy is in
-[`factory/admission_policy.json`](factory/admission_policy.json); the depth
-release binds its accepted rows and evidence in
-[`depth-v1/factory/accepted_manifest.json`](depth-v1/factory/accepted_manifest.json).
+Every row passes compilation and execution, primitive-only source checks,
+declared port and connectivity checks, structural witnesses, calibrated
+geometry comparison, footprint agreement, and artifact hashing. Release
+manifests and verification evidence are stored under [`factory/`](factory/)
+and [`depth-v1/factory/`](depth-v1/factory/).
 
-The frozen `core-v1` release reports five exact duplicate groups and 41
-rotation/reflection-equivalent silhouette groups. They are retained as
-declared API aliases, pose examples, or calibration cases and are bound by
-`leakage_group_id`.
+The dataset targets executable geometric reconstruction at a declared raster
+and physical footprint. Electromagnetic performance and foundry qualification
+are evaluated in downstream device workflows.
+
+All images, instructions, and programs are synthetic.
 
 ## Reproduce
 
-The accepted-source capsule under `factory/core-v1/` makes the dataset
-self-contained. From a clean PixCell checkout:
+The source capsule under `factory/core-v1/` and the depth release scripts
+rebuild the published rows from a clean PixCell checkout.
+
+<details>
+<summary>Rebuild and verify both releases</summary>
 
 ```bash
 cd dataset
@@ -204,24 +269,20 @@ python -m unittest discover -s tests -v
 python -m pytest depth-v1/tests -q
 ```
 
-The rebuilds must reproduce these frozen logical release digests:
+The rebuilds reproduce these frozen logical release digests:
 
 ```text
 core-v1   e1c509dca337ce485efcb2b35101a052e06b12331b63a2f21a36c93b3682ea89
 depth-v1  676c49134d4d044c7d84426cf8eeecf09302e74ca4aa548956f14b7631a4d80b
 ```
 
-The capsule contains accepted programs, explicit grammar assignments, image
-evidence, and admission sidecars. It excludes historical proposal generators,
-rejected candidates, private benchmarks, and RL runs. See
-[`factory/README.md`](factory/README.md) for the replay contract.
+</details>
 
-The rows contain executable Python. Core replay uses isolated temporary
-working directories; depth replay executes verified rows in-process for
-speed. Neither is a security sandbox. Inspect code from any untrusted revision
-before executing it.
+See [`factory/README.md`](factory/README.md) for the replay contract. Dataset
+rows contain executable Python. Inspect code from untrusted revisions before
+execution.
 
-## Export
+## Training export
 
 Convert a level to OpenAI-style multimodal `messages`:
 
@@ -233,21 +294,29 @@ python scripts/to_vlm_messages.py \
   --image-mode data-uri
 ```
 
-## Scope
+## Recommended use
 
-This release is a compact curriculum for image-to-code SFT, task sampling, and
-representation studies. It is not a pretraining-scale corpus, a held-out
-benchmark, an RL reward implementation, or an optical-performance dataset.
-
-Images are synthetic, single-layer, black-and-white renders. Passing
-admission establishes faithful geometry under the declared raster and
-footprint; it does not establish electromagnetic performance or foundry
-sign-off.
+Use `depth-v1` for image-to-code SFT and within-representation parameter
+recovery. Use `core-v1` or the individual levels for staged training, task
+sampling, and component-focused training. Use a representation-disjoint
+benchmark for unseen-component evaluation.
 
 ## License and citation
 
 The dataset and release tools use the [MIT License](LICENSE). Dependency
-notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and citation
-metadata is in [CITATION.cff](CITATION.cff). The citation record will be
-updated with the paper's arXiv identifier when available. Project source:
-[QPG-MIT/PixCell](https://github.com/QPG-MIT/PixCell).
+notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Citation
+metadata is available in [CITATION.cff](CITATION.cff).
+
+```bibtex
+@misc{agarwal2026pixcelldataset,
+  title        = {PixCell Dataset: Representation-First Image-to-Code Curriculum},
+  author       = {Aadarsh Agarwal and Kenaish Al Qubaisi and Dirk Englund},
+  year         = {2026},
+  howpublished = {Hugging Face dataset},
+  note         = {Version depth-v1},
+  url          = {https://huggingface.co/datasets/qpaig-mit/pixcell}
+}
+```
+
+The citation record will include the paper's arXiv identifier when available.
+Project source: [QPG-MIT/PixCell](https://github.com/QPG-MIT/PixCell).
