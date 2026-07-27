@@ -100,7 +100,8 @@ commands.
 ├── data/                         The measured record behind the paper (data/README.md = the card)
 │   ├── agents/                   Models as blind coding agents: the 104-cell matrix + campaigns
 │   ├── benchmark/                The 8 device input fixtures and their source panels
-│   └── chatbots/                 Models as API chatbots: analysis, aggregates, trajectories
+│   ├── chatbots/                 Models as API chatbots: analysis, aggregates, trajectories
+│   └── training/                 Versioned baseline and training evidence releases
 ├── dataset/                      Accepted-only L0-L4 image-to-code curriculum
 │   ├── data/{l0,...,l4}/         One Parquet training shard per curriculum level
 │   ├── factory/
@@ -118,6 +119,8 @@ commands.
 │   └── huggingface/              Build, validate, and safely publish core/depth/references
 ├── rl/                           Shared measurement and method-specific training recipes
 │   ├── common/                   Contracts, execution, source checks, IoU, and batching
+│   ├── evaluation/               Shared sampling, immutable records, aggregation, and tracking
+│   ├── studies/                  Frozen protocols, task manifests, and study launchers
 │   ├── track_a/                  Open-model SFT, curriculum G4 RL, and checkpoint evaluation
 │   └── track_{b,c}/              Reserved contracts for later approved training protocols
 ├── src/                          The installable engine (Python packages)
