@@ -188,9 +188,9 @@ def _render_cross_stack(data: dict) -> None:
     # column and share the same anchor as its heading; they do not consume an
     # invisible y-tick gutter that pushes the matrix off-center.
     figure = plt.figure(figsize=(3.42, 3.10), facecolor="white")
-    matrix_left = 0.300
+    matrix_left = 0.315
     matrix_bottom = 0.140
-    matrix_width = 0.660
+    matrix_width = 0.645
     matrix_height = matrix_width * figure.get_figwidth() / figure.get_figheight()
     axes = figure.add_axes(
         [matrix_left, matrix_bottom, matrix_width, matrix_height]
@@ -276,7 +276,7 @@ def _render_cross_stack(data: dict) -> None:
         "Geometry tuned for",
         ha="left",
         va="center",
-        fontsize=8.4,
+        fontsize=8.0,
         color=INK,
     )
     for row, stack in enumerate(stacks):
