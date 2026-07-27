@@ -1,0 +1,105 @@
+# Golden cases for the RC-01 verdict logic. Each case feeds an
+# issuer-recomputed grading report to contract_definitions.evaluate.
+version: 1
+cases:
+  - name: settles_when_all_gates_green_and_evidence_complete
+    input:
+      report:
+        evidence:
+          metric_code: evidence/metric/
+          metric_definition: evidence/definition.md
+          calibrated_corpus: evidence/corpus/
+          perturbation_generator: evidence/perturb.py
+          hidden_split_manifest: evidence/splits.sha256
+          annotation_protocol: evidence/annotation.md
+          baseline_analysis: evidence/baselines.csv
+          raw_scores: evidence/raw_scores.csv
+          failure_cases: evidence/failures.md
+          rerun_script: evidence/rerun.sh
+        gates:
+          T1_pure_deterministic_metric: pass
+          T2_frozen_perturbation_suite: pass
+          T3_ordering_improvement: pass
+          T4_adversarial_pairs_ordered: pass
+          T5_single_rerun_reproduces: pass
+        failures: []
+    expected:
+      state: settled
+
+  - name: rejected_when_ordering_gate_fails
+    input:
+      report:
+        evidence:
+          metric_code: evidence/metric/
+          metric_definition: evidence/definition.md
+          calibrated_corpus: evidence/corpus/
+          perturbation_generator: evidence/perturb.py
+          hidden_split_manifest: evidence/splits.sha256
+          annotation_protocol: evidence/annotation.md
+          baseline_analysis: evidence/baselines.csv
+          raw_scores: evidence/raw_scores.csv
+          failure_cases: evidence/failures.md
+          rerun_script: evidence/rerun.sh
+        gates:
+          T1_pure_deterministic_metric: pass
+          T2_frozen_perturbation_suite: pass
+          T3_ordering_improvement: fail
+          T4_adversarial_pairs_ordered: pass
+          T5_single_rerun_reproduces: pass
+        failures: []
+    expected:
+      state: rejected
+      failing_gates: [T3_ordering_improvement]
+
+  - name: rejected_when_evidence_key_missing
+    input:
+      report:
+        evidence:
+          metric_code: evidence/metric/
+          metric_definition: evidence/definition.md
+          calibrated_corpus: evidence/corpus/
+          perturbation_generator: evidence/perturb.py
+          hidden_split_manifest: evidence/splits.sha256
+          annotation_protocol: evidence/annotation.md
+          baseline_analysis: evidence/baselines.csv
+          raw_scores: evidence/raw_scores.csv
+          failure_cases: evidence/failures.md
+        gates:
+          T1_pure_deterministic_metric: pass
+          T2_frozen_perturbation_suite: pass
+          T3_ordering_improvement: pass
+          T4_adversarial_pairs_ordered: pass
+          T5_single_rerun_reproduces: pass
+        failures: []
+    expected:
+      state: rejected
+      missing_evidence: [rerun_script]
+
+  - name: rejected_when_rerun_is_not_reproducible
+    input:
+      report:
+        evidence: {}
+        gates: {}
+        failures: [non_reproducible]
+    expected:
+      state: rejected
+
+  - name: not_scored_on_verifier_crash_even_with_failing_gates
+    input:
+      report:
+        evidence: {}
+        gates:
+          T1_pure_deterministic_metric: fail
+        failures: [verifier_crash, runtime_failure]
+    expected:
+      state: not_scored
+      failure_codes: [verifier_crash]
+
+  - name: claimant_asserted_success_without_evidence_is_rejected
+    input:
+      report:
+        evidence: {}
+        gates: {}
+        failures: []
+    expected:
+      state: rejected

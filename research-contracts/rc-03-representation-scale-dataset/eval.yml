@@ -1,0 +1,94 @@
+# Golden cases for the RC-03 verdict logic.
+version: 1
+cases:
+  - name: settles_when_all_gates_green_and_evidence_complete
+    input:
+      report:
+        evidence:
+          source_manifest: evidence/sources.json
+          license_manifest: evidence/licenses.json
+          provenance_records: evidence/provenance/
+          calibration_records: evidence/calibration/
+          topology_annotations: evidence/topology/
+          scale_evidence: evidence/scale/
+          programs_or_reconstructions: evidence/programs/
+          split_hashes: evidence/splits.sha256
+          leakage_audit: evidence/leakage.json
+          baselines: evidence/baselines.csv
+          compute_log: evidence/compute.json
+          error_taxonomy: evidence/errors.md
+          rerun_script: evidence/rerun.sh
+        gates:
+          T1_corpus_integrity: pass
+          T2_layer_separation: pass
+          T3_protected_splits: pass
+          T4_abstention_enforced: pass
+          T5_matched_compute_comparison: pass
+        failures: []
+    expected:
+      state: settled
+
+  - name: rejected_when_leakage_audit_finds_crossover
+    input:
+      report:
+        evidence:
+          source_manifest: evidence/sources.json
+          license_manifest: evidence/licenses.json
+          provenance_records: evidence/provenance/
+          calibration_records: evidence/calibration/
+          topology_annotations: evidence/topology/
+          scale_evidence: evidence/scale/
+          programs_or_reconstructions: evidence/programs/
+          split_hashes: evidence/splits.sha256
+          leakage_audit: evidence/leakage.json
+          baselines: evidence/baselines.csv
+          compute_log: evidence/compute.json
+          error_taxonomy: evidence/errors.md
+          rerun_script: evidence/rerun.sh
+        gates:
+          T1_corpus_integrity: pass
+          T2_layer_separation: pass
+          T3_protected_splits: fail
+          T4_abstention_enforced: pass
+          T5_matched_compute_comparison: pass
+        failures: []
+    expected:
+      state: rejected
+      failing_gates: [T3_protected_splits]
+
+  - name: rejected_when_license_manifest_missing
+    input:
+      report:
+        evidence:
+          source_manifest: evidence/sources.json
+          provenance_records: evidence/provenance/
+          calibration_records: evidence/calibration/
+          topology_annotations: evidence/topology/
+          scale_evidence: evidence/scale/
+          programs_or_reconstructions: evidence/programs/
+          split_hashes: evidence/splits.sha256
+          leakage_audit: evidence/leakage.json
+          baselines: evidence/baselines.csv
+          compute_log: evidence/compute.json
+          error_taxonomy: evidence/errors.md
+          rerun_script: evidence/rerun.sh
+        gates:
+          T1_corpus_integrity: pass
+          T2_layer_separation: pass
+          T3_protected_splits: pass
+          T4_abstention_enforced: pass
+          T5_matched_compute_comparison: pass
+        failures: []
+    expected:
+      state: rejected
+      missing_evidence: [license_manifest]
+
+  - name: not_scored_on_environment_mismatch
+    input:
+      report:
+        evidence: {}
+        gates: {}
+        failures: [environment_mismatch]
+    expected:
+      state: not_scored
+      failure_codes: [environment_mismatch]

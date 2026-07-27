@@ -1,0 +1,65 @@
+contract:
+  template: rc-04-smallest-qualifying-open-model
+  version: 1.0.0
+  status: open
+  name: "RC-04 Smallest qualifying open model"
+  repo: QPG-MIT/PixCell
+  test_file: tests/test_research_contracts.py
+
+source:
+  paper_section: "Research Contracts (closing section), arxiv/main.tex"
+  project_page: https://pixcell.qpaig.com/#research-contracts
+  tier_suite: dataset/
+  admission_policy: dataset/factory/admission_policy.json
+  purity_rules: src/homi/conductor/source_policy.py
+
+marketplace:
+  venue: https://vvuq.dirkenglund.org
+  contract_id: contract_abb35955056a
+  settlement: issuer-graded
+  payment_type: all-or-nothing
+
+governing_gates:
+  - id: T1_frozen_protocol
+    label: "Registry, floors, and budgets sha256-committed before any evaluation"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [candidate_registry, tier_floors, budget_manifest, preregistration_commit]
+  - id: T2_identical_budgets_full_raw
+    label: "Identical budgets for every candidate; all attempts shipped raw"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [raw_programs, all_attempts, scores, budget_manifest]
+  - id: T3_recomputable_bounds
+    label: "Issuer-recomputed confidence bounds meet the frozen per-tier floors"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [bounds_script, raw_programs, scores, tier_floors]
+  - id: T4_source_purity
+    label: "Conductor-gate purity rules pass on an issuer-rerun sample"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [purity_gate_results, raw_programs]
+  - id: T5_release_and_accounting
+    label: "Qualifying model released with full accounting and frontier"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [release_bundle, parameter_accounting, runtime_accounting, frontier_analysis]
+
+claim_boundaries:
+  final_claims_allowed: false
+  allowed_current_claims:
+    - "The contract is published, funded, and claimable."
+  blocked_claims:
+    - "A smallest qualifying model has been identified."
+    - "Any qualifier is a global optimum over open-weight models."
+
+verification:
+  research_contracts:
+    - "python -m pytest tests/test_research_contracts.py -q"
+    - "python research-contracts/validate.py"

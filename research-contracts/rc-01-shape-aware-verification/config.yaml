@@ -1,0 +1,63 @@
+contract:
+  template: rc-01-shape-aware-verification
+  version: 1.0.0
+  status: open
+  name: "RC-01 Shape-aware visual verification"
+  repo: QPG-MIT/PixCell
+  test_file: tests/test_research_contracts.py
+
+source:
+  paper_section: "Research Contracts (closing section), arxiv/main.tex"
+  project_page: https://pixcell.qpaig.com/#research-contracts
+  verifier_of_record: michaelangelo.core.compare_absolute
+
+marketplace:
+  venue: https://vvuq.dirkenglund.org
+  contract_id: contract_71ec83b4b6e1
+  settlement: issuer-graded
+  payment_type: all-or-nothing
+
+governing_gates:
+  - id: T1_pure_deterministic_metric
+    label: "Pure deterministic metric on calibrated rasters, range [0, 1]"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [metric_code, metric_definition]
+  - id: T2_frozen_perturbation_suite
+    label: "Frozen suite: perturbations, topology errors, port errors, adversarial blocks"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [calibrated_corpus, perturbation_generator, hidden_split_manifest]
+  - id: T3_ordering_improvement
+    label: "Strictly better ordering than IoU and the boundary baseline"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [annotation_protocol, baseline_analysis, raw_scores]
+  - id: T4_adversarial_pairs_ordered
+    label: "Every adversarial construction scores below its honest counterpart"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [perturbation_generator, raw_scores, failure_cases]
+  - id: T5_single_rerun_reproduces
+    label: "One rerun script reproduces all raw scores"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [rerun_script, calibrated_corpus, metric_code, raw_scores]
+
+claim_boundaries:
+  final_claims_allowed: false
+  allowed_current_claims:
+    - "The contract is published, funded, and claimable."
+  blocked_claims:
+    - "A metric superior to IoU exists for this task."
+    - "Any submitted metric establishes optical equivalence or fabrication validity."
+
+verification:
+  research_contracts:
+    - "python -m pytest tests/test_research_contracts.py -q"
+    - "python research-contracts/validate.py"
