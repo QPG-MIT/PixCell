@@ -83,6 +83,16 @@ class ReleaseTests(unittest.TestCase):
             catalog["total_representation_ids"],
         )
 
+    def test_core_v1_reference_artifacts_are_byte_identical(self) -> None:
+        freeze = read_json(ROOT / "factory" / "core-v1" / "freeze.json")
+        references = freeze.get("reference_artifacts")
+        self.assertIsInstance(references, dict)
+        self.assertTrue(references)
+        for relative, expected_sha256 in sorted(references.items()):
+            path = ROOT / relative
+            self.assertTrue(path.is_file(), relative)
+            self.assertEqual(sha256_file(path), expected_sha256, relative)
+
     def test_source_archive_writer_is_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

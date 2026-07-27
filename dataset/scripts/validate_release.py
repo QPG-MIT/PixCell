@@ -652,10 +652,35 @@ def validate_release(
     if not isinstance(configs, list):
         raise ReleaseError("dataset card has no configurations")
     config_names = [record.get("config_name") for record in configs]
-    if config_names != ["all", "core-v1", *LEVELS]:
+    if config_names != ["all", "core-v1", *LEVELS, "depth-v1"]:
         raise ReleaseError(f"dataset card configuration drift: {config_names}")
     if configs[0].get("default") is not True:
         raise ReleaseError("dataset card's all configuration is not default")
+    core_paths = [f"data/{level}/train-*.parquet" for level in LEVELS]
+    expected_data_files = {
+        "all": [{"split": "train", "path": core_paths}],
+        "core-v1": [{"split": "train", "path": core_paths}],
+        **{
+            level: [
+                {
+                    "split": "train",
+                    "path": f"data/{level}/train-*.parquet",
+                }
+            ]
+            for level in LEVELS
+        },
+        "depth-v1": [
+            {"split": "train", "path": "depth-v1/data/train-*.parquet"},
+            {
+                "split": "validation",
+                "path": "depth-v1/data/validation-*.parquet",
+            },
+        ],
+    }
+    for record in configs:
+        name = str(record["config_name"])
+        if record.get("data_files") != expected_data_files[name]:
+            raise ReleaseError(f"dataset card data_files drift for {name}")
     catalog = read_json(root / "metadata" / "catalog.json")
     if catalog.get("schema_version") != SCHEMA_VERSION:
         raise ReleaseError("catalog schema version drift")
