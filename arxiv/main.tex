@@ -673,7 +673,7 @@ three achieve $U$ equal to their raw mean because every program satisfies
 the source contract. Nine of the
 thirteen configurations attain $U\geq0.64$, while the lower-scoring
 configurations exhibit both geometric errors and source violations
-(Table~\ref{tab:cost}).
+(Fig.~\ref{fig:emergence}(a)).
 
 Figure~\ref{fig:beforeafter} provides a qualitative view of the geometric
 differences represented by these scores. The examples are deliberately
@@ -683,57 +683,26 @@ supports the quantitative claims below.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig1_emergence.pdf}
-\caption{\textbf{Two evaluation records on a shared scale.} Filled circles
-form the upper group of multimodal agents: one default or medium-effort
-configuration per model under the current source gate, with one retained
-result on each of the eight targets. Open diamonds form the lower iterative
-API group: nine configurations pooling archived turn-level programs under a
-broader source audit and uneven target coverage. Because the audit,
-aggregation unit, target coverage, prompt, and tool interface differ, the
-groups provide historical context and do not constitute a controlled harness
-ablation.}
+\caption{\textbf{Model evaluation and target-level benchmark matrix.}
+(a)~The same 13 configurations used in (b), grouped by base model. The left
+axis reports usable score $U$: the mean over all eight targets after assigning
+zero to every source-violating program. The right axis reports median
+API-list-price-equivalent cost per target on a logarithmic scale. Blue denotes
+OpenAI and orange Anthropic.
+(b)~Independently recomputed raw IoU across F1--F8 in the same row order.
+The color scale runs from 0 to 1; $\times$ marks a program containing
+prohibited source constructs. Its geometric score remains visible here but
+contributes zero to $U$ under Eq.~\eqref{eq:usable}.}
 \label{fig:emergence}
 \end{figure*}
 
-Figure~\ref{fig:emergence} places the balanced matrix on a shared scale with the earlier
-record without treating their difference as causal. For the two model
-version names present in both records, the reported values change from
+For historical context, two model version names appear in both the iterative
+API record and the current sweep. Their reported values change from
 $0.070$ to $0.341$ for Opus-4.5 and from $0.031$ to $0.148$ for Sonnet-4.5.
 The direction is consistent with improved measured performance, but the
 mismatched audits and aggregation rules preclude a causal attribution.
 
 \subsection{Configuration and target effects}\label{sec:capability}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.62\linewidth]{fig3_heatmap.pdf}
-\caption{\textbf{The complete benchmark matrix for multimodal agents.} Each entry is the
-independently recomputed raw IoU for one retained blind result; cell
-shading is proportional to IoU (0 dark to 1 light). An asterisk marks a program
-that contains prohibited source constructs; its geometric score is shown,
-but it contributes zero usable value under Eq.~\eqref{eq:usable}. F3 and F5
-have the lowest across-configuration means, while F3 and F8 show the widest
-score ranges.}
-\label{fig:heatmap}
-\end{figure*}
-
-\begin{table*}[t]
-\centering\small
-\caption{Per-configuration results and run economics. Mean IoU averages all
-eight final programs; usable $U$ applies Eq.~\eqref{eq:usable}; and
-\texttt{viol./8} counts programs that fail the current source gate. Runtime,
-output tokens, and cost are medians over available transcript telemetry
-($n=7$ for GPT-5.5-xhigh and Opus-4.8-medium; $n=8$ otherwise). Cost is an
-API-list-price equivalent, not billed cost. Anthropic values are computed
-from measured tokens and the campaign's stored rates; OpenAI values are
-frozen campaign estimates whose original rate-calculation manifest was not
-retained.
-$^\ast$~GPT-5.3-spark is an API research preview without published pricing;
-its cost uses the GPT-5.3-codex API rate as a proxy.
-$^\dagger$~wall-clock medians include crash-recovery time.}
-\label{tab:cost}
-\input{table_cost.tex}
-\end{table*}
 
 The eight-target design provides breadth across geometry but no replicated
 seeds within a cell. Bootstrap intervals over devices therefore
@@ -742,7 +711,7 @@ do not measure run-to-run variance. Under this convention, the $95\%$
 intervals are $0.912~[0.870,0.952]$ for GPT-5.5-xhigh and
 $0.910~[0.862,0.952]$ for Opus-4.8-medium.
 
-Performance varies substantially by target (Fig.~\ref{fig:heatmap}). F3
+Performance varies substantially by target (Fig.~\ref{fig:emergence}(b)). F3
 and F5 have the lowest mean IoU across configurations, $0.587$ and $0.548$,
 respectively. F3 spans $0.019$--$0.967$, and F8 spans $0.058$--$0.981$.
 The matrix also contains rank reversals: GPT-5.3-spark is mid-ranked by
@@ -888,14 +857,15 @@ cell. Thus, none of the three tuned geometries passes on either other stack;
 the editable program, rather than a single set of polygons, is the
 transferable artifact.
 
-\begin{figure}[t]
+\begin{figure}[!t]
 \centering
-\includegraphics[width=0.82\linewidth]{fig_cross_matrix.pdf}
-\caption{\textbf{Cross-stack evaluation of the retuned MZI.} Tier-0
-analytic FSR for the Opus-4.8-medium geometry optimized on each row stack
-and evaluated on each column stack. Green diagonal cells meet the
-$8.0$\,nm $\pm2\%$ target. All off-diagonal transplants fail. The
-GPT-5.5-xhigh matrix agrees within $0.002$\,nm per cell.}
+\includegraphics[width=\linewidth]{fig_cross_matrix.pdf}
+\caption{\textbf{Cross-stack transfer of the retuned MZI.} Each row fixes
+one Opus-4.8-medium geometry tuned for the indicated stack and evaluates it
+unchanged on every column stack. Values are tier-0 analytic FSRs in
+nanometers. The outlined diagonal cells fall within the $8.0$\,nm
+$\pm2\%$ target; all six off-diagonal transfers miss. The independently
+retuned GPT-5.5-xhigh matrix agrees within $0.002$\,nm per cell.}
 \label{fig:crossmatrix}
 \end{figure}
 
@@ -913,37 +883,13 @@ parameters but could not rewrite their program.
 
 The target in each case was the library PCell's modeled behavior on its
 home SOI stack, requested on all three stack models. Table~\ref{tab:twoarm}
-reports the resulting 60 tier-0 outcomes. A check mark means that the
-implemented figure-of-merit and footprint gates passed; a cross denotes an
-observed miss. These entries are neither full-wave validation nor complete
-design-rule checks, and an observed miss does not prove mathematical
-infeasibility over the full parameter domain.
+reports the resulting 60 tier-0 outcomes. A filled marker means that the
+implemented figure-of-merit and footprint gates passed; an open marker
+denotes an observed miss. These entries are neither full-wave validation
+nor complete design-rule checks, and an observed miss does not prove
+mathematical infeasibility over the full parameter domain.
 
-\begin{table}[b]
-\caption{\textbf{Fixed-representation retargeting outcomes.} R denotes the
-reconstructed primitives program and L the library PCell. Symbols report
-the tier-0 figure-of-merit plus footprint gate only:
-\checkmark~pass; $\times$~observed miss.}
-\label{tab:twoarm}
-\begin{ruledtabular}
-\begin{tabular}{llcccccc}
-& & \multicolumn{3}{c}{GPT-5.5 high} &
-     \multicolumn{3}{c}{Opus-4.8 med.} \\
-Device & Rep. & SOI & SiN & TFLN & SOI & SiN & TFLN \\
-\colrule
-MZI     & R & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
-        & L & \checkmark & $\times$  & \checkmark & \checkmark & $\times$  & \checkmark \\
-Coupler & R & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & $\times$ \\
-        & L & \checkmark & $\times$  & \checkmark & \checkmark & \checkmark & $\times$ \\
-DBR     & R & \checkmark & \checkmark & \checkmark & \checkmark & $\times$  & $\times$ \\
-        & L & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
-Spiral  & R & \checkmark & $\times$  & $\times$  & \checkmark & \checkmark & \checkmark \\
-        & L & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
-Ring    & R & \checkmark & $\times$  & $\times$  & \checkmark & $\times$  & $\times$ \\
-        & L & \checkmark & $\times$  & $\times$  & \checkmark & $\times$  & $\times$ \\
-\end{tabular}
-\end{ruledtabular}
-\end{table}
+\input{table_retargeting.tex}
 
 Across the 30 stack-by-model cases for each representation, reconstructed
 programs pass 21 and library PCells pass 22. The paired verdict agrees in

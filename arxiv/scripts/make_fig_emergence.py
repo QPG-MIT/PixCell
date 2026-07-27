@@ -1,8 +1,9 @@
-"""Render Figure 9: two evaluation records on one shared axis.
+"""Render Figure 9: model evaluation and the complete benchmark matrix.
 
-The upper cluster contains the current multimodal-agent record and the lower
-cluster contains the iterative API record. Restrained color and marker shape
-distinguish the records without implying a controlled or causal comparison.
+The panels share one configuration order. Panel A shows usable score and
+median API-equivalent cost on aligned axes; panel B shows the target-level
+IoU matrix. The generator verifies its frozen inputs and recomputes both raw
+and source-compliant scores from the cell-level sweep before plotting.
 
 Run from the repository root:
     python arxiv/scripts/make_fig_emergence.py
@@ -20,6 +21,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.lines import Line2D
 
 
 REPO = Path(__file__).resolve().parents[2]
@@ -31,8 +33,11 @@ INK = "#17191c"
 SOFT_INK = "#555a60"
 RULE = "#17191c"
 GRID = "#e2e4e6"
-MULTIMODAL_BLUE = "#2f5f9e"
-ITERATIVE_GREEN = "#267a5a"
+GROUP_RULE = "#cfd2d5"
+PROVIDER_COLORS = {
+    "openai": "#2f5f9e",
+    "anthropic": "#b4573d",
+}
 
 plt.rcParams.update(
     {
@@ -53,36 +58,31 @@ plt.rcParams.update(
 )
 
 
-LEGACY_NAMES = {
-    "Gemini-3-Pro": "Gemini 3 Pro",
-    "Gemini-3-Flash": "Gemini 3 Flash",
-    "Grok-4": "Grok 4",
-    "Gemini-2.5-Flash": "Gemini 2.5 Flash",
-    "Gemini-2.5-Pro": "Gemini 2.5 Pro",
-    "Qwen-VL-Instruct": "Qwen-VL Instruct",
-    "Claude-Opus-4.5": "Opus 4.5",
-    "Gemini-2.0-Flash": "Gemini 2.0 Flash",
-    "Claude-Sonnet-4.5": "Sonnet 4.5",
-}
-
-CODING_AGENT_CONFIGS = [
-    ("GPT-5.5", "codex55m"),
-    ("Opus 4.8", "opus48m"),
-    ("GPT-5.4", "codex54m"),
-    ("Sonnet 5", "sonnet5m"),
-    ("GPT-5.3 spark", "codexspark"),
-    ("GPT-5.4 mini", "codex54mini"),
-    ("Opus 4.5", "opus45m"),
-    ("Sonnet 4.5", "sonnet45m"),
-    ("Haiku 4.5", "haiku45m"),
+# Base model names appear once in the hierarchical row labels. Effort labels
+# distinguish repeated configurations without repeating the full model name.
+BENCHMARK_CONFIGS = [
+    ("GPT-5.5", "xhigh", "codex55x", "openai"),
+    ("GPT-5.5", "high", "codex55h", "openai"),
+    ("GPT-5.5", "med", "codex55m", "openai"),
+    ("Opus 4.8", "med", "opus48m", "anthropic"),
+    ("Opus 4.8", "max", "opus48max", "anthropic"),
+    ("GPT-5.4", "", "codex54m", "openai"),
+    ("Sonnet 5", "", "sonnet5m", "anthropic"),
+    ("GPT-5.3 spark", "", "codexspark", "openai"),
+    ("GPT-5.4-mini", "", "codex54mini", "openai"),
+    ("Opus 4.5", "", "opus45m", "anthropic"),
+    ("Haiku 4.5", "high", "haiku45h", "anthropic"),
+    ("Haiku 4.5", "med", "haiku45m", "anthropic"),
+    ("Sonnet 4.5", "", "sonnet45m", "anthropic"),
 ]
+
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _verified_json(asset: str, expected_sha256: str):
-    path = ASSET_DIR / asset
+    path = (ASSET_DIR / asset).resolve()
     actual = _sha256(path)
     if actual != expected_sha256:
         raise ValueError(
@@ -91,228 +91,385 @@ def _verified_json(asset: str, expected_sha256: str):
     return json.loads(path.read_text())
 
 
-def _load_records() -> tuple[list[tuple[str, float]], list[tuple[str, float]]]:
+def _load_benchmark() -> list[dict]:
     specification = json.loads(MANIFEST.read_text())
-    legacy_specification = specification["iterative_api_record"]
-    legacy_source = _verified_json(
-        legacy_specification["asset"],
-        legacy_specification["sha256"],
-    )
-    legacy = []
-    for row in legacy_source:
-        measured_score = float(row["primitive_rate"]) * float(
-            row["avg_iou_primitives"]
-        )
-        if not np.isclose(
-            measured_score,
-            float(row["expected_usable_iou"]),
-            atol=1e-12,
-        ):
-            raise ValueError(
-                f"Legacy U does not reconcile for {row['model']}: "
-                f"computed {measured_score}, stored {row['expected_usable_iou']}."
-            )
-        legacy.append((LEGACY_NAMES[row["model"]], measured_score))
-    legacy.sort(key=lambda item: -item[1])
-    if len(legacy) != 9 or len({name for name, _ in legacy}) != 9:
-        raise ValueError("The iterative API record must contain nine models.")
-
     sweep_specification = specification["coding_agent_sweep"]
     sweep_source = _verified_json(
         sweep_specification["asset"],
         sweep_specification["sha256"],
     )["cells"]
+    economics_specification = specification["configuration_economics"]
+    economics_source = _verified_json(
+        economics_specification["asset"],
+        economics_specification["sha256"],
+    )
+
     expected_targets = int(sweep_specification["expected_targets_per_configuration"])
-    coding_agent = []
-    for name, configuration in CODING_AGENT_CONFIGS:
+    target_names = [f"final{index}" for index in range(1, expected_targets + 1)]
+    economics_by_configuration = {
+        row["config"]: row for row in economics_source
+    }
+    expected_configurations = {
+        configuration for _, _, configuration, _ in BENCHMARK_CONFIGS
+    }
+    if set(economics_by_configuration) != expected_configurations:
+        raise ValueError(
+            "The configuration economics record does not match the benchmark "
+            f"contract: {sorted(economics_by_configuration)}."
+        )
+
+    benchmark = []
+    for model, effort, configuration, provider in BENCHMARK_CONFIGS:
         cells = [cell for cell in sweep_source if cell["config"] == configuration]
         if len(cells) != expected_targets:
             raise ValueError(
                 f"Expected {expected_targets} cells for {configuration}, got {len(cells)}."
             )
-        usable_scores = [
-            float(cell["iou"])
-            for cell in cells
-            if cell["iou"] is not None and not cell["purity_violation"]
+        by_target = {cell["device"]: cell for cell in cells}
+        if set(by_target) != set(target_names):
+            raise ValueError(
+                f"Unexpected target set for {configuration}: {sorted(by_target)}."
+            )
+
+        values = [
+            float(by_target[target]["iou"])
+            if by_target[target]["iou"] is not None
+            else float("nan")
+            for target in target_names
         ]
-        score = (
-            len(usable_scores) / len(cells) * mean(usable_scores)
-            if usable_scores
-            else 0.0
+        violations = [
+            bool(by_target[target]["purity_violation"])
+            for target in target_names
+        ]
+        raw_score = float(np.nanmean(values))
+        usable_terms = [
+            0.0 if violation or np.isnan(value) else value
+            for value, violation in zip(values, violations)
+        ]
+        usable_score = mean(usable_terms)
+
+        economics = economics_by_configuration[configuration]
+        if int(economics["n"]) != expected_targets:
+            raise ValueError(f"Unexpected economics n for {configuration}.")
+        if int(economics["violations"]) != sum(violations):
+            raise ValueError(f"Violation count does not reconcile for {configuration}.")
+        if not np.isclose(raw_score, float(economics["mean_iou"]), atol=5.1e-4):
+            raise ValueError(f"Raw IoU does not reconcile for {configuration}.")
+        if not np.isclose(
+            usable_score,
+            float(economics["usable_iou"]),
+            atol=5.1e-4,
+        ):
+            raise ValueError(f"Usable IoU does not reconcile for {configuration}.")
+        cost = float(economics["median_api_equiv_cost_usd"])
+        if not np.isfinite(cost) or cost <= 0:
+            raise ValueError(f"Invalid median cost for {configuration}: {cost}.")
+
+        benchmark.append(
+            {
+                "model": model,
+                "effort": effort,
+                "configuration": configuration,
+                "provider": provider,
+                "values": values,
+                "violations": violations,
+                "raw_score": raw_score,
+                "usable_score": usable_score,
+                "cost": cost,
+            }
         )
-        coding_agent.append((name, score))
-    coding_agent.sort(key=lambda item: -item[1])
 
-    return legacy, coding_agent
+    return benchmark
 
 
-def _draw_group_heading(
-    axes: plt.Axes,
+def _groups(benchmark: list[dict]) -> list[tuple[str, int, int]]:
+    groups = []
+    start = 0
+    while start < len(benchmark):
+        model = benchmark[start]["model"]
+        end = start
+        while end + 1 < len(benchmark) and benchmark[end + 1]["model"] == model:
+            end += 1
+        groups.append((model, start, end))
+        start = end + 1
+    return groups
+
+
+def _panel_heading(
+    figure: plt.Figure,
     *,
-    y: float,
+    x: float,
+    letter: str,
     title: str,
-    marker: str,
-    filled: bool,
-    color: str,
+    rule_end: float,
 ) -> None:
-    axes.scatter(
-        [0],
-        [y],
-        s=31,
-        marker=marker,
-        facecolor=color if filled else "white",
-        edgecolor=color,
-        linewidth=1.05,
-        zorder=3,
-        clip_on=False,
+    figure.text(
+        x,
+        0.965,
+        letter,
+        ha="left",
+        va="center",
+        fontsize=9.8,
+        color=INK,
     )
-    axes.text(
-        0.035,
-        y,
+    figure.text(
+        x + 0.035,
+        0.965,
         title,
         ha="left",
         va="center",
-        fontsize=9.2,
-        fontweight="normal",
+        fontsize=9.8,
         color=INK,
     )
-    axes.hlines(
-        y + 0.68,
-        0,
-        1.065,
-        color=RULE,
-        linewidth=0.68,
-        zorder=2,
-    )
-
-
-def _draw_record(
-    axes: plt.Axes,
-    rows: list[tuple[str, float]],
-    *,
-    y: np.ndarray,
-    marker: str,
-    filled: bool,
-    color: str,
-) -> tuple[list[str], np.ndarray]:
-    labels = [name for name, _ in rows]
-    values = np.asarray([value for _, value in rows])
-
-    axes.scatter(
-        values,
-        y,
-        s=29,
-        marker=marker,
-        facecolor=color if filled else "white",
-        edgecolor=color,
-        linewidth=1.05,
-        zorder=3,
-    )
-    for row_y, value in zip(y, values):
-        axes.text(
-            min(value + 0.018, 1.025),
-            row_y,
-            f"{value:.3f}",
-            ha="left",
-            va="center",
-            fontsize=7.5,
-            fontweight="normal",
-            color=INK,
+    figure.add_artist(
+        Line2D(
+            [x, rule_end],
+            [0.925, 0.925],
+            transform=figure.transFigure,
+            color=RULE,
+            linewidth=0.68,
         )
+    )
 
-    return labels, values
+
+def _provider_legend(figure: plt.Figure) -> None:
+    handles = [
+        Line2D(
+            [],
+            [],
+            marker="o",
+            linestyle="none",
+            markersize=4.0,
+            markerfacecolor=color,
+            markeredgecolor=color,
+            label=label,
+        )
+        for label, color in (
+            ("OpenAI", PROVIDER_COLORS["openai"]),
+            ("Anthropic", PROVIDER_COLORS["anthropic"]),
+        )
+    ]
+    figure.legend(
+        handles=handles,
+        loc="upper right",
+        bbox_to_anchor=(0.512, 0.988),
+        ncol=2,
+        frameon=False,
+        fontsize=5.9,
+        handletextpad=0.35,
+        columnspacing=0.8,
+        borderaxespad=0,
+    )
 
 
-def _style_axes(
+def _style_evaluation_axis(
     axes: plt.Axes,
     *,
-    positions: np.ndarray,
-    labels: list[str],
+    row_count: int,
 ) -> None:
-    axes.set_xlim(0, 1.08)
-    axes.set_ylim(21.55, -0.75)
-    axes.set_yticks(positions)
-    axes.set_yticklabels(labels, fontsize=7.9, color=INK)
-    axes.set_xticks([0, 0.25, 0.50, 0.75, 1.00])
-    axes.set_xticklabels(["0", "0.25", "0.50", "0.75", "1.00"], fontsize=7.4)
-    axes.grid(
-        axis="x",
-        color=GRID,
-        linewidth=0.55,
-        linestyle="-",
-        zorder=0,
-    )
+    axes.set_ylim(row_count - 0.5, -0.5)
+    axes.set_yticks([])
+    axes.grid(axis="x", color=GRID, linewidth=0.5, zorder=0)
     axes.tick_params(
         axis="x",
-        length=3.4,
-        width=0.65,
+        length=2.8,
+        width=0.6,
         color=SOFT_INK,
         labelcolor=SOFT_INK,
-        pad=3,
+        labelsize=6.2,
+        pad=2,
     )
-    axes.tick_params(axis="y", length=0, pad=7)
-
     for side in ("top", "right", "left"):
         axes.spines[side].set_visible(False)
     axes.spines["bottom"].set_color(SOFT_INK)
-    axes.spines["bottom"].set_linewidth(0.65)
-    axes.set_xlabel(
-        r"Compliance-weighted IoU $U$",
-        fontsize=8.1,
-        color=INK,
-        labelpad=5,
-    )
+    axes.spines["bottom"].set_linewidth(0.6)
     axes.set_facecolor("white")
 
 
+def _draw_model_labels(
+    axes: plt.Axes,
+    benchmark: list[dict],
+) -> list[float]:
+    separators = []
+    for model, start, end in _groups(benchmark):
+        center = 0.5 * (start + end)
+        axes.text(
+            -0.265,
+            center,
+            model,
+            transform=axes.get_yaxis_transform(),
+            ha="right",
+            va="center",
+            fontsize=6.3,
+            color=INK,
+            clip_on=False,
+        )
+        for row_index in range(start, end + 1):
+            effort = benchmark[row_index]["effort"]
+            if effort:
+                axes.text(
+                    -0.045,
+                    row_index,
+                    effort,
+                    transform=axes.get_yaxis_transform(),
+                    ha="right",
+                    va="center",
+                    fontsize=5.75,
+                    color=SOFT_INK,
+                    clip_on=False,
+                )
+        if end < len(benchmark) - 1:
+            separators.append(end + 0.5)
+    return separators
+
+
+def _draw_model_evaluation(
+    score_axes: plt.Axes,
+    cost_axes: plt.Axes,
+    benchmark: list[dict],
+) -> list[float]:
+    rows = np.arange(len(benchmark))
+    colors = [PROVIDER_COLORS[row["provider"]] for row in benchmark]
+    score_axes.scatter(
+        [row["usable_score"] for row in benchmark],
+        rows,
+        s=25,
+        facecolor=colors,
+        edgecolor="white",
+        linewidth=0.35,
+        zorder=3,
+    )
+    cost_axes.scatter(
+        [row["cost"] for row in benchmark],
+        rows,
+        s=25,
+        facecolor=colors,
+        edgecolor="white",
+        linewidth=0.35,
+        zorder=3,
+    )
+
+    _style_evaluation_axis(score_axes, row_count=len(benchmark))
+    _style_evaluation_axis(cost_axes, row_count=len(benchmark))
+    score_axes.set_xlim(0, 1.01)
+    score_axes.set_xticks([0, 0.5, 1.0])
+    score_axes.set_xticklabels(["0", "0.5", "1.0"])
+    score_axes.set_title(
+        r"Usable score $U$",
+        fontsize=7.25,
+        color=INK,
+        pad=5,
+    )
+    cost_axes.set_xscale("log")
+    cost_axes.set_xlim(0.65, 100)
+    cost_axes.set_xticks([1, 10, 100])
+    cost_axes.set_xticklabels(["$1", "$10", "$100"])
+    cost_axes.minorticks_off()
+    cost_axes.set_title(
+        "Median cost",
+        fontsize=7.25,
+        color=INK,
+        pad=5,
+    )
+
+    separators = _draw_model_labels(score_axes, benchmark)
+    for separator in separators:
+        score_axes.axhline(separator, color=GROUP_RULE, linewidth=0.55, zorder=1)
+        cost_axes.axhline(separator, color=GROUP_RULE, linewidth=0.55, zorder=1)
+    return separators
+
+
+def _draw_benchmark_matrix(
+    figure: plt.Figure,
+    axes: plt.Axes,
+    colorbar_axes: plt.Axes,
+    benchmark: list[dict],
+    separators: list[float],
+) -> None:
+    values = np.asarray([row["values"] for row in benchmark])
+    image = axes.imshow(
+        values,
+        cmap="viridis",
+        vmin=0,
+        vmax=1,
+        aspect="auto",
+        interpolation="nearest",
+    )
+    axes.set_xticks(range(8))
+    axes.set_xticklabels([f"F{index}" for index in range(1, 9)], fontsize=6.4)
+    axes.set_yticks([])
+    axes.set_xticks(np.arange(0.5, 7.5, 1), minor=True)
+    axes.set_yticks(np.arange(0.5, len(benchmark) - 0.5, 1), minor=True)
+    axes.grid(which="minor", color="white", linewidth=0.55)
+    axes.tick_params(which="minor", length=0)
+    axes.tick_params(axis="x", length=0)
+    axes.set_xlabel("Target device", fontsize=7.2, labelpad=3, color=INK)
+
+    for row_index, row in enumerate(benchmark):
+        for column_index, is_violation in enumerate(row["violations"]):
+            if not is_violation:
+                continue
+            value = row["values"][column_index]
+            axes.text(
+                column_index,
+                row_index,
+                r"$\times$",
+                ha="center",
+                va="center",
+                fontsize=6.4,
+                color="white" if value < 0.55 else INK,
+            )
+    for separator in separators:
+        axes.axhline(separator, color="white", linewidth=1.15, zorder=3)
+    for spine in axes.spines.values():
+        spine.set_visible(False)
+
+    colorbar = figure.colorbar(
+        image,
+        cax=colorbar_axes,
+        ticks=[0, 0.5, 1.0],
+    )
+    colorbar.set_label("IoU", fontsize=7.0, labelpad=3)
+    colorbar.ax.tick_params(labelsize=6.1, length=2.5, width=0.55)
+    colorbar.outline.set_visible(False)
+
+
 def main() -> None:
-    legacy, coding_agent = _load_records()
+    benchmark = _load_benchmark()
 
-    figure = plt.figure(figsize=(7.40, 3.55), facecolor="white")
-    axes = figure.add_axes((0.215, 0.115, 0.755, 0.845))
+    figure = plt.figure(figsize=(7.40, 3.25), facecolor="white")
+    score_axes = figure.add_axes((0.205, 0.145, 0.175, 0.715))
+    cost_axes = figure.add_axes((0.405, 0.145, 0.095, 0.715))
+    matrix_axes = figure.add_axes((0.620, 0.145, 0.300, 0.715))
+    colorbar_axes = figure.add_axes((0.935, 0.145, 0.012, 0.715))
 
-    multimodal_y = np.arange(1.45, 10.45)
-    iterative_y = np.arange(12.75, 21.75)
-    multimodal_labels, _ = _draw_record(
-        axes,
-        coding_agent,
-        y=multimodal_y,
-        marker="o",
-        filled=True,
-        color=MULTIMODAL_BLUE,
+    separators = _draw_model_evaluation(
+        score_axes,
+        cost_axes,
+        benchmark,
     )
-    iterative_labels, _ = _draw_record(
-        axes,
-        legacy,
-        y=iterative_y,
-        marker="D",
-        filled=False,
-        color=ITERATIVE_GREEN,
+    _draw_benchmark_matrix(
+        figure,
+        matrix_axes,
+        colorbar_axes,
+        benchmark,
+        separators,
     )
-
-    _draw_group_heading(
-        axes,
-        y=0,
-        title="Multimodal agents",
-        marker="o",
-        filled=True,
-        color=MULTIMODAL_BLUE,
+    _panel_heading(
+        figure,
+        x=0.018,
+        letter="A",
+        title="Model evaluation",
+        rule_end=0.515,
     )
-    _draw_group_heading(
-        axes,
-        y=11.25,
-        title="Iterative API record",
-        marker="D",
-        filled=False,
-        color=ITERATIVE_GREEN,
+    _panel_heading(
+        figure,
+        x=0.535,
+        letter="B",
+        title="Benchmark matrix",
+        rule_end=0.980,
     )
-    positions = np.concatenate([multimodal_y, iterative_y])
-    labels = multimodal_labels + iterative_labels
-    _style_axes(
-        axes,
-        positions=positions,
-        labels=labels,
-    )
+    _provider_legend(figure)
 
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     output = FIGURE_DIR / "fig1_emergence.pdf"

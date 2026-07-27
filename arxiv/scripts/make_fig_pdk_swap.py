@@ -1,137 +1,397 @@
-"""Generate the PDK-swap paper figures (fig_spectra, fig_cross_matrix) from the
-committed campaign data in data/agents/pdk_swap/.
+"""Generate Figure 10 and Table II from the frozen retargeting evidence.
 
-Run from repo root: .venv/bin/python arxiv/scripts/make_fig_pdk_swap.py
-(Restored from paper/reports/pdk_swap_proof/paper/make_figures.py after that
-tree was pruned; paths retargeted to the consolidated data layout.)
+The compact inputs in ``fig_retargeting_assets`` are derived from the tracked
+campaign record in QPG-MIT/PixCell-running. Their manifest records both the
+source commit and content hashes so the paper repository can rebuild these
+assets without duplicating the complete simulation campaign.
+
+Run from the repository root:
+    python arxiv/scripts/make_fig_pdk_swap.py
 """
+
+from __future__ import annotations
+
+import hashlib
 import json
-import sys
 from pathlib import Path
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "src"))
-OUT = ROOT / "paper" / "figures"
-ARXIV = ROOT / "paper" / "figures"
-OUT.mkdir(parents=True, exist_ok=True)
-EXP = ROOT / "data" / "agents" / "pdk_swap"
-
-plt.rcParams.update({
-    "font.family": "serif",
-    "font.serif": ["STIXGeneral", "Times New Roman", "DejaVu Serif"],
-    "mathtext.fontset": "stix",
-    "pdf.fonttype": 42,
-    "font.size": 8, "axes.spines.top": False, "axes.spines.right": False,
-    "figure.dpi": 200, "savefig.bbox": "tight",
-})
-# house palette
-C_OPUS, C_CODEX, C_BASE, C_OK = "#3c7ec1", "#c15f3c", "#8a8a8a", "#327162"
-C_FAIL_BG, C_FAIL_TX = "#f0e6e1", "#9c4a2e"
+from matplotlib.lines import Line2D
+from matplotlib.patches import Rectangle
 
 
-def load_iters(path):
-    lg = json.loads(Path(path).read_text())
-    items = lg if isinstance(lg, list) else lg.get("iterations", [])
-    return [float(i["iou"]) for i in items]
+REPO = Path(__file__).resolve().parents[2]
+ASSET_DIR = Path(__file__).with_name("fig_retargeting_assets")
+MANIFEST = ASSET_DIR / "manifest.json"
+FIGURE_DIR = REPO / "arxiv" / "figures"
+TABLE_PATH = REPO / "arxiv" / "table_retargeting.tex"
+
+INK = "#17191c"
+SOFT_INK = "#555a60"
+PASS = "#246b5a"
+PASS_FILL = "#e2eee9"
+MISS = "#7e858a"
+MISS_FILL = "#f1f2f2"
+MISS_EDGE = "#cfd2d4"
+
+plt.rcParams.update(
+    {
+        "font.family": "serif",
+        "font.serif": [
+            "Iowan Old Style",
+            "STIX Two Text",
+            "STIXGeneral",
+            "Times New Roman",
+        ],
+        "mathtext.fontset": "stix",
+        "axes.unicode_minus": False,
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+        "savefig.facecolor": "white",
+        "savefig.bbox": None,
+    }
+)
 
 
-# --- Fig 1: IoU trajectories -------------------------------------------------
-opus = load_iters(EXP / "output/recreation/recreation_log.json")
-codex = load_iters(EXP / "output/recreation_codex/recreation_log.json")
-jee_iou = json.loads((EXP / "output/jee_refine/refined_metrics.json").read_text())["IoU"]
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
-fig, ax = plt.subplots(figsize=(4.6, 2.9))
-ax.plot(range(1, len(opus) + 1), opus, "o-", color=C_OPUS, label="Opus 4.8 medium (live-agent default)")
-ax.plot(range(1, len(codex) + 1), codex, "s-", color=C_CODEX, label="codex gpt-5.5 xhigh fast")
-ax.plot([len(opus), len(opus) + 1], [opus[-1], jee_iou], "--", color=C_OPUS, alpha=0.6)
-ax.plot([len(opus) + 1], [jee_iou], "D", color=C_OPUS, mfc="white")
-ax.annotate("JEE polish\n(Nelder–Mead, −20% SSE)", (len(opus) + 1, jee_iou),
-            xytext=(4.6, 0.44), fontsize=7.5, color=C_OPUS,
-            arrowprops=dict(arrowstyle="-", color=C_OPUS, alpha=0.5))
-ax.annotate("cubic-centerline fit\nto the image", (4, codex[3]), xytext=(2.1, 0.80),
-            fontsize=7.5, color=C_CODEX,
-            arrowprops=dict(arrowstyle="-", color=C_CODEX, alpha=0.5))
-ax.set_xlabel("recreation iteration")
-ax.set_ylabel("IoU vs input image")
-ax.set_ylim(0, 0.9)
-ax.legend(fontsize=7.5, loc="lower right", frameon=False)
-fig.savefig(OUT / "fig_iou_trajectory.pdf")
-fig.savefig(OUT / "fig_iou_trajectory.png")
-plt.close(fig)
-print("fig 1 done")
 
-# --- Fig 2: analytic transmission spectra ------------------------------------
-from homi.spec_optimization import analytic_transmission  # noqa: E402
+def _verified_json(specification: dict) -> dict:
+    path = ASSET_DIR / specification["asset"]
+    actual = _sha256(path)
+    expected = specification["sha256"]
+    if actual != expected:
+        raise ValueError(
+            f"Hash mismatch for {path}: expected {expected}, got {actual}."
+        )
+    return json.loads(path.read_text())
 
-baseline = json.loads((EXP / "output/baseline_eval.json").read_text())["stacks"]
-stacks = ["soi220", "sin400", "tfln400"]
-labels = {"soi220": "220 nm SOI", "sin400": "400 nm SiN", "tfln400": "400 nm TFLN"}
-opt = {}  # per stack: (n_eff, n_g, dL) from the verified Opus designs
-for s in stacks:
-    for f in (EXP / f"output/optimize/{s}").glob("*.json"):
-        if f.name == "optimization_log.json":
-            lg = json.loads(f.read_text())
-            it = (lg if isinstance(lg, list) else lg.get("iterations", []))[-1]
-            opt[s] = (float(it["n_eff"]), float(it["n_g"]),
-                      float(it["delta_length_measured_um"]))
 
-n = 4001
-wls = [1.53 + i * 0.04 / (n - 1) for i in range(n)]
-wnm = [w * 1000 for w in wls]
-fig, axes = plt.subplots(3, 1, figsize=(3.4, 3.8), sharex=True)
-for ax, s in zip(axes, stacks):
-    b = baseline[s]
-    t_base = analytic_transmission(wls, b["n_eff"], b["n_g"], 10.0)
-    ne, ng, dl = opt[s]
-    t_opt = analytic_transmission(wls, ne, ng, dl)
-    ax.plot(wnm, t_base, color=C_BASE, lw=0.9)
-    ax.plot(wnm, t_opt, color=C_OK, lw=1.1)
-    ax.set_ylabel(f"{labels[s]}\nT (bar port)", fontsize=7.5)
-    ax.set_ylim(-0.05, 1.62)
-    ax.set_yticks([0, 0.5, 1])
-    # direct labels in the reserved headroom (no legend boxes over the curves)
-    ax.text(0.02, 0.975, f"as pictured  ΔL = 10 µm — FSR {b['fsr_nm']:.0f} nm",
-            transform=ax.transAxes, ha="left", va="top",
-            fontsize=6.8, color="#6e6e6e")
-    ax.text(0.02, 0.855, f"retuned  ΔL = {dl:.1f} µm — FSR 8.000 nm",
-            transform=ax.transAxes, ha="left", va="top",
-            fontsize=6.8, color=C_OK)
-axes[-1].set_xlabel("wavelength (nm)")
-fig.align_ylabels(axes)
-fig.savefig(OUT / "fig_spectra.pdf")
-fig.savefig(ARXIV / "fig_spectra.pdf")
-fig.savefig(OUT / "fig_spectra.png")
-plt.close(fig)
-print("fig 2 done")
+def _load_inputs() -> tuple[dict, dict]:
+    manifest = json.loads(MANIFEST.read_text())
+    cross_stack = _verified_json(manifest["cross_stack"])
+    outcomes = _verified_json(manifest["fixed_representation"])
+    return cross_stack, outcomes
 
-# --- Fig 3: cross-stack matrix ------------------------------------------------
-cm = json.loads((EXP / "output/optimize/cross_matrix.json").read_text())["design_stack"]
-fig, ax = plt.subplots(figsize=(3.2, 2.7))
-vals = [[cm[d][e] for e in stacks] for d in stacks]
-for i, d in enumerate(stacks):
-    for j, e in enumerate(stacks):
-        v = vals[i][j]
-        ok = abs(v - 8.0) / 8.0 <= 0.02
-        ax.add_patch(plt.Rectangle((j, 2 - i), 1, 1, facecolor=C_OK if ok else C_FAIL_BG,
-                                   edgecolor="white", lw=2))
-        ax.text(j + 0.5, 2 - i + 0.5, f"{v:.2f}", ha="center", va="center",
-                fontsize=9, color="white" if ok else C_FAIL_TX,
-                fontweight="bold" if ok else "normal")
-ax.set_xlim(0, 3); ax.set_ylim(0, 3)
-ax.set_xticks([0.5, 1.5, 2.5]); ax.set_xticklabels([labels[s] for s in stacks], fontsize=8)
-ax.set_yticks([2.5, 1.5, 0.5]); ax.set_yticklabels([labels[s] for s in stacks], fontsize=8)
-ax.set_xlabel("evaluated on stack"); ax.set_ylabel("design optimized for")
-ax.set_aspect("equal"); ax.tick_params(length=0)
-for sp in ax.spines.values():
-    sp.set_visible(False)
-ax.set_title("FSR (nm) — target 8.00 ± 2%", fontsize=8.5)
-fig.savefig(OUT / "fig_cross_matrix.pdf")
-fig.savefig(ARXIV / "fig_cross_matrix.pdf")
-fig.savefig(OUT / "fig_cross_matrix.png")
-plt.close(fig)
-print("fig 3 done")
+
+def _validate_cross_stack(data: dict) -> None:
+    stacks = [stack["id"] for stack in data["stack_order"]]
+    target = float(data["target_nm"])
+    tolerance = float(data["tolerance_rel"])
+    opus = data["opus48m"]["design_stack"]
+    gpt = data["gpt55x"]["design_stack"]
+
+    if set(opus) != set(stacks) or set(gpt) != set(stacks):
+        raise ValueError("Cross-stack design rows do not match the stack contract.")
+
+    differences = []
+    for design in stacks:
+        if set(opus[design]) != set(stacks) or set(gpt[design]) != set(stacks):
+            raise ValueError(f"Cross-stack columns are incomplete for {design}.")
+        for evaluated in stacks:
+            value = float(opus[design][evaluated])
+            passes = abs(value - target) / target <= tolerance
+            expected = design == evaluated
+            if passes != expected:
+                raise ValueError(
+                    f"Unexpected transfer verdict for {design} -> {evaluated}: "
+                    f"{value:.6f} nm."
+                )
+            differences.append(abs(value - float(gpt[design][evaluated])))
+
+    if max(differences) >= 0.002:
+        raise ValueError(
+            "The GPT-5.5 comparison differs from the Opus matrix by at least "
+            "0.002 nm."
+        )
+
+
+def _summarize_outcomes(data: dict) -> dict[str, int]:
+    stacks = data["stack_order"]
+    models = data["models"]
+    if len(stacks) != 3 or len(models) != 2:
+        raise ValueError("Table II requires three stacks and two model groups.")
+
+    device_order = [device["name"] for device in models[0]["devices"]]
+    if len(device_order) != 5:
+        raise ValueError("Table II requires five devices.")
+
+    summary = {
+        "R_passes": 0,
+        "L_passes": 0,
+        "paired_agreements": 0,
+        "R_only_passes": 0,
+        "L_only_passes": 0,
+    }
+    for model in models:
+        if [device["name"] for device in model["devices"]] != device_order:
+            raise ValueError("Model groups use different device ordering.")
+        for device in model["devices"]:
+            for representation in ("R", "L"):
+                values = device[representation]
+                if len(values) != len(stacks) or not all(
+                    isinstance(value, bool) for value in values
+                ):
+                    raise ValueError(
+                        f"Invalid {representation} verdicts for {device['name']}."
+                    )
+                summary[f"{representation}_passes"] += sum(values)
+            for reconstructed, library in zip(device["R"], device["L"]):
+                summary["paired_agreements"] += reconstructed == library
+                summary["R_only_passes"] += reconstructed and not library
+                summary["L_only_passes"] += library and not reconstructed
+    return summary
+
+
+def _validate_outcomes(data: dict) -> None:
+    summary = _summarize_outcomes(data)
+    expected = data["expected_summary"]
+    if summary != expected:
+        raise ValueError(
+            f"Table II summary does not reconcile: expected {expected}, got {summary}."
+        )
+
+    source = data["source"]
+    expected_cells = (
+        len(data["models"])
+        * len(data["models"][0]["devices"])
+        * 2
+        * len(data["stack_order"])
+    )
+    if int(source["source_file_count"]) != expected_cells:
+        raise ValueError("The Table II source-file count does not match its cells.")
+
+
+def _render_cross_stack(data: dict) -> None:
+    stacks = [stack["id"] for stack in data["stack_order"]]
+    labels = {stack["id"]: stack["label"] for stack in data["stack_order"]}
+    target = float(data["target_nm"])
+    tolerance = float(data["tolerance_rel"])
+    matrix = data["opus48m"]["design_stack"]
+
+    # Match the white-page Iowan/STIX hierarchy used by Figures 1, 2, 5,
+    # 6, 8, and 9.  The matrix is deliberately rectangular: forcing square
+    # cells left a large unused gutter in a single-column figure and made the
+    # visible content appear right-aligned.
+    figure = plt.figure(figsize=(3.42, 2.36), facecolor="white")
+    axes = figure.add_axes([0.340, 0.225, 0.640, 0.605])
+
+    for row, design in enumerate(stacks):
+        for column, evaluated in enumerate(stacks):
+            value = float(matrix[design][evaluated])
+            passes = abs(value - target) / target <= tolerance
+            inset = 0.035
+            axes.add_patch(
+                Rectangle(
+                    (column + inset, row + inset),
+                    1 - 2 * inset,
+                    1 - 2 * inset,
+                    facecolor=PASS_FILL if passes else MISS_FILL,
+                    edgecolor=PASS if passes else MISS_EDGE,
+                    linewidth=1.05 if passes else 0.55,
+                )
+            )
+            axes.text(
+                column + 0.5,
+                row + 0.5,
+                f"{value:.3f}",
+                ha="center",
+                va="center",
+                color=INK,
+                fontsize=9.2,
+                fontweight="semibold" if passes else "normal",
+            )
+
+    axes.set_xlim(0, len(stacks))
+    axes.set_ylim(len(stacks), 0)
+    axes.set_xticks([index + 0.5 for index in range(len(stacks))])
+    axes.set_yticks([index + 0.5 for index in range(len(stacks))])
+    axes.set_xticklabels(
+        [labels[stack].rsplit(" ", 1)[0] + "\n" + labels[stack].rsplit(" ", 1)[1]
+         for stack in stacks],
+        fontsize=8.0,
+        color=INK,
+        linespacing=0.98,
+    )
+    axes.set_yticklabels(
+        [labels[stack] for stack in stacks],
+        fontsize=8.0,
+        color=INK,
+    )
+    axes.tick_params(axis="x", length=0, pad=4.2)
+    axes.tick_params(axis="y", length=0, pad=5.0)
+    axes.set_xlabel("Evaluated stack", fontsize=8.4, color=INK, labelpad=4.2)
+    for spine in axes.spines.values():
+        spine.set_visible(False)
+
+    figure.text(
+        0.004,
+        0.955,
+        "Analytic FSR (nm)",
+        ha="left",
+        va="center",
+        fontsize=10.2,
+        color=INK,
+    )
+    figure.text(
+        0.98,
+        0.955,
+        f"target {target:.2f} ± {100 * tolerance:.0f}%",
+        ha="right",
+        va="center",
+        fontsize=8.0,
+        color=SOFT_INK,
+    )
+    figure.add_artist(
+        Line2D(
+            [0.004, 0.980],
+            [0.905, 0.905],
+            transform=figure.transFigure,
+            color=INK,
+            linewidth=0.68,
+        )
+    )
+    figure.text(
+        0.004,
+        0.825,
+        "Geometry tuned for",
+        ha="left",
+        va="center",
+        fontsize=8.4,
+        color=INK,
+    )
+
+    FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    pdf_path = FIGURE_DIR / "fig_cross_matrix.pdf"
+    png_path = FIGURE_DIR / "fig_cross_matrix.png"
+    figure.savefig(pdf_path, dpi=600, facecolor="white", bbox_inches=None)
+    figure.savefig(png_path, dpi=300, facecolor="white", bbox_inches=None)
+    plt.close(figure)
+    print(f"wrote {pdf_path}")
+    print(f"wrote {png_path}")
+
+
+def _table_mark(passes: bool) -> str:
+    return r"\retargetpass" if passes else r"\retargetmiss"
+
+
+def _render_table(data: dict) -> None:
+    models = data["models"]
+    stacks = data["stack_order"]
+    labels = data["stack_labels"]
+    by_model = {
+        model["id"]: {device["name"]: device for device in model["devices"]}
+        for model in models
+    }
+    device_order = [device["name"] for device in models[0]["devices"]]
+
+    rows = []
+    for index, device_name in enumerate(device_order):
+        for representation in ("R", "L"):
+            values = []
+            for model in models:
+                values.extend(
+                    _table_mark(value)
+                    for value in by_model[model["id"]][device_name][representation]
+                )
+            name = device_name if representation == "R" else ""
+            rows.append(
+                f"{name:<7} & {representation} & "
+                + " & ".join(values)
+                + r" \\"
+            )
+        if index < len(device_order) - 1:
+            rows.append(r"\addlinespace[0.12em]")
+
+    totals = {
+        model["id"]: {
+            representation: sum(
+                value
+                for device in model["devices"]
+                for value in device[representation]
+            )
+            for representation in ("R", "L")
+        }
+        for model in models
+    }
+    total_denominator = len(device_order) * len(stacks)
+
+    model_headers = " & ".join(
+        rf"\multicolumn{{3}}{{c}}{{{model['label']}}}" for model in models
+    )
+    stack_headers = " & ".join(
+        labels[stack] for _model in models for stack in stacks
+    )
+    total_rows = [
+        (
+            r"Total passes & R & "
+            + " & ".join(
+                rf"\multicolumn{{3}}{{c}}{{"
+                f"{totals[model['id']]['R']}/{total_denominator}"
+                r"}"
+                for model in models
+            )
+            + r" \\"
+        ),
+        (
+            r"             & L & "
+            + " & ".join(
+                rf"\multicolumn{{3}}{{c}}{{"
+                f"{totals[model['id']]['L']}/{total_denominator}"
+                r"}"
+                for model in models
+            )
+            + r" \\"
+        ),
+    ]
+
+    table = "\n".join(
+        [
+            r"\begin{table}[!b]",
+            r"\caption{\textbf{Fixed-representation retargeting outcomes.} "
+            r"R: reconstructed primitives program; L: library PCell. Columns "
+            r"are 220-nm SOI, 400-nm SiN, and 400-nm TFLN. Filled/open markers "
+            r"denote pass/observed miss for the tier-0 figure-of-merit plus "
+            r"footprint gate.}",
+            r"\label{tab:twoarm}",
+            r"\begingroup",
+            r"\newcommand{\retargetpass}{\textcolor[HTML]{246B5A}{"
+            r"\raisebox{0.08ex}{\scalebox{1.05}{$\bullet$}}}}",
+            r"\newcommand{\retargetmiss}{\textcolor[HTML]{7E858A}{"
+            r"\raisebox{0.08ex}{\scalebox{1.05}{$\circ$}}}}",
+            r"\footnotesize",
+            r"\setlength{\tabcolsep}{3.35pt}",
+            r"\renewcommand{\arraystretch}{1.06}",
+            r"\begin{ruledtabular}",
+            r"\begin{tabular}{@{}llccc@{\hspace{3.5pt}}ccc@{}}",
+            f"& & {model_headers} \\\\",
+            f"Device & Rep. & {stack_headers} \\\\",
+            r"\colrule",
+            *rows,
+            r"\colrule",
+            *total_rows,
+            r"\end{tabular}",
+            r"\end{ruledtabular}",
+            r"\endgroup",
+            r"\end{table}",
+            "",
+        ]
+    )
+    TABLE_PATH.write_text(table)
+    print(f"wrote {TABLE_PATH}")
+
+
+def main() -> None:
+    cross_stack, outcomes = _load_inputs()
+    _validate_cross_stack(cross_stack)
+    _validate_outcomes(outcomes)
+    _render_cross_stack(cross_stack)
+    _render_table(outcomes)
+
+
+if __name__ == "__main__":
+    main()
