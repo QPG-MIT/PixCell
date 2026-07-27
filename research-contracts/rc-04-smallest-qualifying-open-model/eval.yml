@@ -1,0 +1,104 @@
+# Golden cases for the RC-04 verdict logic.
+version: 1
+cases:
+  - name: settles_when_all_gates_green_and_evidence_complete
+    input:
+      report:
+        evidence:
+          candidate_registry: evidence/registry.json
+          tier_floors: evidence/floors.json
+          budget_manifest: evidence/budgets.json
+          preregistration_commit: evidence/prereg.txt
+          raw_programs: evidence/programs/
+          all_attempts: evidence/attempts/
+          scores: evidence/scores.csv
+          bounds_script: evidence/bounds.py
+          purity_gate_results: evidence/purity.json
+          release_bundle: evidence/release/
+          parameter_accounting: evidence/params.md
+          runtime_accounting: evidence/runtime.json
+          frontier_analysis: evidence/frontier.csv
+        gates:
+          T1_frozen_protocol: pass
+          T2_identical_budgets_full_raw: pass
+          T3_recomputable_bounds: pass
+          T4_source_purity: pass
+          T5_release_and_accounting: pass
+        failures: []
+    expected:
+      state: settled
+
+  - name: rejected_when_late_candidate_addition_voids_freeze
+    input:
+      report:
+        evidence:
+          candidate_registry: evidence/registry.json
+          tier_floors: evidence/floors.json
+          budget_manifest: evidence/budgets.json
+          preregistration_commit: evidence/prereg.txt
+          raw_programs: evidence/programs/
+          all_attempts: evidence/attempts/
+          scores: evidence/scores.csv
+          bounds_script: evidence/bounds.py
+          purity_gate_results: evidence/purity.json
+          release_bundle: evidence/release/
+          parameter_accounting: evidence/params.md
+          runtime_accounting: evidence/runtime.json
+          frontier_analysis: evidence/frontier.csv
+        gates:
+          T1_frozen_protocol: fail
+          T2_identical_budgets_full_raw: pass
+          T3_recomputable_bounds: pass
+          T4_source_purity: pass
+          T5_release_and_accounting: pass
+        failures: []
+    expected:
+      state: rejected
+      failing_gates: [T1_frozen_protocol]
+
+  - name: rejected_when_release_bundle_missing
+    input:
+      report:
+        evidence:
+          candidate_registry: evidence/registry.json
+          tier_floors: evidence/floors.json
+          budget_manifest: evidence/budgets.json
+          preregistration_commit: evidence/prereg.txt
+          raw_programs: evidence/programs/
+          all_attempts: evidence/attempts/
+          scores: evidence/scores.csv
+          bounds_script: evidence/bounds.py
+          purity_gate_results: evidence/purity.json
+          parameter_accounting: evidence/params.md
+          runtime_accounting: evidence/runtime.json
+          frontier_analysis: evidence/frontier.csv
+        gates:
+          T1_frozen_protocol: pass
+          T2_identical_budgets_full_raw: pass
+          T3_recomputable_bounds: pass
+          T4_source_purity: pass
+          T5_release_and_accounting: pass
+        failures: []
+    expected:
+      state: rejected
+      missing_evidence: [release_bundle]
+
+  - name: rejected_on_raster_tracing_purity_violation
+    input:
+      report:
+        evidence: {}
+        gates: {}
+        failures: [purity_violation]
+    expected:
+      state: rejected
+      failure_codes: [purity_violation]
+
+  - name: not_scored_on_evaluator_timeout
+    input:
+      report:
+        evidence: {}
+        gates: {}
+        failures: [evaluator_timeout]
+    expected:
+      state: not_scored
+      failure_codes: [evaluator_timeout]

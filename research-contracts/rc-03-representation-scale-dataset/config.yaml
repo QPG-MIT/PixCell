@@ -1,0 +1,63 @@
+contract:
+  template: rc-03-representation-scale-dataset
+  version: 1.0.0
+  status: open
+  name: "RC-03 Representation and scale dataset"
+  repo: QPG-MIT/PixCell
+  test_file: tests/test_research_contracts.py
+
+source:
+  paper_section: "Research Contracts (closing section), arxiv/main.tex"
+  project_page: https://pixcell.qpaig.com/#research-contracts
+  existing_curriculum: dataset/
+
+marketplace:
+  venue: https://vvuq.dirkenglund.org
+  contract_id: contract_3a48cb45d01f
+  settlement: issuer-graded
+  payment_type: all-or-nothing
+
+governing_gates:
+  - id: T1_corpus_integrity
+    label: "Versioned corpus: per-item sha256, provenance, complete license manifest"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [source_manifest, license_manifest, provenance_records]
+  - id: T2_layer_separation
+    label: "Three separable, schema-validated annotation layers on every item"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [topology_annotations, scale_evidence, programs_or_reconstructions]
+  - id: T3_protected_splits
+    label: "Salted split hashes; leakage audit shows zero crossover"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [split_hashes, leakage_audit]
+  - id: T4_abstention_enforced
+    label: "Abstention is the only correct behavior without scale evidence"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [calibration_records, scale_evidence]
+  - id: T5_matched_compute_comparison
+    label: "Joint vs staged at matched logged compute; rerun reproduces headline table"
+    status: red
+    weight: 0.2
+    evidence: null
+    consumes: [baselines, compute_log, error_taxonomy, rerun_script]
+
+claim_boundaries:
+  final_claims_allowed: false
+  allowed_current_claims:
+    - "The contract is published, funded, and claimable."
+  blocked_claims:
+    - "The joint-versus-staged question is settled."
+    - "Any released corpus generalizes past its audited families and splits."
+
+verification:
+  research_contracts:
+    - "python -m pytest tests/test_research_contracts.py -q"
+    - "python research-contracts/validate.py"

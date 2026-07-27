@@ -1,0 +1,107 @@
+# Golden cases for the RC-02 verdict logic.
+version: 1
+cases:
+  - name: settles_when_all_gates_green_and_evidence_complete
+    input:
+      report:
+        evidence:
+          program_source: evidence/device.py
+          named_parameters: evidence/params/
+          stack_manifests: evidence/stacks/
+          preregistration_commit: evidence/prereg.txt
+          generated_geometry: evidence/geometry/
+          simulation_inputs: evidence/sim_inputs/
+          field_records: evidence/fields/
+          sparameter_results: evidence/sparams/
+          mesh_audit: evidence/mesh_audit/
+          conservation_audit: evidence/conservation/
+          control_results: evidence/control/
+          task_identifiers: evidence/tasks.json
+          cost_ledger: evidence/cost.json
+          rerun_script: evidence/rerun.sh
+        gates:
+          T1_one_program_four_stacks: pass
+          T2_explicit_3d_geometry: pass
+          T3_preregistered_gates_met: pass
+          T4_audits_recomputed: pass
+          T5_control_and_reproduction: pass
+        failures: []
+    expected:
+      state: settled
+
+  - name: rejected_on_per_stack_code_fork
+    input:
+      report:
+        evidence:
+          program_source: evidence/device.py
+          named_parameters: evidence/params/
+          stack_manifests: evidence/stacks/
+          preregistration_commit: evidence/prereg.txt
+          generated_geometry: evidence/geometry/
+          simulation_inputs: evidence/sim_inputs/
+          field_records: evidence/fields/
+          sparameter_results: evidence/sparams/
+          mesh_audit: evidence/mesh_audit/
+          conservation_audit: evidence/conservation/
+          control_results: evidence/control/
+          task_identifiers: evidence/tasks.json
+          cost_ledger: evidence/cost.json
+          rerun_script: evidence/rerun.sh
+        gates:
+          T1_one_program_four_stacks: fail
+          T2_explicit_3d_geometry: pass
+          T3_preregistered_gates_met: pass
+          T4_audits_recomputed: pass
+          T5_control_and_reproduction: pass
+        failures: []
+    expected:
+      state: rejected
+      failing_gates: [T1_one_program_four_stacks]
+
+  - name: rejected_when_field_records_missing
+    input:
+      report:
+        evidence:
+          program_source: evidence/device.py
+          named_parameters: evidence/params/
+          stack_manifests: evidence/stacks/
+          preregistration_commit: evidence/prereg.txt
+          generated_geometry: evidence/geometry/
+          simulation_inputs: evidence/sim_inputs/
+          sparameter_results: evidence/sparams/
+          mesh_audit: evidence/mesh_audit/
+          conservation_audit: evidence/conservation/
+          control_results: evidence/control/
+          task_identifiers: evidence/tasks.json
+          cost_ledger: evidence/cost.json
+          rerun_script: evidence/rerun.sh
+        gates:
+          T1_one_program_four_stacks: pass
+          T2_explicit_3d_geometry: pass
+          T3_preregistered_gates_met: pass
+          T4_audits_recomputed: pass
+          T5_control_and_reproduction: pass
+        failures: []
+    expected:
+      state: rejected
+      missing_evidence: [field_records]
+
+  - name: not_scored_on_cloud_solver_outage
+    input:
+      report:
+        evidence: {}
+        gates: {}
+        failures: [service_outage]
+    expected:
+      state: not_scored
+      failure_codes: [service_outage]
+
+  - name: rejected_on_purity_violation
+    input:
+      report:
+        evidence: {}
+        gates: {}
+        failures: [purity_violation]
+    expected:
+      state: rejected
+      failure_codes: [purity_violation]
