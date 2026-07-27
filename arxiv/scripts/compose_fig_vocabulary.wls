@@ -898,7 +898,7 @@ AppendTo[
 couplerPrimitive = f2["primitives"][[3]];
 couplerPrimitiveSpec = specFor[
   couplerPrimitive["polygons"],
-  {{3.3, 14.2}, {15.45, 17.95}},
+  {{3.3, 14.2}, {15.85, 18.35}},
   True
 ];
 AppendTo[
@@ -919,19 +919,19 @@ AppendTo[
   {
     displayText[
       "coupling section",
-      {15.2, 18.05},
+      {15.2, 18.45},
       6.10,
       {Left, Center}
     ],
     text[
       Row[{symLc, " = 10.0 ", mu}],
-      {15.2, 16.55},
+      {15.2, 16.95},
       5.00,
       {Left, Center}
     ],
     text[
       Row[{symG, " = 0.25 ", mu}],
-      {15.2, 15.30},
+      {15.2, 15.70},
       5.00,
       {Left, Center}
     ],
