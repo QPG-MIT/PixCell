@@ -46,8 +46,8 @@ from rl.track_a.curriculum import (
     hierarchical_sft_weights,
     stratified_physical_pass,
 )
-from rl.track_a.preprocess import model_image
-from rl.track_a.prompt import build_prompt_text
+from rl.common.preprocess import model_image
+from rl.common.prompt import build_prompt_text
 from rl.track_a.reward import reward_for
 from rl.track_a.recipe import (
     expected_replay_levels,

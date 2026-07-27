@@ -10,6 +10,8 @@ model checkpoints are not part of this tree.
 | Path | Responsibility |
 |---|---|
 | [`common/`](common/) | Dataset projection, candidate execution, source checking, absolute-scale IoU measurement, output extraction, and bounded evaluation batching |
+| [`evaluation/`](evaluation/) | Model-neutral task loading, sampling adapters, immutable attempt records, aggregation, and metrics-only experiment tracking |
+| [`studies/`](studies/) | Versioned study protocols, task manifests, and launch entry points |
 | [`track_a/`](track_a/) | Self-hostable open model trained by direct SFT, then curriculum G4 RL |
 | [`track_b/`](track_b/) | Reserved for the established second training protocol; no implementation is implied yet |
 | [`track_c/`](track_c/) | Reserved for the established third training protocol; no implementation is implied yet |
@@ -19,17 +21,26 @@ model checkpoints are not part of this tree.
 The dependency direction is one way:
 
 ```text
-PixCell source policy -> rl.common -> rl.track_a
+PixCell source policy -> rl.common -> rl.evaluation -> rl.studies
+                                  \-> rl.track_a
 ```
 
 `rl.common` measures a program and returns typed evidence. It does not know
 which model is being trained, how examples are scheduled, how measurements
 become rewards, or how checkpoints are selected. Those decisions belong to
-the track that owns them.
+the track or frozen study that owns them. `rl.evaluation` is shared by base
+models and trained checkpoints; it does not create training clients or define
+policy rewards.
 
 Track A is the only implemented training path. Its exact model-visible
 contract, dataset inputs, SFT schedule, RL recipe, spend locks, and commands
 are documented in [`track_a/README.md`](track_a/README.md).
 
-No command in this directory launches paid work without the track-specific
-confirmation token and a successful local preflight.
+The first frozen baseline protocol is
+[`representation_curriculum_v1`](studies/representation_curriculum_v1/README.md).
+It compares zero-shot Qwen operating points, then measures Qwen and Inkling on
+F1–F8. It performs no SFT or RL.
+
+Paid entry points require their explicit confirmation token and a successful
+local preflight. Sample receipts and working state stay outside the repository.
+W&B is an observability mirror, not the experiment record.

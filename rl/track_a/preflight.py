@@ -6,11 +6,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import importlib.util
-import importlib.metadata
 import json
 import re
 import subprocess
-import sys
 from collections import Counter
 from pathlib import Path
 
@@ -28,12 +26,13 @@ from rl.track_a.curriculum import (
     hierarchical_sft_weights,
     stratified_physical_pass,
 )
-from rl.track_a.prompt import (
+from rl.common.prompt import (
     CONTRACT_VERSION,
     build_prompt_text,
     catalog_text,
     prompt_asset_hashes,
 )
+from rl.common.runtime import validate_runtime_stack
 from rl.track_a.reward import reward_for
 from rl.track_a.recipe import (
     canonical_config_path,
@@ -118,28 +117,6 @@ def _git_state(repo_root: Path, *, require_clean: bool) -> dict:
             "commit before paid launch"
         )
     return {"head": head, "clean": not bool(status)}
-
-
-def _runtime_stack(repo_root: Path) -> dict:
-    expected = json.loads(
-        (repo_root / "rl" / "stack.json").read_text(encoding="utf-8")
-    )
-    observed_python = f"{sys.version_info.major}.{sys.version_info.minor}"
-    if observed_python != expected["python_major_minor"]:
-        raise RuntimeError(
-            f"Python {observed_python}, expected {expected['python_major_minor']}"
-        )
-    observed: dict[str, str] = {}
-    for package, version in expected["packages"].items():
-        actual = importlib.metadata.version(package)
-        observed[package] = actual
-        if actual != version:
-            raise RuntimeError(f"{package}=={actual}, expected {version}")
-    return {
-        "python": sys.version.split()[0],
-        "packages": observed,
-        "tinker_cookbook_commit": expected["tinker_cookbook_commit"],
-    }
 
 
 def _token_audit(
@@ -241,7 +218,7 @@ def run(args: argparse.Namespace) -> dict:
         raise RuntimeError("committed config must remain spend-locked")
     release = _verify_frozen_release(dataset_root)
     git = _git_state(repo_root, require_clean=args.require_clean)
-    runtime = _runtime_stack(repo_root)
+    runtime = validate_runtime_stack(repo_root)
 
     train = load_rows(
         dataset_root,
