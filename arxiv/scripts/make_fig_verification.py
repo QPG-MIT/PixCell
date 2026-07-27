@@ -34,7 +34,6 @@ FIGURE_DIR = REPO / "arxiv" / "figures"
 
 # Match the white-page publication system used by Figures 1 and 2.
 INK = "#17191c"
-MUTED = "#424549"
 RULE = "#17191c"
 CRIMSON = "#a31f34"
 VERIFIED = "#267c5a"
@@ -303,12 +302,12 @@ def _target_card(
         rf"${footprint_width:g}\times{footprint_height:g}\,\mathrm{{\mu m}}$",
     )
     image = _rgb_mask(target, INK)
-    image_axes = _image_axes(card, image, bounds=(0.035, 0.105, 0.91, 0.70))
+    image_axes = _image_axes(card, image, bounds=(0.035, 0.17, 0.93, 0.61))
 
     x0, y0, x1, y1 = calibration["bbox"]
     width_px, height_px = calibration["image_size_px"]
-    image_axes.set_xlim(-16, width_px + 74)
-    image_axes.set_ylim(height_px + 18, -18)
+    image_axes.set_xlim(-8, width_px + 8)
+    image_axes.set_ylim(height_px + 8, -8)
     image_axes.add_patch(
         Rectangle(
             (x0, y0),
@@ -320,47 +319,14 @@ def _target_card(
             zorder=4,
         )
     )
-    arrow = {
-        "arrowstyle": "<->",
-        "color": VERIFIED,
-        "linewidth": 0.72,
-        "shrinkA": 0,
-        "shrinkB": 0,
-    }
-    dimension_y = y1 + 68
-    image_axes.annotate(
-        "",
-        xy=(x0, dimension_y),
-        xytext=(x1, dimension_y),
-        arrowprops=arrow,
-        annotation_clip=False,
-    )
-    image_axes.text(
-        (x0 + x1) / 2,
-        dimension_y + 20,
-        f"{x1 - x0} px",
-        ha="center",
-        va="top",
-        fontsize=6.7,
-        color=VERIFIED,
-    )
-    dimension_x = width_px + 34
-    image_axes.annotate(
-        "",
-        xy=(dimension_x, y0),
-        xytext=(dimension_x, y1),
-        arrowprops=arrow,
-        annotation_clip=False,
-    )
-    image_axes.text(
-        dimension_x + 20,
-        (y0 + y1) / 2,
-        f"{y1 - y0} px",
+    card.text(
+        0.5,
+        0.075,
+        f"Foreground bbox: {x1 - x0} × {y1 - y0} px",
         ha="center",
         va="center",
-        rotation=90,
-        fontsize=6.7,
-        color=VERIFIED,
+        fontsize=7.3,
+        color=INK,
     )
 
 
@@ -389,7 +355,7 @@ def _candidate_card(
         ha="center",
         va="center",
         fontsize=7.3,
-        color=MUTED,
+        color=INK,
     )
 
 
@@ -413,14 +379,13 @@ def _calibration_operator(
         va="center",
         fontsize=8.7,
         fontweight="bold",
-        color=VERIFIED,
+        color=INK,
     )
     axes.text(
         0.5,
         0.67,
-        rf"$\kappa_x={bbox_width}\,\mathrm{{px}}/"
-        rf"{footprint_width:g}\,\mathrm{{\mu m}}"
-        rf"={scale_x:g}\,\mathrm{{px/\mu m}}$",
+        rf"$\kappa_x={bbox_width}/{footprint_width:g}"
+        rf"={scale_x:g}\,\mathrm{{px}}\,\mathrm{{\mu m}}^{{-1}}$",
         ha="center",
         va="center",
         fontsize=8.1,
@@ -429,9 +394,8 @@ def _calibration_operator(
     axes.text(
         0.5,
         0.50,
-        rf"$\kappa_y={bbox_height}\,\mathrm{{px}}/"
-        rf"{footprint_height:g}\,\mathrm{{\mu m}}"
-        rf"={scale_y:g}\,\mathrm{{px/\mu m}}$",
+        rf"$\kappa_y={bbox_height}/{footprint_height:g}"
+        rf"={scale_y:g}\,\mathrm{{px}}\,\mathrm{{\mu m}}^{{-1}}$",
         ha="center",
         va="center",
         fontsize=8.1,
@@ -451,21 +415,12 @@ def _calibration_operator(
     )
     axes.text(
         0.5,
-        0.31,
-        r"Render at $\kappa$",
-        ha="center",
-        va="bottom",
-        fontsize=7.5,
-        color=INK,
-    )
-    axes.text(
-        0.5,
         0.07,
         "No fit-to-target rescaling",
         ha="center",
         va="center",
         fontsize=7.1,
-        color=MUTED,
+        color=INK,
     )
 
 
@@ -499,7 +454,7 @@ def _feedback_operator(
         va="center",
         fontsize=7.3,
         linespacing=1.15,
-        color=VERIFIED,
+        color=INK,
         fontweight="semibold",
     )
     axes.add_patch(
@@ -521,7 +476,7 @@ def _feedback_operator(
         ha="center",
         va="center",
         fontsize=7.4,
-        color=VERIFIED,
+        color=INK,
         fontweight="semibold",
     )
 
@@ -534,7 +489,7 @@ def _legend(fig: plt.Figure) -> None:
         ha="right",
         va="center",
         fontsize=7.3,
-        color=MUTED,
+        color=INK,
     )
     entries = (
         (0.222, INK, "overlap"),
@@ -577,7 +532,7 @@ def main() -> None:
 
     _section_title(fig, "A", "Fixed-calibration rendering", y=0.965)
     _target_card(fig, (0.020, 0.575, 0.310, 0.345), target, calibration)
-    _calibration_operator(fig, (0.350, 0.605, 0.300, 0.270), calibration)
+    _calibration_operator(fig, (0.350, 0.585, 0.300, 0.310), calibration)
     _candidate_card(
         fig,
         (0.670, 0.575, 0.310, 0.345),
@@ -623,7 +578,7 @@ def main() -> None:
         "Residual difference",
         _difference_image(target, candidate_second),
         rf"$\mathrm{{IoU}}={metrics_second['IoU']:.3f}$",
-        meta_color=VERIFIED,
+        meta_color=INK,
     )
     _legend(fig)
 
