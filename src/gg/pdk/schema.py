@@ -306,7 +306,7 @@ class PDKDefinition:
     This is the main data structure representing a foundry's process design kit.
 
     Attributes:
-        name: PDK name (e.g., "Lightium TFLN", "HyperLight Active")
+        name: PDK name (e.g., "Generic Si 220nm")
         version: PDK version string
         foundry: Foundry name
         description: Human-readable description

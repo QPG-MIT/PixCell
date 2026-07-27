@@ -6,10 +6,10 @@ Enables "Design Once, Simulate on Any Foundry" workflow.
 
 Usage:
     from gg.pdk import PDKDefinition, PDKParser, PDKTidy3DConverter
-    from gg.pdk.builtin import load_builtin_pdk, LIGHTIUM_TFLN
+    from gg.pdk.builtin import load_builtin_pdk
 
     # Load builtin PDK
-    pdk = load_builtin_pdk(LIGHTIUM_TFLN)
+    pdk = load_builtin_pdk("generic_si220")
 
     # Or parse from PDF
     parser = PDKParser()
@@ -46,8 +46,6 @@ from .tidy3d_converter import (
 from .builtin import (
     load_builtin_pdk,
     list_builtin_pdks,
-    LIGHTIUM_TFLN,
-    HYPERLIGHT_ACTIVE,
     GENERIC_SI220,
 )
 
@@ -72,7 +70,5 @@ __all__ = [
     # Builtin PDKs
     "load_builtin_pdk",
     "list_builtin_pdks",
-    "LIGHTIUM_TFLN",
-    "HYPERLIGHT_ACTIVE",
     "GENERIC_SI220",
 ]
