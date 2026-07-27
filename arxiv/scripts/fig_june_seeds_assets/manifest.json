@@ -1,0 +1,107 @@
+{
+  "provenance": {
+    "campaign": "June 21 2026 iterative API benchmark",
+    "source": "data/chatbots/figure_panels/panels",
+    "note": "Only the eleven overlays displayed in Figure 7 and their archived summaries are vendored here."
+  },
+  "seed_diversity": {
+    "target": "F4",
+    "configuration": "gemini-3-pro-preview",
+    "prompt_and_target_fixed": true,
+    "archive_ranked_seed_count": 10,
+    "tested_seed_count": 11,
+    "image_size_px": [
+      1584,
+      672
+    ],
+    "summary_asset": "seed_diversity/summary.json",
+    "summary_sha256": "00d451b3eb7b4a3385a6e5cdb5551e29d3891fcd8ed1e0c99191b2184259509f",
+    "examples": [
+      {
+        "run": "001",
+        "rank": "worst",
+        "iou": 0.4373,
+        "asset": "seed_diversity/worst_run_001_iou0.437_overlay.png",
+        "sha256": "c08c3acc36b872e94e819f22a8d5c46ac9a89191034ae34bfaa285609d4f1a31"
+      },
+      {
+        "run": "004",
+        "rank": "very-low",
+        "iou": 0.5031,
+        "asset": "seed_diversity/very-low_run_004_iou0.503_overlay.png",
+        "sha256": "561fe3aa9f6cc42991ddda2b5b8fc1b3804b1250a69a04c6eed92b1b5fdfeaa8"
+      },
+      {
+        "run": "010",
+        "rank": "low",
+        "iou": 0.6102,
+        "asset": "seed_diversity/low_run_010_iou0.610_overlay.png",
+        "sha256": "c339380701c026cfe324434f11f4e819b24cca6deabf6a4170a0c32bd4e0bd5b"
+      },
+      {
+        "run": "006",
+        "rank": "3rd",
+        "iou": 0.7797,
+        "asset": "seed_diversity/3rd_run_006_iou0.780_overlay.png",
+        "sha256": "75e7925c92085b4075621973bd877ca8e10934a896beb9bd1d25435682285a82"
+      },
+      {
+        "run": "007",
+        "rank": "2nd",
+        "iou": 0.8258,
+        "asset": "seed_diversity/2nd_run_007_iou0.826_overlay.png",
+        "sha256": "625adc9e348cfcbf45424fae2ca6904df54c4ded690d0500837c0a3cb9632ae8"
+      },
+      {
+        "run": "000",
+        "rank": "best",
+        "iou": 0.8684,
+        "asset": "seed_diversity/best_run_000_iou0.868_overlay.png",
+        "sha256": "218ec6b9938289d5327267a0f8da831e42ea95d723a9d148aff42d40418a7791"
+      }
+    ]
+  },
+  "turn_revision": {
+    "target": "F6",
+    "configuration": "gemini-3-pro-preview",
+    "run": "006",
+    "image_size_px": [
+      1424,
+      752
+    ],
+    "summary_asset": "turn_improvement/summary.json",
+    "summary_sha256": "6482d14156dcc6a8b8e42339952dc9f302960f8d62379f8306710c02167bcfe0",
+    "turns": [
+      {
+        "turn": 1,
+        "iou": 0.7184,
+        "asset": "turn_improvement/turn1_overlay.png",
+        "sha256": "c1edd92bbf2b975be6cc32988aab237c969f195942ed2277c845278ecb055b2b"
+      },
+      {
+        "turn": 2,
+        "iou": 0.6265,
+        "asset": "turn_improvement/turn2_overlay.png",
+        "sha256": "fc6ab655c8cfa4825fd3d58ba9cec090e10e5f0b77f30631a39c877d2f9e9f79"
+      },
+      {
+        "turn": 3,
+        "iou": 0.5703,
+        "asset": "turn_improvement/turn3_overlay.png",
+        "sha256": "9f7e620ca9305e6066c2147484eb6fc9cbfdceb6632a2e8ac1e7a41ab63939e0"
+      },
+      {
+        "turn": 4,
+        "iou": 0.798,
+        "asset": "turn_improvement/turn4_overlay.png",
+        "sha256": "802570c8cfd1157b8b1ef954d87cfdd7c1f11da9b595ede7bc8183ae0e04e201"
+      },
+      {
+        "turn": 5,
+        "iou": 0.975,
+        "asset": "turn_improvement/turn5_overlay.png",
+        "sha256": "9e145f3c79a427ec185c166006bc455bbd76f81ee9d3e467b9e98f1504ad8b45"
+      }
+    ]
+  }
+}
