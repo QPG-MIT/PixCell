@@ -105,7 +105,7 @@ commands.
 │   ├── metadata/                 Catalog, checksums, audits, and source reports
 │   └── scripts/                  Deterministic build, validation, render, and export tools
 ├── src/                          The installable engine (Python packages)
-│   ├── benchmarking/             The June chatbot-era benchmark harness (frozen baseline)
+│   ├── benchmarking/             Chatbot-style benchmark harness
 │   ├── flex/                     Tidy3D FDTD integration (cloud spend is human-gated)
 │   ├── gg/                       The 7 MCP servers and built-in PDK data
 │   ├── homi/                     Engine hub: CLI, dispatch, conductor gate, studio, workbench
