@@ -180,7 +180,7 @@ PDK Document Text:
 METADATA_PROMPT = """Analyze this PDK document and extract general metadata.
 
 Extract:
-- name: PDK name (e.g., "Lightium TFLN", "HyperLight Active")
+- name: PDK name (e.g., "Generic Si 220nm")
 - version: Version string if available
 - foundry: Foundry/company name
 - description: Brief description of the platform
@@ -190,9 +190,9 @@ Extract:
 Return a JSON object. Example:
 ```json
 {
-  "name": "Lightium TFLN",
+  "name": "Example TFLN Platform",
   "version": "1.0",
-  "foundry": "Lightium",
+  "foundry": "ExampleFoundry",
   "description": "600nm X-cut TFLN platform",
   "substrate_material": "Si",
   "box_thickness_um": 8.2
