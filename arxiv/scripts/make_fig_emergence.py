@@ -460,8 +460,11 @@ def main() -> None:
     # compressed behind a large invisible label gutter.
     score_axes = figure.add_axes((0.120, 0.145, 0.295, 0.715))
     cost_axes = figure.add_axes((0.438, 0.145, 0.142, 0.715))
-    matrix_axes = figure.add_axes((0.665, 0.145, 0.255, 0.715))
-    colorbar_axes = figure.add_axes((0.932, 0.145, 0.012, 0.715))
+    # Panel B starts at the same horizontal anchor as its heading. Give the
+    # benchmark cells the full panel width and reserve only a narrow outer
+    # strip for the IoU scale.
+    matrix_axes = figure.add_axes((0.615, 0.145, 0.330, 0.715))
+    colorbar_axes = figure.add_axes((0.958, 0.145, 0.010, 0.715))
 
     separators = _draw_model_evaluation(
         score_axes,
