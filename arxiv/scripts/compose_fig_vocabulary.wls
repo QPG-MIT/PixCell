@@ -777,8 +777,8 @@ fig2Prims = {
   panelField[{61.5, 0.45}, {98.7, 9.65}],
   panelHeading["A", "From geometric primitives to a PCell", 1.5, 37.8],
   panelHeading["B", "Same PCell source, new geometry", 1.5, 11.15],
-  groupText["Exact instances", {2.0, 35.0}],
-  groupText["Connected cell", {39.9, 35.0}],
+  groupText["Exact instances", {2.0, 34.55}],
+  groupText["Connected cell", {39.9, 34.55}],
   rule,
   AbsoluteThickness[0.52],
   Line[{{1.5, 12.8}, {98.5, 12.8}}]
@@ -791,7 +791,7 @@ Do[
     fig2Prims,
     reliefComponent[
       f2["primitives"][[1]],
-      {{3.3, 14.2}, {31.16 - 0.98 i, 31.84 - 0.98 i}},
+      {{3.3, 14.2}, {30.76 - 0.98 i, 31.44 - 0.98 i}},
       diffBlue,
       True,
       {0.12, -0.10},
@@ -805,19 +805,19 @@ AppendTo[
   {
     displayText[
       "four straights",
-      {15.2, 31.25},
+      {15.2, 30.85},
       6.10,
       {Left, Center}
     ],
     text[
       Row[{symLs, " = 8.0 ", mu}],
-      {15.2, 29.85},
+      {15.2, 29.45},
       5.00,
       {Left, Center}
     ],
     text[
       Row[{symW, " = 0.50 ", mu}],
-      {15.2, 28.60},
+      {15.2, 28.20},
       5.00,
       {Left, Center}
     ]
@@ -828,7 +828,7 @@ AppendTo[
   fig2Prims,
   reliefOrientedComponent[
     f2["primitives"][[2]],
-    {{3.3, 8.30}, {24.75, 26.15}},
+    {{3.3, 8.30}, {24.35, 25.75}},
     crimson,
     "o2",
     {0.12, -0.11},
@@ -839,7 +839,7 @@ AppendTo[
   fig2Prims,
   reliefOrientedComponent[
     f2["primitives"][[2, "negative"]],
-    {{3.3, 8.30}, {21.45, 22.85}},
+    {{3.3, 8.30}, {21.05, 22.45}},
     crimson,
     "o2",
     {0.12, -0.11},
@@ -850,7 +850,7 @@ AppendTo[
   fig2Prims,
   reliefOrientedComponent[
     f2["primitives"][[2]],
-    {{9.10, 14.10}, {24.75, 26.15}},
+    {{9.10, 14.10}, {24.35, 25.75}},
     crimson,
     "o1",
     {0.12, -0.11},
@@ -861,7 +861,7 @@ AppendTo[
   fig2Prims,
   reliefOrientedComponent[
     f2["primitives"][[2, "negative"]],
-    {{9.10, 14.10}, {21.45, 22.85}},
+    {{9.10, 14.10}, {21.05, 22.45}},
     crimson,
     "o1",
     {0.12, -0.11},
@@ -873,13 +873,13 @@ AppendTo[
   {
     displayText[
       "four S-bends",
-      {15.2, 25.15},
+      {15.2, 24.75},
       6.10,
       {Left, Center}
     ],
     text[
       Row[{symLb, " = 18.0 ", mu}],
-      {15.2, 23.70},
+      {15.2, 23.30},
       5.00,
       {Left, Center}
     ],
@@ -888,7 +888,7 @@ AppendTo[
         deltaY, " = ",
         Style["\[PlusMinus]", FontFamily -> mathFont], "3.0 ", mu
       }],
-      {15.2, 22.45},
+      {15.2, 22.05},
       5.00,
       {Left, Center}
     ]
@@ -898,7 +898,7 @@ AppendTo[
 couplerPrimitive = f2["primitives"][[3]];
 couplerPrimitiveSpec = specFor[
   couplerPrimitive["polygons"],
-  {{3.3, 14.2}, {15.85, 18.35}},
+  {{3.3, 14.2}, {15.45, 17.95}},
   True
 ];
 AppendTo[
@@ -919,26 +919,26 @@ AppendTo[
   {
     displayText[
       "coupling section",
-      {15.2, 18.45},
+      {15.2, 18.05},
       6.10,
       {Left, Center}
     ],
     text[
       Row[{symLc, " = 10.0 ", mu}],
-      {15.2, 16.95},
+      {15.2, 16.55},
       5.00,
       {Left, Center}
     ],
     text[
       Row[{symG, " = 0.25 ", mu}],
-      {15.2, 15.70},
+      {15.2, 15.30},
       5.00,
       {Left, Center}
     ],
-    arrowLine[{31.7, 25.3}, {38.5, 25.3}],
+    arrowLine[{31.7, 24.9}, {38.5, 24.9}],
     codeText[
       Column[{"8 calls", "connect(...)"}, Alignment -> Center, Spacings -> 0.05],
-      {35.1, 27.25},
+      {35.1, 26.85},
       4.90
     ]
   }
@@ -948,7 +948,7 @@ AppendTo[
 semanticGroups = f2["semantic_groups"];
 semanticSpec = specFor[
   allGroupPolys[semanticGroups],
-  {{39.8, 98.1}, {21.0, 28.8}},
+  {{39.8, 98.1}, {20.25, 28.05}},
   True
 ];
 AppendTo[
@@ -989,9 +989,9 @@ yAt[value_] := tp[{0.0, value}, semanticSpec][[2]];
 AppendTo[
   fig2Prims,
   {
-    horizontalDimension[xAt[-26.0], xAt[-18.0], 32.7, symLs],
-    horizontalDimension[xAt[-18.0], xAt[0.0], 32.7, symLb],
-    horizontalDimension[xAt[0.0], xAt[10.0], 32.7, symLc],
+    horizontalDimension[xAt[-26.0], xAt[-18.0], 31.95, symLs],
+    horizontalDimension[xAt[-18.0], xAt[0.0], 31.95, symLb],
+    horizontalDimension[xAt[0.0], xAt[10.0], 31.95, symLc],
     verticalDimension[
       xAt[-18.0] - 1.15,
       yAt[-3.0],
@@ -1001,14 +1001,14 @@ AppendTo[
     ],
     callout[
       tp[{-22.0, 4.0}, semanticSpec],
-      {xAt[-22.0], 30.2},
-      {xAt[-22.0] + 2.2, 30.2},
+      {xAt[-22.0], 29.45},
+      {xAt[-22.0] + 2.2, 29.45},
       symW
     ],
     callout[
       tp[{5.0, 0.375}, semanticSpec],
-      {xAt[5.0], 19.2},
-      {xAt[5.0] + 2.0, 19.2},
+      {xAt[5.0], 18.45},
+      {xAt[5.0] + 2.0, 18.45},
       symG
     ]
   }
