@@ -1,4 +1,4 @@
-% fig_system_standalone.tex — PixCell pipeline diagram (Fig. 7, fig:system)
+% fig_system_standalone.tex -- PixCell pipeline diagram (Fig. 6b)
 % Build from the repository root:
 %   tectonic arxiv/scripts/fig_system_standalone.tex --outdir <output-dir>
 % Style: white-page Iowan Old Style / STIX publication system shared with
@@ -20,7 +20,9 @@
   x=1cm,
   y=1cm,
   every node/.style={font=\normalsize, text=ink},
-  sectiontitle/.style={font=\large, anchor=west},
+  panelletter/.style={font=\large},
+  paneltitle/.style={font=\large, anchor=west},
+  sectiontitle/.style={font=\normalsize, anchor=west},
   process/.style={
     draw=ink,
     line width=0.72pt,
@@ -38,7 +40,7 @@
   },
   tier/.style={
     process,
-    minimum width=4.05cm,
+    minimum width=3.65cm,
     minimum height=0.70cm,
     font=\small
   },
@@ -61,12 +63,16 @@
   smalllabel/.style={font=\small, text=ink, align=center},
 ]
 
+\node[panelletter, anchor=west] at (0.20,5.85) {B};
+\node[paneltitle] at (0.58,5.85) {PixCell pipeline};
+\draw[ink, line width=0.72pt] (0.20,5.47) -- (21.25,5.47);
+
 % Stage headings carry hierarchy without enclosing the stages in panels.
-\node[sectiontitle] at (0.20,5.18) {Multimodal geometric reconstruction};
+\node[sectiontitle] at (0.20,5.10) {Multimodal geometric reconstruction};
 \draw[ink, line width=0.58pt] (0.20,4.76) -- (13.65,4.76);
 
-\node[sectiontitle] at (14.05,5.18) {PDK retargeting and evaluation};
-\draw[ink, line width=0.58pt] (14.05,4.76) -- (22.60,4.76);
+\node[sectiontitle] at (14.05,5.10) {PDK retargeting and evaluation};
+\draw[ink, line width=0.58pt] (14.05,4.76) -- (21.25,4.76);
 
 % ---------------------------------------------------------------------------
 % Frozen visual target: silhouette plus calibrated physical footprint.
@@ -111,12 +117,12 @@
 % Named parameters are retargeted before the measurement-only physics ladder.
 \node[artifact] (retarget) at (15.66,3.54)
   {retarget PCell\\[-1pt]{\small SOI \,$\cdot$\, SiN \,$\cdot$\, TFLN}};
-\node[tier] (tierzero) at (19.76,3.54)
-  {Tier 0 \,$\cdot$\, local mode solver (free)};
-\node[tier] (tierone) at (19.76,2.58)
-  {Tier 1 \,$\cdot$\, small-domain FDTD (capped)};
-\node[tier] (tiertwo) at (19.76,1.62)
-  {Tier 2 \,$\cdot$\, broadband FDTD (human-gated)};
+\node[tier] (tierzero) at (19.23,3.54)
+  {Tier 0 \,$\cdot$\, local mode solver};
+\node[tier] (tierone) at (19.23,2.58)
+  {Tier 1 \,$\cdot$\, small-domain FDTD};
+\node[tier] (tiertwo) at (19.23,1.62)
+  {Tier 2 \,$\cdot$\, broadband FDTD};
 
 \draw[flow] (program.east) -- (retarget.west);
 \draw[flow] (retarget.east) -- (tierzero.west);
@@ -124,13 +130,13 @@
 \draw[flow] (tierone.south) -- (tiertwo.north);
 
 % The evaluator returns measurements; it does not search the geometry.
-\node[note] at (19.76,1.08) {measurement only; no geometry search};
+\node[note] at (19.23,1.08) {measurement only; no geometry search};
 
 % ---------------------------------------------------------------------------
 % Cross-cutting conductor responsibilities, shown as an oversight rail rather
 % than a fourth enclosing panel.
-\draw[ink, line width=0.58pt] (0.20,0.58) -- (22.60,0.58);
-\node[font=\small] at (11.40,0.24)
+\draw[ink, line width=0.58pt] (0.20,0.58) -- (21.25,0.58);
+\node[font=\small] at (10.72,0.24)
   {Conductor oversight: brief workers \,$\cdot$\, monitor runs
    \,$\cdot$\, verify model and effort \,$\cdot$\, recompute scores
    \,$\cdot$\, archive};

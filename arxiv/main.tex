@@ -498,35 +498,32 @@ reported comparison.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.96\linewidth]{fig_phases.pdf}
-\caption{\textbf{The iterative setup.} The benchmark reference is prepared
+\par\vspace{0.4em}
+\includegraphics[width=0.96\linewidth]{fig_system.pdf}
+\caption{\textbf{The iterative setup and PixCell pipeline.}
+(a)~The benchmark reference is prepared
 once per device by standardization and calibration. A round of
 sampling then runs $N$ parallel seeds for two propose$\to$execute$\to$
 verify$\to$diff turns each and ranks them by the verifier; surviving
 candidates continue for up to three further diff-guided turns with early
 stopping. An external pipeline controls execution, selection, and the
-feedback shown to the model.}
-\label{fig:phases}
-\end{figure*}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.94\linewidth]{fig_system.pdf}
-\caption{\textbf{The PixCell pipeline.} A component silhouette and physical
+feedback shown to the model.
+(b)~A component silhouette and physical
 footprint enter a coding agent that constructs a parametric program over
 geometric primitives. The program is executed and compared with the target
 by the geometric verifier. Its named parameters then provide the interface
-to stack-specific evaluation through a local mode solver, capped
-small-domain FDTD, and gated broadband FDTD. In the agent experiments of
+to stack-specific evaluation through a local mode solver, small-domain
+FDTD, and broadband FDTD. In the agent experiments of
 Sec.~\ref{sec:agents}, a conductor briefs workers, monitors completion, and
 recomputes record-grade scores.}
-\label{fig:system}
+\label{fig:phases}
 \end{figure*}
 
 \subsubsection{The iterative setup}\label{sec:iterative}
 
 In the iterative API harness, the model acts as a stochastic program
 generator and an external pipeline controls the loop
-(Fig.~\ref{fig:phases}). The initial prompt contains the target silhouette,
+(Fig.~\ref{fig:phases}(a)). The initial prompt contains the target silhouette,
 physical footprint, primitive catalog, and output contract. It contains no
 device name, worked example, or callable tool. Verbatim prompts are provided
 in the reproduction section.

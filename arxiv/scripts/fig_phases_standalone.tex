@@ -1,4 +1,4 @@
-% fig_phases_standalone.tex — iterative API harness (Fig. 6, fig:phases)
+% fig_phases_standalone.tex -- iterative API harness (Fig. 6a, fig:phases)
 % Build from the repository root:
 %   tectonic arxiv/scripts/fig_phases_standalone.tex --outdir <output-dir>
 % Style: the Iowan Old Style / STIX publication system established by
@@ -21,8 +21,9 @@
   x=1cm,
   y=1cm,
   every node/.style={font=\normalsize, text=ink},
-  stageletter/.style={font=\large},
-  stagetitle/.style={font=\large, anchor=west},
+  panelletter/.style={font=\large},
+  paneltitle/.style={font=\large, anchor=west},
+  stageheading/.style={font=\normalsize, anchor=west},
   process/.style={
     draw=ink,
     line width=0.72pt,
@@ -79,20 +80,21 @@
   smalllabel/.style={font=\small, align=center},
 ]
 
-\node[stageletter, anchor=west] at (0.20,5.04) {A};
-\node[stagetitle] at (0.58,5.04) {Frozen reference};
+\node[panelletter, anchor=west] at (0.20,5.65) {A};
+\node[paneltitle] at (0.58,5.65) {Iterative setup};
+\draw[ink, line width=0.72pt] (0.18,5.27) -- (22.27,5.27);
+
+\node[stageheading] at (0.20,4.94) {Frozen reference};
 \draw[ink, line width=0.58pt] (0.18,4.62) -- (4.82,4.62);
 
-\node[stageletter, anchor=west] at (5.22,5.04) {B};
-\node[stagetitle] at (5.60,5.04) {Parallel proposal round};
+\node[stageheading] at (5.22,4.94) {Parallel proposal round};
 \draw[ink, line width=0.58pt] (5.20,4.62) -- (13.75,4.62);
 
-\node[stageletter, anchor=west] at (14.15,5.04) {C};
-\node[stagetitle] at (14.53,5.04) {Survivor refinement};
+\node[stageheading] at (14.15,4.94) {Survivor refinement};
 \draw[ink, line width=0.58pt] (14.13,4.62) -- (22.27,4.62);
 
 % ---------------------------------------------------------------------------
-% A — prepare the immutable target and physical calibration once per device.
+% Stage 1 -- prepare the immutable target and physical calibration once.
 % Source-paper panel icon.
 \draw[ink, line width=0.62pt, fill=white]
   (0.22,2.39) rectangle (1.45,3.96);
@@ -111,10 +113,8 @@
 \node[font=\footnotesize, align=center] at (0.84,2.10)
   {source\\[-2pt]panel};
 
-% Standardization/calibration arrow.
+% Preparation arrow; standardization and calibration are stated in the caption.
 \draw[dataflow] (1.52,3.18) -- (2.31,3.18);
-\node[font=\footnotesize, align=center] at (1.68,4.27)
-  {standardize\\[-2pt]$+$ calibrate};
 
 % Frozen benchmark bundle.
 \draw[ink, line width=0.72pt, rounded corners=1.4pt, fill=white]
@@ -135,7 +135,7 @@
 \draw[dataflow] (4.80,3.18) -- (5.78,3.18);
 
 % ---------------------------------------------------------------------------
-% B — N independent seeds, each receiving two measured revision turns.
+% Stage 2 -- N independent seeds, each receiving two measured revision turns.
 \node[smalllabel, anchor=west] at (5.31,4.28) {$N$ parallel seeds};
 \node[stack] (seedback) at (6.01,3.54) {$s_N$};
 \node[stack] (seedmid)  at (6.13,3.36) {$\vdots$};
@@ -161,7 +161,7 @@
   {each output is measured before revision};
 
 % ---------------------------------------------------------------------------
-% C — only survivors receive up to three additional diff-guided turns.
+% Stage 3 -- only survivors receive up to three additional diff-guided turns.
 \node[smalllabel, anchor=west] at (14.22,4.28) {top-$k$ survivors};
 \node[stack] (survback) at (14.56,3.54) {$s_{(k)}$};
 \node[stack] (survmid)  at (14.68,3.36) {$\vdots$};

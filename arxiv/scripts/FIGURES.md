@@ -12,8 +12,7 @@ where the generator or its data is local-only.
 | fig_targets.pdf | `make_fig_targets.py` | `fig_target_assets/manifest.json` + F1–F8 one-bit render assets derived at the archived threshold; source and asset hashes are recorded in the manifest |
 | fig_extraction.pdf | `make_fig_extraction.py` | `fig_extraction_assets/manifest.json` + audited F5 panel-(c) crop and F2 schematic; frozen masks are reused directly from `fig_target_assets/` |
 | fig_verification.pdf | `make_fig_verification.py` | `fig_verification_assets/manifest.json`: hash-locked F4 GPT-5.5 iteration rasters, metrics, and calibration; target shared with `fig_target_assets/F4.png` |
-| fig_phases.pdf | `fig_phases_standalone.tex` | standalone TikZ |
-| fig_system.pdf | `fig_system_standalone.tex` | standalone TikZ |
+| fig_phases.pdf, fig_system.pdf (stacked as Fig. 6(a,b)) | `fig_phases_standalone.tex`, `fig_system_standalone.tex` | standalone TikZ |
 | fig_channel.pdf | `fig_channel_standalone.tex` + `fig_channel_assets/` | standalone TikZ (from user sketch) |
 | fig_june_seeds.pdf | `make_fig_june_seeds.py` | `data/chatbots/figure_panels/panels/` (paper_statistics.json + seed/turn tiles) |
 | fig1_emergence.pdf | `make_fig1_tikz.py` (+ `make_figures.py::fig1`) | `benchmark_results/real_success_data.json` (tracked exception) + `data/agents/paper_swap/sweep_results.json` |
