@@ -74,7 +74,6 @@ plugins/pixcell/
 ├── .plugin/plugin.json          # Open Plugin Spec manifest (vendor-neutral)
 ├── skills/                      # the 8 product skills
 ├── agents/                      # the 4 specialist agents
-├── hooks/                       # hooks.json + 3 hook scripts
 ├── .mcp.json                    # 7 servers, all via bin/pixcell-engine
 └── bin/pixcell-engine           # engine resolver/bootstrapper (POSIX sh)
 ```

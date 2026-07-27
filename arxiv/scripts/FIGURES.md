@@ -39,7 +39,7 @@ the *data* survives, the plotting scripts were not retained.
 | fig_coupler_field.pdf — REMOVED from the paper 2026-07-09 (field-map imagery redundant with fig_sidewall_stacks; the audit numbers live in the prose) | tier-1 field records, `data/agents/catalog_swap/cat5/output/` (`field_*.npz`, local-only/gitignored); in-figure sentence titles redacted → panel tags (a)/(b) 2026-07-09 |
 | fig_source_vs_ours.pdf | published panel (source paper, archived extraction record) + tier-2 field export; baked-in mis-attributed panel title redacted → panel tags 2026-07-09 (caption carries the correct Nguyen et al. credit) |
 
-The local-only `.hdf5`/`.npz` bulk is listed in `RELEASING.md` for inclusion in
+The local-only `.hdf5`/`.npz` bulk is listed in `data/BINARY_MANIFEST.json` for inclusion in
 the artifact release.
 
 Retired figures (no longer included in `main.tex`) live in `figures/old/`.

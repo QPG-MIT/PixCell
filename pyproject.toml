@@ -154,5 +154,7 @@ line-length = 100
 target-version = ["py313"]
 
 [tool.ruff]
+# data/ is the frozen record — ported campaign-era scripts keep their as-run style
+exclude = ["data"]
 line-length = 100
 target-version = "py313"

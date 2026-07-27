@@ -15,12 +15,16 @@ stored artifacts, and you can recompute any of them yourself (below).
 | `agents/catalog_swap/` | models as blind coding agents | the primitives-vs-stencil ladder: 16 recreation cells + the 20-cell two-arm Phase-B game |
 | `agents/pdk_swap/` | models as blind coding agents | the MZI one-drawing→three-fabs proof + MMI craft transfer + tier-2 validation |
 | `benchmark/` | — | the 8 device input fixtures (silhouette + footprint + calibration + meta), each `meta.json` naming its source panel in `benchmark/source_panels/` |
-| `BINARY_MANIFEST.json` | — | sha256/size manifest for binary evidence kept out of git (raw FDTD hdf5, render PNGs) — the external artifact bundle |
+| `BINARY_MANIFEST.json` | — | sha256/size manifest for binary evidence kept out of git (raw FDTD hdf5, render PNGs) — the external artifact bundle; generator ships beside it (`make_binary_manifest.py`, fail-closed on a tree without the externals) |
 
 The raw chatbot-benchmark trajectories live in `chatbots/trajectories/FINAL_1..8/`. The RL training
 recipe lives in `rl/` (see `rl/README.md`); the study's recorded artifacts
 (`rl/LINEAGE.md`, `rl/reports/`) are not yet in this tree. The benchmark input fixtures (silhouette + footprint per device) are
-`benchmark/`.
+`benchmark/`. The chatbot audit of record ships beside its output:
+`chatbots/analysis/benchmark_real_success.py` regenerates
+`aggregates/real_success_{data.json,benchmark.md}` byte-identically from
+`trajectories/` (cohort-pinned to the audited model set; `--all` widens to
+later runs the trajectories also carry).
 
 ## Verify any cell yourself
 
