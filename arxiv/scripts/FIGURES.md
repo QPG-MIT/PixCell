@@ -15,13 +15,13 @@ where the generator or its data is local-only.
 | fig_phases.pdf, fig_system.pdf (stacked as Fig. 6(a,b)) | `fig_phases_standalone.tex`, `fig_system_standalone.tex` | standalone TikZ |
 | fig_channel.pdf | `fig_channel_standalone.tex` + `fig_channel_assets/` | standalone TikZ (from user sketch) |
 | fig_june_seeds.pdf | `make_fig_june_seeds.py` | `fig_june_seeds_assets/manifest.json`: hash-locked archived F4 seed-diversity and F6 turn-revision overlays plus campaign summaries |
-| fig1_emergence.pdf | `make_fig1_tikz.py` (+ `make_figures.py::fig1`) | `benchmark_results/real_success_data.json` (tracked exception) + `data/agents/paper_swap/sweep_results.json` |
+| fig1_emergence.pdf | `make_fig_emergence.py` | `fig_emergence_assets/manifest.json`: hash-locked iterative-API summary and coding-agent sweep records; the generator recomputes the displayed coding-agent values |
 | fig2_agent_zoom.pdf | `make_figures.py::fig2` | `figures/agent_table.json` |
 | fig3_heatmap.pdf | `make_figures.py::fig3` | `figures/agent_table.json` |
 | fig4_effort_generation.pdf | `make_figures.py::fig4` | `figures/agent_table.json` |
 | fig_progression.pdf | `make_fig_progression.py` | archived per-cell iteration logs (reconstructed 2026-07-09) |
 | fig_pareto.pdf | `make_fig_pareto3d.py` | `figures/agent_table.json` + archived token/cost records |
-| fig5_before_after.pdf (now anchored by an explicit prose reference in III.B — it was an unreferenced float, which let it drift pages away) | `make_fig5_before_after.py` | `projects/gemini_images_run/FINAL_{1,7,8}` rasters (tracked) + `data/agents/paper_swap/` |
+| fig5_before_after.pdf | `make_fig5_before_after.py` | `fig_before_after_assets/manifest.json`: hash-locked candidate rasters and exact archived IoUs; target masks are shared with `fig_target_assets/` |
 | fig_spectra.pdf, fig_cross_matrix.pdf | `make_fig_pdk_swap.py` | `data/agents/pdk_swap/output/` (baseline_eval, optimize logs, cross_matrix) |
 | fig_sweep_feasibility.pdf — REMOVED from the paper 2026-07-09 (near-uniform null heatmap; the numbers live in the prose) | `data/agents/catalog_swap/cat5/output/sweep_pilot/postprocess.py` | that dir's sweep matrices |
 | fig_rl_training.pdf | `make_fig_rl_training.py` | `rl/reports/runs_ledger/` (tracked trunk / bridge-1 / bridge-2 metrics) + first draw `rl/reports/benchmark_eval_bridge2.json` |

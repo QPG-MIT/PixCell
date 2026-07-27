@@ -604,6 +604,19 @@ that has not been evaluated at its required tier is recorded as
 \texttt{unmeasured} and cannot satisfy a physical specification. Section
 \ref{sec:pdk} applies this interface to cross-stack retargeting.
 
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\linewidth]{fig5_before_after.pdf}
+\caption{\textbf{Selected reconstructions from the two harnesses.}
+(a)~Selected lower- and higher-scoring outputs from the iterative API
+record illustrate its range and are not distributional summaries.
+(b)~One current-gate coding-agent run is shown for each target, with
+independently recomputed IoU. Each cell overlays an archived raster with
+its target: maroon is overlap, pink is candidate-only material, and black
+is target-only material.}
+\label{fig:beforeafter}
+\end{figure*}
+
 \section{Results}\label{sec:results}
 
 The reconstruction experiments comprise two campaigns. The iterative API
@@ -662,13 +675,18 @@ thirteen configurations attain $U\geq0.64$, while the lower-scoring
 configurations exhibit both geometric errors and source violations
 (Table~\ref{tab:cost}).
 
+Figure~\ref{fig:beforeafter} provides a qualitative view of the geometric
+differences represented by these scores. The examples are deliberately
+identified as selected cases: the balanced matrix, rather than this gallery,
+supports the quantitative claims below.
+
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig1_emergence.pdf}
-\caption{\textbf{Two evaluation records.} The left panel shows the nine
+\caption{\textbf{Two evaluation records.} (a)~The nine
 configurations in the legacy API summary, which pools archived turn-level
-programs under a broader source audit and has uneven target coverage. The
-right panel shows one default or medium-effort coding-agent configuration
+programs under a broader source audit and has uneven target coverage.
+(b)~One default or medium-effort coding-agent configuration is shown
 per model under the current source gate, with one retained result on each of the
 eight targets. Accent color identifies model-version names present in both
 records. Because the audit, aggregation unit, target coverage, prompt, and
@@ -684,24 +702,6 @@ $0.070$ to $0.341$ for Opus-4.5 and from $0.031$ to $0.148$ for Sonnet-4.5.
 The direction is consistent with improved measured performance, but the
 mismatched audits and aggregation rules preclude a causal attribution.
 
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.88\linewidth]{fig5_before_after.pdf}
-\caption{\textbf{Selected reconstructions from the two harnesses.} Each
-cell overlays an archived raster with its target: maroon is overlap, pink is
-candidate-only material, and black is target-only material. The first two
-rows are selected lower- and higher-scoring outputs from the iterative API
-record; they illustrate its range and are not distributional summaries.
-The final row contains one current-gate coding-agent run for each target,
-with independently recomputed IoU.}
-\label{fig:beforeafter}
-\end{figure*}
-
-Figure~\ref{fig:beforeafter} provides a qualitative view of the geometric
-differences represented by these scores. The examples are deliberately
-identified as selected cases: the balanced matrix, rather than this gallery,
-supports the quantitative claims below.
-
 \subsection{Configuration and target effects}\label{sec:capability}
 
 \begin{figure*}[t]
@@ -716,6 +716,24 @@ have the lowest across-configuration means, while F3 and F8 show the widest
 score ranges.}
 \label{fig:heatmap}
 \end{figure*}
+
+\begin{table*}[t]
+\centering\small
+\caption{Per-configuration results and run economics. Mean IoU averages all
+eight final programs; usable $U$ applies Eq.~\eqref{eq:usable}; and
+\texttt{viol./8} counts programs that fail the current source gate. Runtime,
+output tokens, and cost are medians over available transcript telemetry
+($n=7$ for GPT-5.5-xhigh and Opus-4.8-medium; $n=8$ otherwise). Cost is an
+API-list-price equivalent, not billed cost. Anthropic values are computed
+from measured tokens and the campaign's stored rates; OpenAI values are
+frozen campaign estimates whose original rate-calculation manifest was not
+retained.
+$^\ast$~GPT-5.3-spark is an API research preview without published pricing;
+its cost uses the GPT-5.3-codex API rate as a proxy.
+$^\dagger$~wall-clock medians include crash-recovery time.}
+\label{tab:cost}
+\input{table_cost.tex}
+\end{table*}
 
 The eight-target design provides breadth across geometry but no replicated
 seeds within a cell. Bootstrap intervals over devices therefore
@@ -759,25 +777,7 @@ Haiku-4.5-medium cells. Every flagged program contains prohibited
 difference without conflating geometric overlap with representation
 compliance.
 
-\begin{table*}[t]
-\centering\small
-\caption{Per-configuration results and run economics. Mean IoU averages all
-eight final programs; usable $U$ applies Eq.~\eqref{eq:usable}; and
-\texttt{viol./8} counts programs that fail the current source gate. Runtime,
-output tokens, and cost are medians over available transcript telemetry
-($n=7$ for GPT-5.5-xhigh and Opus-4.8-medium; $n=8$ otherwise). Cost is an
-API-list-price equivalent, not billed cost. Anthropic values are computed
-from measured tokens and the campaign's stored rates; OpenAI values are
-frozen campaign estimates whose original rate-calculation manifest was not
-retained.
-$^\ast$~GPT-5.3-spark is an API research preview without published pricing;
-its cost uses the GPT-5.3-codex API rate as a proxy.
-$^\dagger$~wall-clock medians include crash-recovery time.}
-\label{tab:cost}
-\input{table_cost.tex}
-\end{table*}
-
-\clearpage
+\FloatBarrier
 
 \subsection{Runtime and cost}\label{sec:inference}
 

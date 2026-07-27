@@ -1,147 +1,346 @@
-"""fig5_before_after: selected outputs from two evaluation harnesses.
+"""Render Figure 8: selected reconstructions from the two evaluation records.
 
-Rows: selected lower-scoring API output / selected higher-scoring API output /
-July single-run coding-agent output.
-Columns: FINAL_1 (adiabatic coupler), FINAL_7 (ring/MZI hybrid), FINAL_8
-(sub-wavelength grating). Every cell is composited from the archived target
-mask and the run's archived raster: TP maroon, FP pink, FN black. IoU values
-are the archived (independently recomputed) run metrics.
+The target masks are the hash-locked publication assets shared with Figure 3.
+The nine displayed candidate rasters and their source hashes are recorded in
+``fig_before_after_assets/manifest.json``.  This generator evaluates both the
+pixel classes and the displayed IoUs at the archived white threshold of 245.
 
-FINAL_7's best-effort cell comes from the paper_10 project -- the same device
-image benchmarked under its original paper numbering (device_bw pixel-identical
-to FINAL_7's).
-
-Run: .venv/bin/python arxiv/scripts/make_fig5_before_after.py
+Run from the repository root:
+    python arxiv/scripts/make_fig5_before_after.py
 """
+
+from __future__ import annotations
+
+import hashlib
+import json
 from pathlib import Path
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+from matplotlib.patches import Rectangle
 import numpy as np
 from PIL import Image
 
+
 REPO = Path(__file__).resolve().parents[2]
-GIR = REPO / "projects/gemini_images_run"
-P10 = REPO / "projects/paper_10"
-PSW = REPO / "data/agents/paper_swap"
-FIG = REPO / "arxiv/figures"
-ARXIV = REPO / "arxiv/figures"
+ASSET_DIR = Path(__file__).with_name("fig_before_after_assets")
+MANIFEST = ASSET_DIR / "manifest.json"
+FIGURE_DIR = REPO / "arxiv" / "figures"
 
-plt.rcParams.update({
-    "font.family": "serif",
-    "font.serif": ["STIXGeneral", "Times New Roman", "DejaVu Serif"],
-    "mathtext.fontset": "stix", "pdf.fonttype": 42, "font.size": 8.5,
-    "axes.spines.top": False, "axes.spines.right": False,
-    "axes.linewidth": 0.7, "xtick.major.width": 0.7, "ytick.major.width": 0.7,
-    "savefig.bbox": "tight", "figure.dpi": 200,
-})
+# Shared white-page publication system.
+INK = "#17191c"
+RULE = "#17191c"
+OVERLAP = "#800000"
+CANDIDATE_ONLY = "#ff9299"
+TARGET_ONLY = INK
+DISPLAY_ASPECT = 0.46
 
-INK = "#16161d"
-TP, FP, FN = (0x66, 0x00, 0x00), (0xFF, 0x99, 0x99), (0x00, 0x00, 0x00)
-ROW_COLORS = ["#8a8a8a", "#5f5f5f", "#327162"]
-ROW_LABELS = ["iterative API\nlower-scoring example",
-              "iterative API\nhigher-scoring example",
-              "coding agent\nsingle run"]
-
-
-def mask(path):
-    return np.array(Image.open(path).convert("L")) < 128
-
-
-def composite(target_path, raster_path):
-    t, r = mask(target_path), mask(raster_path)
-    out = np.full((*t.shape, 3), 255, dtype=np.uint8)
-    out[t & ~r] = FN
-    out[r & ~t] = FP
-    out[t & r] = TP
-    return out
-
-
-ASPECT = 0.58  # uniform cell canvas (h/w) so titles and captions align
-
-
-def pad_to_aspect(img, aspect=ASPECT):
-    h, w = img.shape[:2]
-    if h / w < aspect:          # too flat: pad top/bottom
-        H, W = int(round(w * aspect)), w
-    else:                       # too tall: pad left/right
-        H, W = h, int(round(h / aspect))
-    out = np.full((H, W, 3), 255, dtype=np.uint8)
-    y0, x0 = (H - h) // 2, (W - w) // 2
-    out[y0:y0 + h, x0:x0 + w] = img
-    return out
-
-
-COLS = [
+plt.rcParams.update(
     {
-        "title": "F1 · adiabatic coupler",
-        "june_target": GIR / "FINAL_1/device_bw.png",
-        "agent_target": PSW / "final1/device_bw.png",
-        "cells": [
-            (GIR / "FINAL_1/benchmark_gemini_gemini-2.0-flash/phase1/benchmark_gemini-2-0-flash/run_003/turn2/raster.png",
-             "Gemini-2.0-Flash · IoU 0.066"),
-            (GIR / "FINAL_1/benchmark_gemini_gemini-3.1-pro-preview/phase1/benchmark_gemini-3-1-pro-preview/run_009/turn2/raster.png",
-             "Gemini-3.1-Pro · IoU 0.682"),
-            (PSW / "final1/output/recreation_codex55m/raster.png",
-             "GPT-5.5 · IoU 0.987"),
+        "font.family": "serif",
+        "font.serif": [
+            "Iowan Old Style",
+            "STIX Two Text",
+            "STIXGeneral",
+            "Times New Roman",
         ],
-    },
-    {
-        "title": "F7 · ring/MZI hybrid",
-        "june_target": GIR / "FINAL_7/device_bw.png",
-        "agent_target": PSW / "final7/device_bw.png",
-        "best_target": P10 / "device_bw.png",
-        "cells": [
-            (GIR / "FINAL_7/benchmark_qwen_qwen3-vl-235b-a22b-instruct/phase1/benchmark_qwen3-vl-235b-a22b-instruct/run_002/turn2/raster.png",
-             "Qwen3-VL · IoU 0.229"),
-            (P10 / "benchmark_gemini_gemini-3-pro-preview/phase1/run_016/turn2/raster.png",
-             "Gemini-3-Pro · IoU 0.537"),
-            (PSW / "final7/output/recreation_codex55m/raster_iter5.png",
-             "GPT-5.5 · IoU 0.958"),
-        ],
-    },
-    {
-        "title": "F8 · sub-wavelength grating",
-        "june_target": GIR / "FINAL_8/device_bw.png",
-        "agent_target": PSW / "final8/device_bw.png",
-        "cells": [
-            (GIR / "FINAL_8/benchmark_gemini_gemini-2.0-flash/phase1/benchmark_gemini-2-0-flash/run_002/turn2/raster.png",
-             "Gemini-2.0-Flash · IoU 0.278"),
-            (GIR / "FINAL_8/benchmark_gemini_gemini-3-flash-preview/phase1/benchmark_gemini-3-flash-preview/run_001/turn2/raster.png",
-             "Gemini-3-Flash · IoU 0.507"),
-            (PSW / "final8/output/recreation_opus48m/raster.png",
-             "Opus 4.8 · IoU 0.900"),
-        ],
-    },
-]
+        "mathtext.fontset": "stix",
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+        "savefig.facecolor": "white",
+        "savefig.bbox": None,
+    }
+)
 
-fig, axes = plt.subplots(3, 3, figsize=(6.4, 4.0))
-for j, col in enumerate(COLS):
-    for i, (raster, caption) in enumerate(col["cells"]):
-        ax = axes[i][j]
-        if i == 2:
-            target = col["agent_target"]
-        elif i == 1:
-            target = col.get("best_target", col["june_target"])
-        else:
-            target = col["june_target"]
-        ax.imshow(pad_to_aspect(composite(target, raster)),
-                  interpolation="antialiased")
-        ax.set_axis_off()
-        if i == 0:
-            ax.set_title(col["title"], fontsize=8, color=INK, pad=6)
-        ax.text(0.5, -0.07, caption, transform=ax.transAxes, ha="center",
-                va="top", fontsize=6.8, color=ROW_COLORS[i])
 
-for i, (lab, c) in enumerate(zip(ROW_LABELS, ROW_COLORS)):
-    axes[i][0].text(-0.07, 0.5, lab, transform=axes[i][0].transAxes,
-                    ha="right", va="center", fontsize=7.5, color=c,
-                    style="italic", rotation=0, linespacing=1.4)
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
-fig.subplots_adjust(left=0.13, right=0.995, top=0.92, bottom=0.05,
-                    hspace=0.34, wspace=0.06)
-fig.savefig(ARXIV / "fig5_before_after.pdf")
-fig.savefig(FIG / "fig5_before_after.png", dpi=200)
-print("wrote", ARXIV / "fig5_before_after.pdf")
+
+def _verified_path(asset: str, expected_sha256: str) -> Path:
+    path = (ASSET_DIR / asset).resolve()
+    actual = _sha256(path)
+    if actual != expected_sha256:
+        raise ValueError(
+            f"Hash mismatch for {path}: expected {expected_sha256}, got {actual}."
+        )
+    return path
+
+
+def _load_inputs() -> list[dict]:
+    specification = json.loads(MANIFEST.read_text())
+    threshold = int(specification["white_threshold"])
+    targets = specification["targets"]
+    if [target["id"] for target in targets] != ["F1", "F7", "F8"]:
+        raise ValueError("Figure 8 manifest must contain ordered targets F1, F7, F8.")
+
+    loaded_targets = []
+    for target in targets:
+        expected_width, expected_height = target["image_size_px"]
+        target_path = _verified_path(
+            target["target_asset"],
+            target["target_sha256"],
+        )
+        target_image = np.asarray(Image.open(target_path).convert("L"))
+        if target_image.shape != (expected_height, expected_width):
+            raise ValueError(f"Target size mismatch for {target_path}.")
+        if not set(np.unique(target_image)).issubset({0, 255}):
+            raise ValueError(f"Target publication asset is not binary: {target_path}.")
+        target_mask = target_image < 128
+
+        cases = []
+        for case in target["cases"]:
+            raster_path = _verified_path(
+                case["raster_asset"],
+                case["raster_sha256"],
+            )
+            raster_image = np.asarray(Image.open(raster_path).convert("L"))
+            if raster_image.shape != target_image.shape:
+                raise ValueError(f"Raster size mismatch for {raster_path}.")
+            candidate_mask = raster_image < threshold
+            intersection = np.logical_and(target_mask, candidate_mask).sum()
+            union = np.logical_or(target_mask, candidate_mask).sum()
+            measured_iou = float(intersection / union)
+            if not np.isclose(measured_iou, case["iou"], atol=1e-12):
+                raise ValueError(
+                    f"IoU mismatch for {target['id']} {case['row']}: "
+                    f"measured {measured_iou}, expected {case['iou']}."
+                )
+            cases.append({**case, "candidate": candidate_mask})
+
+        loaded_targets.append(
+            {
+                **target,
+                "target": target_mask,
+                "cases": cases,
+            }
+        )
+    return loaded_targets
+
+
+def _comparison_image(target: np.ndarray, candidate: np.ndarray) -> np.ndarray:
+    image = np.full((*target.shape, 3), 255, dtype=np.uint8)
+    overlap = np.logical_and(target, candidate)
+    candidate_only = np.logical_and(candidate, ~target)
+    target_only = np.logical_and(target, ~candidate)
+    image[overlap] = (128, 0, 0)
+    image[candidate_only] = (255, 146, 153)
+    image[target_only] = (23, 25, 28)
+    return image
+
+
+def _shared_crop(target: dict, margin: float = 0.035) -> tuple[slice, slice]:
+    union = target["target"].copy()
+    for case in target["cases"]:
+        union |= case["candidate"]
+    rows, columns = np.where(union)
+    row_min, row_max = int(rows.min()), int(rows.max())
+    column_min, column_max = int(columns.min()), int(columns.max())
+    row_pad = int((row_max - row_min) * margin) + 2
+    column_pad = int((column_max - column_min) * margin) + 2
+    return (
+        slice(max(0, row_min - row_pad), min(union.shape[0], row_max + row_pad + 1)),
+        slice(
+            max(0, column_min - column_pad),
+            min(union.shape[1], column_max + column_pad + 1),
+        ),
+    )
+
+
+def _pad_to_aspect(image: np.ndarray, aspect: float = DISPLAY_ASPECT) -> np.ndarray:
+    height, width = image.shape[:2]
+    if height / width < aspect:
+        output_height, output_width = round(width * aspect), width
+    else:
+        output_height, output_width = height, round(height / aspect)
+    output = np.full((output_height, output_width, 3), 255, dtype=np.uint8)
+    y = (output_height - height) // 2
+    x = (output_width - width) // 2
+    output[y : y + height, x : x + width] = image
+    return output
+
+
+def _section_title(
+    figure: plt.Figure,
+    letter: str,
+    title: str,
+    *,
+    y: float,
+) -> None:
+    figure.text(
+        0.020,
+        y,
+        letter,
+        ha="left",
+        va="center",
+        fontsize=10.5,
+        fontweight="normal",
+        color=INK,
+    )
+    figure.text(
+        0.056,
+        y,
+        title,
+        ha="left",
+        va="center",
+        fontsize=10.5,
+        fontweight="normal",
+        color=INK,
+    )
+
+
+def _card(
+    figure: plt.Figure,
+    rect: tuple[float, float, float, float],
+    *,
+    model: str,
+    iou: float,
+    image: np.ndarray,
+) -> None:
+    card = figure.add_axes(rect)
+    card.set_xlim(0, 1)
+    card.set_ylim(0, 1)
+    card.axis("off")
+    card.add_patch(
+        Rectangle(
+            (0.004, 0.008),
+            0.992,
+            0.984,
+            facecolor="white",
+            edgecolor=RULE,
+            linewidth=0.72,
+        )
+    )
+    card.plot(
+        [0.004, 0.996],
+        [0.725, 0.725],
+        color=RULE,
+        linewidth=0.58,
+        solid_capstyle="butt",
+    )
+    card.text(
+        0.035,
+        0.855,
+        model,
+        ha="left",
+        va="center",
+        fontsize=7.9,
+        fontweight="bold",
+        color=INK,
+    )
+    card.text(
+        0.965,
+        0.855,
+        rf"$\mathrm{{IoU}}={iou:.3f}$",
+        ha="right",
+        va="center",
+        fontsize=7.5,
+        color=INK,
+    )
+    image_axes = card.inset_axes((0.025, 0.030, 0.950, 0.665))
+    image_axes.imshow(image, interpolation="antialiased", aspect="equal")
+    image_axes.set_xticks([])
+    image_axes.set_yticks([])
+    for spine in image_axes.spines.values():
+        spine.set_visible(False)
+
+
+def _row_label(figure: plt.Figure, text: str, *, y: float) -> None:
+    figure.text(
+        0.145,
+        y,
+        text,
+        ha="right",
+        va="center",
+        fontsize=7.9,
+        fontweight="bold",
+        linespacing=1.12,
+        color=INK,
+    )
+
+
+def main() -> None:
+    targets = _load_inputs()
+    rows = ("lower", "higher", "agent")
+    row_y = {"lower": 0.645, "higher": 0.425, "agent": 0.060}
+    row_height = {"lower": 0.190, "higher": 0.190, "agent": 0.220}
+
+    left = 0.165
+    right = 0.980
+    gap = 0.015
+    width = (right - left - 2 * gap) / 3
+
+    figure = plt.figure(figsize=(7.40, 3.25), facecolor="white")
+    _section_title(figure, "A", "Selected iterative API outputs", y=0.965)
+
+    for column, target in enumerate(targets):
+        center = left + column * (width + gap) + width / 2
+        figure.text(
+            center,
+            0.895,
+            f"{target['id']}  {target['title']}",
+            ha="center",
+            va="center",
+            fontsize=8.6,
+            fontweight="bold",
+            color=INK,
+        )
+
+    _row_label(figure, "Lower-scoring\nselected output", y=0.740)
+    _row_label(figure, "Higher-scoring\nselected output", y=0.520)
+
+    prepared: dict[tuple[str, str], np.ndarray] = {}
+    for target in targets:
+        crop = _shared_crop(target)
+        for case in target["cases"]:
+            comparison = _comparison_image(target["target"], case["candidate"])
+            prepared[(target["id"], case["row"])] = _pad_to_aspect(comparison[crop])
+
+    for column, target in enumerate(targets):
+        x = left + column * (width + gap)
+        cases_by_row = {case["row"]: case for case in target["cases"]}
+        for row in rows[:2]:
+            case = cases_by_row[row]
+            _card(
+                figure,
+                (x, row_y[row], width, row_height[row]),
+                model=case["model"],
+                iou=case["iou"],
+                image=prepared[(target["id"], row)],
+            )
+
+    figure.add_artist(
+        Line2D(
+            [0.020, 0.980],
+            [0.360, 0.360],
+            transform=figure.transFigure,
+            color=RULE,
+            linewidth=0.72,
+        )
+    )
+    _section_title(figure, "B", "Current-gate coding-agent outputs", y=0.315)
+    _row_label(figure, "Single retained\nrun", y=0.170)
+
+    for column, target in enumerate(targets):
+        x = left + column * (width + gap)
+        case = next(case for case in target["cases"] if case["row"] == "agent")
+        _card(
+            figure,
+            (x, row_y["agent"], width, row_height["agent"]),
+            model=case["model"],
+            iou=case["iou"],
+            image=prepared[(target["id"], "agent")],
+        )
+
+    FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    output = FIGURE_DIR / "fig5_before_after.pdf"
+    figure.savefig(output, dpi=600, facecolor="white", bbox_inches=None)
+    print(f"wrote {output}")
+    plt.close(figure)
+
+
+if __name__ == "__main__":
+    main()
