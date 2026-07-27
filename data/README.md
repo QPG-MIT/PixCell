@@ -18,8 +18,8 @@ stored artifacts, and you can recompute any of them yourself (below).
 | `BINARY_MANIFEST.json` | — | sha256/size manifest for binary evidence kept out of git (raw FDTD hdf5, render PNGs) — the external artifact bundle |
 
 The raw chatbot-benchmark trajectories live in `chatbots/trajectories/FINAL_1..8/`. The RL training
-study's data lives in `rl/` (see `rl/README.md` and `rl/LINEAGE.md`; not yet in this
-tree). The benchmark input fixtures (silhouette + footprint per device) are
+recipe lives in `rl/` (see `rl/README.md`); the study's recorded artifacts
+(`rl/LINEAGE.md`, `rl/reports/`) are not yet in this tree. The benchmark input fixtures (silhouette + footprint per device) are
 `benchmark/`.
 
 ## Verify any cell yourself
@@ -122,7 +122,8 @@ Every number in the paper's Results, mapped to its backing file.
 
 ### Sec VIII — the RL study
 
-See the RL study's own record (`rl/`, not yet in this tree): `rl/reports/benchmark_eval_bridge2_g.json` (the paper's k=8 table,
+See the RL study's own record (not yet in this tree — `rl/` currently carries
+the training recipe): `rl/reports/benchmark_eval_bridge2_g.json` (the paper's k=8 table,
 Table `tab:rl`: 0.254 / 0.466; the first draw `benchmark_eval_bridge2.json`, 0.2395 /
 0.4433, is retained as the variance reference),
 `benchmark_attempts_bridge2.jsonl` (per-attempt record), `rl/reports/runs_ledger/`
