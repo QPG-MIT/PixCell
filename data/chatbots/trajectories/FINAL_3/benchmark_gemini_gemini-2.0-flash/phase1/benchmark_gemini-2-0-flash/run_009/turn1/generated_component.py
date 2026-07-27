@@ -1,0 +1,84 @@
+import gdsfactory as gf
+from gdsfactory.components import bend_euler, straight
+from gdsfactory.cross_section import strip
+
+
+@gf.cell
+def mach_zehnder_interferometer(
+    length_arm: float = 10.0,
+    length_straight: float = 10.0,
+    gap: float = 0.2,
+    radius: float = 5.0,
+    cross_section=strip,
+) -> gf.Component:
+    """
+    Mach-Zehnder Interferometer (MZI) using parametric primitives.
+
+    Args:
+        length_arm: Length of the MZI arms (straight sections).
+        length_straight: Length of the input/output straight sections.
+        gap: Gap between the two waveguides in the coupler.
+        radius: Radius of the bends.
+        cross_section: Cross-section of the waveguides.
+    """
+
+    c = gf.Component("mzi")
+
+    # Input/Output Straight sections
+    straight_in1 = c << straight(length=length_straight, cross_section=cross_section)
+    straight_in2 = c << straight(length=length_straight, cross_section=cross_section)
+
+    straight_out1 = c << straight(length=length_straight, cross_section=cross_section)
+    straight_out2 = c << straight(length=length_straight, cross_section=cross_section)
+
+    straight_in2.move((0,-cross_section().width-gap))
+    straight_out2.move((0,-cross_section().width-gap))
+    straight_out1.movex(2*length_straight+2*length_arm + 4*radius)
+    straight_out2.movex(2*length_straight+2*length_arm + 4*radius)
+    
+    # Bends
+    bend1 = c << bend_euler(radius=radius, cross_section=cross_section)
+    bend2 = c << bend_euler(radius=radius, cross_section=cross_section)
+    bend3 = c << bend_euler(radius=radius, cross_section=cross_section)
+    bend4 = c << bend_euler(radius=radius, cross_section=cross_section)
+    bend5 = c << bend_euler(radius=radius, cross_section=cross_section)
+    bend6 = c << bend_euler(radius=radius, cross_section=cross_section)
+    bend7 = c << bend_euler(radius=radius, cross_section=cross_section)
+    bend8 = c << bend_euler(radius=radius, cross_section=cross_section)
+
+    bend5.move((0,-cross_section().width-gap))
+    bend6.move((0,-cross_section().width-gap))
+    bend7.move((0,-cross_section().width-gap))
+    bend8.move((0,-cross_section().width-gap))
+
+
+    bend1.connect("o1", straight_in1.ports["o2"])
+    bend2.connect("o1", straight_in2.ports["o2"])
+
+    bend3.connect("o1", bend1.ports["o2"])
+    bend3.movex(length_arm)
+    bend4.connect("o1", bend2.ports["o2"])
+    bend4.movex(length_arm)
+
+    bend5.connect("o1", straight_out1.ports["o2"])
+    bend6.connect("o1", straight_out2.ports["o2"])
+
+    bend7.connect("o1", bend3.ports["o2"])
+    bend8.connect("o1", bend4.ports["o2"])
+
+    bend5.connect("o2",bend7.ports["o2"])
+    bend6.connect("o2",bend8.ports["o2"])
+
+    # Add ports
+    c.add_port("o1", port=straight_in1.ports["o1"])
+    c.add_port("o2", port=straight_in2.ports["o1"])
+    c.add_port("o3", port=straight_out1.ports["o1"])
+    c.add_port("o4", port=straight_out2.ports["o1"])
+
+    return c
+
+
+if __name__ == "__main__":
+    mzi = mach_zehnder_interferometer()
+    mzi.show()  # Remove show_ports=True
+    print(mzi.ports) # Print the ports information

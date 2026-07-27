@@ -1,0 +1,121 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def trident_coupler():
+    """
+    Creates a trident spot size converter with a central taper and two expanding outer arms.
+    Matches the footprint of 40um x 1.7um.
+    """
+    c = gf.Component()
+
+    # --- Geometric Constraints & Parameters ---
+    L_total = 40.0
+    H_total = 1.7
+    
+    # Split total length:
+    # 20um parallel interaction region (straight)
+    # 20um S-bend fan-out region (curved)
+    L_straight = 20.0
+    L_bend = L_total - L_straight
+
+    # Waveguide Widths
+    w_center_in = 0.5
+    w_center_tip = 0.05  # Tapers to a point
+    
+    w_outer_in = 0.15    # Thin in interaction region
+    w_outer_out = 0.55   # Wide at output
+    
+    # Gap in the parallel region
+    gap = 0.1
+    
+    # Layer definition (Standard waveguide layer)
+    layer_wg = (1, 0)
+
+    # --- Y-Coordinate Calculations ---
+    # Input Y for outer arms (centerline):
+    # y = center_half_width + gap + outer_half_width
+    y_in = (w_center_in / 2.0) + gap + (w_outer_in / 2.0)
+    
+    # Output Y for outer arms (centerline):
+    # Constrained by total height H_total (outer edge to outer edge)
+    y_out = (H_total / 2.0) - (w_outer_out / 2.0)
+    
+    # Vertical displacement for the bend
+    dy = y_out - y_in
+
+    # --- 1. Center Taper ---
+    # Linear taper from input width to tip
+    center = c << gf.components.taper(
+        length=L_straight,
+        width1=w_center_in,
+        width2=w_center_tip,
+        layer=layer_wg
+    )
+    center.move((0, 0))
+
+    # --- 2. Outer Arms Construction ---
+    
+    # Define Cross Sections
+    xs_straight = gf.cross_section.cross_section(width=w_outer_in, layer=layer_wg)
+    xs_end = gf.cross_section.cross_section(width=w_outer_out, layer=layer_wg)
+
+    # Part A: Straight Section
+    # Simple straight waveguide
+    straight_comp = gf.components.straight(
+        length=L_straight,
+        cross_section=xs_straight
+    )
+    
+    # Part B: Tapered S-Bend
+    # Generate path for a smooth cosine S-bend
+    num_points = 101
+    t = np.linspace(0, 1, num_points)
+    x_bend = t * L_bend
+    y_bend = (dy / 2.0) * (1 - np.cos(np.pi * t))
+    pts = np.column_stack((x_bend, y_bend))
+    
+    path_bend = gf.Path(pts)
+    
+    # Width transition
+    transition = gf.path.transition(
+        cross_section1=xs_straight, 
+        cross_section2=xs_end, 
+        width_type="linear"
+    )
+    
+    # Extrude
+    bend_comp = gf.path.extrude_transition(path_bend, transition)
+
+    # --- 3. Assembly ---
+    
+    # Top Arm
+    top_s = c << straight_comp
+    top_s.move((0, y_in))
+    
+    top_b = c << bend_comp
+    top_b.connect("o1", top_s.ports["o2"])
+    
+    # Bottom Arm
+    # Mirror across X-axis
+    bot_s = c << straight_comp
+    bot_s.mirror(p1=(0,0), p2=(1,0))
+    bot_s.move((0, -y_in))
+    
+    bot_b = c << bend_comp
+    bot_b.mirror(p1=(0,0), p2=(1,0))
+    bot_b.connect("o1", bot_s.ports["o2"])
+
+    # --- 4. Ports ---
+    c.add_port("o1", port=center.ports["o1"])
+    c.add_port("o2", port=top_b.ports["o2"])
+    c.add_port("o3", port=bot_b.ports["o2"])
+
+    # Flatten to merge references and resolve off-grid instance errors
+    c = c.flatten()
+    
+    return c
+
+if __name__ == "__main__":
+    device = trident_coupler()
+    device.write_gds("trident_coupler.gds")

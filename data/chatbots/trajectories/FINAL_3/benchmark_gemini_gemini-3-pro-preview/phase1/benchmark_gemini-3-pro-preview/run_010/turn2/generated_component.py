@@ -1,0 +1,94 @@
+import gdsfactory as gf
+
+@gf.cell
+def device():
+    """
+    Directional coupler with straight input/output leads.
+    Total footprint: 120um x 4um.
+    Structure: Straight -> S-Bend -> Coupled Straight -> S-Bend -> Straight
+    """
+    c = gf.Component()
+    
+    # 1. Define Geometric Parameters
+    # Overall constraints
+    L_total = 120.0
+    H_footprint = 4.0
+    wg_width = 0.5
+    gap = 0.2
+    
+    # Longitudinal Segmentation
+    # Based on visual proportions of the target image:
+    # - Short straight inputs/outputs (~10um)
+    # - Long central coupling region (~50um)
+    # - Smooth bends filling the rest
+    l_straight_io = 10.0
+    l_coupling = 50.0
+    # Remaining length divided between two bend sections
+    l_bend = (L_total - l_coupling - 2 * l_straight_io) / 2  # Result: 25.0
+    
+    # Vertical Positioning
+    # Outer ports: centered within the 4um height
+    y_outer_center = (H_footprint - wg_width) / 2  # 1.75 um
+    
+    # Inner coupling region: separated by gap
+    y_inner_center = (gap + wg_width) / 2          # 0.35 um
+    
+    # Calculate vertical shift for the S-bends
+    dy = y_outer_center - y_inner_center           # 1.4 um
+    
+    # Define Cross Section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # 2. Build Top Arm (Left to Right)
+    # Input Straight
+    t_in = c << gf.components.straight(length=l_straight_io, cross_section=xs)
+    t_in.move((0, y_outer_center))
+    
+    # Input Bend (Down towards center)
+    t_bend_in = c << gf.components.bend_s(size=(l_bend, -dy), cross_section=xs)
+    t_bend_in.connect("o1", t_in.ports["o2"])
+    
+    # Coupling Straight
+    t_coup = c << gf.components.straight(length=l_coupling, cross_section=xs)
+    t_coup.connect("o1", t_bend_in.ports["o2"])
+    
+    # Output Bend (Up away from center)
+    t_bend_out = c << gf.components.bend_s(size=(l_bend, dy), cross_section=xs)
+    t_bend_out.connect("o1", t_coup.ports["o2"])
+    
+    # Output Straight
+    t_out = c << gf.components.straight(length=l_straight_io, cross_section=xs)
+    t_out.connect("o1", t_bend_out.ports["o2"])
+
+    # 3. Build Bottom Arm (Left to Right)
+    # Input Straight
+    b_in = c << gf.components.straight(length=l_straight_io, cross_section=xs)
+    b_in.move((0, -y_outer_center))
+    
+    # Input Bend (Up towards center)
+    b_bend_in = c << gf.components.bend_s(size=(l_bend, dy), cross_section=xs)
+    b_bend_in.connect("o1", b_in.ports["o2"])
+    
+    # Coupling Straight
+    b_coup = c << gf.components.straight(length=l_coupling, cross_section=xs)
+    b_coup.connect("o1", b_bend_in.ports["o2"])
+    
+    # Output Bend (Down away from center)
+    b_bend_out = c << gf.components.bend_s(size=(l_bend, -dy), cross_section=xs)
+    b_bend_out.connect("o1", b_coup.ports["o2"])
+    
+    # Output Straight
+    b_out = c << gf.components.straight(length=l_straight_io, cross_section=xs)
+    b_out.connect("o1", b_bend_out.ports["o2"])
+
+    # 4. Expose Ports
+    c.add_port("o1", port=t_in.ports["o1"])
+    c.add_port("o2", port=b_in.ports["o1"])
+    c.add_port("o3", port=t_out.ports["o2"])
+    c.add_port("o4", port=b_out.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    d = device()
+    d.write_gds("directional_coupler_final.gds")

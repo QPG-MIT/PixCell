@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.780837",
+      "api_duration_seconds": 171.84077310562134,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 7329,
+        "total_tokens": 34252
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.components' has no attribute 'polygon'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:03.240875",
+      "api_duration_seconds": 48.30315899848938,
+      "usage": {
+        "input_tokens": 9709,
+        "output_tokens": 3830,
+        "total_tokens": 21025
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'Polygon'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:52.906557",
+      "api_duration_seconds": 32.718806982040405,
+      "usage": {
+        "input_tokens": 13568,
+        "output_tokens": 3449,
+        "total_tokens": 20920
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'method' object is not subscriptable",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 25626,
+    "output_tokens": 14608,
+    "total_tokens": 76197
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.229952",
+      "api_duration_seconds": 7.765539884567261,
+      "usage": {
+        "input_tokens": 3894,
+        "output_tokens": 931,
+        "total_tokens": 4825
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:18.463062",
+      "api_duration_seconds": 5.652415037155151,
+      "usage": {
+        "input_tokens": 4855,
+        "output_tokens": 782,
+        "total_tokens": 5637
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:30.680258",
+      "api_duration_seconds": 7.148529767990112,
+      "usage": {
+        "input_tokens": 6111,
+        "output_tokens": 873,
+        "total_tokens": 6984
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14860,
+    "output_tokens": 2586,
+    "total_tokens": 17446
+  }
+}

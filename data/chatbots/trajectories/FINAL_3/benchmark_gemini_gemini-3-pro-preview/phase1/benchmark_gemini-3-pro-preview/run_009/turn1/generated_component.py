@@ -1,0 +1,99 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_120x4():
+    """
+    Creates a directional coupler matching the 120um x 4um footprint.
+    Consists of input S-bends, a straight coupling region, and output S-bends.
+    """
+    c = gf.Component()
+    
+    # === Parameters ===
+    # Footprint constraints
+    total_length = 120.0
+    total_height = 4.0
+    
+    # Waveguide parameters
+    wg_width = 0.5
+    gap = 0.2 # Coupling gap
+    
+    # Longitudinal Dimensions (Length)
+    # We split the 120um length into 3 sections. 
+    # Visually, the straight coupler is roughly 1/3 of the device.
+    l_coupling = 40.0
+    l_sbend = (total_length - l_coupling) / 2  # 40.0 um
+    
+    # Vertical Dimensions (Height)
+    # 1. Inner separation at coupling region (center-to-center)
+    # y = +/- (gap/2 + width/2)
+    y_coup_offset = (gap + wg_width) / 2  # 0.35 um
+    
+    # 2. Outer separation at IO ports (center-to-center)
+    # To fit exactly in 4.0um height:
+    # Top edge = 2.0, Bottom edge = -2.0
+    # Center of top waveguide = 2.0 - (width/2) = 1.75
+    # Center of bottom waveguide = -2.0 + (width/2) = -1.75
+    y_io_offset = total_height / 2 - wg_width / 2 # 1.75 um
+    
+    # Calculate the vertical shift (dy) required for the S-bends
+    dy = y_io_offset - y_coup_offset # 1.75 - 0.35 = 1.4 um
+
+    # Define Cross Section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # === Component Creation ===
+    
+    # 1. Central Coupling Region
+    # Creates two parallel straights with ports o1-o4
+    coupler_core = c << gf.components.coupler_straight(
+        length=l_coupling,
+        gap=gap,
+        cross_section=xs
+    )
+    
+    # 2. Define S-Bend Primitives
+    # Bend for dropping down (Top Input, Bottom Output)
+    # Size is (dx, dy). dx=length, dy=vertical_shift
+    bend_down = gf.components.bend_s(
+        size=(l_sbend, -dy),
+        cross_section=xs
+    )
+    
+    # Bend for rising up (Bottom Input, Top Output)
+    bend_up = gf.components.bend_s(
+        size=(l_sbend, dy),
+        cross_section=xs
+    )
+    
+    # 3. Instantiate and Place Bends
+    
+    # Input Side
+    # Top input connects to coupler o1 (top-west)
+    in_top = c << bend_down
+    in_top.connect("o2", coupler_core.ports["o1"])
+    
+    # Bottom input connects to coupler o2 (bottom-west)
+    in_bot = c << bend_up
+    in_bot.connect("o2", coupler_core.ports["o2"])
+    
+    # Output Side
+    # Top output connects to coupler o3 (top-east) and bends UP
+    out_top = c << bend_up
+    out_top.connect("o1", coupler_core.ports["o3"])
+    
+    # Bottom output connects to coupler o4 (bottom-east) and bends DOWN
+    out_bot = c << bend_down
+    out_bot.connect("o1", coupler_core.ports["o4"])
+    
+    # === Add Ports ===
+    c.add_port("o1", port=in_top.ports["o1"]) # Top Input
+    c.add_port("o2", port=in_bot.ports["o1"]) # Bot Input
+    c.add_port("o3", port=out_top.ports["o2"]) # Top Output
+    c.add_port("o4", port=out_bot.ports["o2"]) # Bot Output
+    
+    return c
+
+# Generate and save the device
+device = directional_coupler_120x4()
+device.show() # View in KLayout
+device.write_gds("directional_coupler_120x4.gds")

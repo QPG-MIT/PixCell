@@ -1,0 +1,41 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+    rx = 60.0
+
+    # Create upper_clip component with moved rectangle reference
+    upper_clip = gf.Component()
+    upper_rect_ref = upper_clip << gf.components.rectangle(size=(120, 4), layer=layer, centered=True)
+    upper_rect_ref.move((0, 2))
+
+    # Create lower_clip component with moved rectangle reference
+    lower_clip = gf.Component()
+    lower_rect_ref = lower_clip << gf.components.rectangle(size=(120, 4), layer=layer, centered=True)
+    lower_rect_ref.move((0, -2))
+
+    # List of (ry_inner, ry_outer) for solid and thin lines
+    ry_pairs = [
+        (0.3, 1.0),  # solid
+        (1.1, 1.2),  # thin 1
+        (1.3, 1.4),  # thin 2
+        (1.5, 1.6),  # thin 3
+        (1.7, 1.8),  # thin 4
+        (1.9, 2.0),  # thin 5
+    ]
+
+    for ry_inner, ry_outer in ry_pairs:
+        outer = gf.components.ellipse(radii=(rx, ry_outer), layer=layer)
+        inner = gf.components.ellipse(radii=(rx, ry_inner), layer=layer)
+        ring = gf.boolean(outer, inner, operation="not", layer=layer)
+        upper_ring = gf.boolean(ring, upper_clip, operation="and", layer=layer)
+        lower_ring = gf.boolean(ring, lower_clip, operation="and", layer=layer)
+        c << upper_ring
+        c << lower_ring
+
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")

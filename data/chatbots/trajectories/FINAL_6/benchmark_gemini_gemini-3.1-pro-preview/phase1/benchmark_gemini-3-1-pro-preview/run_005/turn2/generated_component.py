@@ -1,0 +1,72 @@
+import gdsfactory as gf
+
+@gf.cell
+def elliptical_crossing() -> gf.Component:
+    """
+    Creates a crossing structure using a central thin cross and 
+    four offset ellipses to form the adiabatic petal-like transitions,
+    resulting in the characteristic pinched/concave inner corners.
+    """
+    c = gf.Component()
+    
+    # Target footprint constraint: 4.7 um x 4.7 um
+    total_length = 4.7
+    
+    # Proportions designed to match the target image's aesthetics
+    straight_width = 0.15  # Width of the thin rectangular arms at the tips
+    layer = (1, 0)
+    
+    # For the petals, we use 4 shifted ellipses. 
+    # By centering each ellipse at its radius 'a', they perfectly meet at the origin,
+    # creating the sharp inward pinch (concave corners) seen in the target image.
+    petal_a = 1.0    # Half-length of a petal (distance from center to max width)
+    petal_b = 0.65   # Half-width of a petal (max bulge)
+    
+    # 1. Base cross enforcing the 4.7um footprint and straight ends
+    base_cross = gf.components.cross(
+        length=total_length, 
+        width=straight_width, 
+        layer=layer
+    )
+    
+    # 2. Create the 4 offset petals
+    # Right petal
+    c_r = gf.Component()
+    ref_r = c_r << gf.components.ellipse(radii=(petal_a, petal_b), layer=layer)
+    ref_r.movex(petal_a)
+    
+    # Left petal
+    c_l = gf.Component()
+    ref_l = c_l << gf.components.ellipse(radii=(petal_a, petal_b), layer=layer)
+    ref_l.movex(-petal_a)
+    
+    # Top petal (swap radii for vertical orientation)
+    c_t = gf.Component()
+    ref_t = c_t << gf.components.ellipse(radii=(petal_b, petal_a), layer=layer)
+    ref_t.movey(petal_a)
+    
+    # Bottom petal
+    c_b = gf.Component()
+    ref_b = c_b << gf.components.ellipse(radii=(petal_b, petal_a), layer=layer)
+    ref_b.movey(-petal_a)
+    
+    # 3. Combine the geometry using Boolean OR operations
+    # We union them step by step to form a single continuous polygon.
+    u1 = gf.boolean(c_r, c_l, operation="or", layer=layer)
+    u2 = gf.boolean(c_t, c_b, operation="or", layer=layer)
+    u3 = gf.boolean(u1, u2, operation="or", layer=layer)
+    
+    # Final merge with the central cross
+    final_shape = gf.boolean(u3, base_cross, operation="or", layer=layer)
+    
+    # Add the unified geometry to our parent component
+    c << final_shape
+    
+    return c
+
+if __name__ == "__main__":
+    # Generate the device
+    device = elliptical_crossing()
+    
+    # Explicitly write to a GDS file
+    device.write_gds("elliptical_crossing.gds")

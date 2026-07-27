@@ -1,0 +1,78 @@
+import gdsfactory as gf
+
+
+@gf.cell
+def fork_funnel_v6():
+    c = gf.Component("fork_funnel_v6")
+
+    # Footprint
+    L_total = 40.0
+    H_total = 1.7
+
+    # Widths (µm)
+    w_tip = 0.12             # thin outer rails at far left
+    w_rail = 0.60            # wide rails at the right
+    w_center_base = 0.50     # center wedge base (left)
+    w_center_tip = 0.04      # sharper center tip
+
+    # Lengths (µm)
+    L_taper = 26.0           # taper from thin (left) to wide (right)
+    L_pre = 2.0              # straight after taper before S-bend (push curvature right)
+    dx_s = 8.0               # S-bend x-span
+    L_right = L_total - (L_taper + L_pre + dx_s)  # final straight on the right
+    if L_right < 0:
+        raise ValueError("Footprint exceeded; reduce L_pre or dx_s")
+
+    # Vertical placement
+    clearance = 0.04  # gap between center wedge and inner edges of side rails (left)
+    y_left = w_center_base / 2 + w_tip / 2 + clearance
+    y_right = H_total / 2 - w_rail / 2
+    dy = y_right - y_left
+
+    xs_rail = gf.cross_section.cross_section(width=w_rail, layer=(1, 0))
+
+    # TOP branch: taper -> short straight -> S-bend -> right straight
+    t_top = c << gf.components.taper(length=L_taper, width1=w_tip, width2=w_rail, layer=(1, 0))
+    t_top.movey(+y_left)
+
+    pre_top = c << gf.components.straight(length=L_pre, cross_section=xs_rail)
+    pre_top.connect("o1", t_top.ports["o2"])
+
+    s_top = c << gf.components.bend_s(size=(dx_s, +dy), cross_section=xs_rail)
+    s_top.connect("o1", pre_top.ports["o2"])
+
+    r_top = c << gf.components.straight(length=L_right, cross_section=xs_rail)
+    r_top.connect("o1", s_top.ports["o2"])
+
+    # BOTTOM branch
+    t_bot = c << gf.components.taper(length=L_taper, width1=w_tip, width2=w_rail, layer=(1, 0))
+    t_bot.movey(-y_left)
+
+    pre_bot = c << gf.components.straight(length=L_pre, cross_section=xs_rail)
+    pre_bot.connect("o1", t_bot.ports["o2"])
+
+    s_bot = c << gf.components.bend_s(size=(dx_s, -dy), cross_section=xs_rail)
+    s_bot.connect("o1", pre_bot.ports["o2"])
+
+    r_bot = c << gf.components.straight(length=L_right, cross_section=xs_rail)
+    r_bot.connect("o1", s_bot.ports["o2"])
+
+    # Center wedge: end before S-bends to avoid scallops near the fork
+    center_len = L_taper - (L_pre + 1.0)  # ~1 µm before the pre-straights
+    center_len = max(0.1, center_len)
+    _center = c << gf.components.taper(
+        length=center_len, width1=w_center_base, width2=w_center_tip, layer=(1, 0)
+    )
+
+    # Expose ports (optional)
+    c.add_port("o1_top", port=t_top.ports["o1"])
+    c.add_port("o1_bot", port=t_bot.ports["o1"])
+    c.add_port("o2_top", port=r_top.ports["o2"])
+    c.add_port("o2_bot", port=r_bot.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    comp = fork_funnel_v6()
+    comp.write_gds("fork_funnel_v6.gds")

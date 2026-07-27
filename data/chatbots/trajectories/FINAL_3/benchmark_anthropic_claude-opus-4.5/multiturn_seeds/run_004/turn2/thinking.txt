@@ -1,0 +1,153 @@
+Looking at the original target image and my rendered output, I can see some key differences:
+
+1. **Original target**: Shows two waveguides that are separated at the outer edges (both left and right) with smooth S-bend curves bringing them together in the middle where they run parallel with a small gap.
+
+2. **My rendered output**: Shows waveguides that cross over each other in an X pattern - this is wrong! The waveguides appear to be going through each other rather than running parallel in the middle.
+
+The issue is that in my code, the S-bends are bringing the waveguides too close together or the topology is wrong. Looking more carefully at the original:
+
+- Top waveguide: starts at upper left, curves DOWN toward center, runs parallel in the middle (at slightly positive y), then curves back UP to upper right
+- Bottom waveguide: starts at lower left, curves UP toward center, runs parallel in the middle (at slightly negative y), then curves back DOWN to lower right
+
+The key observation is that the waveguides should NOT cross. They should approach each other, run parallel with a small gap in the coupling region, then separate again.
+
+In my previous code, the y_couple value might have been too small, causing the paths to overlap or cross. Let me re-examine:
+
+Looking at the original image more carefully:
+- The port separation appears quite large (maybe 30-40% of the total height)
+- The coupling region has a visible gap between the two parallel waveguides
+- The transitions are smooth S-bends
+
+The footprint is 120 x 4 µm, so:
+- Total width: 120 µm
+- Total height: 4 µm
+
+If the waveguide width is 0.5 µm and we need a gap of ~0.2 µm in the coupling region:
+- Coupling center positions: ±(0.5/2 + 0.2/2) = ±0.35 µm
+- Port positions: should be at the edges, so maybe ±1.75 µm (to give a total height of about 4 µm with waveguide width)
+
+
+- The problem might be that `gf.path.smooth` is creating crossing paths instead of parallel ones. The top waveguide should curve downward then horizontally through the center, while the bottom curves upward then horizontally, maintaining separation throughout.
+
+Looking at the geometry: if the ports are at y=±1.75 and the coupling region is at y=±0.35, each waveguide travels 1.4 µm toward the center. With a 0.5 µm waveguide width, the top one spans from y=1.5 to y=2.0 initially, and the bottom from y=-2.0 to y=-1.5. When they both reach y=±0.35, they'd be separated by only 0.7 µm center-to-center—close enough for coupling but the paths might be overlapping in how I'm constructing them.
+
+The rendered crossing suggests the S-bend curves themselves are intersecting. I should reconsider the bend radius relative to the transition length, or perhaps use more angular transitions that match the target image's appearance—those look less like smooth curves and more like linear segments with gentle bends at the corners.
+
+I'll try using `gf.components.bend_s` for the S-bend sections combined with straight waveguide segments in the coupling region. Here's a revised approach with explicit component assembly and adjusted geometry to prevent overlap:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_2x2() -> gf.Component:
+    c = gf.Component()
+    
+    # Parameters
+    wg_width = 0.5
+    coupling_gap = 0.2
+    coupling_length = 50.0
+    port_separation = 3.5  # Total vertical separation at ports
+    sbend_length = 35.0  # Horizontal length of each S-bend
+    
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1,
+```
+
+I need to reconsider the geometry more carefully. The coupling region height (center to center) should be wg_width + coupling_gap = 0.7 µm, placing the waveguides at ±0.35 µm. The port separation of 3.5 µm means the ports are at ±1.75 µm, so the S-bends need to transition between these positions. This requires calculating the proper vertical offset for the bend_s components to avoid any crossing or overlap issues.
+
+```python
+import gdsfactory as gf
+
+@gf
+```
+
+The S-bend dimensions are calculated based on the vertical spacing needed. The top waveguides start at y=±1.75 µm (port separation) and need to transition to y=±0.35 µm (coupling region), requiring a 1.4 µm vertical shift. Each S-bend uses a 35 µm horizontal length with alternating vertical displacements: the left bends shift inward (±1.4 µm) while the right bends shift outward to return to the original spacing.
+
+The component defines waveguide width of 0.5 µm, coupling gap of 0.2 µm, and a 50 µm coupling length where the parallel waveguides interact. S-bends connect the input ports to the coupling region and the coupling region back to the output ports, with the vertical offsets ensuring proper alignment between the wider port spacing and the tighter coupling spacing. ide path with mirrored S-bends. The bottom waveguide uses S-bends that curve upward then downward, positioned at the negative y-offset. I connect the bottom straight section between the two bends, then link the right S-bend to complete the path. Finally, I add ports to the component, starting with the input from the top-left S-bend.
+
+Looking at the rendered output, the X-pattern suggests the paths might be intersecting geometrically rather than just appearing close together visually. The target image shows clear waveguide separation, so I need to verify the bend orientations and ensure the S-bends don't cross over each other unintentionally.
+
+I'll switch to using `gf.components.bend_s` for proper S-bend creation that maintains correct port orientations and avoids unwanted intersections. The approach involves setting up the component with appropriate waveguide width, coupling gap, and S-bend length parameters to achieve the desired parallel coupling region with separated outer ports. st = c << straight_top
+s2t = c << sbend2_top
+
+Then I position the top waveguide by mirroring the first S-bend vertically and placing it at y_port, connecting the straight section to its output, and chaining the second S-bend to complete the top path. For the bottom waveguide, I create matching S-bend and straight components with the same dimensions.
+
+Now I instantiate these bottom components into the cell, position the first S-bend at -y_port to create the upward path, connect the straight section, mirror the second S-bend, and chain it to the straight's output. Finally, I expose the four ports: the top and bottom input ports from the first S-bends, and the top and bottom output ports from the second S-bends.
+
+Looking more carefully at the `bend_s` function, I realize it takes a size parameter with horizontal and vertical extents. The vertical component determines the direction—positive values bend upward, negative values downward. For the top waveguide path, I need to account for the vertical distance between y_port and y_couple, which means I should construct the S-bend with the appropriate dy value to handle this offset. I need an S-bend with size=(sbend_length, y_couple - y_port) = (sbend_length, -dy), then position it so that o1 is at (0, y_port). Let me work through the implementation with the cross-section and port configuration. I'll set up the component with the waveguide width, coupling gap, and coupling length parameters, then construct the S-bends to connect the ports at the specified separations.
+
+For the top waveguide, I create an S-bend curving downward from the input port to the coupling region, then connect a straight section for the coupling interaction. The S-bend dimensions are calculated from the vertical distance between the port and coupling centerlines.
+
+For the bottom waveguide, I mirror this structure with an upward-curving S-bend positioned at the negative y-coordinate, maintaining symmetry around the center axis.
+
+Then I add the straight coupling section connecting to that S-bend's output, followed by a downward-curving S-bend to return to the original port height. Finally, I expose the input and output ports from the outer S-bends to the component level.
+
+Looking back at the geometry, the top S-bend moves to (0, y_port) with its o1 port positioned there, and o2 ends up at (sbend_length, y_couple) as intended. The bottom S-bend similarly starts at (0, -y_port), and with size=(sbend_length, dy), its o2 port should land at the correct coupling height to connect with the straight section.
+
+The total dimensions check out: width is 120 µm (35 + 50 + 35) and the vertical span from -y_port to y_port gives the proper separation. But examining the rendered output more carefully, I notice the waveguides appear to cross in an X pattern, which suggests the top waveguide might be transitioning from y
+
+=1.75 to y=0.35 while the bottom goes from y=-1.75 to y=-0.35. Since these ranges don't overlap, they shouldn't intersect—the issue likely stems from the S-bend radius being too large in the original smooth path approach, causing the curves to overlap at their inflection points. Using an explicit bend_s component should resolve this by maintaining proper separation throughout the transition. be creating curves that dip below -0.35 or above 0.35 in ways I'm not anticipating. Let me trace through what the smooth function would do with these control points—it needs to connect them while maintaining the bend radius constraint, and if the curvature is too aggressive relative to the spacing, it might overshoot.
+
+Looking at the rendered output compared to the target image, the waveguides appear to cross rather than maintain a clear gap in the middle section. The target shows two distinct parallel paths with visible separation, but my current implementation seems to be creating paths that converge too much. I should try reducing the bend radius or switching to a different path generation method that gives me more direct control over the trajectory.
+
+Let me adjust the parameters - increasing the coupling gap for better visibility and using bend_s components instead of smooth path interpolation. I'll set up the geometry with a smaller S-bend length and adjust the port separation so the waveguides maintain proper spacing through the coupling region.
+
+The top waveguide starts with an S-bend that transitions from the input port down to the coupling zone, followed by a straight section at the coupling length, then another S-bend back up. The bottom waveguide mirrors this layout - starting below the input port, bending into the coupling region with its own straight section, then bending back out. I need to connect the straight section for the bottom waveguide to the second S-bend component. I'm looking at the target layout more carefully. The structure should have two S-curves that start at opposite corners, curve inward to run parallel horizontally in the middle with a gap between them, then curve back outward to the other two corners. Instead, my output shows the waveguides crossing in an X pattern, which means the paths are intersecting when they shouldn't be.
+
+The problem likely stems from how the smooth curves are being generated—a large bend radius might cause the paths to overlap or cross through each other unintentionally. I should experiment with reducing the bend radius or switching to explicit S-bend components to maintain proper separation between the waveguides. length = 35.0
+    
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    
+    # Calculate vertical positions
+    y_port = port_separation / 2  # 1.75 µm
+    y_couple = (wg_width + coupling_gap) / 2  # 0.35 µm
+    dy = y_port - y_couple  # 1.4 µm vertical offset
+    
+    # ===== TOP ARM =====
+    # Input S-bend (goes DOWN from port to coupling level)
+    sbend_in_top = c << gf.components.bend_s(size=(sbend_length, -dy), cross_section=xs)
+    sbend_in_top.dmove((0, y_port))
+    
+    # Coupling section with the parallel waveguide below
+    straight_top = c << gf.components.straight(length=coupling_length, cross_section=xs)
+    straight_top.connect("o1", sbend_in_top.ports["o2"])
+    
+    # Output S-bend curves back UP to the port level
+    sbend_out_top = c << gf.components.bend_s(size=(sbend_length, dy), cross_section=xs)
+    sbend_out_top.connect("o1", straight_top.ports["o2"])
+    
+    # ===== BOTTOM ARM =====
+    # Input S-bend bends UP from port toward coupling level
+    sbend_in_bot = c << gf.components.bend_s(size=(sbend_length, dy), cross_section=xs)
+    sbend_in_bot.dmove((0, -y_port))
+    
+    # Coupling straight section
+    straight_bot = c << gf.components.straight(length=coupling_length, cross_section=xs)
+    straight_bot.connect("o1", sbend_in_bot.ports["o2"])
+    
+    # Output S-bend curves DOWN back to port level
+    sbend_out_bot = c << gf.components.bend_s(size=(sbend_length, -dy), cross_section=xs)
+    sbend_out_bot.connect("o1", straight_bot.ports["o2"])
+    
+    # Register the input ports from each arm's entry S-bend
+    c.add_port("o1", port=sbend_in_top.ports["o1"])
+    c.add_port("o2", port=sbend_in_bot.ports["o1"])
+    
+    # Register the output ports from each arm's exit S-bend
+    c.add_port("o3", port=sbend_out_top.ports["o2"])
+    c.add_port("o4", port=sbend_out_bot.ports["o2"])
+    
+    return c
+
+I need to verify how `bend_s` behaves. The function takes a size tuple where dx controls horizontal span and dy controls vertical displacement—positive dy means the output sits higher than the input, negative dy means it sits lower. For the top arm, the input S-bend rises by dy, then the output S-bend should descend by the same amount to return to the original level. need to reconsider the actual layout. The rendered output shows the waveguides crossing in an X pattern, but the target shows them running parallel with a gap between them. My current approach keeps the top arm always positive (y: 1.75 → 0.35 → 0.35 → 1.75) and bottom arm always negative (y: -1.75 → -0.35 → -0.35 → -1.75), so they shouldn't intersect at all. There's likely a fundamental issue with how I'm constructing the geometry—possibly in how the S-bends are being positioned or oriented relative to each other.
+
+The problem might be with the `gf.path.smooth()` function and the bend radius. When connecting waypoints with a large radius, the smooth curves can overshoot their target positions. If the radius is 12 µm and the direction change is sharp, the curve might temporarily dip beyond the intended y-coordinate, causing the top waveguide to unexpectedly cross into negative y values and intersect with the bottom arm.
+
+I should switch to using `gf.components.bend_s` instead, which is specifically designed to handle S-bends without overshooting. I'll restructure the coupler to use these bend components and define the design parameters more carefully, including the waveguide width, coupling gap, coupling length, and port separation.
+
+The vertical positioning needs to account for the offset between the ports and the coupling region. I'm setting up the top arm first with an S-bend that transitions from the input port position down to the coupling region, then will mirror this for the bottom arm.
+
+The top waveguide connects the output of the first S-bend to the coupling region, followed by another S-bend that brings it back up to the output port level. For the bottom arm, I'm using the same S-bend components but with opposite curvatures—the initial bend goes upward from the lower input port, runs parallel through the middle section, then bends back down to the output.
+
+Finally, I'm exposing the four ports of the directional coupler: the two inputs from the S-bend entry points and the two outputs from the exit S-bends, then returning the completed cell.
+
+To verify the design works correctly, I can instantiate the directional coupler and export it to a GDS file for visualization. This will show the two waveguides approaching each other with the maintained gap in the coupling region.

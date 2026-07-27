@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.918074",
+      "api_duration_seconds": 90.35446500778198,
+      "usage": {
+        "input_tokens": 3193,
+        "output_tokens": 1133,
+        "total_tokens": 14663
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:47.429222",
+      "api_duration_seconds": 35.26396989822388,
+      "usage": {
+        "input_tokens": 4345,
+        "output_tokens": 923,
+        "total_tokens": 8914
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'ellipse_gdsfactorypcomponentspshapespellipse_R1p05_0p55_3cfb2615' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:24.480653",
+      "api_duration_seconds": 18.726727962493896,
+      "usage": {
+        "input_tokens": 5330,
+        "output_tokens": 888,
+        "total_tokens": 7673
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'list' object has no attribute 'is_regular_array'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12868,
+    "output_tokens": 2944,
+    "total_tokens": 31250
+  }
+}

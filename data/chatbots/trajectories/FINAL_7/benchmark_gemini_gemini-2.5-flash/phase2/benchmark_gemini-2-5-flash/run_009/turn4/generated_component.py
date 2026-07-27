@@ -1,0 +1,140 @@
+import gdsfactory as gf
+
+@gf.cell
+def custom_device_new_image():
+    """
+    Recreates the device geometry from the new image using GDSFactory
+    parametric primitives and boolean operations.
+    The total footprint is estimated to be 3.0 um wide and 5.5 um high.
+    """
+    c = gf.Component("custom_device_new_image")
+    layer = (1, 0)
+
+    # --- 1. Central "I-beam" Structure (bar with holes + connectors) ---
+
+    # Define common parameters for central structure
+    bar_height = 0.6  # This is the width (Y-dimension) of the main bar segment
+    bar_width = 2.0   # This is the length (X-dimension) of the main bar segment
+    hole_size = 0.3
+    # Calculate horizontal distance from the bar's center to the center of each hole.
+    hole_dist_from_center = 0.35 # e.g. center -0.35, +0.35 for holes
+
+    # Create the base rectangular bar, centered at (0,0)
+    central_bar_comp = gf.components.rectangle(size=(bar_width, bar_height), centered=True, layer=layer).copy()
+    # print(f"Central bar bounds: {central_bar_comp.bbox}") 
+
+    # Create the two square holes, centered and then moved
+    hole_left_comp = gf.components.rectangle(size=(hole_size, hole_size), centered=True, layer=layer).copy().movex(-hole_dist_from_center)
+    hole_right_comp = gf.components.rectangle(size=(hole_size, hole_size), centered=True, layer=layer).copy().movex(hole_dist_from_center)
+
+    # --- Constructing the Right Connector ---
+    # `current_x` tracks the rightmost edge (xmax) of the segment currently added.
+    right_segments = []
+    current_x = bar_width / 2  # Starts at x=1.0 (right edge of central bar)
+
+    # Segment 1: Short horizontal extension (rectangle, centered=True)
+    seg1_length = 0.1
+    rect_ext_r = gf.components.rectangle(size=(seg1_length, bar_height), centered=True, layer=layer).copy()
+    rect_ext_r.movex(current_x + seg1_length / 2) # Center_x for this segment
+    right_segments.append(rect_ext_r)
+    current_x = rect_ext_r.xmax # Update current_x to the new rightmost edge
+
+    # Segment 2: First taper/step out (taper, by default centered vertically, xmin=0)
+    seg2_length = 0.1
+    seg2_width_end = 1.0 # Max height for this section
+    taper_1_r = gf.components.taper(length=seg2_length, width1=bar_height, width2=seg2_width_end, layer=layer).copy()
+    taper_1_r.movex(current_x) # Move so its xmin aligns with current_x
+    right_segments.append(taper_1_r)
+    current_x = taper_1_r.xmax # Update current_x
+
+    # Segment 3: Straight section (rectangle, centered=True)
+    seg3_length = 0.1
+    rect_mid_r = gf.components.rectangle(size=(seg3_length, seg2_width_end), centered=True, layer=layer).copy()
+    rect_mid_r.movex(current_x + seg3_length / 2)
+    right_segments.append(rect_mid_r)
+    current_x = rect_mid_r.xmax # Update current_x
+
+    # Segment 4: Second taper/step out (taper, by default centered vertically, xmin=0)
+    seg4_length = 0.1
+    seg4_width_end = 1.4 # Max height for this section
+    taper_2_r = gf.components.taper(length=seg4_length, width1=seg2_width_end, width2=seg4_width_end, layer=layer).copy()
+    taper_2_r.movex(current_x) # Move so its xmin aligns with current_x
+    right_segments.append(taper_2_r)
+    current_x = taper_2_r.xmax # Update current_x
+
+    # Segment 5: Final straight section (rectangle, centered=True)
+    seg5_length = 0.1
+    rect_end_r = gf.components.rectangle(size=(seg5_length, seg4_width_end), centered=True, layer=layer).copy()
+    rect_end_r.movex(current_x + seg5_length / 2)
+    right_segments.append(rect_end_r)
+    # The rightmost edge of the entire central structure is now at x = rect_end_r.xmax = 1.5
+
+    # Combine all right-side connector segments using boolean OR.
+    right_connector_solid = right_segments[0]
+    for i in range(1, len(right_segments)):
+        right_connector_solid = gf.boolean(right_connector_solid, right_segments[i], "or", layer=layer)
+    # print(f"Right connector bounds: {right_connector_solid.bbox}") 
+
+    # Create the left connector by mirroring the right connector.
+    # Mirror across y-axis (p1=(0,0), p2=(0,1) defines a vertical line along the y-axis)
+    left_connector_solid = right_connector_solid.copy().mirror(p1=(0,0), p2=(0,1))
+    # print(f"Left connector bounds: {left_connector_solid.bbox}")
+
+    # Combine central bar and both connectors
+    i_beam_temp = gf.boolean(central_bar_comp, right_connector_solid, "or", layer=layer)
+    i_beam_solid = gf.boolean(i_beam_temp, left_connector_solid, "or", layer=layer)
+    # print(f"I-beam solid bounds: {i_beam_solid.bbox}")
+
+    # Subtract the holes from the combined I-beam structure
+    i_beam_with_holes = gf.boolean(i_beam_solid, hole_left_comp, "not", layer=layer)
+    i_beam_with_holes = gf.boolean(i_beam_with_holes, hole_right_comp, "not", layer=layer)
+    
+    # --- 2. Top Curved "C-shape" Section ---
+    # Overall device outer dimensions: 3.0 um wide (x_radius=1.5), 5.5 um high (y_radius=2.75)
+    # I-beam's max Y is 0.7 (seg4_width_end / 2).
+    # The outer C-shape needs to connect here.
+
+    outer_ellipse = gf.components.ellipse(radii=(1.5, 2.75), layer=layer).copy()
+    # Estimate wall thickness of 0.3.
+    wall_thickness = 0.3
+    inner_ellipse_for_c = gf.components.ellipse(radii=(1.5 - wall_thickness, 2.75 - wall_thickness), layer=layer).copy() # radii=(1.2, 2.45)
+
+    # Create the raw hollow oval ring for the C-shape
+    top_c_shape_raw = gf.boolean(outer_ellipse, inner_ellipse_for_c, "not", layer=layer)
+
+    # Create a cutter to remove the lower part of the C-shape, so it connects to the I-beam.
+    # The I-beam's upper edge is at y = seg4_width_end / 2 = 1.4 / 2 = 0.7.
+    # We want to cut everything below this.
+    cutter_for_top_c = gf.components.rectangle(size=(5.0, 5.0), centered=False, layer=layer).copy() # Make it large enough
+    cutter_for_top_c.xmin = -2.5 # Arbitrarily wide to cover the whole device horizontally
+    cutter_for_top_c.ymin = -5.0 # Position its bottom far below the device
+    cutter_for_top_c.ymax = seg4_width_end / 2 # Its top edge is at y=0.7 (max Y of I-beam)
+
+    # Perform the boolean NOT to get the final top C-shape
+    top_c_shape = gf.boolean(top_c_shape_raw, cutter_for_top_c, "not", layer=layer)
+
+    # --- 3. Bottom Curved "C-shape" Section ---
+    # Mirror the top C-shape across the x-axis (p1=(0,0), p2=(1,0) defines a horizontal line along the x-axis)
+    bottom_c_shape = top_c_shape.copy().mirror(p1=(0,0), p2=(1,0))
+
+    # --- 4. Combine all parts into the final device ---
+    # Start with the central I-beam with holes
+    final_device_temp = gf.boolean(i_beam_with_holes, top_c_shape, "or", layer=layer)
+    final_device = gf.boolean(final_device_temp, bottom_c_shape, "or", layer=layer)
+    
+    # Add the final combined component to the main component 'c'
+    c << final_device
+
+    # Optional: Print bounding boxes for debugging
+    print(f"I-beam with holes bounds: {i_beam_with_holes.bbox}")
+    print(f"Top C-shape bounds: {top_c_shape.bbox}")
+    print(f"Bottom C-shape bounds: {bottom_c_shape.bbox}")
+    print(f"Final device bounds: {final_device.bbox}")
+
+    return c
+
+# Create the device and save it to a GDS file
+if __name__ == "__main__":
+    device = custom_device_new_image()
+    device.write_gds("custom_device_new_image.gds")
+    # device.plot() # This line displays the generated GDS in a new window.

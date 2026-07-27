@@ -1,0 +1,110 @@
+import gdsfactory as gf
+
+@gf.cell
+def single_waveguide_arc(
+    bend_size: tuple[float, float], cross_section="strip"
+) -> gf.Component:
+    """
+    Creates a single waveguide arc composed of two S-bends, forming a peak.
+    The path starts at (0,0), peaks with a vertical displacement of `dy` at
+    `x=dx`, and returns to y=0 at `x=2*dx`.
+
+    Args:
+        bend_size: A tuple (dx, dy) where dx is the horizontal length of a
+                   single S-bend and dy is its vertical displacement.
+        cross_section: The cross_section of the waveguide.
+    """
+    c = gf.Component()
+    dx, dy = bend_size
+
+    # An arc is formed by one S-bend going up and another going down.
+    s_bend_up = gf.components.bend_s(size=(dx, dy), cross_section=cross_section)
+    s_bend_down = gf.components.bend_s(size=(dx, -dy), cross_section=cross_section)
+
+    ref1 = c << s_bend_up
+    ref2 = c << s_bend_down
+    ref2.connect("o1", ref1.ports["o2"])
+
+    c.add_port("o1", port=ref1.ports["o1"])
+    c.add_port("o2", port=ref2.ports["o2"])
+    return c
+
+
+@gf.cell
+def create_device() -> gf.Component:
+    """
+    Creates a component with two waveguides that get closer at the center,
+    forming a symmetric directional coupler shape.
+
+    This matches the target image by creating a peak-shaped bottom waveguide
+    and a trough-shaped top waveguide.
+    """
+    # 1. Define device parameters from footprint and visual inspection.
+    footprint_width = 18.0
+    footprint_height = 3.0
+    waveguide_width = 0.5
+    
+    # Visually estimate the minimum gap between the waveguides at the center.
+    center_gap = 0.5
+
+    # Define a cross_section for the waveguides.
+    xs = gf.cross_section.cross_section(width=waveguide_width)
+
+    # 2. Calculate geometric parameters for the waveguide paths.
+    
+    # The `single_waveguide_arc` primitive has a horizontal length of 2*dx.
+    # So, dx for each constituent S-bend is half of the total device width.
+    dx = footprint_width / 2
+
+    # Calculate the y-coordinate of the waveguide centerlines at the ends (widest separation).
+    # The total height is from the top edge of the top WG to the bottom edge of the bottom WG.
+    # footprint_height = 2 * y_centerline_end + waveguide_width
+    y_centerline_end = (footprint_height - waveguide_width) / 2 # = (3.0 - 0.5) / 2 = 1.25
+
+    # Calculate the y-coordinate of the centerlines at the center (narrowest separation).
+    # The separation between centerlines is (center_gap + waveguide_width).
+    centerline_separation_center = center_gap + waveguide_width # = 0.5 + 0.5 = 1.0
+    y_centerline_center = centerline_separation_center / 2 # = 1.0 / 2 = 0.5
+    
+    # `dy` is the vertical travel for our arc primitive. It represents the
+    # change in y from the end position to the center position for one WG.
+    dy = y_centerline_end - y_centerline_center # = 1.25 - 0.5 = 0.75
+
+    # 3. Instantiate the base arc-shaped waveguide component.
+    # This component creates a peak shape (_/\_) with amplitude `dy`.
+    arc_wg = single_waveguide_arc(bend_size=(dx, dy), cross_section=xs)
+
+    # 4. Assemble the final device from two instances of the arc waveguide.
+    c = gf.Component("symmetric_coupler")
+
+    # Add the bottom waveguide (peak shape).
+    # It is created by `arc_wg` and moved into position. It is centered
+    # horizontally (move by -dx) and its ends are placed at y = -y_centerline_end.
+    ref_bottom = c << arc_wg
+    ref_bottom.move((-dx, -y_centerline_end))
+    # Path check: start y = -1.25. peak y = -1.25 + dy = -1.25 + 0.75 = -0.5. Correct.
+
+    # Add the top waveguide (trough shape).
+    # This is a vertically mirrored copy of the `arc_wg` primitive.
+    # It is also centered horizontally and its ends are placed at y = +y_centerline_end.
+    ref_top = c << arc_wg
+    ref_top.mirror(p1=(0, 0), p2=(1, 0))  # Mirror vertically across x-axis
+    ref_top.move((-dx, y_centerline_end))
+    # Path check: Mirrored arc is a trough. Starts at 0, trough at -dy.
+    # When moved, start y = 1.25. trough y = 1.25 - dy = 1.25 - 0.75 = 0.5. Correct.
+
+    return c
+
+
+# Main execution block for testing and saving the GDS file.
+if __name__ == "__main__":
+    # Create an instance of the final component.
+    device_to_save = create_device()
+
+    # Save the GDS file to disk in the current directory.
+    output_path = device_to_save.write_gds("final_device.gds")
+    
+    print(f"Successfully wrote GDS file to: {output_path}")
+
+    # To display the component if running in an interactive environment (like Jupyter):
+    # device_to_save.show()

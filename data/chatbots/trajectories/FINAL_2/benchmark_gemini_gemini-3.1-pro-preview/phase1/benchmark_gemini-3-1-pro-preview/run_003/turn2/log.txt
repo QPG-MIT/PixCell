@@ -1,0 +1,77 @@
+Turn 2 Response:
+
+Based on the original image and the exact `[25, 10]` footprint constraint, the device is actually oriented vertically (propagating along the Y-axis). The central multi-mode interference (MMI) region is wide (spanning the X-axis) and short, with four output prongs pointing upwards and one input prong pointing downwards.
+
+Here is the corrected script to properly generate the vertical geometry that aligns perfectly with the visual proportions of the original image while strictly honoring the BoundingBox constraints.
+
+### Corrected Python Script
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def optical_splitter_1x4_vertical():
+    """
+    Parametric 1x4 optical splitter recreating the silhouette geometry.
+    Oriented vertically (propagation along Y) to match the original image 
+    and perfectly satisfy the [25, 10] footprint bounding box.
+    """
+    layer = (1, 0)
+    
+    # 1. Central MMI Rectangle (Mixing Region)
+    # The footprint is [25 (X), 10 (Y)]. 
+    # We allocate 5um of height to the central block.
+    # Centered at (0,0) -> X spans [-12.5, 12.5], Y spans [-2.5, 2.5]
+    rect = gf.components.rectangle(size=(25.0, 5.0), centered=True, layer=layer)
+    
+    # Create a separate component to hold all the prongs before booleaning
+    prongs = gf.Component("all_prongs")
+    
+    # 2. Bottom Input Prong
+    # Tapers from a narrow 1.5um input to a wider 3.5um connection at the MMI
+    t_bot = gf.components.taper(length=2.5, width1=1.5, width2=3.5, layer=layer)
+    ref_bot = prongs << t_bot
+    ref_bot.rotate(90)
+    # Rotate 90 makes the native width1 at Y=0 and width2 at Y=2.5.
+    # We shift it down so the wide end connects to the MMI's bottom edge at Y=-2.5
+    ref_bot.move((0, -5.0))
+    
+    # 3. Top Output Prongs
+    # Each output has a taper and a straight waveguide extension
+    t_top = gf.components.taper(length=1.5, width1=3.5, width2=1.0, layer=layer)
+    xs_top = gf.cross_section.cross_section(width=1.0, layer=layer)
+    s_top = gf.components.straight(length=1.0, cross_section=xs_top)
+    
+    # Distribute the 4 prongs evenly across the 25um width (Pitch = 6.0um)
+    for x in [-9.0, -3.0, 3.0, 9.0]:
+        # Taper Section
+        ref_t = prongs << t_top
+        ref_t.rotate(90)
+        # Native rotated taper wide end is at Y=0, narrow at Y=1.5
+        # Move so wide end connects to the MMI's top edge at Y=2.5
+        ref_t.move((x, 2.5))
+        
+        # Straight Extension Section
+        ref_s = prongs << s_top
+        ref_s.rotate(90)
+        # Native rotated straight goes from Y=0 to Y=1.0
+        # Move so it starts exactly where the top taper ends (Y=4.0)
+        ref_s.move((x, 4.0))
+        
+    # 4. Assembly & Boolean Composition
+    # Fuse the central rectangle and all prongs into a single monolithic polygon silhouette
+    merged_shape = gf.boolean(rect, prongs, operation="or", layer=layer)
+    
+    # Finalize the Component
+    final_device = gf.Component("mmi_1x4_vertical_silhouette")
+    final_device << merged_shape
+    
+    return final_device
+
+if __name__ == "__main__":
+    # Generate the layout
+    c = optical_splitter_1x4_vertical()
+    
+    # Write the result to a GDS file for evaluation
+    c.write_gds("optical_splitter_1x4_vertical.gds")
+```

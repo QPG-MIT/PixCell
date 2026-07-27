@@ -1,0 +1,74 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_bent():
+    c = gf.Component()
+
+    # Dimensions derived from the footprint constraint [18, 3] and visual ratios
+    length = 18.0
+    height = 3.0
+    
+    # Based on the image, the waveguides are quite thick relative to the length.
+    # A width of ~0.9um with a footprint height of 3.0um fits well.
+    wg_width = 0.9
+    
+    # Define the cross-section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # Calculate Geometry
+    # The device is symmetric, consisting of a converging left half and diverging right half.
+    # Each half length is L/2.
+    half_length = length / 2.0
+
+    # Vertical positioning to maximize usage of the 3um height
+    # Max Y = 1.5, Min Y = -1.5.
+    # Waveguide center at outer edges: 1.5 - (width/2) = 1.05
+    y_start_top = 1.05
+    y_start_bot = -1.05
+
+    # Waveguide separation in the middle (coupling region)
+    # The gap looks roughly 1/3 of the waveguide width in the image (~0.3um).
+    # Center y at middle: gap/2 + width/2 = 0.15 + 0.45 = 0.6
+    y_mid_top = 0.6
+    y_mid_bot = -0.6
+
+    # Calculate the vertical offset (dy) for the S-bends
+    # Top waveguide drops from 1.05 to 0.6
+    dy_top = y_mid_top - y_start_top  # Result: -0.45
+    
+    # Bottom waveguide rises from -1.05 to -0.6
+    dy_bot = y_mid_bot - y_start_bot  # Result: +0.45
+
+    # --- Construct Top Waveguide ---
+    # Left Section: Converging S-bend
+    # bend_s generates a curve from (0,0) to (size[0], size[1])
+    tl = c << gf.components.bend_s(size=(half_length, dy_top), cross_section=xs)
+    tl.move((0, y_start_top)) # Move start point to top-left position
+
+    # Right Section: Diverging S-bend
+    # To go back up, we use a shift of -dy_top (positive value)
+    tr = c << gf.components.bend_s(size=(half_length, -dy_top), cross_section=xs)
+    tr.connect("o1", tl.ports["o2"]) # Connect to end of left section
+
+    # --- Construct Bottom Waveguide ---
+    # Left Section: Converging S-bend
+    bl = c << gf.components.bend_s(size=(half_length, dy_bot), cross_section=xs)
+    bl.move((0, y_start_bot)) # Move start point to bottom-left position
+
+    # Right Section: Diverging S-bend
+    br = c << gf.components.bend_s(size=(half_length, -dy_bot), cross_section=xs)
+    br.connect("o1", bl.ports["o2"]) # Connect to end of left section
+
+    # --- Add External Ports ---
+    c.add_port("o1", port=tl.ports["o1"])
+    c.add_port("o2", port=bl.ports["o1"])
+    c.add_port("o3", port=tr.ports["o2"])
+    c.add_port("o4", port=br.ports["o2"])
+
+    return c
+
+# Generate and save the device
+if __name__ == "__main__":
+    device = directional_coupler_bent()
+    device.write_gds("directional_coupler_bent.gds")
+    device.show()

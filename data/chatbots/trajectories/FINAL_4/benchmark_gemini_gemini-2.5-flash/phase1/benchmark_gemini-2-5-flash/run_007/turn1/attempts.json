@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.502682",
+      "api_duration_seconds": 44.44687008857727,
+      "usage": {
+        "input_tokens": 2344,
+        "output_tokens": 2022,
+        "total_tokens": 11467
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function wavy_lines.<loc...function at 0x135f791c0>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:55.544124",
+      "api_duration_seconds": 23.693023920059204,
+      "usage": {
+        "input_tokens": 4475,
+        "output_tokens": 1620,
+        "total_tokens": 9120
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function wavy_lines.<loc...function at 0x16f879260>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:21.789033",
+      "api_duration_seconds": 28.83542799949646,
+      "usage": {
+        "input_tokens": 6204,
+        "output_tokens": 1636,
+        "total_tokens": 12639
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'method' object is not subscriptable",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13023,
+    "output_tokens": 5278,
+    "total_tokens": 33226
+  }
+}

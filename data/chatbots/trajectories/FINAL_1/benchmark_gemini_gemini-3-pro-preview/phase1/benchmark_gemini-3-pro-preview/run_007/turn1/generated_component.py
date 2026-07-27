@@ -1,0 +1,92 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def trident_coupler():
+    c = gf.Component()
+
+    # --- Geometric Parameters ---
+    L_total = 40.0
+    L_taper = 20.0
+    L_fanout = L_total - L_taper
+
+    # Widths
+    w_center_in = 0.5
+    w_center_tip = 0.05  # Minimum feature size for tip
+    w_outer_in = 0.15    # Narrow arms at input
+    w_outer_out = 0.6    # Wide arms at output
+
+    # Spacing
+    gap = 0.1            # Coupling gap
+    # Calculate output vertical positions based on 1.7um total height constraint
+    # Top edge = 1.7/2 = 0.85. Center of top arm = 0.85 - w/2
+    y_out_offset = (1.7 / 2) - (w_outer_out / 2)
+
+    # --- 1. Center Waveguide (Inverse Taper) ---
+    # Linearly tapers from input width to a fine tip
+    center_taper = c << gf.components.taper(
+        length=L_taper, 
+        width1=w_center_in, 
+        width2=w_center_tip
+    )
+    center_taper.move((0, 0)) # Ensure it starts at origin
+
+    # --- 2. Outer Waveguide Construction ---
+    
+    # We define the geometry in two sections: 
+    # A) The coupling region (straight/converging)
+    # B) The fan-out region (S-bend with width expansion)
+
+    # Calculate Y-positions for the top arm to maintain constant gap
+    # At Input (x=0)
+    y_top_in = (w_center_in / 2) + gap + (w_outer_in / 2)
+    # At Transition (x=L_taper)
+    y_top_mid = (w_center_tip / 2) + gap + (w_outer_in / 2)
+    # At Output (x=L_total) -> defined by y_out_offset
+
+    # Define Cross Sections
+    xs_in = gf.cross_section.cross_section(width=w_outer_in)
+    xs_out = gf.cross_section.cross_section(width=w_outer_out)
+
+    # --- Top Arm Generation ---
+
+    # Section A: Linear path alongside the taper
+    path_a = gf.Path([(0, y_top_in), (L_taper, y_top_mid)])
+    top_sect_a = c << gf.path.extrude(path_a, cross_section=xs_in)
+
+    # Section B: Cosine S-bend path
+    # We generate points manually to ensure a smooth S-shape connecting the offsets
+    num_pts = 99
+    x_vals = np.linspace(L_taper, L_total, num_pts)
+    # Normalized time variable t from 0 to 1
+    t = (x_vals - L_taper) / L_fanout
+    # Cosine interpolation formula: y = y_start + (dy * (1 - cos(pi*t))/2)
+    y_vals = y_top_mid + (y_out_offset - y_top_mid) * (1 - np.cos(np.pi * t)) / 2
+    
+    path_b_points = list(zip(x_vals, y_vals))
+    path_b = gf.Path(path_b_points)
+
+    # Create width transition for Section B
+    trans = gf.path.transition(xs_in, xs_out, width_type='sine')
+    top_sect_b = c << gf.path.extrude_transition(path_b, trans)
+
+    # --- Bottom Arm Generation (Mirror) ---
+    
+    # Section A Bottom
+    path_a_bot = gf.Path([(0, -y_top_in), (L_taper, -y_top_mid)])
+    bot_sect_a = c << gf.path.extrude(path_a_bot, cross_section=xs_in)
+
+    # Section B Bottom
+    y_vals_bot = -y_vals # Mirror Y coordinates
+    path_b_bot_points = list(zip(x_vals, y_vals_bot))
+    path_b_bot = gf.Path(path_b_bot_points)
+
+    bot_sect_b = c << gf.path.extrude_transition(path_b_bot, trans)
+
+    return c
+
+# Generate and save
+if __name__ == "__main__":
+    device = trident_coupler()
+    device.write_gds("trident_coupler.gds")
+    device.show()

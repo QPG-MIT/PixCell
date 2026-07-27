@@ -1,0 +1,299 @@
+Looking at the image, I can see two curved black shapes that look like they're part of a waveguide structure. The shapes appear to be:
+
+1. An upper curved band that dips down in the middle (like a concave curve)
+2. A lower curved band that rises up in the middle (like a convex curve)
+
+Together they create a shape that looks like two parallel waveguides that pinch together in the middle - this is characteristic of a directional coupler or a coupler region where two waveguides come close together.
+
+The footprint constraint is [18, 3] μm, meaning the device should be approximately 18 μm wide and 3 μm tall.
+
+Looking more carefully at the image:
+- The two curves seem to form an "hourglass" or "bowtie" shape when viewed together
+- They appear to almost touch in the middle (small gap)
+- The curves are symmetric about both the horizontal and vertical center lines
+
+This looks like a directional coupler structure where two waveguides are brought close together in the middle for evanescent coupling, then separated at the ends.
+
+Let me think about how to construct this:
+
+1. I could use S-bends for each waveguide
+2. Or I could use paths with smooth curves
+
+Looking at the shape more carefully:
+- Each waveguide starts at a certain height on the left
+- Curves toward the center (middle of the device)
+- Then curves back out to the same height on the right
+
+This is essentially two mirrored S-bends placed vertically offset from each other.
+
+For the upper waveguide:
+- Starts high on the left
+- Curves down to the center
+- Curves back up on the right
+
+For the lower waveguide:
+- Starts low on the left
+- Curves up to the center
+- Curves back down on the right
+
+With an 18 μm length and 3 μm height, and assuming waveguide widths around 0.3-0.5 μm:
+
+
+- The vertical separation at the ends is probably around 1.0-1.5 μm from the centerline, with a gap of roughly 0.2-0.3 μm where they approach each other. The curves appear smooth and sinusoidal in nature, with each waveguide maintaining fairly uniform width throughout the structure. I'd estimate each waveguide is about 0.4-0.5 μm wide based on the proportions visible in the image.
+
+I'll construct this using path-based extrusion to capture the smooth tapering behavior. The key is defining centerline paths for each waveguide that start separated at the edges and converge toward the middle, then diverge again.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def tapered_coupler():
+    c = gf.Component()
+    
+    # Parameters based on footprint [18, 3]
+    length = 18.0
+    total_height = 3.0
+    waveguide_width = 0.4
+    
+    # The waveguides are separated at ends and close in middle
+    # Let's say at ends they're at y = ±1.0 and in middle at y = ±0.15 (gap of 0.3)
+    y_outer = 1.0  # y position at edges
+    y_inner = 0.15  # y position at center (half gap + half width)
+    
+    # Create points for the upper waveguide path
+    x = np.linspace(0, length, 100)
+    # Use cosine function to create smooth transition
+    y_upper = y_outer - (y_outer - y_inner) * (1 - np.cos(2 * np.pi * x / length)) / 2
+    # This gives: at x=0, y=y_outer; at x=length/2, y=y_inner; at x=length, y=y_outer
+    
+    # Actually let me reconsider... looking at the image:
+    # The upper curve dips DOWN in the middle
+    # The lower curve rises UP in the middle
+    
+    # For upper waveguide: starts high, goes down in middle, back up
+    # y_upper at x=0 is high, at x=L/2 is low
+    
+    # Let me use a simpler approach with cosine
+    # y = A * cos(2*pi*x/L) where A is the amplitude
+    
+    # At x=0: y = A (high)
+    # At x=L/2: y = -A (low, toward center)
+    # At x=L: y = A (high again)
+    
+    # For the upper waveguide, we want it to go from high to low to high
+    # For the lower waveguide, we want it to go from low to high to low
+    
+    return c
+```
+
+Looking more carefully at the structure, the top band starts wide, narrows significantly in the middle section, then widens again toward the end. The bottom band mirrors this behavior in the opposite direction.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def directional_coupler():
+    c = gf.Component()
+    
+    # Parameters
+    length = 18.0
+    waveguide_width = 0.4
+    y_separation_outer = 1.2  # half vertical separation at the ends
+    gap_center = 0.1  # gap between waveguides at center
+    
+    # Create path points
+    num
+
+_points = 200
+    x = np.linspace(0, length, num_points)
+    
+    # The waveguide centerlines follow a cosine pattern
+    # At the edges, they're separated by y_separation_outer
+    # At the middle, they're separated by just gap_center
+    y_outer = y_separation_outer
+    y_inner = gap_center/2 + waveguide_width/2
+    
+    # Upper waveguide centerline moves from y_outer down to y_inner and back
+    # Using cosine to create smooth convergence in the middle
+    y_upper = y_inner + (y_outer - y_inner) * np.cos(np.pi * x / length) / 2 + (y_outer + y_inner) / 2 + (y_outer - y_inner) / 2 * np.cos(2 * np.pi * x / length)
+
+Let me verify this works: at x=0, cosine equals 1 giving y_outer; at x=length/2, cosine is -1 yielding y_inner; at x=length, cosine returns to 1 for y_outer again. But looking at the image more carefully, the waveguide narrows in the middle, not at the edges—I need to reconsider the geometry. The outer curves should be furthest apart at both ends and closest together at the center, while the inner curves do the opposite.
+
+Now I need to recalculate with the actual 18x3 μm footprint dimensions. Given each waveguide is roughly 0.4 μm wide with a small gap between them, I estimate the upper waveguide center sits around y = 0.3 μm and the lower around y = -0.3 μm at the narrowest point, while at the edges they're separated to approximately y = 1.0 and y = -1.0 respectively.
+
+Looking more carefully at the proportions, the gap appears minimal—nearly touching—and the curved paths span most of the vertical height. I'll set up the component with a length of 18 μm, height of 3 μm, and waveguide width of 0.35 μm, positioning the outer waveguides near the edges with a small margin and the inner waveguides close together at the center with just a small gap between them.
+
+For the path generation, I need 200 points along the length. The sinusoidal curves should start at the outer positions, move inward to nearly touch at the midpoint, then return outward. Using `abs(cos(π * x / length))` doesn't produce the right shape—at x=0 it gives 1, at x=length/2 it gives 0, and at x=length it gives -1, which isn't symmetric. I need a function that peaks at the edges and dips at the center instead.
+
+Using `(1 + cos(2πx/length)) / 2` works better: it equals 1 at both x=0 and x=length, drops to 0 at x=length/2, and creates the symmetric waveguide shape I'm looking for. So the upper waveguide becomes `y_upper = y_inner + (y_outer - y_inner) * (1 + cos(2πx/length)) / 2`, and I'll compute this scaling factor first.
+
+Then I construct the upper and lower paths by mirroring around the x-axis, apply a cross-section with the specified waveguide width, and extrude both paths to create the final waveguide structures. eguides to fit nicely:
+- Waveguide width: around 0.3-0.4 μm is typical
+- Looking at the image, the bands seem fairly thick relative to the total height
+- Let me estimate the band thickness is about 1/5 to 1/4 of the total height
+
+If total height is 3 μm, and bands are about 0.4-0.5 μm wide... that seems reasonable.
+
+Let me also consider that at the center, the gap appears very small - maybe 0.1-0.2 μm.
+
+At the edges, the separation appears to be larger - maybe each waveguide center is at about ±1.0 to ±1.2 μm from the center line.
+
+Let me refine:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def tapered_coupler():
+    c = gf.Component()
+    
+    # Device parameters matching footprint [18, 3]
+    length = 18.0
+    waveguide_width = 0.4
+    
+    # Positions
+    # At edges: waveguides are separated
+    # At center: waveguides are close together
+    y_edge = 1.1  # y-position of upper waveguide centerline at edges
+    gap_center = 0.15  # gap between waveguides at the coupling region
+    y_center = waveguide_width/2 + gap_center/2  # y-position at center
+    
+    # Create path points
+    num_points = 500
+    x = np.linspace(0, length, num_points)
+    
+    # Smooth transition using raised cosine
+    # factor = 0.5 * (1 - np.cos(np.pi * x / length))
+    factor = (1 + np.cos(2 * np.pi * x / length)) / 2
+    
+    # Upper waveguide path
+    y_upper = y_center + (y_edge - y_center) * factor
+    
+    # Lower waveguide path (mirror)
+    y_lower = -y_upper
+    
+    # Create paths
+    upper_points = list(zip(x, y_upper))
+    lower_points = list(zip(x, y_lower))
+    
+    upper_path = gf.Path(upper_points)
+    lower_path = gf.Path(lower_points)
+    
+    # Cross section
+    xs = gf.cross_section.cross_section(width=waveguide_width, layer=(1, 0))
+    
+    # Extrude
+    upper_wg = gf.path.extrude(upper_path, cross_section=xs)
+    lower_wg = gf.path.extrude(lower_path, cross_section=xs)
+    
+    c << upper_wg
+    c << lower_wg
+    
+    return c
+
+Now I need to test this by creating the device and exporting it. I'll instantiate the tapered_coupler function and write the output to a GDS file to visualize the result. Looking back at the reference image, I should verify that the curves match the expected proportions—two thick waveguides that converge smoothly toward the center and then diverge again symmetrically.
+
+The geometry appears to have a width-to-height ratio around 6:1, suggesting dimensions of roughly 18 μm by 3 μm. Each waveguide band occupies about 15-20% of the total height, positioned roughly ±1.0 μm from center at the edges and converging to a gap of approximately 0.15 μm at the narrowest point in the middle.
+
+Refining these measurements based on closer inspection, the bands seem wider than initially estimated—around 0.5 μm each. At the edges, the waveguides sit about 1 μm apart from the centerline, placing their outer edges near ±1.25 μm. At the center, the gap narrows to roughly 0.1 μm, positioning the band edges at approximately ±0.35 μm. This geometry leaves minimal margin (about 0.25 μm) at the top and bottom of the 3 μm height.
+
+Now implementing the design with specific parameters: the device spans 18 μm horizontally with 0.5 μm wide waveguides. The upper waveguide centers at y = 1.0 μm at the edges and transitions to y ≈ 0.31 μm at the midpoint, where the gap reaches its minimum of 0.12 μm. A cosine function smoothly interpolates this transition across the length, and the path equations use this to define the upper and lower waveguide boundaries. The function returns the component. Then I create an instance and export it to a GDS file. Let me verify the vertical spacing works within the 3 μm constraint—the upper waveguide spans from 0.75 to 1.25 μm and the lower from -1.25 to -0.75 μm, giving a total height of 2.5 μm with adequate margin. I should double-check the path construction and reconsider the band proportions shown in the reference image, which suggests the horizontal length significantly exceeds the vertical dimension.
+
+Looking at the visual proportions, the black bands appear quite thick relative to the overall height. With a 18×3 μm footprint, a waveguide width between 0.5 and 0.6 μm seems appropriate—roughly 17-20% of the total height. The curves should be smooth and symmetrical, which a cosine function provides. I'll refine the code to better capture these characteristics.
+
+The implementation uses a tapered directional coupler with parameters tuned to the footprint dimensions. The waveguide width is set to 0.45 μm, and the vertical spacing varies from well-separated at the edges (y_outer = 1.05) to nearly touching at the center with a minimal 0.1 μm gap. The waveguide centers at maximum coupling are positioned at y_inner based on the width and gap. The path definition will use this tapering to create the smooth transition. for i in range(n_points)])
+    bottom_path = gf.Path([(x[i], y_bottom[i]) for i in range(n_points)])
+    
+    # Cross-section
+    xs = gf.cross_section.cross_section(width=waveguide_width, layer=(1, 0))
+    
+    # Extrude to create waveguides
+    top_wg = gf.path.extrude(top_path, cross_section=xs)
+    bottom_wg = gf.path.extrude(bottom_path, cross_section=xs)
+    
+    # Add references
+    c << top_wg
+    c << bottom_wg
+    
+    return c
+
+# Generate and save
+device = tapered_directional_coupler()
+device.write_gds("tapere
+
+I'm constructing the paths from the coordinate arrays, then defining a cross-section with the specified waveguide width. After extruding both paths with this cross-section to form the actual waveguide structures, I add them to the component and return it. Finally, I instantiate the device and write it to a GDS file.
+
+Let me verify the envelope function is working correctly at key points: at x=0 it should give maximum separation (envelope=1), at the midpoint it should bring the waveguides closest together (envelope=0), and at x=length it should return to maximum separation again (envelope=1).
+
+Now checking the actual dimensions to ensure everything fits within constraints. At the edges where the waveguides are most separated, the outer edges reach 1.275 μm on each side, giving a total span of 2.55 μm which stays within the 3 μm limit. At the center where they're closest, the gap between them is 0.1 μm, which should provide good coupling. Let me recalculate y
+
+_inner to verify: it's the waveguide width divided by 2 plus half the coupling gap, so 0.225 + 0.05 = 0.275 μm. The upper waveguide's inner edge sits at 0.05 μm and the lower at -0.05 μm, confirming that 0.1 μm separation. Looking back at the image, I notice the bands appear quite thick relative to what I'd expect from these dimensions.
+
+The curved shapes match what I'm seeing—two smooth arcs that bow toward each other in the middle like facing parentheses. The code structure seems right for this geometry. I should consider whether adding ports would make this a more complete photonic component, with input and output connections properly defined for the waveguides. _path = gf.Path([(x[i], y_bottom[i]) for i in range(n_points)])
+    
+    # Cross-section
+    xs = gf.cross_section.cross_section(width=waveguide_width, layer=(1, 0))
+    
+    # Extrude
+    top_wg = gf.path.extrude(top_path, cross_section=xs)
+    bottom_wg = gf.path.extrude(bottom_path, cross_section=xs)
+    
+    # Add references
+    ref_top = c << top_wg
+    ref_bottom = c << bottom_wg
+    
+    # Add ports (optional but good practice)
+    c.add_port("o1", port=ref_top.ports["o1"])  # Top left
+    c.add_port("o2", port=ref_top.ports["o2"])  # Top right
+    c.add_port("o3", port=ref_bottom.ports["o1"])  # Bottom left
+    c.add_port("o4", port=ref_bottom.ports["o2"])  # Bottom right
+
+Now I need to construct the bottom waveguide path using the same approach. I'll define a cross-section with the specified width and layer, then extrude both paths to create the waveguide structures. Adding the references to the cell and connecting ports from each waveguide to the component's interface completes the geometry. are positioned correctly with o1 at the input and o2 at the output for each waveguide. The port naming should work as expected since extrude creates o1 and o2 by default at the path endpoints.
+
+I should verify the code is clean and properly documented. The component creates a tapered directional coupler with two waveguides that converge for evanescent coupling, with a footprint of 18 x 3 micrometers. The structure uses gdsfactory's cell decorator and component framework to build the device by defining the converging paths, extruding them into waveguides, and exposing the four ports at the input and output ends. outer - y_inner) * envelope
+    y_lower = -y_upper  # Symmetric about x-axis
+    
+    # Create path objects
+    upper_path = gf.Path(list(zip(x, y_upper)))
+    lower_path = gf.Path(list(zip(x, y_lower)))
+    
+    # Define cross-section
+    xs = gf.cross_section.cross_section(width=waveguide_width, layer=(1, 0))
+    
+    # Extrude paths into waveguide components
+    upper_wg = gf.path.extrude(upper_path, cross_section=xs)
+    lower_wg = gf.path.extrude(lower_path, cross_section=xs)
+    
+    # Add waveguides to component
+    ref_upper = c << upper_wg
+
+The lower waveguide mirrors the upper one symmetrically across the x-axis. I'm converting the coordinate arrays into path objects, then defining a cross-section with the specified width and layer. After extruding both paths with this cross-section to create the actual waveguide geometry, I add them to the component.
+
+Now I need to attach the lower waveguide reference and set up the four ports at the input and output ends—one pair for each waveguide—before returning the completed component. Finally, I'll instantiate the device and export it to a GDS file.
+
+The geometry checks out: at the edges, the upper waveguide spans from y = 0.825 to 1.275 μm and the lower from y = -1.275 to -0.825 μm, giving a total height of 2.55 μm within the 3 μm constraint. The waveguides maintain a 1.65 μm separation at the edges and taper toward each other at the center, where the upper waveguide shifts to y = 0.275 μm.
+
+At the center, the gap between waveguides narrows to just 0.1 μm, which is appropriate for a directional coupler. However, comparing the proportions to the reference image suggests the waveguide width might need adjustment—the black bands in the image appear to occupy roughly 20-25% of the total height, which would translate to approximately 0.6-0.75 μm per waveguide.
+
+I'm reconsidering the geometry with adjusted parameters: a waveguide width of 0.5 μm and y_outer of 1.15 μm would position the outer edges at 1.4 μm, creating a total span of 2.8 μm that better matches the full 3 μm height. The inner edges would then be positioned at 0.3 μm from center, maintaining the 0.1 μm gap between the upper and lower waveguides at the narrowest point. - y_inner = 0.3
+
+Now I'll set up the code structure with the calculated positions. The waveguide centers are positioned at y_outer = 1.15 for the outer waveguides at the edges and y_inner = 0.3 for the inner waveguides at the center, creating the desired tapering effect with a 0.1 μm gap at the coupling region.
+
+I'm generating 500 points along the 18 μm length and using a cosine envelope to smoothly transition the waveguide positions from the inner spacing at the center to the outer spacing at the edges. The upper and lower waveguides are created as symmetric paths around the x-axis, then extruded with the 0.5 μm width cross-section and added to the component with ports assigned for connectivity.
+
+The remaining ports are mapped from the extruded waveguide references—o2 connects to the upper waveguide's second port, while o3 and o4 connect to the lower waveguide's first and second ports respectively. The component is then returned and exported as a GDS file. I should verify the envelope behavior at the boundaries: at x = 0 and x = length, the envelope equals 1, so y_upper reaches the outer spacing of 1.15 μm, confirming the geometry transitions correctly from the inner 0.3 μm spacing at the center to the wider 1.15 μm spacing at both ends. The cosine function should produce a smooth curve, and with 500 points distributed across 18 μm, I'm getting roughly 28 points per μm—plenty of resolution for the tapering. The code is ready to finalize with the component definition, parameters for the 18 × 3 μm footprint, and the waveguide width of 0.5 μm.
+
+For the vertical spacing, the outer waveguides sit at ±1.15 μm from center, while at the coupling region they converge to a 0.1 μm gap. The path generation uses a cosine envelope that peaks at the input and output (value of 1) and reaches its minimum (value of 0) at the midpoint, creating the symmetric tapering effect. The upper and lower waveguide centerlines are then calculated by interpolating between these positions based on the envelope function. _lower = c << lower_wg
+    
+    # Expose ports for external connections
+    c.add_port("o1", port=ref_upper.ports["o1"])  # Upper input
+    c.add_port("o2", port=ref_upper.ports["o2"])  # Upper output  
+    c.add_port("o3", port=ref_lower.ports["o1"])  # Lower input
+    c.add_port("o4", port=ref_lower.ports["o2"])  # Lower output
+    
+    return c
+
+Then I add the main execution block to instantiate the device and export it as a GDS file. The ports are mapped to the upper and lower waveguide references so external connections can be made at all four endpoints.

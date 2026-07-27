@@ -1,0 +1,80 @@
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler_18x3():
+    """
+    Creates a symmetric directional coupler based on the provided image.
+    Footprint constraint: 18um x 3um.
+    """
+    c = gf.Component()
+
+    # 1. Define Dimensions
+    # Total device footprint
+    L = 18.0
+    H_tot = 3.0
+    
+    # Adjusted parameters for better visual match (thicker WG, visible gap)
+    width = 0.8       # Thicker waveguide
+    gap_min = 0.5     # Increased gap to prevent merging in the center
+    
+    # Derived parameters
+    L_arm = L / 2.0   # Length of one half (S-bend length)
+    
+    # Y-coordinates for the waveguide centers
+    # At the inputs (ends), waveguides align to the outer boundary
+    # y_in = (Height_tot - width) / 2
+    y_in = (H_tot - width) / 2.0  # (3.0 - 0.8)/2 = 1.1
+    
+    # At the waist (center), waveguides are separated by gap_min
+    # y_waist = (gap + width) / 2
+    y_waist = (gap_min + width) / 2.0 # (0.5 + 0.8)/2 = 0.65
+    
+    # The vertical displacement (dy) required for the S-bends
+    dy = y_in - y_waist 
+
+    # 2. Define Cross Section
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+
+    # 3. Create S-bend Primitives
+    # bend_s creates a generic S-bend defined by size=(length, height_delta)
+    
+    # Bend going "down" (Input High -> Output Low)
+    # We use a negative Y size for the drop
+    bend_down = gf.components.bend_s(size=(L_arm, -dy), cross_section=xs)
+    
+    # Bend going "up" (Input Low -> Output High)
+    bend_up = gf.components.bend_s(size=(L_arm, dy), cross_section=xs)
+
+    # 4. Assembly - Top Arm
+    # Top Left: Starts left, curves down to center waist
+    tl = c << bend_down
+    # FIX: Use .center to get the (x,y) tuple from the port
+    tl.move(origin=tl.ports["o2"].center, destination=(0, y_waist))
+    
+    # Top Right: Starts at center waist, curves up to right
+    tr = c << bend_up
+    tr.connect("o1", tl.ports["o2"])
+
+    # 5. Assembly - Bottom Arm
+    # Bottom Left: Starts left, curves up to center waist
+    bl = c << bend_up
+    # FIX: Use .center to get the (x,y) tuple from the port
+    bl.move(origin=bl.ports["o2"].center, destination=(0, -y_waist))
+    
+    # Bottom Right: Starts at center waist, curves down to right
+    br = c << bend_down
+    br.connect("o1", bl.ports["o2"])
+
+    # 6. Add Ports
+    c.add_port("o1", port=tl.ports["o1"]) # Top Input
+    c.add_port("o2", port=bl.ports["o1"]) # Bottom Input
+    c.add_port("o3", port=tr.ports["o2"]) # Top Output
+    c.add_port("o4", port=br.ports["o2"]) # Bottom Output
+
+    return c
+
+# Create and save the device
+if __name__ == "__main__":
+    device = symmetric_coupler_18x3()
+    device.write_gds("symmetric_coupler.gds")
+    device.show()

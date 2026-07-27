@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:02:51.109081",
+      "api_duration_seconds": 135.73570704460144,
+      "usage": {
+        "input_tokens": 5814,
+        "output_tokens": 1819,
+        "total_tokens": 19767
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.2 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:05:08.099076",
+      "api_duration_seconds": 146.14856791496277,
+      "usage": {
+        "input_tokens": 7679,
+        "output_tokens": 1587,
+        "total_tokens": 16111
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'list' object has no attribute 'is_regular_array'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:07:35.567755",
+      "api_duration_seconds": 91.57475590705872,
+      "usage": {
+        "input_tokens": 9297,
+        "output_tokens": 1854,
+        "total_tokens": 17676
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 22790,
+    "output_tokens": 5260,
+    "total_tokens": 53554
+  }
+}

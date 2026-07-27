@@ -1,0 +1,42 @@
+import gdsfactory as gf
+
+@gf.cell
+def custom_device():
+    """
+    Creates the device structure using the Assembly Pattern.
+    """
+    c = gf.Component()
+
+    # 1. Main Body: Create a rectangle to fit the 25um wide footprint.
+    # Height is 5um to leave room for 2.5um pillars on top and bottom (total 10um).
+    body = c << gf.components.rectangle(size=(25, 5), centered=True, layer=(1, 0))
+
+    # 2. Pillar: Define the tapering shape
+    # Length 2.5um, width tapering from 3um down to 1.5um.
+    pillar = gf.components.taper(length=2.5, width1=3, width2=1.5, layer=(1, 0))
+
+    # 3. Add Top Pillars (4 total)
+    # The body is 25um wide, so we place them at intervals along the top edge.
+    x_offsets = [-9, -3, 3, 9]
+    for x in x_offsets:
+        # Create a reference for each pillar
+        p = c << pillar
+        p.rotate(90)            # Point upwards
+        p.move((x, 2.5))        # Align base to top of body (y=2.5)
+
+    # 4. Add Bottom Pillar (1 total)
+    # Centered at (0,0) on the bottom edge.
+    p_bot = c << pillar
+    p_bot.rotate(-90)           # Point downwards
+    p_bot.move((0, -2.5))       # Align base to bottom of body (y=-2.5)
+
+    return c
+
+# Generate the component
+device = custom_device()
+
+# Save the GDS file directly to ensure output
+device.write_gds("custom_device.gds")
+
+# Optional: print to confirm success
+print("Successfully generated custom_device.gds")

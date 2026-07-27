@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.103624",
+      "api_duration_seconds": 21.202502012252808,
+      "usage": {
+        "input_tokens": 3193,
+        "output_tokens": 761,
+        "total_tokens": 7114
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: GeometricObject.move() missing 1 required positional argument: 'origin'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:10:37.716439",
+      "api_duration_seconds": 12.557663917541504,
+      "usage": {
+        "input_tokens": 3985,
+        "output_tokens": 503,
+        "total_tokens": 6500
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: GeometricObject.move() got an unexpected keyword argument 'delta'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:10:51.624736",
+      "api_duration_seconds": 12.240537881851196,
+      "usage": {
+        "input_tokens": 4518,
+        "output_tokens": 589,
+        "total_tokens": 7053
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11696,
+    "output_tokens": 1853,
+    "total_tokens": 20667
+  }
+}

@@ -1,0 +1,105 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+
+@gf.cell
+def my_device():
+    c = gf.Component("my_device")
+
+    # Outer oval
+    oval_width = 1
+    oval_length = 2.5  # Adjust to match desired footprint
+    oval_radius = 1  # Assume ends are circular
+
+    outer_oval = c << gf.components.ellipse(radii=(oval_radius+oval_length, oval_radius), layer=(1,0))
+
+    # Central features:  Two rectangles joined by angled waveguides.
+    rect_width = 0.35
+    rect_length = 0.5
+    wg_width = 0.15
+    wg_length = 0.5
+    wg_angle = 20 # degrees  (estimated)
+
+    # Create the rectangles
+    rect1 = c << gf.components.rectangle(size=(rect_length, rect_width), layer=(1, 0))
+    rect2 = c << gf.components.rectangle(size=(rect_length, rect_width), layer=(1, 0))
+
+    # Position rectangles
+    rect1.movex(-rect_length/2)
+    rect2.movex(-rect_length/2)
+    rect1.movey(0.4)
+    rect2.movey(-0.4)
+
+    # Connect rectangles with waveguides
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    wg1_straight = c << gf.components.straight(length=wg_length/2, cross_section=xs)
+    wg1_straight.movey(0.4)
+    wg1_straight.rotate(-wg_angle)
+    wg1_straight.connect('o1', rect1.ports["o1"])
+
+    wg1_straight1 = c << gf.components.straight(length=wg_length/2, cross_section=xs)
+    wg1_straight1.movey(0.4)
+    wg1_straight1.rotate(wg_angle+180)
+    wg1_straight1.connect('o1', rect1.ports["o2"])
+
+
+    wg2_straight = c << gf.components.straight(length=wg_length/2, cross_section=xs)
+    wg2_straight.movey(-0.4)
+    wg2_straight.rotate(wg_angle)
+    wg2_straight.connect('o1', rect2.ports["o1"])
+
+    wg2_straight1 = c << gf.components.straight(length=wg_length/2, cross_section=xs)
+    wg2_straight1.movey(-0.4)
+    wg2_straight1.rotate(-wg_angle-180)
+    wg2_straight1.connect('o1', rect2.ports["o2"])
+    
+
+    #  Join the rectangles.
+
+    # Join the top waveguides for a single waveguide.
+    rect3 = c << gf.components.rectangle(size=(rect_length, rect_width), layer=(1, 0))
+    rect3.movex(-rect_length/2)
+    rect3.movey(0.8)
+    rect4 = c << gf.components.rectangle(size=(rect_length, rect_width), layer=(1, 0))
+    rect4.movex(-rect_length/2)
+    rect4.movey(-0.8)
+    
+    combined = gf.boolean(rect1,rect2)
+
+    rect5 = c << gf.components.rectangle(size=(rect_length, rect_width), layer=(1, 0))
+    rect6 = c << gf.components.rectangle(size=(rect_length, rect_width), layer=(1, 0))
+    rect5.movex(-rect_length/2+0.75)
+    rect6.movex(-rect_length/2+0.75)
+    rect5.movey(0.4)
+    rect6.movey(-0.4)
+
+    combined1 = gf.boolean(rect5,rect6)
+
+    outer1 = c << gf.components.ellipse(radii=(oval_radius+oval_length+0.1, oval_radius+0.1), layer=(1,0))
+    inner = gf.boolean(combined,combined1,operation='not')
+    inner = gf.boolean(inner,outer1,operation='and')
+    
+    outer_rect = c << gf.components.rectangle(size=(5, 5.5), layer=(1, 0), centered=True)
+    combine_final = gf.boolean(outer_rect,inner,operation='and')
+
+    # Set device name
+    c.name = "my_custom_device"
+
+    return c
+
+if __name__ == "__main__":
+    device = my_device()
+    device.show(show_ports=True)
+    # Optional: Save to GDS
+    device.write_gds("my_custom_device.gds")
+```
+
+**Reasoning for the fix:**
+
+The error `ModuleNotFoundError: No module named 'gdsfactory.difraction'` indicates that the `gdsfactory.difraction` module, which contained the `grating` component, is not installed or is not part of the standard gdsfactory library. Since the grating component is not actually used in the code, the easiest fix is simply to remove the import statement.
+
+**Changes Made:**
+
+1. **Removed `from gdsfactory.difraction import grating`:** This line has been removed because the module does not exist or is not needed.

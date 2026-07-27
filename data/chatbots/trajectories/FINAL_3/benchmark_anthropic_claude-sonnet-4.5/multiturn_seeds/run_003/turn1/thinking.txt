@@ -1,0 +1,78 @@
+Looking at the image, I can see a device that appears to be two elongated structures with curved ends. They look like they could be waveguide structures or transmission lines. Let me analyze the shape more carefully:
+
+1. There are two horizontal elongated shapes
+2. Each shape has:
+   - A straight horizontal section on the left
+   - A curved/rounded section that turns downward
+   - A long horizontal bottom section
+   - A curved/rounded section that turns upward
+   - A straight horizontal section on the right
+3. The shapes appear to be mirrored or inverted relative to each other
+4. The top shape curves down on the left and up on the right
+5. The bottom shape curves down on the right and up on the left
+6. They form a kind of interlocking or complementary pattern
+
+The footprint constraint is [120, 4] which means the device should be approximately 120 μm wide and 4 μm tall.
+
+Looking more carefully at the image, it seems like these could be:
+- Two meandering waveguides
+- Or possibly a cross-section view of some structure
+
+Actually, looking at it again, it appears to be two elongated "U" shapes or staple-like shapes that are oriented in opposite directions:
+- Top one: opens downward (upside-down U)
+- Bottom one: opens upward (normal U)
+
+Each shape seems to have:
+- Straight horizontal sections on the sides
+- Curved corners
+- A long horizontal base section
+
+Given the footprint of 120 x 4 μm, and looking at the proportions, I should create:
+1. Two rectangular/rounded structures
+2. Each with rounded corners
+3. Positioned to create this interlocking pattern
+
+Let me think about the construction approach:
+- I could use paths with rounded corners
+- Or I could use rectangles with boolean operations
+- Or I could construct custom polygons
+
+The most parametric approach would be to use paths. Let me create a path that:
+
+
+1. Starts at the left
+2. Goes down (for top structure) or up (for bottom structure)
+3. Goes horizontally across
+4. Goes up (for top) or down (for bottom)
+5. Extends to the right
+
+These structures look like they could be formed from bent paths with width, creating the U-shaped appearance. The top structure has a left extension, curves downward, runs horizontally at the base, curves back up, and extends right. The bottom structure mirrors this pattern in reverse.
+
+Given the 120 μm width and 4 μm height constraints, I need to allocate space carefully between the two structures. I'll start implementing this with gdsfactory, defining a cross-section with 0.4 μm width and creating the inverted U-shape path for the top structure, beginning at the origin and extending horizontally before curving.
+
+The path coordinates show the top structure moving from (0,0) to (10,0), then down to (10,-1.5), across to (110,-1.5), back up to (110,0), and finally to (120,0). The bottom structure mirrors this pattern but positioned lower at y=-4, with its vertical sections at y=-2.5 to create the interlocking effect.
+
+After reviewing the image more carefully, the curves appear quite smooth and rounded rather than sharp corners. The horizontal side extensions take up roughly 10-15% of the total width, the vertical sections span about 1-1.5 μm, and there's a small gap of approximately 0.5 μm between the two structures. I should refine the implementation to use smooth transitions and adjust the parameters accordingly—setting the total width to 120 μm, height to 4 μm, and line width to 0.5 μm. # Bottom structure - starts low, goes up, across, down
+points2 = [
+    (0, -total_height),
+    (side_length, -total_height),
+    (side_length + bend_radius, -total_height + vertical_offset),
+    (total_width - side_length - bend_radius, -total_height + vertical_offset),
+    (total_width - side_length, -total_height),
+    (total_width, -total_height)
+]
+path2 = gf.path.smooth(points=points2, radius=bend_radius)
+wg2 = path2.extrude(xs)
+
+c << wg1
+c << wg2
+
+return c
+
+The second waveguide mirrors the first one vertically, positioned at the bottom with inverted y-coordinates. Both paths are then added to the cell and returned.
+
+Looking at the actual image, the line width appears quite substantial—roughly 0.5-0.8 μm thick relative to the overall dimensions. The two interlocking structures are thick rounded paths that weave together. I should increase the line_width parameter to better match the visual proportions shown, making the waveguides more prominent.
+
+The code creates two smooth paths that interlock: the top path dips downward while the bottom path curves upward, creating the crossing pattern. Each path uses a bend radius of 1.5 μm to create smooth transitions at the corners, and both are extruded using the same cross-section to form the final structures. The geometry is then written to a GDS file for fabrication.
+
+I should adjust the proportions to better match the target design—the vertical offset and bend radius values may need tuning to achieve the exact interlocking appearance shown in the reference image.

@@ -1,0 +1,112 @@
+Turn 3 Response:
+
+The previous iteration using `gf.path.transition(width_type='sine')` resulted in a rhombic "diamond" shape because the sine transition creates inflection points and S-curves, whereas the target image shows a purely convex, bulbous "petal" shape.
+
+To achieve the "lemon" or "petal" shape with a distinct straight stem, we should explicitly generate the polygon geometry using a curve function (like a parabola) that guarantees convexity without inflection points.
+
+Here is the improved GDSFactory script.
+
+### Improved Solution
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_cross_flower_v3():
+    c = gf.Component()
+
+    # --- Dimensions & Constraints ---
+    # Target Footprint: 4.7um x 4.7um => Radius = 2.35um
+    radius = 2.35
+    
+    # Segment lengths estimated from target image
+    # The arm has a bulbous section and a straight "stem" tip.
+    length_stem = 0.65
+    length_bulb = radius - length_stem  # approx 1.7um
+    
+    # Widths derived from visual proportions
+    # Center: Finite width to ensure solid overlap at the hub
+    # Max: The bulb is quite wide (chubby)
+    # Stem: The tip is narrow and constant
+    width_center = 0.36 
+    width_max = 0.96    
+    width_stem = 0.15   
+    
+    layer = (1, 0)
+
+    # --- Geometry Generation (Parabolic Profile) ---
+    # We model the bulb's half-width as a parabola: y(x) = A*(x - xp)^2 + H
+    # This ensures a smooth, convex curve.
+    
+    H = width_max / 2.0        # Peak half-width
+    y_start = width_center / 2.0
+    y_end = width_stem / 2.0
+    
+    # Solve for Parabola parameters A and xp (peak position)
+    # Constraints: y(0) = y_start, y(length_bulb) = y_end, Peak is H
+    # Equation: A * (x - xp)^2 = y - H  (Note: y - H is negative)
+    
+    # Using the ratio of the vertical drops from peak to start/end:
+    # Ratio = (drop_end / drop_start) = (y_end - H) / (y_start - H)
+    denom = y_start - H
+    
+    if abs(denom) < 1e-9:
+        # Fallback if start width is max width (unlikely here)
+        xp = 0
+        A = (y_end - H) / (length_bulb**2)
+    else:
+        ratio = (y_end - H) / (y_start - H)
+        # Based on geometric relation for parabola: xp = L / (1 + sqrt(ratio))
+        xp = length_bulb / (1 + np.sqrt(ratio))
+        A = (y_start - H) / (xp**2)
+
+    # --- Point Generation ---
+    # 1. Bulb Section (Parabola)
+    n_points = 61
+    x_bulb = np.linspace(0, length_bulb, n_points)
+    y_bulb = A * (x_bulb - xp)**2 + H
+    
+    # 2. Stem Section (Straight Rectangle)
+    x_stem = np.array([length_bulb, radius])
+    y_stem = np.array([y_end, y_end])
+    
+    # Concatenate to form the upper edge of the arm
+    x_upper = np.concatenate([x_bulb, x_stem])
+    y_upper = np.concatenate([y_bulb, y_stem])
+    
+    # Create full polygon points by mirroring the upper edge
+    pts_upper = np.column_stack([x_upper, y_upper])
+    pts_lower = np.column_stack([x_upper, -y_upper])[::-1] # Reverse for winding
+    pts = np.concatenate([pts_upper, pts_lower])
+
+    # --- Component Assembly ---
+    # Create the single arm component
+    arm = gf.Component()
+    arm.add_polygon(pts, layer=layer)
+    
+    # Add the port at the tip
+    arm.add_port(
+        name="o1",
+        center=(radius, 0),
+        width=width_stem,
+        orientation=0,
+        layer=layer
+    )
+
+    # Rotate and place 4 instances to form the cross
+    for i, angle in enumerate([0, 90, 180, 270]):
+        ref = c << arm
+        ref.rotate(angle)
+        # The arm starts at (0,0), so rotating around (0,0) arranges them radially
+        c.add_port(f"o{i+1}", port=ref.ports["o1"])
+
+    return c
+
+if __name__ == "__main__":
+    device = device_cross_flower_v3()
+    device.write_gds("device_cross_flower_v3.gds")
+    
+    # Print dimensions to verify constraints
+    print(f"Device Size: {device.size_info.width:.2f} um x {device.size_info.height:.2f} um")
+```

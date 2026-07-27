@@ -1,0 +1,111 @@
+import gdsfactory as gf
+
+def create_racetrack(radius: float, length: float) -> gf.Component:
+    """
+    Creates a solid racetrack shape from a rectangle and two circles.
+
+    Args:
+        radius: The radius of the semicircular ends.
+        length: The length of the central straight section.
+    """
+    c = gf.Component()
+    # Add the straight rectangular section if it has a non-zero length
+    if length > 1e-9:
+        rect = gf.components.rectangle(size=(length, 2 * radius), centered=True)
+        c.add_ref(rect)
+    
+    # Add the two semicircular ends
+    c1 = c << gf.components.circle(radius=radius)
+    c2 = c << gf.components.circle(radius=radius)
+    c1.movex(-length / 2)
+    c2.movex(length / 2)
+    
+    # FIX: Return the component directly. The boolean function will handle
+    # the union of the shapes. Calling flatten() was causing the function
+    # to return None, which broke the subsequent boolean operation.
+    return c
+
+@gf.cell
+def generated_device():
+    """
+    Recreates the device from the provided image using a subtractive
+    boolean approach based on the specified footprint.
+    """
+    
+    # --- 1. Define Device Parameters ---
+    # Derived from the footprint [width=5.5, height=3.0] and visual analysis
+    footprint_width = 5.5
+    footprint_height = 3.0
+    
+    # Key geometric features
+    ring_thickness = 0.3      # Thickness of the outer ring structure
+    pillar_width = 0.4        # Width of the vertical pillars connecting inner/outer parts
+    center_vertical_gap = 0.4 # Gap between top and bottom inner arms
+    
+    # Parameters for the rectangular holes in the inner arms
+    hole_width = 0.5
+    hole_height = 0.4
+    hole_horizontal_spacing = 0.2  # Spacing between the two holes in an arm
+
+    # --- 2. Create the Base Solid Shape ---
+    # The outer boundary of the device is a solid racetrack
+    outer_radius = footprint_height / 2
+    outer_straight_len = footprint_width - footprint_height
+    solid_base = create_racetrack(radius=outer_radius, length=outer_straight_len)
+
+    # --- 3. Create the Void (Cutout) Shapes ---
+    # A single component will hold all the shapes to be subtracted
+    voids = gf.Component("voids_to_subtract")
+
+    # 3.1. Inner racetrack void to form the ring and pillars
+    inner_radius = outer_radius - ring_thickness
+    inner_straight_len = outer_straight_len - 2 * pillar_width
+    inner_void = create_racetrack(radius=inner_radius, length=inner_straight_len)
+    voids.add_ref(inner_void)
+
+    # 3.2. Central gap void to separate top and bottom arms
+    # Use the full width to ensure a clean cut through the component
+    mid_gap_void = gf.components.rectangle(
+        size=(footprint_width, center_vertical_gap), centered=True
+    )
+    voids.add_ref(mid_gap_void)
+
+    # 3.3. Four rectangular hole voids
+    hole = gf.components.rectangle(size=(hole_width, hole_height), centered=True)
+    
+    # Calculate hole positions based on derived inner geometry
+    inner_arm_height = (2 * inner_radius - center_vertical_gap) / 2
+    hole_y_center = center_vertical_gap / 2 + inner_arm_height / 2
+    hole_x_center = hole_horizontal_spacing / 2 + hole_width / 2
+
+    # Add references for the four holes to the voids component
+    h_top_right = voids << hole
+    h_top_left = voids << hole
+    h_bot_right = voids << hole
+    h_bot_left = voids << hole
+    
+    h_top_right.move(( hole_x_center,  hole_y_center))
+    h_top_left.move( (-hole_x_center,  hole_y_center))
+    h_bot_right.move(( hole_x_center, -hole_y_center))
+    h_bot_left.move( (-hole_x_center, -hole_y_center))
+
+    # --- 4. Perform the Final Boolean Subtraction ---
+    # The final device is the solid base with all voids cut out.
+    final_device = gf.boolean(A=solid_base, B=voids, operation="not")
+
+    # --- 5. Create Final Component and Add Geometry ---
+    c = gf.Component()
+    c.add_ref(final_device)
+    c.move_origin(-c.center)
+    
+    return c
+
+if __name__ == "__main__":
+    # 1. Instantiate the component from the cell function
+    device_to_save = generated_device()
+    
+    # 2. Show the component in a viewer (optional, for verification)
+    device_to_save.show(show_ports=False)
+    
+    # 3. Write the component to a GDS file
+    device_to_save.write_gds("output.gds")

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.133590",
+      "api_duration_seconds": 34.17553687095642,
+      "usage": {
+        "input_tokens": 3170,
+        "output_tokens": 959,
+        "total_tokens": 9586
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.5 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:10:50.731256",
+      "api_duration_seconds": 12.72280478477478,
+      "usage": {
+        "input_tokens": 4174,
+        "output_tokens": 871,
+        "total_tokens": 7005
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.5 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:11:05.101042",
+      "api_duration_seconds": 19.886831045150757,
+      "usage": {
+        "input_tokens": 5090,
+        "output_tokens": 930,
+        "total_tokens": 8608
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: cross_section() got an unexpected keyword argument 'min_bend_radius'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12434,
+    "output_tokens": 2760,
+    "total_tokens": 25199
+  }
+}

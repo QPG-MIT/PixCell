@@ -1,0 +1,199 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_racetrack_mems():
+    """
+    Creates a racetrack resonator with suspended MEMS arms.
+    Footprint: 5.5 um x 3.0 um.
+    """
+    c = gf.Component()
+
+    # =========================================================================
+    # 1. Geometric Parameters
+    # =========================================================================
+    # Main Envelope
+    device_length = 5.5
+    device_width = 3.0
+    layer_device = (1, 0)
+
+    # Ring Dimensions
+    r_outer = device_width / 2.0          # 1.5 um
+    ring_width = 0.6                      # Thick ring wall
+    r_inner = r_outer - ring_width        # 0.9 um
+    
+    # Define Cross Section for Ring (Fixes the TypeError)
+    # This encapsulates width and layer info for waveguide primitives
+    xs_ring = gf.cross_section.cross_section(
+        width=ring_width, 
+        layer=layer_device,
+        radius=r_outer - ring_width/2.0 # Default bend radius
+    )
+    
+    # Calculate Straight Section length
+    l_straight = device_length - (2 * r_outer) # 2.5 um
+    x_bend_center = l_straight / 2.0
+    r_trace = r_outer - (ring_width / 2.0)
+
+    # Arm Parameters
+    arm_y_center = 0.45      # Y-offset for the suspension arms
+    pad_length = 1.1         # Length of the central rectangular block
+    pad_width = 0.55         # Width of the central block
+    
+    # Leg/Strut Parameters
+    leg_width_start = 0.3    # Narrow connection at the pad
+    leg_width_end = 0.8      # Wide flare at the ring connection
+    connection_angle = 35.0  # Angle (degrees) where arm meets the ring arc
+
+    # Hole Parameters
+    hole_width = 0.35
+    hole_height = 0.22
+    hole_pitch = 0.55        # Center-to-center distance
+
+    # =========================================================================
+    # 2. Build the Ring
+    # =========================================================================
+    ring_comp = gf.Component()
+    
+    # Top Straight
+    s_top = ring_comp << gf.components.straight(length=l_straight, cross_section=xs_ring)
+    s_top.move(( -l_straight/2, r_trace ))
+
+    # Bottom Straight
+    s_bot = ring_comp << gf.components.straight(length=l_straight, cross_section=xs_ring)
+    s_bot.move(( -l_straight/2, -r_trace ))
+
+    # Right Bend
+    # Note: Explicitly passing radius here overrides the cross_section default if needed,
+    # but passing cross_section is crucial for width/layer.
+    b_right = ring_comp << gf.components.bend_circular(
+        radius=r_trace, 
+        angle=180, 
+        cross_section=xs_ring
+    )
+    b_right.connect("o1", s_bot.ports["o2"])
+
+    # Left Bend
+    b_left = ring_comp << gf.components.bend_circular(
+        radius=r_trace, 
+        angle=180, 
+        cross_section=xs_ring
+    )
+    b_left.connect("o1", s_top.ports["o1"])
+
+    # =========================================================================
+    # 3. Build the Suspension Arms (Polygon Method)
+    # =========================================================================
+    arms_comp = gf.Component()
+
+    def create_arm_polygon(y_pos):
+        """Generates the geometry for one arm (pad + 2 legs)."""
+        
+        # Determine orientation parameters
+        is_top = (y_pos > 0)
+        theta_deg = connection_angle if is_top else -connection_angle
+        theta = np.radians(theta_deg)
+
+        # Pad Dimensions
+        pad_half_l = pad_length / 2.0
+        pad_half_w = pad_width / 2.0
+        
+        # --- Define Leg Connection ---
+        # Start point: Right edge of the pad
+        p_start_x = pad_half_l
+        p_start_y = y_pos
+
+        # End point: Inside the ring wall
+        # We target a point slightly inside the ring material (r_inner + offset)
+        # to ensure the boolean union creates a single continuous shape.
+        r_target = r_inner + 0.15
+        
+        # Calculate coordinate on the arc relative to the bend center (x_bend_center)
+        p_target_x = x_bend_center + r_target * np.cos(theta)
+        p_target_y = r_target * np.sin(theta)
+
+        # Calculate vector for the leg
+        dx = p_target_x - p_start_x
+        dy = p_target_y - p_start_y
+        angle_leg = np.arctan2(dy, dx)
+        
+        # Perpendicular vectors for width offsets
+        px = -np.sin(angle_leg)
+        py = np.cos(angle_leg)
+
+        # Coordinates for the "Right Leg" trapezoid
+        # Start (at Pad)
+        ls_x1 = p_start_x + px * leg_width_start / 2
+        ls_y1 = p_start_y + py * leg_width_start / 2
+        ls_x2 = p_start_x - px * leg_width_start / 2
+        ls_y2 = p_start_y - py * leg_width_start / 2
+
+        # End (at Ring)
+        le_x1 = p_target_x + px * leg_width_end / 2
+        le_y1 = p_target_y + py * leg_width_end / 2
+        le_x2 = p_target_x - px * leg_width_end / 2
+        le_y2 = p_target_y - py * leg_width_end / 2
+
+        right_leg_pts = [(ls_x1, ls_y1), (le_x1, le_y1), (le_x2, le_y2), (ls_x2, ls_y2)]
+        
+        # Mirror for "Left Leg"
+        # Since the design is symmetric about the Y-axis, we just negate X
+        left_leg_pts = [(-x, y) for x, y in right_leg_pts]
+        
+        # Pad Rectangle Points
+        pad_pts = [
+            (pad_half_l, y_pos + pad_half_w),
+            (-pad_half_l, y_pos + pad_half_w),
+            (-pad_half_l, y_pos - pad_half_w),
+            (pad_half_l, y_pos - pad_half_w)
+        ]
+
+        # Add polygons
+        arms_comp.add_polygon(right_leg_pts, layer=layer_device)
+        arms_comp.add_polygon(left_leg_pts, layer=layer_device)
+        arms_comp.add_polygon(pad_pts, layer=layer_device)
+
+    # Generate Top and Bottom Arms
+    create_arm_polygon(arm_y_center)
+    create_arm_polygon(-arm_y_center)
+
+    # =========================================================================
+    # 4. Build Holes
+    # =========================================================================
+    holes_comp = gf.Component()
+
+    def add_hole_pair(y_pos):
+        # Create a basic rectangle
+        h_rect = gf.components.rectangle(
+            size=(hole_width, hole_height), 
+            centered=True, 
+            layer=layer_device
+        )
+        
+        # Right Hole
+        h1 = holes_comp << h_rect
+        h1.move((hole_pitch/2.0, y_pos))
+        
+        # Left Hole
+        h2 = holes_comp << h_rect
+        h2.move((-hole_pitch/2.0, y_pos))
+
+    add_hole_pair(arm_y_center)
+    add_hole_pair(-arm_y_center)
+
+    # =========================================================================
+    # 5. Final Boolean Assembly
+    # =========================================================================
+    # 1. Union: Ring + Solid Arms
+    structure = gf.boolean(ring_comp, arms_comp, operation="or", layer=layer_device)
+    
+    # 2. Difference: Structure - Holes
+    final_device = gf.boolean(structure, holes_comp, operation="not", layer=layer_device)
+    
+    c << final_device
+    return c
+
+if __name__ == "__main__":
+    device = device_racetrack_mems()
+    device.show()
+    device.write_gds("racetrack_mems.gds")

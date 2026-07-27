@@ -1,0 +1,110 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_strange_device():
+    c = gf.Component("strange_device")
+
+    # Parameters
+    wg_width = 0.5  # Estimate based on image
+    wg_separation = 1.0 # Estimate based on image
+    rib_length = 10.0 # Assume length of rib waveguide sections
+    bend_radius = 10.0 # Estimate bend radius from image.  Match cross_section.radius_min
+    straight_length = 5.0 #straight section after bend
+    gap = 0.1
+    num_bars = 30 # Estimate number of bars
+    bar_width = 0.1
+    bar_sep = 0.1
+    
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0), radius=bend_radius) #radius needs to match bend radius
+
+    # Top Waveguide Branch
+    # Create top waveguide
+    top_straight = gf.components.straight(length=straight_length, cross_section=xs)
+    top_bend = c << gf.components.bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    top_straight_bar = gf.components.straight(length=num_bars*(bar_width+bar_sep), cross_section=xs)
+    
+    t_s_b = c << top_straight_bar
+    t_s = c << top_straight
+    t_b = c << top_bend
+
+    t_s_b.connect("o1", t_s.ports["o2"])
+    t_s.connect("o1", t_b.ports["o2"])
+
+
+    top_straight_end = c << gf.components.straight(length=straight_length, cross_section=xs)
+    t_b.connect("o1", top_straight_end.ports["o1"])
+
+    c.add_port("top_1", port=t_s_b.ports["o1"])
+    c.add_port("top_2", port=top_straight_end.ports["o2"])
+
+    # Bottom Waveguide Branch - mirror of top
+    bottom_straight = gf.components.straight(length=straight_length, cross_section=xs)
+    bottom_bend = gf.components.bend_euler(radius=bend_radius, angle=-90, cross_section=xs)
+    bottom_straight_bar = gf.components.straight(length=num_bars*(bar_width+bar_sep), cross_section=xs)
+    
+    b_s_b = c << bottom_straight_bar
+    b_s = c << bottom_straight
+    b_b = c << bottom_bend
+
+    b_s_b.connect("o1", b_s.ports["o2"])
+    b_s.connect("o1", b_b.ports["o2"])
+
+
+    bottom_straight_end = c << gf.components.straight(length=straight_length, cross_section=xs)
+    b_b.connect("o1", bottom_straight_end.ports["o1"])
+
+    c.add_port("bottom_1", port=b_s_b.ports["o1"])
+    c.add_port("bottom_2", port=bottom_straight_end.ports["o2"])
+
+    #center rib
+    center_rib = c << gf.components.straight(length=num_bars*(bar_width+bar_sep), cross_section=xs)
+
+    # Position elements
+
+    # Rotate and move bottom branch to match the shape
+    b_s_b.rotate(180)
+    bottom_straight_end.rotate(180)
+    b_b.rotate(180)
+    b_s.rotate(180)
+
+    # Position elements vertically
+    t_s_b.movey(wg_separation/2)
+    b_s_b.movey(-wg_separation/2)
+    center_rib.movey(0)
+
+    return c
+
+# Create the device
+strange_device = create_strange_device()
+
+# Print the device
+strange_device.show()
+
+# Write to GDS file
+strange_device.write_gds("strange_device.gds")
+```
+
+Reasoning for the fix:
+
+The traceback indicates an `AttributeError` during the component creation within the `create_strange_device` function. The error message "`AttributeError: 'super' object has no attribute '__getattr__'..."` is tricky, but it often signifies an issue with how ports are being accessed or connected before the component is fully instantiated within the parent component `c`.  In this particular case, this happened for the connections made between the top and bottom sections
+
+The original code had a few lines that were trying to use port connections *before* adding the component to the parent component:
+
+```python
+top_straight_bar.add_ports(top_straight.ports, prefix="straight")
+top_straight.add_ports(top_bend.ports, prefix="bend")
+top_bend.add_ports(top_straight_bar.ports, prefix="bar")
+```
+
+and similar lines for the bottom portion.
+
+The fix addresses this issue by:
+
+1. **Separate Instantiation and Connection:**  The code is restructured to first create and add the components to the parent (using `c << ...`), and assign each instance to a named object (`t_s_b`, `t_s`, `t_b`).
+2. **Connecting via Instances:** The connections between the components are now made *after* they have been added to the parent component and assigned to the instance objects. This ensures that all components are fully initialized and their ports are accessible when the `connect` method is called. The corresponding lines are changed to use these newly assigned names. For example: `t_s_b.connect("o1", t_s.ports["o2"])`
+3. **Same as above for Ports:** The port connections were similarly changed
+
+This order is essential to avoid the `AttributeError` related to accessing component attributes before they are fully initialized in the GDSFactory framework.

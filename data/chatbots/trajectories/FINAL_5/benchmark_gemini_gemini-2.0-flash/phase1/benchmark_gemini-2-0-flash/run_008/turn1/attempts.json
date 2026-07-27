@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.956366",
+      "api_duration_seconds": 38.21794605255127,
+      "usage": {
+        "input_tokens": 4928,
+        "output_tokens": 985,
+        "total_tokens": 5913
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 5.0 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:49.982500",
+      "api_duration_seconds": 8.087002754211426,
+      "usage": {
+        "input_tokens": 5956,
+        "output_tokens": 1229,
+        "total_tokens": 7185
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_5/benchmark_gemini_gemini-2.0-flash/phase1/benchmark_gemini-2-0-flash/run_008/turn1/generated_component.py\", line 68, in <module>\n    strange_device = create_strange_device()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:00.829311",
+      "api_duration_seconds": 9.42303204536438,
+      "usage": {
+        "input_tokens": 7722,
+        "output_tokens": 1399,
+        "total_tokens": 9121
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(cell)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 18606,
+    "output_tokens": 3613,
+    "total_tokens": 22219
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.887323",
+      "api_duration_seconds": 37.59622001647949,
+      "usage": {
+        "input_tokens": 5444,
+        "output_tokens": 1295,
+        "total_tokens": 6739
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ImportError: cannot import name 'Component' from 'gdsfactory.typings' (/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/gdsfactory/typings.py). Did you mean: 'component'?",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:49.090203",
+      "api_duration_seconds": 6.650285243988037,
+      "usage": {
+        "input_tokens": 6811,
+        "output_tokens": 989,
+        "total_tokens": 7800
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:03.345798",
+      "api_duration_seconds": 7.07275390625,
+      "usage": {
+        "input_tokens": 7817,
+        "output_tokens": 1010,
+        "total_tokens": 8827
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 20072,
+    "output_tokens": 3294,
+    "total_tokens": 23366
+  }
+}

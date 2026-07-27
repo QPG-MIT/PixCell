@@ -1,0 +1,34 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+    L = 2.35
+    h = L / 2
+    max_width = 1.4
+    r = (h**2 + (max_width / 2)**2) / max_width
+    d = 2 * r - max_width
+    x0 = h
+    dy = d / 2
+
+    @gf.cell
+    def circle_at(pos):
+        comp = gf.Component()
+        ref = comp << gf.components.circle(radius=r, layer=layer)
+        ref.move(pos)
+        return comp
+
+    c1 = circle_at((x0, dy))
+    c2 = circle_at((x0, -dy))
+
+    petal = gf.boolean(c1, c2, operation="and", layer=layer)
+
+    for angle in [0, 90, 180, 270]:
+        ref = c << petal
+        ref.rotate(angle)
+
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")

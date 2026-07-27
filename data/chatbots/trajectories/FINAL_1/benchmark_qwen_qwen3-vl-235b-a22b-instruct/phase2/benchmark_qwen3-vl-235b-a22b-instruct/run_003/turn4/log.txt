@@ -1,0 +1,47 @@
+Turn 4 Response:
+
+Looking at the current output and comparing it to the target image, I can see the issue clearly. The current code creates a Y-junction with two S-bends that curve upward and downward, but the target image shows a single smooth curved waveguide that bends upward.
+
+The problem is that I'm creating a Y-junction when what's needed is actually a single waveguide with a smooth bend. The target image appears to show just one waveguide that starts horizontally and then curves upward in a smooth arc.
+
+Let me revise the code to create a single waveguide with a smooth bend instead of a Y-junction:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def curved_waveguide():
+    c = gf.Component()
+    
+    # Define cross-section for waveguide
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create a straight waveguide segment
+    wg_straight = c << gf.components.straight(length=10, cross_section=xs)
+    
+    # Create a smooth bend (Euler bend) that curves upward
+    bend = c << gf.components.bend_euler(radius=15, angle=45, cross_section=xs)
+    
+    # Connect the bend to the straight waveguide
+    bend.connect("o1", wg_straight.ports["o2"])
+    
+    # Add ports for external connections
+    c.add_port("o1", port=wg_straight.ports["o1"])  # Input port
+    c.add_port("o2", port=bend.ports["o2"])  # Output port
+    
+    return c
+
+# Create the device
+device = curved_waveguide()
+
+# Write to GDS file
+device.write_gds("curved_waveguide.gds")
+```
+
+This revised code:
+1. Creates a single straight waveguide segment
+2. Adds a smooth Euler bend that curves upward (45 degrees)
+3. Connects the bend to the straight segment
+4. Exposes input and output ports
+
+The result should be a single waveguide that starts horizontally and then smoothly curves upward, matching the target image more closely than the previous Y-junction design.

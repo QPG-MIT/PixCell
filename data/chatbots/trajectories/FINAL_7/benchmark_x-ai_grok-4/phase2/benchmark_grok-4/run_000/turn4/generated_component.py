@@ -1,0 +1,30 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    r = 1.0
+    w = 1.0
+    L = 4.5
+    xs = gf.cross_section.cross_section(width=w, layer=(1, 0), radius_min=0.5)
+
+    c = gf.Component()
+
+    # Bottom straight
+    bottom = c << gf.components.straight(length=L, cross_section=xs)
+    bottom.move((-L / 2, -r))
+
+    # Top straight
+    top = c << gf.components.straight(length=L, cross_section=xs)
+    top.move((-L / 2, r))
+
+    # Left bend
+    bend_left = c << gf.components.bend_circular(radius=r, angle=180, cross_section=xs)
+    bend_left.mirror(p1=(0, 0), p2=(0, 1))
+    bend_left.connect("o1", bottom.ports["o1"])
+
+    top.connect("o1", bend_left.ports["o2"])
+
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")

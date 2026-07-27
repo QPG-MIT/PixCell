@@ -1,0 +1,53 @@
+{
+  "turn": 5,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:31:56.335891",
+      "api_duration_seconds": 39.64564895629883,
+      "usage": {
+        "input_tokens": 4987,
+        "output_tokens": 1058,
+        "total_tokens": 10597
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:32:37.294414",
+      "api_duration_seconds": 43.322916984558105,
+      "usage": {
+        "input_tokens": 6076,
+        "output_tokens": 1196,
+        "total_tokens": 12278
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ValueError: operands could not be broadcast together with shapes (200,) (2,)",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:33:21.777968",
+      "api_duration_seconds": 19.67030692100525,
+      "usage": {
+        "input_tokens": 7304,
+        "output_tokens": 1223,
+        "total_tokens": 10078
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 18367,
+    "output_tokens": 3477,
+    "total_tokens": 32953
+  }
+}

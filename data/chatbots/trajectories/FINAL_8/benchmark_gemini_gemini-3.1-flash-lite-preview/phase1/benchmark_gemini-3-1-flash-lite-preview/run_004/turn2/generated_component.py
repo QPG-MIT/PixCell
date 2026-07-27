@@ -1,0 +1,49 @@
+import gdsfactory as gf
+
+@gf.cell
+def custom_device():
+    c = gf.Component()
+
+    # 1. Create the "Mask" (The hourglass shape)
+    # We create components for the rectangle and the two circles, then boolean them together
+    
+    # Base rectangle
+    rect = gf.components.rectangle(size=(100, 80), layer=(1, 0))
+    # Note: By default, rectangle creates geometry at (0,0)
+    
+    # Create Circle A (Left)
+    c_left = gf.Component()
+    c_left << gf.components.circle(radius=50, layer=(1, 0))
+    c_left.movex(-70) # Shift position within this component
+    
+    # Create Circle B (Right)
+    c_right = gf.Component()
+    c_right << gf.components.circle(radius=50, layer=(1, 0))
+    c_right.movex(70) # Shift position within this component
+    
+    # Step A: Union the two circles into one "subtractor" shape
+    subtractor = gf.boolean(c_left, c_right, operation="or", layer=(1, 0))
+    
+    # Step B: Subtract the circles from the rectangle (Rectangle NOT Subtractor)
+    envelope = gf.boolean(rect, subtractor, operation="not", layer=(1, 0))
+
+    # 2. Create the "Grating"
+    grating = gf.Component()
+    num_lines = 25
+    pitch = 2.0
+    for i in range(-num_lines, num_lines + 1):
+        # Create line
+        line = grating << gf.components.rectangle(size=(120, 0.8), layer=(1, 0))
+        # Center the grating lines at (0,0)
+        line.movey(i * pitch)
+
+    # 3. Final Step: Intersect Grating with Envelope (Grating AND Envelope)
+    device = gf.boolean(grating, envelope, operation="and", layer=(1, 0))
+    
+    c.add_ref(device)
+    return c
+
+# Generate and save
+device = custom_device()
+device.write_gds("curved_grating.gds")
+# device.show()

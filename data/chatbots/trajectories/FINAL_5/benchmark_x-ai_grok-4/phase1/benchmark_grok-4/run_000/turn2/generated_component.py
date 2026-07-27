@@ -1,0 +1,84 @@
+import gdsfactory as gf
+
+# Parameters
+layer = (1, 0)
+tooth_width = 0.1
+pitch = 0.36
+N_teeth = 25
+L_middle = (N_teeth - 1) * pitch + tooth_width  # 8.74
+total_length = 18.24
+L_side = (total_length - L_middle) / 2  # 4.75
+dip = 0.2
+r_smooth = 0.5
+w_narrow = 0.002
+w_wide = 0.2
+y_center = 0.35 - w_wide / 2  # 0.25
+y_span = 0.7
+y_min = -y_span / 2  # -0.35
+center = L_middle / 2  # 4.37
+bend_length = L_side / 2  # 2.375
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+
+    # Middle grating as array of vertical rectangles
+    tooth = gf.components.rectangle(size=(tooth_width, y_span), layer=layer, centered=False)
+    for i in range(N_teeth):
+        t = c << tooth
+        t.move((i * pitch, y_min))
+
+    # Middle straight waveguides
+    straight_upper = gf.components.rectangle(size=(L_middle, w_wide), layer=layer, centered=False)
+    su = c << straight_upper
+    su.move((0, y_center - w_wide / 2))
+
+    straight_lower = gf.components.rectangle(size=(L_middle, w_wide), layer=layer, centered=False)
+    sl = c << straight_lower
+    sl.move((0, -y_center - w_wide / 2))
+
+    # Cross-sections for transition
+    xs_narrow = gf.cross_section.cross_section(width=w_narrow, layer=layer)
+    xs_wide = gf.cross_section.cross_section(width=w_wide, layer=layer)
+    trans = gf.path.transition(xs_narrow, xs_wide, width_type='linear')
+    trans_reverse = gf.path.transition(xs_wide, xs_narrow, width_type='linear')
+
+    # Left top curved taper
+    points_top_left = [
+        (-L_side, y_center),
+        (-L_side + bend_length, y_center - dip),
+        (0, y_center),
+    ]
+    path_top_left = gf.path.smooth(points=points_top_left, radius=r_smooth)
+    curved_taper_top_left = gf.path.extrude_transition(path_top_left, trans)
+    c << curved_taper_top_left
+
+    # Left bottom curved taper
+    points_bottom_left = [(x, -y) for x, y in points_top_left]
+    path_bottom_left = gf.path.smooth(points=points_bottom_left, radius=r_smooth)
+    curved_taper_bottom_left = gf.path.extrude_transition(path_bottom_left, trans)
+    c << curved_taper_bottom_left
+
+    # Right top curved taper
+    points_top_right = []
+    for px, py in reversed(points_top_left):
+        nx = 2 * center - px
+        points_top_right.append((nx, py))
+    path_top_right = gf.path.smooth(points=points_top_right, radius=r_smooth)
+    curved_taper_top_right = gf.path.extrude_transition(path_top_right, trans_reverse)
+    c << curved_taper_top_right
+
+    # Right bottom curved taper
+    points_bottom_right = []
+    for px, py in reversed(points_top_left):
+        nx = 2 * center - px
+        points_bottom_right.append((nx, -py))
+    path_bottom_right = gf.path.smooth(points=points_bottom_right, radius=r_smooth)
+    curved_taper_bottom_right = gf.path.extrude_transition(path_bottom_right, trans_reverse)
+    c << curved_taper_bottom_right
+
+    return c
+
+# Create and save
+device = my_device()
+device.write_gds("my_device.gds")

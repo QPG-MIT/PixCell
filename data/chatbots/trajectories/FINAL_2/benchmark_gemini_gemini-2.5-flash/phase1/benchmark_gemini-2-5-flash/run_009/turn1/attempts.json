@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.887111",
+      "api_duration_seconds": 74.12108588218689,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 3665,
+        "total_tokens": 18670
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function my_device.<loca...<lambda> at 0x13567d120>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:25.496425",
+      "api_duration_seconds": 21.19451594352722,
+      "usage": {
+        "input_tokens": 6122,
+        "output_tokens": 2941,
+        "total_tokens": 11207
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S25_5__2cbb2079' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:48.182974",
+      "api_duration_seconds": 36.45273995399475,
+      "usage": {
+        "input_tokens": 9121,
+        "output_tokens": 3021,
+        "total_tokens": 17132
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S25_5__2cbb2079' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 17588,
+    "output_tokens": 9627,
+    "total_tokens": 47009
+  }
+}

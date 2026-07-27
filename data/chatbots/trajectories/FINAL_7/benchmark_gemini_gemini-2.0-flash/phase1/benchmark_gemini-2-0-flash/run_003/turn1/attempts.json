@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.703218",
+      "api_duration_seconds": 14.679383993148804,
+      "usage": {
+        "input_tokens": 3894,
+        "output_tokens": 1888,
+        "total_tokens": 5782
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ModuleNotFoundError: No module named 'gdsfactory.geometry'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:25.749679",
+      "api_duration_seconds": 14.509440183639526,
+      "usage": {
+        "input_tokens": 5807,
+        "output_tokens": 2013,
+        "total_tokens": 7820
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(cell)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:41.736368",
+      "api_duration_seconds": 17.647736072540283,
+      "usage": {
+        "input_tokens": 7867,
+        "output_tokens": 2731,
+        "total_tokens": 10598
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(cell)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 17568,
+    "output_tokens": 6632,
+    "total_tokens": 24200
+  }
+}

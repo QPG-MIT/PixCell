@@ -1,0 +1,135 @@
+Turn 3 Response:
+
+The user encountered an `AttributeError` because `gf.path.bezier` is not a standard function in the main `gdsfactory.path` namespace in some versions (or it requires a specific import).
+
+To resolve this and ensure the script is robust, I will:
+1.  **Implement a custom Bezier path generator** using `numpy`. This manually calculates the points for a cubic Bezier curve and creates a `gf.Path` object, bypassing the API availability issue.
+2.  **Use `gf.path.extrude_transition`** to handle the simultaneous widening and bending of the outer waveguides, which is critical for matching the reference image (thin input $\to$ thick output).
+3.  **Strictly enforce the geometry constraints**: 40.0 $\mu$m length and 1.7 $\mu$m height.
+
+Here is the corrected script:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+def bezier_path(p0, p1, p2, p3, n=100):
+    """
+    Generates a gdsfactory Path for a cubic Bezier curve.
+    
+    Args:
+        p0: Start point (x, y)
+        p1: Control point 1
+        p2: Control point 2
+        p3: End point (x, y)
+        n: Number of points
+    """
+    t = np.linspace(0, 1, n)
+    # Cubic Bezier formula: B(t) = (1-t)^3*P0 + 3*(1-t)^2*t*P1 + 3*(1-t)*t^2*P2 + t^3*P3
+    xs = (1-t)**3 * p0[0] + 3*(1-t)**2 * t * p1[0] + 3*(1-t) * t**2 * p2[0] + t**3 * p3[0]
+    ys = (1-t)**3 * p0[1] + 3*(1-t)**2 * t * p1[1] + 3*(1-t) * t**2 * p2[1] + t**3 * p3[1]
+    
+    # Combine into an Nx2 array
+    points = np.column_stack([xs, ys])
+    return gf.Path(points)
+
+@gf.cell
+def device_inverse_taper_coupler():
+    """
+    Creates an inverse taper coupler geometry matched to the reference image.
+    Uses custom bezier paths for the S-bends to avoid API version conflicts.
+    """
+    c = gf.Component()
+
+    # --- Dimensions ---
+    length = 40.0
+    footprint_height = 1.7
+    layer = (1, 0)
+
+    # --- Geometry Definition ---
+    # Longitudinal Sections
+    l_parallel = 14.0       # Length of the initial parallel straight section
+    l_bend = length - l_parallel
+    
+    # Waveguide Widths
+    # Center: Wide input -> Sharp tip
+    w_center_in = 0.70
+    w_center_tip = 0.05
+    
+    # Sides: Thin input -> Wide output (Mode expansion)
+    w_side_in = 0.15
+    w_side_out = 0.55
+    
+    # Gaps
+    gap_in = 0.10
+    
+    # Vertical Positions
+    # Center is at y=0.
+    # Side Input y-offset:
+    y_in_center = (w_center_in / 2) + gap_in + (w_side_in / 2)
+    
+    # Side Output y-offset:
+    # Top edge of component = 1.7 / 2 = 0.85
+    # Center of top waveguide = 0.85 - (w_side_out / 2)
+    y_out_center = (footprint_height / 2) - (w_side_out / 2)
+
+    # --- 1. Central Taper ---
+    # Ends slightly after the bend starts for adiabatic transition
+    l_taper = 22.0 
+    taper = c << gf.components.taper(
+        length=l_taper,
+        width1=w_center_in,
+        width2=w_center_tip,
+        layer=layer
+    )
+    taper.xmin = 0
+    taper.y = 0
+
+    # --- 2. Side Arms (Path based) ---
+    
+    # Create Cross Sections
+    xs_in = gf.cross_section.cross_section(width=w_side_in, layer=layer)
+    xs_out = gf.cross_section.cross_section(width=w_side_out, layer=layer)
+    
+    # Define width transition (sine for smoothness)
+    trans = gf.path.transition(xs_in, xs_out, width_type='sine')
+
+    # -- Top Arm --
+    # Part A: Straight Section
+    path_straight_top = gf.Path([(0, y_in_center), (l_parallel, y_in_center)])
+    c << gf.path.extrude(path_straight_top, xs_in)
+    
+    # Part B: S-Bend Flare with Width Expansion
+    p0 = (l_parallel, y_in_center)
+    p3 = (length, y_out_center)
+    
+    # Calculate control points for horizontal tangents (S-shape)
+    dx = p3[0] - p0[0]
+    p1 = (p0[0] + dx * 0.5, p0[1]) # Tangent extends horizontally from start
+    p2 = (p3[0] - dx * 0.5, p3[1]) # Tangent approaches horizontally to end
+    
+    path_bend_top = bezier_path(p0, p1, p2, p3)
+    c << gf.path.extrude_transition(path_bend_top, trans)
+
+    # -- Bottom Arm (Mirrored) --
+    # Part A: Straight Section
+    path_straight_bot = gf.Path([(0, -y_in_center), (l_parallel, -y_in_center)])
+    c << gf.path.extrude(path_straight_bot, xs_in)
+    
+    # Part B: S-Bend Flare
+    p0_b = (l_parallel, -y_in_center)
+    p3_b = (length, -y_out_center)
+    
+    p1_b = (p0_b[0] + dx * 0.5, p0_b[1])
+    p2_b = (p3_b[0] - dx * 0.5, p3_b[1])
+    
+    path_bend_bot = bezier_path(p0_b, p1_b, p2_b, p3_b)
+    c << gf.path.extrude_transition(path_bend_bot, trans)
+
+    return c
+
+# Generate and save
+device = device_inverse_taper_coupler()
+device.write_gds("inverse_taper_coupler.gds")
+device.show()
+```

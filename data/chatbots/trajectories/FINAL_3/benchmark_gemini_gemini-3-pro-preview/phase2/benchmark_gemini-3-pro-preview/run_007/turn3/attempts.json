@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:09:06.975376",
+      "api_duration_seconds": 111.18011808395386,
+      "usage": {
+        "input_tokens": 5353,
+        "output_tokens": 1290,
+        "total_tokens": 16545
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_3/benchmark_gemini_gemini-3-pro-preview/phase2/benchmark_gemini-3-pro-preview/run_007/turn3/generated_component.py\", line 103, in <module>\n    device = directional_coupler()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/s",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:11:01.332905",
+      "api_duration_seconds": 90.23679685592651,
+      "usage": {
+        "input_tokens": 7179,
+        "output_tokens": 1293,
+        "total_tokens": 15993
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'DInstancePorts' object has no attribute 'values'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:12:32.886055",
+      "api_duration_seconds": 53.636571168899536,
+      "usage": {
+        "input_tokens": 8501,
+        "output_tokens": 1265,
+        "total_tokens": 13998
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 21033,
+    "output_tokens": 3848,
+    "total_tokens": 46536
+  }
+}

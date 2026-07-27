@@ -1,0 +1,84 @@
+import gdsfactory as gf
+
+@gf.cell
+def trident_ssc_final():
+    """
+    Recreates the Trident Spot-Size Converter with a smooth, angled flare.
+    
+    Constraint: 40.0 um x 1.7 um footprint.
+    Method: Uses gf.path.smooth to track the center taper and flare outward.
+    """
+    c = gf.Component()
+
+    # --- Dimensions ---
+    L_total = 40.0
+    L_taper = 28.0  # Length of the central narrowing section
+    
+    # Widths (um)
+    w_c_in, w_c_out = 0.7, 0.05    # Center waveguide tapers to a point
+    w_s_in, w_s_out = 0.15, 0.50   # Side arms widen as they move along
+    gap = 0.08                     # Target gap between waveguides
+    
+    # Target height calculation for 1.7um total width:
+    # Top edge = final_y + (w_s_out / 2) = 0.6 + 0.25 = 0.85. Total = 1.7.
+    y_final = 0.6
+
+    # --- 1. Center Piece ---
+    # Central taper narrowing from left to right
+    t_center = c << gf.components.taper(
+        length=L_taper, 
+        width1=w_c_in, 
+        width2=w_c_out
+    )
+
+    # --- 2. Side Arms ---
+    # Calculate Y-coordinates to maintain a constant gap with the tapering center
+    y_start = (w_c_in / 2) + gap + (w_s_in / 2)
+    y_mid = (w_c_out / 2) + gap + (w_s_out / 2)
+    
+    # Define Path points for the top arm: 
+    # Start -> Tracking taper (angled inward) -> Flare outward to final pitch
+    pts_top = [
+        (0, y_start),
+        (L_taper, y_mid),
+        (L_total, y_final)
+    ]
+    
+    # Create the smooth path using 'smooth' from the catalog
+    # Radius=10 provides a gentle transition from the taper to the flare
+    path_top = gf.path.smooth(points=pts_top, radius=10)
+    
+    # Define the width transition for the side arms
+    xs_start = gf.cross_section.cross_section(width=w_s_in)
+    xs_end = gf.cross_section.cross_section(width=w_s_out)
+    trans = gf.path.transition(xs_start, xs_end, width_type='linear')
+
+    # Extrude and add top arm
+    arm_top = c << gf.path.extrude_transition(path_top, transition=trans)
+    
+    # Extrude and add bottom arm (mirrored)
+    arm_bot = c << gf.path.extrude_transition(path_top, transition=trans)
+    arm_bot.mirror_y()
+
+    # --- 3. Assembly Alignment ---
+    # Add a short 'stem' to the center to match the input look of the image
+    stem_len = 2.0
+    stem = c << gf.components.straight(length=stem_len, width=w_c_in)
+    stem.connect("o2", t_center.ports["o1"])
+    
+    # Shift center pieces to align with path start at x=0
+    t_center.movex(0)
+    
+    # Move the whole device so input is at x=0
+    c.movex(-stem.xmin)
+
+    return c
+
+if __name__ == "__main__":
+    component = trident_ssc_final()
+    
+    # Output verification
+    print(f"Device Footprint: {component.xsize:.2f} um x {component.ysize:.2f} um")
+    
+    # Save the GDS
+    component.write_gds("trident_ssc_refined.gds")

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:20:13.086307",
+      "api_duration_seconds": 96.58846497535706,
+      "usage": {
+        "input_tokens": 3171,
+        "output_tokens": 1401,
+        "total_tokens": 17480
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.0775 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:51.090286",
+      "api_duration_seconds": 362.81698203086853,
+      "usage": {
+        "input_tokens": 4620,
+        "output_tokens": 1234,
+        "total_tokens": 6570
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'int' object has no attribute 'x'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:27:55.274354",
+      "api_duration_seconds": 48.46068024635315,
+      "usage": {
+        "input_tokens": 5881,
+        "output_tokens": 1248,
+        "total_tokens": 11790
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'DPort' object is not subscriptable",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13672,
+    "output_tokens": 3883,
+    "total_tokens": 35840
+  }
+}

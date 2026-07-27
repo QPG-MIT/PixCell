@@ -1,0 +1,99 @@
+Turn 5 Response:
+
+To better match the target image, this iteration focuses on three primary visual adjustments:
+1.  **Waveguide Thickness**: The original waveguides in the target image appear much "thicker" relative to the overall 3um height. I have increased the `width` from 0.5um to **0.75um**.
+2.  **Transition Smoothness**: To achieve the more organic "kissing" look of the target device, I've reduced the `coupling_len` (the straight central part) from 2.0um to **1.0um**. This allows the S-bends to occupy more of the 18um total length, resulting in more gradual curves.
+3.  **Vertical Proportions**: I've adjusted the edge positions to better fill the 3um footprint. With a 0.75um width and centers at ±1.0um, the waveguides occupy the space from ±1.375um, leaving a small, realistic margin at the top and bottom edges.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler_v6():
+    """
+    Symmetric coupler matching the target image proportions.
+    
+    Iteration 5 Improvements:
+    - Increased width to 0.75um for a bolder visual weight.
+    - Reduced coupling length to 1.0um for a smoother central transition.
+    - Adjusted vertical offsets to better utilize the 3um height constraint.
+    - Kept total length at 18um as per constraint.
+    
+    Footprint: 18um x 3um.
+    """
+    c = gf.Component("symmetric_coupler_v6")
+    
+    # Footprint constraints
+    total_length = 18.0
+    total_height = 3.0
+    
+    # Design parameters refined for visual matching
+    width = 0.75         # Thicker waveguides for appropriate visual weight
+    gap = 0.1            # Narrow gap for the central coupling region
+    coupling_len = 1.0   # Shorter central section to allow for longer S-bends
+    
+    # Calculated dimensions for S-bends
+    # Each S-bend covers half of the remaining length
+    sbend_len = (total_length - coupling_len) / 2
+    
+    # Vertical center positions
+    # At edges: center at 1.0um (waveguide edge reaches 1.0 + 0.375 = 1.375um)
+    y_edge = 1.0 
+    # At center: center at gap/2 + width/2 = 0.05 + 0.375 = 0.425um
+    y_mid = (gap / 2) + (width / 2)
+    # The vertical shift (dy) for the S-bend path
+    dy = y_mid - y_edge
+    
+    layer = (1, 0)
+    # Using a 5um radius in the cross-section to ensure compatibility with 
+    # the 18x3 footprint while avoiding minimum radius errors.
+    xs = gf.cross_section.cross_section(width=width, layer=layer, radius=5.0)
+    
+    # --- Top Arm Construction ---
+    # Left S-bend: curves from top edge down to the coupling gap
+    t_sbend_l = c << gf.components.bend_s(size=(sbend_len, dy), cross_section=xs)
+    t_sbend_l.movey(y_edge)
+    
+    # Central coupling straight section
+    t_mid = c << gf.components.straight(length=coupling_len, cross_section=xs)
+    t_mid.connect("o1", t_sbend_l.ports["o2"])
+    
+    # Right S-bend: curves from gap back up to the top edge
+    t_sbend_r = c << gf.components.bend_s(size=(sbend_len, -dy), cross_section=xs)
+    t_sbend_r.connect("o1", t_mid.ports["o2"])
+    
+    # --- Bottom Arm Construction (Mirror of Top) ---
+    # Left S-bend: curves from bottom edge up to the coupling gap
+    b_sbend_l = c << gf.components.bend_s(size=(sbend_len, -dy), cross_section=xs)
+    b_sbend_l.movey(-y_edge)
+    
+    # Central coupling straight section
+    b_mid = c << gf.components.straight(length=coupling_len, cross_section=xs)
+    b_mid.connect("o1", b_sbend_l.ports["o2"])
+    
+    # Right S-bend: curves from gap back down to the bottom edge
+    b_sbend_r = c << gf.components.bend_s(size=(sbend_len, dy), cross_section=xs)
+    b_sbend_r.connect("o1", b_mid.ports["o2"])
+    
+    # Center the entire component at the origin
+    c.movex(-total_length / 2)
+    
+    # Expose external ports for potential routing
+    c.add_port("o1", port=t_sbend_l.ports["o1"])
+    c.add_port("o2", port=b_sbend_l.ports["o1"])
+    c.add_port("o3", port=t_sbend_r.ports["o2"])
+    c.add_port("o4", port=b_sbend_r.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    component = symmetric_coupler_v6()
+    
+    # Print final dimensions to verify against footprint constraints
+    print(f"Component Dimensions: {component.dxsize:.2f} x {component.dysize:.2f} um")
+    
+    # Export and visualize
+    component.write_gds("symmetric_coupler_v6.gds")
+    component.show()
+```

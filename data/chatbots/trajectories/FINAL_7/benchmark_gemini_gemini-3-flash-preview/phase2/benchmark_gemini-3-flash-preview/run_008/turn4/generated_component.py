@@ -1,0 +1,91 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreated_device():
+    """
+    Recreates the device with a 5.5um x 3.0um footprint.
+    Refines the internal branching arms and weighted junction blocks.
+    """
+    # 1. Dimensions based on footprint constraint
+    total_w = 5.5
+    total_h = 3.0
+    ring_thick = 0.5
+    layer = (1, 0)
+    
+    # Stadium math: Total H = 2 * Radius_outer. Radius_outer = 1.5.
+    # Total W = 2 * Radius_outer + Straight_Length.
+    # Straight_Length = 5.5 - 3.0 = 2.5
+    r_outer = total_h / 2
+    l_straight = total_w - (2 * r_outer)
+    r_inner = r_outer - ring_thick
+    
+    # 2. Create the Outer Stadium Ring (Hollow)
+    def stadium_shape(r, l):
+        comp = gf.Component()
+        # Central rectangle
+        comp << gf.components.rectangle(size=(l, 2*r), centered=True, layer=layer)
+        # End caps
+        c1 = comp << gf.components.circle(radius=r, layer=layer)
+        c1.movex(-l/2)
+        c2 = comp << gf.components.circle(radius=r, layer=layer)
+        c2.movex(l/2)
+        return comp
+
+    outer_full = stadium_shape(r_outer, l_straight)
+    inner_full = stadium_shape(r_inner, l_straight)
+    ring = gf.boolean(A=outer_full, B=inner_full, operation="not", layer=layer)
+    
+    # 3. Create the Internal Network
+    internal = gf.Component("internal_net")
+    
+    # Junction blocks at the left and right inner curves
+    # These provide the thick "anchors" seen in the target image
+    j_w, j_h = 0.7, 1.4
+    j_x_pos = 1.95 # Positioned to intersect inner curves
+    
+    jl = internal << gf.components.rectangle(size=(j_w, j_h), centered=True, layer=layer)
+    jl.movex(-j_x_pos)
+    jr = internal << gf.components.rectangle(size=(j_w, j_h), centered=True, layer=layer)
+    jr.movex(j_x_pos)
+    
+    # Arm parameters
+    arm_thick = 0.22
+    y_offset = 0.72
+    x_diagonal_start = 1.35 
+    box_w, box_h = 0.9, 0.45
+    box_gap = 0.15
+    
+    def add_branched_arm(y_sign):
+        y = y_sign * y_offset
+        # Horizontal waveguide path between diagonal points
+        path_h = gf.path.straight(length=2 * x_diagonal_start)
+        p_ref = internal << gf.path.extrude(path_h, width=arm_thick, layer=layer)
+        p_ref.move((0, y))
+        
+        # Diagonal connectors to the center of junction pads
+        # Inner edge of junctions is approx at +/- (j_x_pos - j_w/2) = 1.6
+        inner_edge_x = j_x_pos - (j_w / 2)
+        pts_left = [(-x_diagonal_start, y), (-inner_edge_x, 0)]
+        pts_right = [(x_diagonal_start, y), (inner_edge_x, 0)]
+        
+        internal << gf.path.extrude(gf.Path(pts_left), width=arm_thick, layer=layer)
+        internal << gf.path.extrude(gf.Path(pts_right), width=arm_thick, layer=layer)
+        
+        # Add the two wide rectangular blocks on the arm
+        for dx in [-(box_w + box_gap)/2, (box_w + box_gap)/2]:
+            b = internal << gf.components.rectangle(size=(box_w, box_h), centered=True, layer=layer)
+            b.move((dx, y))
+
+    add_branched_arm(1)   # Top arm
+    add_branched_arm(-1)  # Bottom arm
+    
+    # 4. Final Union Operation
+    # Merging ensures no overlapping geometries and a clean silhouette.
+    device = gf.boolean(A=ring, B=internal, operation="or", layer=layer)
+    
+    return device
+
+if __name__ == "__main__":
+    c = recreated_device()
+    c.show()
+    c.write_gds("recreated_device.gds")

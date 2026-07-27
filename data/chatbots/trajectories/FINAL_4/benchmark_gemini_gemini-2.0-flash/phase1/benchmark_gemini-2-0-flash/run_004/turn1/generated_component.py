@@ -1,0 +1,49 @@
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+
+
+@gf.cell
+def wavy_lines(width=3, period=18, amplitude=1.5):
+    """Creates two wavy lines."""
+    c = gf.Component("wavy_lines")
+
+    # Define parameters
+    length = period  # We'll make a single period and replicate it
+
+    # Create a path for the top wavy line
+    p1 = gf.Path()
+    p1.append(gf.path.arc(radius=amplitude, angle=180))
+    p1.append(gf.path.arc(radius=amplitude, angle=-180))
+
+    # Extrude the path to create the top wavy line
+    xs = gf.cross_section.cross_section(width=width)
+    wavy_top = c << gf.path.extrude(p1, cross_section=xs)
+
+    # Move the top wavy line to its initial position
+    wavy_top.movex(0)
+    wavy_top.movey(amplitude)
+
+    # Create a path for the bottom wavy line (inverted)
+    p2 = gf.Path()
+    p2.append(gf.path.arc(radius=amplitude, angle=-180))
+    p2.append(gf.path.arc(radius=amplitude, angle=180))
+
+    # Extrude the path to create the bottom wavy line
+    wavy_bottom = c << gf.path.extrude(p2, cross_section=xs)
+
+    # Move the bottom wavy line to its initial position
+    wavy_bottom.movex(0)
+    wavy_bottom.movey(-amplitude)
+
+    c.add_port("o1", port=wavy_top.ports["o1"])
+    c.add_port("o2", port=wavy_top.ports["o2"])
+    c.add_port("o3", port=wavy_bottom.ports["o1"])
+    c.add_port("o4", port=wavy_bottom.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    c = wavy_lines()
+    c.show()
+    c.write_gds("wavy_lines.gds")  # Save the component to a GDS file

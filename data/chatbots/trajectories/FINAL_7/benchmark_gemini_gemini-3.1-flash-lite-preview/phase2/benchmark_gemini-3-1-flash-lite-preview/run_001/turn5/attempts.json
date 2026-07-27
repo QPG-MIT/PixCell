@@ -1,0 +1,53 @@
+{
+  "turn": 5,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:13:33.257245",
+      "api_duration_seconds": 29.55312991142273,
+      "usage": {
+        "input_tokens": 4870,
+        "output_tokens": 1068,
+        "total_tokens": 10387
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.5 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:14:04.203733",
+      "api_duration_seconds": 17.41139316558838,
+      "usage": {
+        "input_tokens": 5983,
+        "output_tokens": 896,
+        "total_tokens": 9264
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 2 validation errors for CrossSection\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.4, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nlayer\n  Extra inputs are not permitted [type=extra_forbidden, input_value=(1, 0), input_type=tuple]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:14:22.852491",
+      "api_duration_seconds": 15.737893104553223,
+      "usage": {
+        "input_tokens": 7027,
+        "output_tokens": 857,
+        "total_tokens": 10072
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 17880,
+    "output_tokens": 2821,
+    "total_tokens": 29723
+  }
+}

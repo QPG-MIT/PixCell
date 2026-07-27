@@ -1,0 +1,73 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_mmi_1x4_refined():
+    """
+    Refined 1x4 MMI device geometry.
+    
+    Adjustments from previous iteration:
+    - Top fingers are longer and have a more subtle taper (wider tip, narrower base).
+    - Dimensions tuned to match pixel-aspect-ratio of the original image.
+    """
+    c = gf.Component("MMI_1x4_Refined")
+
+    # 1. Define Parametric Dimensions
+    # Main body dimensions (Fixed by constraint)
+    body_width = 25.0
+    body_height = 10.0
+    
+    # Top Finger Parameters (Refined for gentler slope)
+    top_finger_length = 14.0      # Increased length
+    top_finger_width_base = 2.4   # Narrowed base to increase gap size
+    top_finger_width_tip = 1.6    # Widened tip to make taper more subtle
+    
+    # Bottom Finger Parameters
+    bot_finger_length = 6.0
+    bot_finger_width_base = 4.0
+    bot_finger_width_tip = 2.0
+
+    # 2. Create the Central Body
+    body = c << gf.components.rectangle(
+        size=(body_width, body_height), 
+        layer=(1, 0), 
+        centered=True
+    )
+
+    # 3. Create and Place Top Fingers (Outputs)
+    taper_top = gf.components.taper(
+        length=top_finger_length,
+        width1=top_finger_width_base, 
+        width2=top_finger_width_tip,  
+        layer=(1, 0)
+    )
+
+    # Positions: Evenly distributed with ~6um pitch
+    # Centered at x = -9, -3, 3, 9
+    x_positions = [-9.0, -3.0, 3.0, 9.0]
+
+    for x in x_positions:
+        ref = c << taper_top
+        ref.rotate(90)
+        # Connect base of taper to top edge of body
+        ref.move((x, body_height / 2))
+
+    # 4. Create and Place Bottom Finger (Input)
+    taper_bot = gf.components.taper(
+        length=bot_finger_length,
+        width1=bot_finger_width_base,
+        width2=bot_finger_width_tip,
+        layer=(1, 0)
+    )
+
+    # Place centered on bottom edge
+    ref_bot = c << taper_bot
+    ref_bot.rotate(-90)
+    # Connect base of taper to bottom edge of body
+    ref_bot.move((0, -body_height / 2))
+
+    return c
+
+if __name__ == "__main__":
+    device = device_mmi_1x4_refined()
+    device.write_gds("mmi_1x4_refined.gds")
+    print("GDS file generated successfully.")

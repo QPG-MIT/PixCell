@@ -1,0 +1,108 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def trident_coupler_refined():
+    """
+    Creates a trident coupler matching the visual morphology of the target.
+    
+    Key features refined for target match:
+    - 40um x 1.7um footprint.
+    - Distinct "pinch point" at x=20um where the center taper ends.
+    - Outer arms are straight and converging in the first half.
+    - Outer arms S-bend outward immediately in the second half.
+    - This implementation intentionally allows a slope discontinuity (kink) at the 
+      waist (x=20um) to match the sharp 'narrowest point' visual feature of the target,
+      avoiding the 'dip' artifact caused by enforcing C1 continuity on a converging input.
+    """
+    c = gf.Component()
+
+    # --- Geometric Parameters ---
+    L_total = 40.0
+    L_taper = 20.0
+    L_fanout = L_total - L_taper
+
+    # Widths 
+    w_center_in = 0.5
+    w_center_tip = 0.05
+    
+    w_outer_in = 0.18   # Balanced width relative to center
+    w_outer_out = 0.6   # Wide output for mode expansion (matches target heaviness)
+    
+    # Gaps
+    gap_in = 0.18       # Moderate input gap
+    gap_tip = 0.06      # Very tight gap at the pinch point
+
+    # --- Vertical Position Calculations ---
+    
+    # 1. Input (x=0)
+    # Y position based on center width + gap + outer arm radius
+    y_in_center = (w_center_in / 2) + gap_in + (w_outer_in / 2)
+    
+    # 2. Mid/Tip (x=L_taper) - The Pinch Point
+    # This is the point of closest approach.
+    y_mid_center = (w_center_tip / 2) + gap_tip + (w_outer_in / 2)
+    
+    # 3. Output (x=L_total)
+    # Constrained by 1.7um total footprint height. 
+    # Top edge is at y = 1.7/2 = 0.85.
+    y_out_center = 0.85 - (w_outer_out / 2)
+
+    # --- 1. Center Taper ---
+    center = c << gf.components.taper(
+        length=L_taper,
+        width1=w_center_in,
+        width2=w_center_tip
+    )
+    center.move((0, 0))
+
+    # --- 2. Outer Arms Construction ---
+    
+    # Define Transitions
+    # Linear cross section for the straight part (constant width)
+    xs_in = gf.cross_section.cross_section(width=w_outer_in)
+    
+    # Sine transition for the fanout part (width expands from 0.18 to 0.6)
+    xs_fanout_start = gf.cross_section.cross_section(width=w_outer_in)
+    xs_fanout_end = gf.cross_section.cross_section(width=w_outer_out)
+    trans_fanout = gf.path.transition(xs_fanout_start, xs_fanout_end, width_type='sine')
+
+    # -- Top Arm Generation --
+    
+    # Part A: Straight Converging Section (Input -> Tip)
+    # We use a simple straight path. This has a negative slope (converging).
+    path_top_straight = gf.Path([(0, y_in_center), (L_taper, y_mid_center)])
+    top_straight = c << gf.path.extrude(path_top_straight, cross_section=xs_in)
+    
+    # Part B: S-Bend Fanout (Tip -> Output)
+    # We generate a Cosine S-bend manually.
+    # We start with slope=0 (horizontal) rather than matching the negative input slope. 
+    # This places the minimum Y value exactly at the tip (x=20), matching the target image.
+    
+    x_fanout = np.linspace(0, L_fanout, 100)
+    # Cosine S-bend formula: y = y_start + (dy) * (1 - cos(pi*x/L))/2
+    y_fanout = y_mid_center + (y_out_center - y_mid_center) * (1 - np.cos(np.pi * x_fanout / L_fanout)) / 2
+    
+    # Shift coordinates to start after the taper
+    pts_fanout_top = np.column_stack((x_fanout + L_taper, y_fanout))
+    
+    path_top_curve = gf.Path(pts_fanout_top)
+    top_curve = c << gf.path.extrude_transition(path_top_curve, trans_fanout)
+
+    # -- Bottom Arm Generation (Mirrored) --
+    
+    # Part A: Straight Converging
+    path_bot_straight = gf.Path([(0, -y_in_center), (L_taper, -y_mid_center)])
+    bot_straight = c << gf.path.extrude(path_bot_straight, cross_section=xs_in)
+    
+    # Part B: S-Bend Fanout (Mirrored Y)
+    pts_fanout_bot = np.column_stack((x_fanout + L_taper, -y_fanout))
+    path_bot_curve = gf.Path(pts_fanout_bot)
+    bot_curve = c << gf.path.extrude_transition(path_bot_curve, trans_fanout)
+
+    return c
+
+if __name__ == "__main__":
+    device = trident_coupler_refined()
+    device.write_gds("trident_coupler_refined.gds")
+    device.show()

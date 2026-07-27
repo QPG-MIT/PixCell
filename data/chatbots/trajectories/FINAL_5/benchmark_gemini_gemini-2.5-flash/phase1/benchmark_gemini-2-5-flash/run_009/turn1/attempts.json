@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.813425",
+      "api_duration_seconds": 158.56927800178528,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 5383,
+        "total_tokens": 32306
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "NameError: name 'y_track_center_central' is not defined",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:49.828567",
+      "api_duration_seconds": 28.55621576309204,
+      "usage": {
+        "input_tokens": 7762,
+        "output_tokens": 6029,
+        "total_tokens": 14078
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.5 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:19.769547",
+      "api_duration_seconds": 27.34411907196045,
+      "usage": {
+        "input_tokens": 13836,
+        "output_tokens": 5801,
+        "total_tokens": 20329
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 23947,
+    "output_tokens": 17213,
+    "total_tokens": 66713
+  }
+}

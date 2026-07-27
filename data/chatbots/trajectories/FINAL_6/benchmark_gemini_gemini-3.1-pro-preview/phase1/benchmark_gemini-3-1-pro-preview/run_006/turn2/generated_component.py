@@ -1,0 +1,78 @@
+import gdsfactory as gf
+
+@gf.cell
+def crossing_star() -> gf.Component:
+    """
+    Creates a parametric star crossing device matching the 4.7 x 4.7 um footprint.
+    This version adjusts the elliptical parameters to create fatter petals and a
+    thicker, more solid central intersection, matching the visual proportions 
+    of the original target image.
+    """
+    # ------------------------------------------------------------------
+    # Dimensions derived to exactly match the 4.7 x 4.7 um footprint
+    # Total max extent from origin is 2.35 um (half of 4.7)
+    # ------------------------------------------------------------------
+    
+    # Straight waveguide segment at the tips.
+    # We use slightly shorter, wider tips to match the target aesthetic.
+    wg_length = 0.45
+    wg_width = 0.22
+    # Centering at 2.125 makes it span exactly from 1.9 to 2.35
+    wg_center = 2.35 - (wg_length / 2)  
+    
+    # Elliptical "petals".
+    # By increasing the y-radius and moving the centers slightly closer to the origin,
+    # the 4 ellipses overlap significantly more at the center, creating the thick
+    # central hub seen in the target image.
+    ellipse_rx = 1.015
+    ellipse_ry = 0.65
+    ellipse_center = 0.9
+
+    # 1. Create the base parametric primitives
+    petal = gf.components.ellipse(radii=(ellipse_rx, ellipse_ry), layer=(1, 0))
+    wg = gf.components.rectangle(size=(wg_length, wg_width), centered=True, layer=(1, 0))
+
+    # 2. Build the horizontal bar (East-West arms)
+    bar_h = gf.Component("horizontal_bar")
+    
+    # Right arm (East)
+    p_r = bar_h << petal
+    p_r.movex(ellipse_center)
+    w_r = bar_h << wg
+    w_r.movex(wg_center)
+    
+    # Left arm (West)
+    p_l = bar_h << petal
+    p_l.movex(-ellipse_center)
+    w_l = bar_h << wg
+    w_l.movex(-wg_center)
+
+    # 3. Build the vertical bar (North-South arms)
+    bar_v = gf.Component("vertical_bar")
+    
+    # Top arm (North)
+    p_t = bar_v << petal
+    p_t.rotate(90)
+    p_t.movey(ellipse_center)
+    w_t = bar_v << wg
+    w_t.rotate(90)
+    w_t.movey(wg_center)
+    
+    # Bottom arm (South)
+    p_b = bar_v << petal
+    p_b.rotate(90)
+    p_b.movey(-ellipse_center)
+    w_b = bar_v << wg
+    w_b.rotate(90)
+    w_b.movey(-wg_center)
+
+    # 4. Compose using Boolean operations
+    # Merging the horizontal and vertical bars automatically handles the central 
+    # overlap, forming the distinct inner "diamond" cutouts naturally.
+    final_comp = gf.boolean(A=bar_h, B=bar_v, operation="or", layer=(1, 0))
+
+    return final_comp
+
+if __name__ == "__main__":
+    c = crossing_star()
+    c.write_gds("crossing_star.gds")

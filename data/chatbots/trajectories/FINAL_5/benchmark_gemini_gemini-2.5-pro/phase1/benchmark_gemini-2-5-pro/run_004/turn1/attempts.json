@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.891155",
+      "api_duration_seconds": 185.07638597488403,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 2197,
+        "total_tokens": 22222
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.15 < CrossSection.radius_min 5.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:16.340964",
+      "api_duration_seconds": 30.395747184753418,
+      "usage": {
+        "input_tokens": 4591,
+        "output_tokens": 1871,
+        "total_tokens": 7870
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.15 < CrossSection.radius_min 5.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:48.229933",
+      "api_duration_seconds": 37.79292583465576,
+      "usage": {
+        "input_tokens": 6507,
+        "output_tokens": 2024,
+        "total_tokens": 10925
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13447,
+    "output_tokens": 6092,
+    "total_tokens": 41017
+  }
+}

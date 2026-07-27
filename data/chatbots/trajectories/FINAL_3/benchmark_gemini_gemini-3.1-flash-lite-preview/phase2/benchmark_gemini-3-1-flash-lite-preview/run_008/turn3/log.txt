@@ -1,0 +1,60 @@
+Turn 3 Response:
+
+To construct the desired adiabatic coupler geometry, we need to connect a center coupling section (where the waveguides are close together) to flared input/output ports (where the waveguides are further apart). The most robust way to achieve this using the provided GDSFactory primitives is to use `gf.components.coupler_straight` for the center section and `gf.components.bend_s` for the transition curves.
+
+Here is the refined code:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def flared_coupler_device():
+    """
+    Constructs an adiabatic coupler with a straight coupling section 
+    and S-bend flares at the inputs/outputs.
+    """
+    c = gf.Component("flared_coupler")
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # 1. Center coupling section: two parallel waveguides with a gap
+    # Length = 40, Gap = 0.5um
+    coupler = c << gf.components.coupler_straight(length=40, gap=0.5, cross_section=xs)
+    
+    # 2. Add S-bends to flare the waveguides outward.
+    # The coupler ports are at y = ±0.25 (since gap = 0.5).
+    # We want to flare to y = ±2.0. The total displacement is 1.75um.
+    # Size = (dx, dy)
+    
+    # Left side flares
+    bend_tl = c << gf.components.bend_s(size=(20, -1.75), cross_section=xs)
+    bend_bl = c << gf.components.bend_s(size=(20, 1.75), cross_section=xs)
+    
+    # Right side flares
+    bend_tr = c << gf.components.bend_s(size=(20, 1.75), cross_section=xs)
+    bend_br = c << gf.components.bend_s(size=(20, -1.75), cross_section=xs)
+    
+    # 3. Connect the components
+    # coupler.ports: o1 (top-left), o2 (top-right), o3 (bottom-left), o4 (bottom-right)
+    
+    # Left connections
+    bend_tl.connect("o2", coupler.ports["o1"])
+    bend_bl.connect("o2", coupler.ports["o3"])
+    
+    # Right connections
+    bend_tr.connect("o1", coupler.ports["o2"])
+    bend_br.connect("o1", coupler.ports["o4"])
+    
+    return c
+
+if __name__ == "__main__":
+    device = flared_coupler_device()
+    # Save the GDS file
+    device.write_gds("flared_coupler.gds")
+    # Open in KLayout
+    device.show()
+```
+
+### Key Changes:
+*   **Use of `coupler_straight`**: This primitive automatically creates the two center waveguides at the correct spacing (gap), eliminating the need for manual positioning of straight segments.
+*   **Corrected S-Bend Logic**: By using `bend_s` with specific vertical displacements (`dy = ±1.75`), we ensure the S-bends curve correctly to bridge the gap between the `coupler_straight` ports and the wider input/output spacing. 
+*   **Symmetrical Design**: The use of positive and negative `dy` values for the four bends ensures the device is perfectly symmetrical, creating the standard "butterfly" or "dog-bone" shape of an adiabatic coupler.

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:55:12.657313",
+      "api_duration_seconds": 157.7529079914093,
+      "usage": {
+        "input_tokens": 3171,
+        "output_tokens": 2046,
+        "total_tokens": 18092
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:57:51.643791",
+      "api_duration_seconds": 66.65551590919495,
+      "usage": {
+        "input_tokens": 5720,
+        "output_tokens": 1937,
+        "total_tokens": 12266
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.0675 < CrossSection.radius_min 5.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:58:59.974844",
+      "api_duration_seconds": 60.607442140579224,
+      "usage": {
+        "input_tokens": 7705,
+        "output_tokens": 2117,
+        "total_tokens": 12384
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.0675 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16596,
+    "output_tokens": 6100,
+    "total_tokens": 42742
+  }
+}

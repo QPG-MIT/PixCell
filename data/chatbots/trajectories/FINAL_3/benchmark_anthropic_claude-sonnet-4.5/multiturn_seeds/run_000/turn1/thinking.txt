@@ -1,0 +1,79 @@
+Looking at the image, I can see a device that appears to be two waveguides with S-bends. The structure shows:
+
+1. Two horizontal waveguides that start at different vertical positions on the left
+2. They curve/bend in an S-shape pattern to meet at different vertical positions on the right
+3. The top waveguide appears to start high on the left and end high on the right
+4. The bottom waveguide appears to start low on the left and end low on the right
+5. The bends appear to be smooth curves (likely Euler or S-bends)
+
+The footprint constraint is [120, 4], meaning the device should be 120 μm wide and 4 μm tall.
+
+Looking more carefully at the structure:
+- It looks like there are two waveguides that cross over each other
+- Left side: one waveguide starts at the top, one at the bottom
+- They smoothly transition positions
+- Right side: they end at opposite positions (top one ends at bottom, bottom one ends at top? Or they stay in their lanes?)
+
+Actually, looking more carefully, it seems like:
+- Top waveguide: starts on left at top, curves down and then back up, ends on right at top
+- Bottom waveguide: starts on left at bottom, curves up and then back down, ends on right at bottom
+- They create a crossing or interweaving pattern in the middle
+
+Given the footprint of 120 x 4 μm:
+- Total width: 120 μm
+- Total height: 4 μm
+
+If we have two waveguides, and they're separated vertically, with the device height being 4 μm, and assuming waveguide width of ~0.5 μm, the gap between them might be around 3 μm or so.
+
+Let me think about this differently. The shape looks like:
+- Two S-bend waveguides
+- They start separated vertically
+- They cross or come close in the middle
+
+
+- They end separated vertically, likely in reversed positions
+
+For an S-bend structure with these dimensions, each waveguide uses an S-bend to transition vertically, with the bends potentially mirroring each other. I'll design this with two straight sections on the left, S-bends that curve the top one down and the bottom one up (possibly crossing), then S-bends back to bring them to final positions, and straight sections on the right. With the footprint [120, 4], I'm working with a waveguide width of 0.5 μm and the remaining space for gaps and bending radius.
+
+The vertical separation at the ends is approximately 3 μm (one waveguide at y=0, another at y=3), requiring S-bends to handle the transition. I'll set up the code with a cross-section definition, establish the vertical separation and length parameters for the straight sections and S-bends, then construct the top waveguide path starting at the top position, bending downward, then back upward to reach the final configuration. _path += gf.path.euler(radius=5, angle=-90)  # Bend back down
+    bottom_path += gf.path.straight(length=straight_length)
+    
+    # Create components from paths
+    top_wg = c << gf.path.extrude(top_path, cross_section=xs)
+    bottom_wg = c << gf.path.extrude(bottom_path, cross_section=xs)
+    
+    # Position the waveguides
+    top_wg.movey(vertical_sep/2)
+    bottom_wg.movey(-vertical_sep/2)
+    
+    return c
+
+device = create_device()
+device.write_gds("device.gds")
+```
+
+The paths get extruded into actual waveguide components using the cross-section definition, then positioned vertically with the top waveguide offset upward and bottom waveguide offset downward by half the separation distance. Finally, the device is instantiated and exported to a GDS file.
+
+Looking at the image more carefully, I can see the top waveguide starts horizontal, dips down smoothly, then curves back up—while the bottom does the opposite, creating a symmetric hourglass or bowtie pattern. This is a classic waveguide crossing structure, so S-bends would work well here. I'll define the cross-section with a 0.5 micron width, set the total device length to 120 microns and height to 4 microns, then calculate the vertical offset between waveguides at the narrowest point.
+
+For the S-bend geometry, I'm using a 40 micron horizontal span with a vertical displacement equal to half the total offset, which means each S-bend handles half the vertical transition. The straight sections fill the remaining horizontal space on either end. The top path goes straight, then bends down and back up, while the bottom path mirrors this with upward then downward bends. << gf.components.bend_s(size=(s_bend_dx, vertical_offset/2), cross_section=xs)
+    bottom_sbend2 = c << gf.components.bend_s(size=(s_bend_dx, -vertical_offset/2), cross_section=xs)
+    bottom_end = c << gf.components.straight(length=straight_length, cross_section=xs)
+    
+    # Connect bottom waveguide components
+    bottom_sbend1.connect("o1", bottom_start.ports["o2"])
+    bottom_sbend2.connect("o1", bottom_sbend1.ports["o2"])
+    bottom_end.connect("o1", bottom_sbend2.ports["o2"])
+    
+    # Position bottom waveguide
+    bottom_start.movey(-vertical_offset/2
+
+I'm mirroring the same structure for the lower path—creating S-bends that move down then back up, connecting them in sequence, and offsetting the starting position downward.
+
+The approach is getting unwieldy with all these individual components. A cleaner path-based method would be better, where I define the waveguide routes more directly using gdsfactory's routing capabilities rather than manually positioning each bend and straight segment.
+
+Looking at the device structure more carefully, I see two parallel waveguides that converge toward the center, creating a pinched middle section, then diverge again. This is essentially two mirrored S-bends. I can construct this by defining the path each waveguide takes and letting gdsfactory handle the bend geometry, then apply the cross-section to create the final shapes.
+
+The approach uses S-bend components with specific horizontal and vertical offsets to create the convergence and divergence. For the top waveguide, one S-bend curves inward by 1.5 units while the second curves back outward by the same amount, and these connect end-to-end. Straight sections extend from both ends to reach the desired total length.
+
+The bottom waveguide mirrors this pattern but inverted—the first bend curves outward while the second curves inward, maintaining symmetry about the center axis. Straight waveguide segments are added to complete the bottom path as well.

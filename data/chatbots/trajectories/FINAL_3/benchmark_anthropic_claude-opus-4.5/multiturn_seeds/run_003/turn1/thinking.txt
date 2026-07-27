@@ -1,0 +1,267 @@
+Looking at this image, I can see what appears to be a photonic device with two waveguides that cross or come close together in the middle. Let me analyze the shape more carefully:
+
+1. The device appears to be symmetric
+2. There are 4 ports - two on the left side (one upper, one lower) and two on the right side (one upper, one lower)
+3. The upper left port connects via an S-bend down to the center
+4. The lower left port connects via an S-bend up to the center
+5. In the center, the waveguides cross or come very close
+6. Then they diverge again - upper path goes to upper right, lower path goes to lower right
+
+This looks like a 2x2 crossing or coupler structure. The shape suggests:
+- Upper left → curves down → crosses/couples → curves up → upper right
+- Lower left → curves up → crosses/couples → curves down → lower right
+
+Actually, looking more carefully at the crossing pattern, it seems like:
+- The upper left waveguide goes down, then horizontal in the middle, then curves up to the upper right
+- The lower left waveguide goes diagonally up to meet the center, crosses, then goes down to the lower right
+
+Wait, let me look again. The shape shows:
+- Two inputs on the left at different heights
+- Two outputs on the right at different heights
+- The waveguides appear to swap positions (cross over)
+
+The footprint is 120 µm x 4 µm, which is quite elongated horizontally.
+
+Looking at the image more carefully:
+- Upper left: starts at a higher Y position, curves down
+- Lower left: starts at a lower Y position, curves up
+- They meet in the middle in a straight section
+- Then they separate again - upper path goes to upper right, lower goes to lower right
+
+This is essentially a waveguide crossing or X-junction pattern.
+
+Given the 120 µm x 4 µm footprint:
+- Total length: 120 µm
+
+
+- Total height: ~4 µm, meaning the ports are vertically separated by roughly 2 µm on each side
+
+The structure consists of two S-bends bringing the waveguides together, a straight crossing section in the middle, and two more S-bends separating them again. The waveguide width appears to be around 0.5 µm. I'd position the left ports at approximately (0, 1.5) and (0, -1.5), with corresponding right ports at (120, 1.5) and (120, -1.5).
+
+Looking more carefully at the image, the waveguides actually cross each other—one passes over the other, creating an X pattern in the middle section. I'll build this by setting up a component with a 0.5 µm waveguide width, a 120 µm total length, and 2 µm port separation vertically.
+
+The routing needs two paths: one connecting the upper ports (left to right) and another connecting the lower ports, with both paths intersecting at the center. I'll use S-bends to create the crossing geometry where the waveguides overlap in the middle region. m
+- Height span = 4 µm (so ports are at y = +2 and y = -2, or y = +1 and y = -1, etc.)
+
+Let me create this using paths:
+
+```python
+import gdsfactory as gf
+
+@gf.cell  
+def waveguide_crossing():
+    c = gf.Component()
+    
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Total length 120 um, height span 4 um
+    # Let's say ports are at y = ±1.5 µm (giving 3 µm separation, with 0.5 µm waveguide width ≈ 4 µm total)
+    
+    port_offset = 1.5  # from center
+    total
+
+_length = 120
+    
+    # S-bend length for transition (each side)
+    sbend_length = 30
+    straight_middle = total_length - 2 * sbend_length  # 60 µm middle section
+    
+    # Upper waveguide: starts at (0, port_offset), S-bends down, goes straight, S-bends up
+    # The S-bend brings it from y=port_offset to y=0 over length sbend_length
+    
+    # Actually, looking at the image again, the crossing happens in the middle
+    # where both waveguides are at the same vertical position briefly
+    
+    # Path 1: Upper left to upper right (going through middle)
+    # Path 2: Lower left to lower right (going through middle)
+    
+    # Using smooth paths:
+    points1 = [(0, port_offset), (sbend_length, 0), (sbend_length + straight_middle, 0), (total_length, port_offset)]
+    points2 = [(0, -port_offset), (sbend_length, 0), (sbend_length + straight_middle, 0), (total_length, -port_offset)]
+
+I need to define the two waveguide paths that cross through the center. The upper path transitions from y=port_offset down to y=0 over the first S-bend section, travels straight through the middle, then transitions back up. The lower path mirrors this, starting at -port_offset and crossing through the same center region. The upper path starts at the left, curves downward through an S-bend, passes through the middle crossing region, then curves back upward to exit on the right. The lower path does the opposite—starting lower on the left, curving upward to meet at the crossing, then bending downward again as it exits right. Both waveguides converge to approximately the same Y-coordinate in the middle section, which creates the crossing effect. I should use `gf.path.smooth` to construct these curved paths more naturally.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def waveguide_crossing():
+    c = gf.Component()
+    
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    total_length = 120
+    port_offset = 1.75
+    
+    # Upper waveguide curves down then back up
+    path1 = gf.path.smooth(
+        points=[(0, port_offset), (30, 0), (90, 0), (120, port_offset)],
+        radius=5
+    )
+    wg1 = c << gf.path.extrude(path1, cross_section=xs)
+    
+    # Lower waveguide curves up then back down
+    path2 = gf.path.smooth(
+        points=[(0, -port_offset), (30, 0), (90, 0), (120, -port_offset)],
+        radius=5
+    )
+    wg2 = c << gf.path.extrude(path2, cross_section=xs)
+```
+
+The ports get mapped from each waveguide to the component - o1 and o2 from the upper path, o3 and o4 from the lower. However, using smooth paths with collinear middle points could cause issues since the algorithm might struggle with routing through identical y-coordinates. I should construct the paths manually instead to have better control over the crossing geometry.
+
+Setting up a 120 × 4 μm footprint with ports separated vertically by 3 μm. The upper waveguide dips down from its offset position to the center line, holds there briefly, then rises back up to exit at the same offset. The lower waveguide follows a similar but inverted pattern, creating the crossing structure. The waveguides actually overlap in the center region, forming a crossing pattern. The upper path needs to descend from the top-left, pass through y=0 in the middle section, then rise to the top-right. Similarly, the lower path ascends from the bottom-left, crosses through y=0, and descends to the bottom-right. I should verify the path coordinates ensure both waveguides genuinely intersect at the center rather than just appearing to do so. offset = 1.75  # y position of upper/lower ports
+    
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    # Upper waveguide path (goes from upper-left through center to upper-right)
+    # It dips down in the middle
+    upper_points = [
+        (0, port_offset),      # Start upper left
+        (35, 0),               # Dip to center
+        (85, 0),               # Stay at center
+        (120, port_offset)     # Exit upper right
+    ]
+    upper_path = gf.path.smooth(points=upper_points, radius=10)
+    upper_wg = c << gf.path.extrude(upper_path, cross_section=xs)
+    
+    # Lower waveguide path (goes from lower-left through center to lower-right)
+    # It rises up in the middle
+    lower_points = [
+        (0, -port_offset),     # Start lower left
+        (35, 0),               # Rise to center
+        (85, 0),               # Stay at center
+        (120, -port_offset)    # Exit lower right
+    ]
+    lower_path = gf.path.smooth(points=lower_points, radius=10)
+    lower_wg = c << gf.path.extrude(lower_path, cross_section=xs)
+    
+    return c
+```
+
+This creates the X-crossing where both waveguides meet at the center and curve away symmetrically. .gds")
+
+However, both waveguides would pass through the same center points, which could cause issues with the smooth function. I need a different strategy—using S-bends and straight segments instead to properly separate the paths.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def waveguide_crossing():
+    c = gf.Component()
+    
+    # Parameters
+    width = 0.5
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    total_length = 120
+    port_offset = 1.75  # y position of ports from center
+    
+    # S-bend size - need to move from port
+
+_offset to 0 over some x distance
+    sbend_size = (35, port_offset)  # (dx, dy)
+    straight_length = total_length - 4 * sbend_size[0]  # middle straight section
+    
+    # Actually, let me reconsider the geometry. The upper waveguide should start at (0, port_offset), use an S-bend to reach (35, 0), travel straight to (85, 0), then S-bend back up to (120, port_offset). This means the first S-bend has dimensions (35, 1.75), the straight section is 50 units long, and the final S-bend is (35, -1.75).
+
+Let me try leveraging the bend_s component directly instead. I'll set up the cross-section with the appropriate width, define the port offset and S-bend dimensions, then construct the upper waveguide using bend_s for the downward S-bend, a straight segment for the middle section, and another bend_s for the upward S-bend. o2"])
+    
+    return c
+
+The lower waveguide path mirrors the upper one—an S-bend curves downward, connects to a straight section, then another S-bend completes the path. Finally, output ports are defined at each waveguide terminus to enable external connections. d 1: from (0, -port_offset) going up by port_offset over length sbend_dx
+- Straight: at y=0, length = straight_length (same as upper, they overlap!)
+- S-bend 2: going down by port_offset over length sbend_dx
+
+I should use the path approach more carefully. Let me set up the component with the cross-section and define the key parameters: total_length of 120, port_offset of 1.75, and sbend_dx of 35. Then I'll construct the upper waveguide by chaining an S-bend that descends, a straight section at the center, and an S-bend that ascends back.
+
+For the upper path, I'll use smooth waypoints at (0, port_offset), (sbend_dx, 0), (total_length - sbend_dx, 0), and (total_length, port_offset) with a radius of 10 for the curves. The lower waveguide mirrors this but starts at (0, -port_offset) and ends at (total_length, -port_offset), passing through the same x-coordinates at y=0.
+
+After extruding both paths with the cross-section, I'm mapping the ports from each waveguide to the component—o1 and o2 from the upper path, o3 and o4 from the lower. The concern is whether both paths can smoothly transition through those shared intermediate points without conflicts. I should explore an alternative approach to ensure the crossing geometry works properly. from upper left to upper right, dipping through center. The lower waveguide follows a similar path but in the opposite direction, rising through the center as it crosses. Both paths use smooth curves with an 8-unit radius to create the crossing effect, with slight offsets (±0.1) at the center to avoid numerical precision issues.
+
+After extruding both paths with the cross-section, I'm adding ports to connect the input and output of each waveguide—mapping the first waveguide's ports to o1 and o2, and the second waveguide's ports to o3 and o4. The function returns the completed component, which is then written to a GDS file for fabrication.
+
+Looking more carefully at the structure, I can see the crossing forms an X-pattern where the left ports (one above, one below) route inward, intersect at the center, and exit on the right side. The vertical separation between ports appears to be around 3-3.5 µm given the 120 × 4 µm footprint, suggesting a port_offset of approximately 1.5-2 µm from the centerline.
+
+To implement this, I need to define the waveguide paths using smooth curves that create S-bends on either side of the crossing. The upper path enters from the left, curves down through the middle, then curves back up to exit on the right, while the lower path does the inverse—entering from below, curving up through center, then curving down to exit below on the right side. Now I need to add the ports from both waveguides to the component. The upper waveguide's output ports become o1 and o2, while the lower waveguide's ports map to o3 and o4. Then the device gets written to a GDS file.
+
+However, there's a concern about the path definitions—both the upper and lower waveguides pass through the same intermediate points at (35, 0) and (85, 0), which means the smooth function could create paths that actually intersect at those coordinates. This overlap might cause physical or simulation issues. I should consider using bezier curves instead or accept the overlapping geometry as a trade-off.
+
+Actually, the `gf.path.smooth` function creates curves that pass near waypoints rather than through them exactly, so having shared intermediate waypoints between the two paths should work fine—they'll generate similar curves through the center without literal intersection. For a cleaner approach, I could use S-bends from `gf.components.bend_s` to compose the crossing from simpler building blocks.
+
+I'll set up the crossing with S-bends and straight sections. The upper waveguide needs to dip down through the crossing region and back up, while the lower one rises and falls symmetrically. With a total length of 120 and S-bend segments of 35 each, that leaves 50 for the middle straight section. I'm starting to place the first S-bend for the upper waveguide, which should transition downward by the port offset amount.
+
+After positioning that initial bend, I'll connect the middle straight section to its output, then add the second S-bend that brings the upper path back up. For the lower waveguide, I'm creating a mirrored structure—the first S-bend goes upward from the lower port position, and subsequent sections will complete the symmetric crossing pattern. d1_lower.ports["o1"])
+    c.add_port("o4", port=sbend2_lower.ports["o2"])
+    
+    return c
+
+device = waveguide_crossing()
+device.write_gds("waveguide_crossing.gds")
+
+There's a problem with the approach—using move() before connect() breaks the positioning logic. The real issue is that bend_s components have their input port at the origin, and the output port is offset by the specified size. If I want the first S-bend's input at a particular location, I need to account for how the component's ports are initially positioned relative to each other.
+
+A cleaner strategy is to position the first component with move(), then chain subsequent components using connect() to attach them port-to-port. For the upper waveguide, I'll create an S-bend with size (35, -1.5), add a straight section, then another S-bend. The lower waveguide mirrors this with opposite offsets. st2 = c << gf.components.straight(length=straight_length, cross_section=xs)
+st2.connect("o1", sb3.ports["o2"])
+
+sb4 = c << gf.components.bend_s(size=(sbend_length, -port_offset), cross_section=xs)
+sb4.connect("o1", st2.ports["o2"])
+
+Then I add the four ports to the component - connecting the input and output ports from each S-bend to the overall component's port interface. Finally, return the completed component.
+
+Now I need to instantiate this and write it out. But wait - I should verify how bend_s actually positions its ports. The component creates an S-bend spanning from 0 to dx in the x-direction with a y-displacement of dy, where o1 sits at one end and o2 at the other. For my upper waveguide with size=(35, -1.5), the first S-bend should have o1 near (0, 0) and o2 around (35, -1.5).
+
+Since I want the upper waveguide to start at y=1.5, I'll translate this bend by (0, 1.5), placing o2 at (35, 0). The straight section then extends from there to x=85, and the second S-bend with size=(35, 1.5) connects at that point, ending at (120, 1.5). For the lower path, I apply the same logic but with opposite y-displacements - starting at y=-1.5 and using size=(35, 1.5) for the first bend, then size=(35, -1.5) for the second.
+
+Before implementing this, I should verify the exact port positions that bend_s produces and ensure all translations happen before making connections. Let me structure the code more carefully with the component definition and parameters set up first. (length=straight_length, cross_section=xs)
+    st_upper.connect("o1", sb_upper_1.ports["o2"])
+    
+    # S-bend up: from y=0 to y=port_offset
+    sb_upper_2 = c << gf.components.bend_s(size=(sbend_length, port_offset), cross_section=xs)
+    sb_upper_2.connect("o1", st_upper.ports["o2"])
+    
+    # ===== Lower waveguide =====
+    # S-bend up: from y=-port_offset to y=0
+    sb_lower_1 = c << gf.components.bend_s(size=(sbend_length, port_offset), cross_section=xs)
+    sb_lower_1.dmovey(-port_offset)
+
+The upper path connects the first S-bend to a straight section, then curves back up with a second S-bend. For the lower waveguide, I'm creating a mirrored structure that bends upward from the negative port offset. I need to complete the partial thought from the current rewritten thinking and then summarize the next thinking.
+
+The current rewritten thinking ends with the ports being added to the component. The next thinking shows the function returning the component, then creating an instance and saving it to a GDS file. However, I notice the next thinking is cut off mid-way through a code block.
+
+Let me complete this properly:
+
+return c
+
+The function is finalized and returns the completed component. Then an instance of the waveguide crossing is created and exported to a GDS file for fabrication. =wg_upper.ports["o1"])
+    c.add_port("o2", port=wg_upper.ports["o2"])
+    c.add_port("o3", port=wg_lower.ports["o1"])
+    c.add_port("o4", port=wg_lower.ports["o2"])
+    
+    return c
+
+device = waveguide_crossing()
+device.write_gds("waveguide_crossing.gds")
+```
+
+The approach looks solid—using `gf.path.smooth` with the waypoints should generate proper curves even when both paths share intermediate coordinates. The ports are then mapped from each waveguide's endpoints to the component's interface. I should verify the dimensions match the spec: 120 µm length and the vertical spacing determined by port_offset and waveguide width.
+
+Looking at the geometry, if ports sit at y=±1.75 with 0.5 µm width, the total height spans 3.5 µm. To hit exactly 4 µm, the port offset needs adjustment to (4 - 0.5)/2 = 1.75. Let me refine the parameters and ensure the crossing structure maintains the correct footprint.
+
+The code sets up a 120 µm × 4 µm crossing with S-bends positioned at x=30 and x=90 to smoothly transition the waveguides from their outer ports to the center crossing point. The upper path traces from the left port at y=1.75, bends down to y=0 at the transition, crosses through the center, then bends back up to y=1.75 on the right side.
+
+The lower waveguide mirrors this geometry but operates at negative y-coordinates, creating a symmetric crossing. Both paths use a 12 µm bend radius for smooth transitions. After extruding both paths with the defined cross-section, ports are added to connect the upper waveguide outputs and begin assigning the lower waveguide ports.
+
+The device is then instantiated and exported to a GDS file. The resulting structure features two input waveguides on the left at different vertical positions, S-bends that guide them through a central crossing region, and two output waveguides on the right, maintaining the 120 µm × 4 µm footprint specified.
+
+Tracing through the image more carefully, the upper path enters from the left with a straight section before curving downward, while the lower path enters with a straight section curving upward. These paths intersect in the middle forming an X-shaped crossing, then separate again on the right side with the upper path curving away and the lower path curving away in opposite directions. The implementation handles this geometry correctly.
+
+For the bend radius, examining the image suggests the curves are smooth but not overly gradual—a 10-15 µm radius should balance the overall 120 µm length appropriately.
+
+The code defines a 2x2 waveguide crossing using S-bends to connect the crossing region. It sets the waveguide width to 0.5 µm, total length to 120 µm, and port offset to 1.75 µm from center. The bend radius is set to 12 µm. Transition points are placed at x=30 µm for the first S-bend and x=90 µm for the second. The upper waveguide path uses smooth curves starting from the left port offset position and transitioning through the crossing region. upper.ports["o2"])
+    c.add_port("o3", port=wg_lower.ports["o1"])
+    c.add_port("o4", port=wg_lower.ports["o2"])
+    
+    return c
+
+Then instantiate the device and export it to a GDS file with `device.write_gds("waveguide_crossing.gds")`. The ports are mapped so the upper waveguide connects to ports o1 and o2, while the lower one uses o3 and o4, creating the crossing structure shown in the reference image.

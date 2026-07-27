@@ -1,0 +1,110 @@
+Turn 1 Response:
+
+You are correct. The error `TypeError: euler() got an unexpected keyword argument 'use_sbend'` occurs because the `use_sbend` argument is part of the `gf.path.smooth` function's own logic and should not be passed down to the `bend` function (in this case, `gf.path.euler`).
+
+The fix is to remove the `use_sbend=False` argument from the `gf.path.smooth` call. The default behavior is sufficient for this geometry.
+
+### Corrected Script
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+# The device has a non-linear width profile for the outer arms.
+# We can define this as a Python function that takes a normalized
+# position (t from 0 to 1) along a path and returns the width.
+def width_profile_arm(t: float) -> float:
+    """
+    Defines the width of the outer arm along its path.
+    The width first decreases to a narrow tip and then increases to the output width.
+
+    Args:
+        t: Normalized position along the path (0=start, 1=end).
+    """
+    # Key points along the 40um total length
+    length_total = 40.0
+    length_taper_section = 15.0
+    
+    # Normalized position of the narrowest "tip"
+    t_tip = length_taper_section / length_total
+    
+    # Widths at the start, tip, and end of the arm
+    width_in = 0.2
+    width_tip = 0.05
+    width_out = 0.5
+    
+    if t <= t_tip:
+        # Linear interpolation from input width to tip width
+        return width_in + (width_tip - width_in) * (t / t_tip)
+    else:
+        # Linear interpolation from tip width to output width
+        return width_tip + (width_out - width_tip) * ((t - t_tip) / (1 - t_tip))
+
+
+@gf.cell
+def mode_converter_from_primitives():
+    """
+    Recreates the specified device using parametric GDSFactory components.
+    """
+    c = gf.Component()
+
+    # --- 1. Define Central Taper ---
+    # This is a simple straight taper primitive.
+    taper_center = gf.components.taper(
+        length=15.0, width1=0.8, width2=0.1, with_two_ports=True
+    )
+    c.add_ref(taper_center)
+
+    # --- 2. Define Outer Arms using Paths ---
+    # The outer arms require a custom path and a variable cross-section.
+
+    # Based on the footprint (40.0, 1.7), we deduce the output port positions.
+    # Assuming output width is 0.5um, the total bbox height of 1.7um implies
+    # a center-to-center separation of 1.2um for the two output arms.
+    y_center_out = 0.6  # y-coordinate for the top arm's center
+
+    # The input y-position is determined by the widths and gap at the start.
+    # Assuming a 0.1um gap: y = center_taper_half_width + gap + arm_half_width
+    y_center_in = (0.8 / 2) + 0.1 + (width_profile_arm(0) / 2)
+
+    # Define waypoints for the top arm's centerline path.
+    # The path has a slight outward bulge for a smooth transition.
+    points = [
+        (0, y_center_in),
+        (15.0, y_center_in),
+        (27.5, y_center_in + 0.05), # Mid-point of the curve with a small bulge
+        (40.0, y_center_out),
+    ]
+
+    # Create a smooth path through the waypoints using Euler bends.
+    # FIX: Removed the `use_sbend` argument, as it's not meant to be
+    # passed to the `bend` function (`gf.path.euler`).
+    path = gf.path.smooth(
+        points=points,
+        radius=10,
+        bend=gf.path.euler,
+    )
+
+    # Create a cross-section object that uses our custom width function.
+    xs_variable = gf.cross_section.cross_section(width=width_profile_arm)
+
+    # Extrude the path with the variable cross-section to create the top arm.
+    arm_top = c << gf.path.extrude(path=path, cross_section=xs_variable)
+
+    # Create the bottom arm by mirroring the top arm across the x-axis.
+    arm_bottom = c << gf.path.extrude(path=path, cross_section=xs_variable)
+    arm_bottom.mirror(p1=(0, 0), p2=(1, 0))
+
+    return c
+
+# Instantiate the component
+device = mode_converter_from_primitives()
+
+# To verify, you can print the component's size.
+# Note: due to the nature of smooth path generation, the exact bbox
+# might have minor floating-point deviations from the target.
+print(f"Component bounding box: {device.size}")
+
+# You can also show the component in the KLayout viewer if installed.
+# device.show()
+```

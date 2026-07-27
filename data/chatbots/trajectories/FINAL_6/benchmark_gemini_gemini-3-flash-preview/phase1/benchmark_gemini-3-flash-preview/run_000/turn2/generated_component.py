@@ -1,0 +1,67 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreate_exact_device():
+    """
+    Recreates the 4-petal device using path transitions for exact curvature.
+    Footprint: 4.7um x 4.7um
+    """
+    c = gf.Component("recreated_device_v2")
+    layer = (1, 0)
+    
+    # --- Precise Dimensions for 4.7um Footprint ---
+    total_footprint = 4.7
+    half_footprint = total_footprint / 2  # 2.35um
+    
+    # Petal dimensions
+    center_width = 1.6    # Width of the petal at the core
+    pin_width = 0.35      # Width of the rectangular pin
+    petal_length = 2.05   # Length of the tapered section
+    pin_length = half_footprint - petal_length  # 0.3um (extends to the 2.35um boundary)
+    
+    # 1. Create the Petal using a Path Transition
+    # This creates the smooth 'sine' curve seen in the original image
+    xs_start = gf.cross_section.cross_section(width=center_width, layer=layer)
+    xs_end = gf.cross_section.cross_section(width=pin_width, layer=layer)
+    
+    petal_path = gf.path.straight(length=petal_length)
+    petal_transition = gf.path.transition(xs_start, xs_end, width_type='sine')
+    petal = gf.path.extrude_transition(petal_path, transition=petal_transition)
+    
+    # 2. Create the Pin
+    pin_path = gf.path.straight(length=pin_length)
+    xs_pin = gf.cross_section.cross_section(width=pin_width, layer=layer)
+    pin = gf.path.extrude(pin_path, cross_section=xs_pin)
+    
+    # 3. Assemble one 'Arm' (Petal + Pin)
+    arm = gf.Component()
+    p_ref = arm << petal
+    pin_ref = arm << pin
+    pin_ref.connect("o1", p_ref.ports["o2"])
+    
+    # 4. Add a central circle to smooth the inner 'valleys' between petals
+    # This matches the rounded core transition in the target image
+    core = c << gf.components.circle(radius=center_width/2, layer=layer)
+    
+    # 5. Place 4 arms with 90-degree rotations
+    for angle in [0, 90, 180, 270]:
+        arm_ref = c << arm
+        arm_ref.rotate(angle)
+    
+    # 6. Final cleanup: Merge all overlapping primitives into one clean polygon
+    # This ensures a solid black manifold shape like the input image.
+    merged = gf.boolean(A=c, B=c, operation="or", layer=layer)
+    
+    output = gf.Component("final_device")
+    output << merged
+    return output
+
+if __name__ == "__main__":
+    # Generate the component
+    component = recreate_exact_device()
+    
+    # Explicitly write the GDS file
+    filename = "device_recreation_final.gds"
+    component.write_gds(filename)
+    
+    print(f"Successfully generated: {filename}")

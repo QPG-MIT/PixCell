@@ -1,0 +1,66 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreate_curved_waveguides():
+    """
+    Turn 3: Optimized recreation of the converging curved waveguides.
+    Increases width and smoothens curvature to match the bold visual weight
+    of the target image while strictly adhering to the 18um x 3um footprint.
+    """
+    # 1. Dimensions and Visual Tuning
+    L = 18.0
+    H = 3.0
+    
+    # We increase the width for a bolder look and tighten the gap.
+    width = 1.15  
+    center_gap = 0.07 
+    
+    # 2. Coordinate Calculation
+    # To match the target, we align the top/bottom edges of the waveguides 
+    # with the 3um boundary at the far ends.
+    # At ends, centers are at: +/- (1.5 - width/2)
+    y_end_center = (H / 2) - (width / 2)  # 1.5 - 0.575 = 0.925
+    
+    # At the middle point, they are separated by 'center_gap'.
+    # Centers at: +/- (center_gap/2 + width/2)
+    y_mid_center = (center_gap / 2) + (width / 2) # 0.035 + 0.575 = 0.61
+    
+    # The vertical displacement (dy) for the 9um S-bend segments
+    dy = y_end_center - y_mid_center # 0.315 um
+    dx = L / 2
+    
+    c = gf.Component("final_refined_coupler")
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    # 3. Build the Arm Template
+    # Using npoints=256 ensures a high-resolution curve for clean rasterization.
+    arm = gf.Component("arm_template")
+    # First half: S-bend dipping down towards the center
+    s1 = arm << gf.components.bend_s(size=(dx, -dy), cross_section=xs, npoints=256)
+    # Second half: S-bend returning up towards the end
+    s2 = arm << gf.components.bend_s(size=(dx, dy), cross_section=xs, npoints=256)
+    s2.connect("o1", s1.ports["o2"])
+    
+    # 4. Assemble the Device
+    # Place Top Arm (The 'Valley')
+    top_ref = c << arm
+    top_ref.movey(y_end_center)
+    
+    # Place Bottom Arm (The 'Hill')
+    # Perfect symmetry is achieved by mirroring the valley component.
+    bot_ref = c << arm
+    bot_ref.mirror_y()
+    bot_ref.movey(-y_end_center)
+    
+    # Center the entire device horizontally within the 18um window
+    c.movex(-L/2)
+    
+    # 5. Export GDS
+    c.write_gds("recreated_geometry.gds")
+    
+    return c
+
+if __name__ == "__main__":
+    # Execute to generate the GDS file
+    device = recreate_curved_waveguides()
+    print("GDS file 'recreated_geometry.gds' produced with Turn 3 refinements.")

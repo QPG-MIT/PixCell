@@ -1,0 +1,106 @@
+import gdsfactory as gf
+
+@gf.cell
+def grating_coupler(
+    length: float = 8.0,
+    height: float = 0.7,
+    center_spacing: float = 0.2,
+    width: float = 0.3,
+    n_slits: int = 11,
+    slit_width: float = 0.1,
+    layer: tuple[int, int] = (1, 0),
+) -> gf.Component:
+    solid = gf.components.rectangle(size=(length, height), layer=layer, centered=True)
+    
+    slits = gf.Component()
+    step = length / n_slits
+    for i in range(n_slits):
+        slit = slits << gf.components.rectangle(size=(slit_width, height + 0.01), layer=layer, centered=True)
+        slit.movex((i + 0.5) * step - length / 2)
+    
+    grating = gf.boolean(solid, slits, operation="not", layer=layer)
+    
+    grating.add_port("upper_o1", center=(-length / 2, center_spacing), width=width, orientation=180, layer=layer)
+    grating.add_port("upper_o2", center=(length / 2, center_spacing), width=width, orientation=0, layer=layer)
+    grating.add_port("lower_o1", center=(-length / 2, -center_spacing), width=width, orientation=180, layer=layer)
+    grating.add_port("lower_o2", center=(length / 2, -center_spacing), width=width, orientation=0, layer=layer)
+    
+    return grating
+
+@gf.cell
+def my_device() -> gf.Component:
+    c = gf.Component()
+    layer = (1, 0)
+    width = 0.3
+    gap = 0.1
+    center_spacing = gap / 2 + width / 2  # 0.2
+    end_spacing = 0.002
+    dy_bend = center_spacing - end_spacing  # ~0.198
+    middle_length = 8.0
+    total_length = 18.24
+    side_length = (total_length - middle_length) / 2  # 5.12
+    taper_length = 4.12
+    bend_length = side_length - taper_length  # 1.0
+    xs = gf.cross_section.cross_section(width=width, layer=layer, radius_min=0.1)
+
+    # Left tapers
+    taper_left = gf.components.taper(
+        length=taper_length, width1=0.002, width2=width, layer=layer
+    )
+    tlu = c << taper_left
+    tlu.move((0, end_spacing))
+    tll = c << taper_left
+    tll.move((0, -end_spacing))
+
+    # Left bends
+    bend_left_upper = gf.components.bend_s(
+        size=(bend_length, dy_bend), cross_section=xs
+    )
+    blu = c << bend_left_upper
+    blu.connect("o1", tlu.ports["o2"])
+
+    bend_left_lower = gf.components.bend_s(
+        size=(bend_length, -dy_bend), cross_section=xs
+    )
+    bll = c << bend_left_lower
+    bll.connect("o1", tll.ports["o2"])
+
+    # Middle grating coupler
+    middle = c << grating_coupler(
+        length=middle_length,
+        height=0.7,
+        center_spacing=center_spacing,
+        width=width,
+        n_slits=11,
+        slit_width=0.1,
+        layer=layer,
+    )
+    middle.connect("upper_o1", blu.ports["o2"])
+
+    # Right bends
+    bend_right_upper = gf.components.bend_s(
+        size=(bend_length, -dy_bend), cross_section=xs
+    )
+    bru = c << bend_right_upper
+    bru.connect("o1", middle.ports["upper_o2"])
+
+    bend_right_lower = gf.components.bend_s(
+        size=(bend_length, dy_bend), cross_section=xs
+    )
+    brl = c << bend_right_lower
+    brl.connect("o1", middle.ports["lower_o2"])
+
+    # Right tapers
+    taper_right = gf.components.taper(
+        length=taper_length, width1=width, width2=0.002, layer=layer
+    )
+    tru = c << taper_right
+    tru.connect("o1", bru.ports["o2"])
+
+    trl = c << taper_right
+    trl.connect("o1", brl.ports["o2"])
+
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")

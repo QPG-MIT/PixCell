@@ -1,0 +1,102 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_refined():
+    """
+    Refined directional coupler to match visual proportions of the target image.
+    Footprint: 120um x 4um
+    """
+    c = gf.Component()
+
+    # --- Geometric Parameters ---
+    # Footprint constraint
+    total_length = 120.0
+    total_height = 4.0
+    
+    # Waveguide dimensions adjusted for visual match (thicker lines)
+    wg_width = 0.6
+    coupling_gap = 0.3
+    
+    # Longitudinal section lengths
+    # Lengthened coupler and shortened bends to match the image profile
+    l_io = 10.0       # Input/Output straight sections
+    l_bend = 25.0     # S-bend transition length
+    l_coup = 50.0     # Central coupling region length
+    
+    # Validation: 10 + 25 + 50 + 25 + 10 = 120.0
+    
+    # --- Vertical Coordinate Calculations ---
+    # 1. Input/Output Region: Maximize vertical separation within 4um height
+    # Top WG Center: +2.0 (edge) - 0.3 (half width) = +1.7
+    y_io_top = (total_height / 2) - (wg_width / 2)
+    y_io_bot = -y_io_top
+    
+    # 2. Coupling Region: Compact center spacing
+    # Top WG Center: 0.15 (half gap) + 0.3 (half width) = +0.45
+    y_coup_top = (coupling_gap / 2) + (wg_width / 2)
+    y_coup_bot = -y_coup_top
+    
+    # 3. Bend Offset (vertical shift required)
+    dy = y_io_top - y_coup_top  # 1.7 - 0.45 = 1.25
+
+    # --- Cross Section ---
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Primitives ---
+    # Straight sections
+    s_io = gf.components.straight(length=l_io, cross_section=xs)
+    s_coup = gf.components.straight(length=l_coup, cross_section=xs)
+    
+    # S-Bends
+    # Top arm bends: Down (Converge), Up (Diverge)
+    bend_down = gf.components.bend_s(size=(l_bend, -dy), cross_section=xs)
+    bend_up = gf.components.bend_s(size=(l_bend, dy), cross_section=xs)
+
+    # --- Assembly ---
+    
+    # Top Arm Construction
+    t1 = c << s_io
+    t1.movey(y_io_top)
+    
+    t2 = c << bend_down
+    t2.connect("o1", t1.ports["o2"])
+    
+    t3 = c << s_coup
+    t3.connect("o1", t2.ports["o2"])
+    
+    t4 = c << bend_up
+    t4.connect("o1", t3.ports["o2"])
+    
+    t5 = c << s_io
+    t5.connect("o1", t4.ports["o2"])
+
+    # Bottom Arm Construction
+    b1 = c << s_io
+    b1.movey(y_io_bot)
+    
+    # Bottom converges by bending UP
+    b2 = c << bend_up
+    b2.connect("o1", b1.ports["o2"])
+    
+    b3 = c << s_coup
+    b3.connect("o1", b2.ports["o2"])
+    
+    # Bottom diverges by bending DOWN
+    b4 = c << bend_down
+    b4.connect("o1", b3.ports["o2"])
+    
+    b5 = c << s_io
+    b5.connect("o1", b4.ports["o2"])
+
+    # --- Ports ---
+    c.add_port("o1", port=t1.ports["o1"])
+    c.add_port("o2", port=b1.ports["o1"])
+    c.add_port("o3", port=t5.ports["o2"])
+    c.add_port("o4", port=b5.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler_refined()
+    device.write_gds("directional_coupler_refined.gds")
+    device.show()

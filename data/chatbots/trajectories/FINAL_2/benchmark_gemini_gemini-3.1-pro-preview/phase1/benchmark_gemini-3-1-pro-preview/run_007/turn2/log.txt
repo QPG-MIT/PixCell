@@ -1,0 +1,83 @@
+Turn 2 Response:
+
+Thank you for sharing the rendered output. Seeing it helps significantly. 
+
+Comparing your rendered image to the very first original image, it is clear why they look different: **the proportions of the top tapering arms were way off.**
+
+In my first script, I made the base of each top taper `4.0 μm` wide. Because they are spaced `6.0 μm` apart, this left only a tiny `2.0 μm` gap between them, causing them to look massive and crowded. Furthermore, the tapers were too short (`8.0 μm`) compared to the original image where they stretch out much longer relative to the central rectangle.
+
+To match the original image, we need to:
+1.  **Narrow the taper bases:** Reduce `width1` from `4.0` down to `2.0` so the gaps between them become larger than the tapers themselves.
+2.  **Lengthen the tapers:** Increase their length from `8.0` to `15.0`.
+3.  **Narrow the tips/straights:** Reduce the tip `width2` from `1.0` down to `0.5` to get that sharp, needle-like look.
+4.  **Lengthen the straight extensions:** Make the straight waveguides at the top longer (`10.0`) so they are clearly visible.
+
+Here is the corrected script with the fine-tuned proportions to accurately replicate the original visual:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def optical_splitter_1x4_proportional():
+    """
+    Creates a 1x4 optical splitter with corrected visual proportions 
+    to match the reference image.
+    """
+    c = gf.Component("optical_splitter_1x4")
+    layer = (1, 0)
+    
+    # --- 1. Central Body (MMI Region) ---
+    # Footprint constraint: 25 wide, 10 high.
+    body_width = 25.0
+    body_height = 10.0
+    c << gf.components.rectangle(size=(body_width, body_height), layer=layer, centered=True)
+
+    # --- 2. Bottom Input Taper ---
+    # Proportions adjusted: base width is moderate, tapering down slightly.
+    t_bot = c << gf.components.taper(
+        length=6.0,
+        width1=4.0,  # Base width at MMI body
+        width2=1.5   # Input waveguide width
+    )
+    # Rotate to face UP and move to the bottom edge of the central rectangle
+    t_bot.rotate(-90)
+    t_bot.move((0, -body_height / 2))
+    
+    c.add_port("o1", port=t_bot.ports["o2"])
+
+    # --- 3. Top Output Arms (Taper + Straight) ---
+    # Symmetrically distributed centers
+    x_centers = [-9.0, -3.0, 3.0, 9.0]
+    
+    # Top straight sections are thinner in the reference image
+    top_arm_width = 0.5 
+    xs_top = gf.cross_section.cross_section(width=top_arm_width, layer=layer)
+
+    for i, x_pos in enumerate(x_centers):
+        # A. Output Taper - (FIXED: narrower base, narrower tip, longer length)
+        t_top = c << gf.components.taper(
+            length=15.0,         # Increased length for the elongated look
+            width1=2.0,          # Narrower base to create wider visual gaps
+            width2=top_arm_width # Narrow tip merging into straight section
+        )
+        t_top.rotate(90)
+        t_top.move((x_pos, body_height / 2))
+
+        # B. Straight Extension - (FIXED: explicitly longer)
+        s_top = c << gf.components.straight(
+            length=10.0, 
+            cross_section=xs_top
+        )
+        # Snap the straight section to the narrow end of the taper
+        s_top.connect("o1", t_top.ports["o2"])
+        
+        c.add_port(f"o{i+2}", port=s_top.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = optical_splitter_1x4_proportional()
+    
+    # Save the GDS file
+    device.write_gds("optical_splitter_1x4.gds")
+```

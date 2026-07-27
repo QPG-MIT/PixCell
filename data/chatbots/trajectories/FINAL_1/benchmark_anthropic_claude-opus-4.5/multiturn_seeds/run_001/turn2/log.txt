@@ -1,0 +1,75 @@
+Turn 2 Response:
+
+Looking at the comparison, I can see the main issues:
+1. The S-bend divergence is too small - the outputs need to spread apart more
+2. The straight section length vs S-bend proportion needs adjustment
+
+Let me fix these:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def waveguide_y_splitter():
+    """
+    Y-splitter waveguide device.
+    Two parallel waveguides that diverge via S-bends.
+    Footprint: 40.0 x 1.7 um
+    """
+    c = gf.Component()
+    
+    # Cross-section parameters
+    wg_width = 0.5
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+    
+    # Geometry parameters - adjusted for better match
+    straight_length = 22.0  # Longer parallel coupling section
+    sbend_dx = 18.0  # S-bend horizontal extent
+    sbend_dy = 0.45  # Larger vertical offset per arm for more divergence
+    input_gap = 0.2  # Gap between waveguides at input
+    
+    # Calculate y-offset for waveguide centers
+    y_offset = (input_gap + wg_width) / 2  # = 0.35
+    
+    # === TOP WAVEGUIDE ARM ===
+    # Straight section
+    top_straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+    top_straight.move((0, y_offset))
+    
+    # S-bend curving upward
+    top_sbend = c << gf.components.bend_s(size=(sbend_dx, sbend_dy), cross_section=xs)
+    top_sbend.connect("o1", top_straight.ports["o2"])
+    
+    # === BOTTOM WAVEGUIDE ARM ===
+    # Straight section
+    bot_straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+    bot_straight.move((0, -y_offset))
+    
+    # S-bend curving downward
+    bot_sbend = c << gf.components.bend_s(size=(sbend_dx, -sbend_dy), cross_section=xs)
+    bot_sbend.connect("o1", bot_straight.ports["o2"])
+    
+    # Add external ports
+    c.add_port("o1", port=top_straight.ports["o1"])
+    c.add_port("o2", port=bot_straight.ports["o1"])
+    c.add_port("o3", port=top_sbend.ports["o2"])
+    c.add_port("o4", port=bot_sbend.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = waveguide_y_splitter()
+device.write_gds("waveguide_y_splitter.gds")
+```
+
+**Key changes:**
+- Increased `straight_length` from 18 to 22 μm - the parallel section in the target is longer
+- Decreased `sbend_dx` from 22 to 18 μm - compensating for longer straight section
+- Increased `sbend_dy` from 0.25 to 0.45 μm - the target shows much more vertical divergence at output
+
+**Updated geometry:**
+- Total length: 22 + 18 = 40 μm ✓
+- Input height: 0.5 + 0.2 + 0.5 = 1.2 μm
+- Output height: 1.2 + 2×0.45 = 2.1 μm (matches visual spread better)
+- The waveguides now spread more dramatically at the output to match the target image

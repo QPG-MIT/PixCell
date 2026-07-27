@@ -1,0 +1,36 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device():
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    dy_offset = 0.9
+    dx_half = 9.0
+
+    # Bottom waveguide
+    bottom_left = gf.components.bend_s(size=(dx_half, dy_offset), cross_section=xs)
+    bl_ref = c << bottom_left
+    bl_ref.move((0, 0.25))
+
+    bottom_right = gf.components.bend_s(size=(dx_half, -dy_offset), cross_section=xs)
+    br_ref = c << bottom_right
+    br_ref.connect("o1", bl_ref.ports["o2"])
+
+    # Top waveguide
+    top_left = gf.components.bend_s(size=(dx_half, -dy_offset), cross_section=xs)
+    tl_ref = c << top_left
+    tl_ref.move((0, 2.75))
+
+    top_right = gf.components.bend_s(size=(dx_half, dy_offset), cross_section=xs)
+    tr_ref = c << top_right
+    tr_ref.connect("o1", tl_ref.ports["o2"])
+
+    return c
+
+dev = device()
+dev.write_gds("device.gds")
+```

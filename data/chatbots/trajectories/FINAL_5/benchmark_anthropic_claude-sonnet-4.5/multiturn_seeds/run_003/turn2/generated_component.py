@@ -1,0 +1,123 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def grating_coupler_device():
+    """
+    Recreates the grating coupler device with tapered waveguides.
+    Footprint: 18.24 x 0.7 um
+    """
+    c = gf.Component()
+    
+    # Device dimensions (in micrometers)
+    total_length = 18.24
+    total_height = 0.7
+    
+    # Waveguide parameters
+    max_wg_height = 0.26  # Maximum height of each waveguide
+    min_wg_height = 0.01  # Minimum height at tips
+    center_gap = 0.18  # Gap between top and bottom waveguides
+    center_line_height = 0.015  # Thin center line
+    
+    # Grating parameters
+    grating_start = 3.0
+    grating_end = 15.24
+    grating_period = 0.18
+    duty_cycle = 0.48
+    bar_width = grating_period * duty_cycle
+    gap_width = grating_period * (1 - duty_cycle)
+    
+    # Create tapered waveguide profile using smooth function
+    def create_tapered_wg_polygon(y_center, n_points=200):
+        """Create smooth lens-shaped waveguide"""
+        x = np.linspace(0, total_length, n_points)
+        
+        # Smooth taper: parabolic profile
+        half_width = min_wg_height/2 + (max_wg_height/2 - min_wg_height/2) * \
+                     (1 - ((2 * x / total_length - 1) ** 4))
+        
+        # Create polygon points
+        top_edge = [(x[i], y_center + half_width[i]) for i in range(n_points)]
+        bottom_edge = [(x[i], y_center - half_width[i]) for i in range(n_points-1, -1, -1)]
+        
+        return top_edge + bottom_edge
+    
+    # Y positions for top and bottom waveguides
+    top_y = center_gap / 2 + max_wg_height / 2
+    bottom_y = -(center_gap / 2 + max_wg_height / 2)
+    
+    # Create top waveguide with gratings
+    top_points = create_tapered_wg_polygon(top_y)
+    
+    # Add solid sections and grating sections separately
+    # Left solid section (before grating)
+    left_solid_top = [(x, y) for x, y in top_points if x < grating_start]
+    if left_solid_top:
+        c.add_polygon(left_solid_top + [(grating_start, top_y - max_wg_height/2),
+                                        (grating_start, top_y + max_wg_height/2),
+                                        (0, top_y + min_wg_height/2),
+                                        (0, top_y - min_wg_height/2)], layer=(1, 0))
+    
+    # Right solid section (after grating)
+    right_solid_top = [(x, y) for x, y in top_points if x > grating_end]
+    if right_solid_top:
+        c.add_polygon(right_solid_top + [(total_length, top_y - min_wg_height/2),
+                                         (total_length, top_y + min_wg_height/2),
+                                         (grating_end, top_y + max_wg_height/2),
+                                         (grating_end, top_y - max_wg_height/2)], layer=(1, 0))
+    
+    # Grating bars for top waveguide
+    n_bars = int((grating_end - grating_start) / grating_period)
+    for i in range(n_bars):
+        x_pos = grating_start + i * grating_period
+        bar = c << gf.components.rectangle(
+            size=(bar_width, max_wg_height * 1.1),
+            layer=(1, 0),
+            centered=False
+        )
+        bar.move((x_pos, top_y - max_wg_height * 0.55))
+    
+    # Create bottom waveguide (mirror of top)
+    bottom_points = create_tapered_wg_polygon(bottom_y)
+    
+    # Left solid section (bottom)
+    left_solid_bottom = [(x, y) for x, y in bottom_points if x < grating_start]
+    if left_solid_bottom:
+        c.add_polygon(left_solid_bottom + [(grating_start, bottom_y + max_wg_height/2),
+                                           (grating_start, bottom_y - max_wg_height/2),
+                                           (0, bottom_y - min_wg_height/2),
+                                           (0, bottom_y + min_wg_height/2)], layer=(1, 0))
+    
+    # Right solid section (bottom)
+    right_solid_bottom = [(x, y) for x, y in bottom_points if x > grating_end]
+    if right_solid_bottom:
+        c.add_polygon(right_solid_bottom + [(total_length, bottom_y + min_wg_height/2),
+                                            (total_length, bottom_y - min_wg_height/2),
+                                            (grating_end, bottom_y - max_wg_height/2),
+                                            (grating_end, bottom_y + max_wg_height/2)], layer=(1, 0))
+    
+    # Grating bars for bottom waveguide
+    for i in range(n_bars):
+        x_pos = grating_start + i * grating_period
+        bar = c << gf.components.rectangle(
+            size=(bar_width, max_wg_height * 1.1),
+            layer=(1, 0),
+            centered=False
+        )
+        bar.move((x_pos, bottom_y - max_wg_height * 0.55))
+    
+    # Add center line
+    center_line = c << gf.components.rectangle(
+        size=(total_length, center_line_height),
+        layer=(1, 0),
+        centered=False
+    )
+    center_line.move((0, -center_line_height/2))
+    
+    return c
+
+# Create the device and save
+device = grating_coupler_device()
+device.show()
+device.write_gds("grating_coupler_device.gds")
+print("GDS file created successfully!")

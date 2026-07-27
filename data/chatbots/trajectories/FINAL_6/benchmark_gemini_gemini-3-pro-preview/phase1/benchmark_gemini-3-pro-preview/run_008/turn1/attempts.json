@@ -1,0 +1,39 @@
+{
+  "turn": 1,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:55:12.761852",
+      "api_duration_seconds": 162.9409999847412,
+      "usage": {
+        "input_tokens": 3193,
+        "output_tokens": 1336,
+        "total_tokens": 17947
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:57:57.155466",
+      "api_duration_seconds": 50.219497203826904,
+      "usage": {
+        "input_tokens": 5002,
+        "output_tokens": 951,
+        "total_tokens": 9937
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 8195,
+    "output_tokens": 2287,
+    "total_tokens": 27884
+  }
+}

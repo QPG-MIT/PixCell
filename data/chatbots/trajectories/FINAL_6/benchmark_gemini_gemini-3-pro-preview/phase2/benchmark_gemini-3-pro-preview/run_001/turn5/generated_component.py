@@ -1,0 +1,101 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_design():
+    """
+    Generates a 4-petal device matching the target visual profile.
+    
+    Key Design Features:
+    - 4-fold rotational symmetry.
+    - "Fat" petal shape modeled by a sine wave to create a convex lens profile.
+    - Solid fused center: Achieved by shifting the phase of the petal profile so it has 
+      non-zero width at the origin, ensuring the four arms overlap into a central block.
+    - Narrow star-shaped negative space between petals.
+    - Distinct rectangular tips protruding from the petal ends.
+    - Dimensions constrained to fit a 4.7um x 4.7um footprint.
+    """
+    c = gf.Component()
+
+    # 1. Define Dimensions
+    # The device fits in a 4.7um box, so the max radius is 2.35um.
+    R_total = 2.35
+    
+    # Parameters estimated from the target image:
+    # The tip is a straight stick.
+    L_tip = 0.60          
+    W_tip = 0.22          
+    
+    # The petal body covers the rest of the radius.
+    L_petal = R_total - L_tip
+    
+    # Max width of the petal. 
+    # Increased to 1.35 to match the "fat" bulbous look of the target.
+    W_petal_max = 1.35     
+
+    # 2. Generate Custom Petal Geometry with Fused Center
+    # We use a sine wave profile: y(u) = A * sin(k * u)
+    # where u is a coordinate along the arm axis.
+    # To create a solid center, we define u = x + overlap.
+    # This means at the device center (x=0), u = overlap, and the width is non-zero.
+    
+    overlap = 0.6  # Shift to create the fused center
+    A = W_petal_max / 2.0
+    
+    # We define the wave such that it tapers down to W_tip at the end of the petal section.
+    # u_end corresponds to x = L_petal.
+    u_end = L_petal + overlap
+    target_half_width = W_tip / 2.0
+    
+    # Calculate wave number 'k'
+    # We want sin(k * u_end) = target_half_width / A
+    # We select the solution on the falling edge (pi/2 < angle < pi) to ensure the 
+    # petal bulges out before tapering.
+    ratio = np.clip(target_half_width / A, 0, 1)
+    angle_end = np.pi - np.arcsin(ratio)
+    k = angle_end / u_end
+    
+    # Generate profile points for the visible part (x from 0 to L_petal)
+    N_points = 300
+    x = np.linspace(0, L_petal, N_points)
+    u = x + overlap
+    y = A * np.sin(k * u)
+    
+    # Build polygon coordinates
+    pts_top = np.column_stack((x, y))
+    pts_bot = np.column_stack((x, -y))
+    # Combine top and reversed bottom to form a closed loop
+    pts = np.vstack((pts_top, pts_bot[::-1]))
+    
+    # Create the petal component
+    petal = gf.Component("petal_primitive")
+    petal.add_polygon(pts, layer=(1, 0))
+
+    # 3. Create the Tip Geometry
+    # A simple rectangle attached to the end of the petal.
+    tip = gf.components.rectangle(size=(L_tip, W_tip), layer=(1, 0), centered=True)
+
+    # 4. Assemble one Arm (Petal + Tip)
+    arm = gf.Component("arm")
+    
+    # Add petal (starts at 0,0)
+    arm << petal
+    
+    # Add tip
+    # The rectangle is centered at (0,0) with width L_tip. It spans [-L_tip/2, L_tip/2].
+    # We want it to start at L_petal and end at L_petal + L_tip.
+    # Therefore, we move its center to L_petal + L_tip/2.
+    t_ref = arm << tip
+    t_ref.move((L_petal + L_tip/2.0, 0))
+
+    # 5. Arrange 4 Arms into the Device
+    for angle in [0, 90, 180, 270]:
+        ref = c << arm
+        ref.rotate(angle)
+
+    return c
+
+if __name__ == "__main__":
+    component = device_design()
+    component.write_gds("device_design.gds")
+    component.show()

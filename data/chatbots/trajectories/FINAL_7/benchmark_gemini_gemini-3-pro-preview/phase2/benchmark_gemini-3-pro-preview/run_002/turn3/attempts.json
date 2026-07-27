@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:02:51.107696",
+      "api_duration_seconds": 109.80829310417175,
+      "usage": {
+        "input_tokens": 6132,
+        "output_tokens": 1502,
+        "total_tokens": 17069
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.25 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:04:42.132954",
+      "api_duration_seconds": 73.61814570426941,
+      "usage": {
+        "input_tokens": 7680,
+        "output_tokens": 1803,
+        "total_tokens": 15196
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:05:56.980055",
+      "api_duration_seconds": 47.47545504570007,
+      "usage": {
+        "input_tokens": 9509,
+        "output_tokens": 1709,
+        "total_tokens": 14455
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports bend_circular_gdsfactorypcomponentspbendspbend_circular_c8e1002c_0_0[\"o1\"] and Port \"o2\" (\"200\"/\"600\")",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 23321,
+    "output_tokens": 5014,
+    "total_tokens": 46720
+  }
+}

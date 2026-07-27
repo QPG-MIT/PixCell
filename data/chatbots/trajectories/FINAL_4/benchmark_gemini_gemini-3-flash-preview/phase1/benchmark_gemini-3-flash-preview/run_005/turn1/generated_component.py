@@ -1,0 +1,89 @@
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler():
+    """
+    Recreates the symmetric coupler geometry using parametric primitives.
+    Total footprint: 18um x 3um.
+    """
+    c = gf.Component("symmetric_coupler")
+    
+    # 1. Configuration Constants
+    total_length = 18.0
+    total_height = 3.0
+    wg_width = 0.5
+    coupling_gap = 0.1      # Gap between waveguides at the center
+    coupling_length = 4.0   # Length of the straight section in the middle
+    
+    # 2. Define Cross-Section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    
+    # 3. Calculate Dimensions
+    # Horizontal length for each S-bend segment
+    dx_sbend = (total_length - coupling_length) / 2
+    
+    # Vertical positions (centers of waveguides)
+    # Ends: aligned so the outer edges are at y=0 and y=3
+    y_top_start = total_height - wg_width / 2  # 2.75
+    y_bot_start = wg_width / 2                 # 0.25
+    
+    # Center: symmetric around the midline (y=1.5)
+    y_top_mid = 1.5 + (coupling_gap / 2) + (wg_width / 2) # 1.8
+    y_bot_mid = 1.5 - (coupling_gap / 2) - (wg_width / 2) # 1.2
+    
+    # Vertical displacement (dy) for the S-bends
+    dy_top = y_top_mid - y_top_start # -0.95
+    dy_bot = y_bot_mid - y_bot_start # +0.95
+    
+    # 4. Create Components
+    # Top arm segments
+    s_top_in = gf.components.bend_s(size=(dx_sbend, dy_top), cross_section=xs)
+    straight_mid = gf.components.straight(length=coupling_length, cross_section=xs)
+    s_top_out = gf.components.bend_s(size=(dx_sbend, -dy_top), cross_section=xs)
+    
+    # Bottom arm segments
+    s_bot_in = gf.components.bend_s(size=(dx_sbend, dy_bot), cross_section=xs)
+    s_bot_out = gf.components.bend_s(size=(dx_sbend, -dy_bot), cross_section=xs)
+    
+    # 5. Assemble Top Arm
+    t1 = c << s_top_in
+    t1.movey(y_top_start)
+    
+    t2 = c << straight_mid
+    t2.connect("o1", t1.ports["o2"])
+    
+    t3 = c << s_top_out
+    t3.connect("o1", t2.ports["o2"])
+    
+    # 6. Assemble Bottom Arm
+    b1 = c << s_bot_in
+    b1.movey(y_bot_start)
+    
+    b2 = c << straight_mid # Re-use straight segment component
+    b2.connect("o1", b1.ports["o2"])
+    
+    b3 = c << s_bot_out
+    b3.connect("o1", b2.ports["o2"])
+    
+    # 7. Expose Ports
+    c.add_port("o1", port=t1.ports["o1"])
+    c.add_port("o2", port=b1.ports["o1"])
+    c.add_port("o3", port=t3.ports["o2"])
+    c.add_port("o4", port=b3.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    component = symmetric_coupler()
+    
+    # Print dimensions to console for verification
+    print(f"Component dimensions: {component.xsize:.3f} um x {component.ysize:.3f} um")
+    
+    # Explicitly write to a GDS file
+    gdspath = "symmetric_coupler.gds"
+    component.write_gds(gdspath)
+    print(f"GDS file saved to: {gdspath}")
+    
+    # Optional: show in KLayout if installed
+    # component.show()

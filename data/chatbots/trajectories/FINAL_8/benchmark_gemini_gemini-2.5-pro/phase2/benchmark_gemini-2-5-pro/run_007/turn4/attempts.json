@@ -1,0 +1,39 @@
+{
+  "turn": 4,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:31:38.400339",
+      "api_duration_seconds": 69.08483600616455,
+      "usage": {
+        "input_tokens": 4212,
+        "output_tokens": 2042,
+        "total_tokens": 13149
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: rectangle_gdsfactorypcomponentspshapesprectangle_S0p103_514abb03_0_0_A44p99999999999999, Cell name: rectangle_gdsfactorypcomponentspshapesprectangle_S0p103_514abb03",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:32:48.745268",
+      "api_duration_seconds": 28.565125226974487,
+      "usage": {
+        "input_tokens": 6413,
+        "output_tokens": 2015,
+        "total_tokens": 9414
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10625,
+    "output_tokens": 4057,
+    "total_tokens": 22563
+  }
+}

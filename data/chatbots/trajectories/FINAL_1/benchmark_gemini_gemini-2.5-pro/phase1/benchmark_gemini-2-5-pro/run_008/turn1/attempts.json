@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.559125",
+      "api_duration_seconds": 130.3790168762207,
+      "usage": {
+        "input_tokens": 2348,
+        "output_tokens": 1479,
+        "total_tokens": 17834
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:21.660100",
+      "api_duration_seconds": 10.850734949111938,
+      "usage": {
+        "input_tokens": 3858,
+        "output_tokens": 1169,
+        "total_tokens": 5141
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'Path' object has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:33.853045",
+      "api_duration_seconds": 22.4119873046875,
+      "usage": {
+        "input_tokens": 5054,
+        "output_tokens": 1282,
+        "total_tokens": 7691
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ModuleNotFoundError: No module named 'gdsfactory.path.points'; 'gdsfactory.path' is not a package",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11260,
+    "output_tokens": 3930,
+    "total_tokens": 30666
+  }
+}

@@ -1,0 +1,119 @@
+Turn 1 Response:
+
+This `AttributeError: 'TKCell' object has no attribute 'references'` indicates that the way component references are accessed has changed in the version of GDSFactory (or its backend, kfactory) being used. The attribute `.references` is no longer the correct way to get a list of references within a component.
+
+The modern and more robust GDSFactory pattern is to capture the returned reference object when you add a component using the `<<` operator, and then apply transformations directly to that object.
+
+The error occurred in the `create_device` function when placing the four rectangular holes. The `solid_racetrack` helper function from the previous fix was already using the correct pattern. The fix is to apply this same pattern to the hole placement logic.
+
+Here is the corrected script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def solid_racetrack(length: float, radius: float, layer: tuple) -> gf.Component:
+    """
+    Creates a solid racetrack shape (a rectangle with semicircular ends)
+    by placing and merging primitive shapes. This function uses the correct
+    GDSFactory pattern of adding references before transforming them.
+
+    Args:
+        length: The length of the straight section of the racetrack.
+        radius: The radius of the semicircular ends.
+        layer: The GDS layer for the shape.
+
+    Returns:
+        A component containing the solid racetrack geometry.
+    """
+    c = gf.Component()
+    
+    # Create the primitive shapes without transforming them
+    center_rect = gf.components.rectangle(size=(length, 2 * radius), layer=layer)
+    end_circle = gf.components.circle(radius=radius, layer=layer)
+
+    # Add the primitives as references to the component
+    c << center_rect
+    circle_ref_right = c << end_circle
+    circle_ref_left = c << end_circle
+
+    # Move the REFERENCES, not the original cached component
+    circle_ref_right.movex(length / 2)
+    circle_ref_left.movex(-length / 2)
+
+    # Flatten the component to perform a union, merging all overlapping shapes
+    # into a single polygon.
+    c.flatten()
+    return c
+
+
+@gf.cell
+def create_device():
+    """
+    Creates the target device using boolean subtraction of parametric primitives.
+    """
+    c = gf.Component("racetrack_resonator_csrrs")
+
+    # 1. Define device dimensions based on footprint and visual proportions
+    footprint_width = 5.5
+    footprint_height = 3.0
+
+    # Parameters for the main solid body
+    outer_radius = footprint_height / 2.0
+    outer_length = footprint_width - 2 * outer_radius
+
+    # Parameters for the central void (inner racetrack to be subtracted)
+    central_gap = 0.8
+    void_radius = central_gap / 2.0
+    void_length = 1.3  # Estimated length of the straight inner section
+
+    # Parameters for the rectangular holes
+    hole_width = 0.4
+    hole_height = 0.4
+    hole_spacing = 0.2  # Gap between the two holes in a pair
+
+    # 2. Create the main solid body
+    base_solid = solid_racetrack(length=outer_length, radius=outer_radius, layer=(1, 0))
+
+    # 3. Create the central void to be subtracted
+    central_void = solid_racetrack(length=void_length, radius=void_radius, layer=(1, 0))
+
+    # 4. Create the rectangular holes to be subtracted
+    holes_to_subtract = gf.Component("holes")
+    
+    bar_center_y = (central_gap + footprint_height / 2.0) / 2.0
+    hole_center_x = (hole_spacing + hole_width) / 2.0
+    
+    # Create the hole primitive
+    hole_primitive = gf.components.rectangle(size=(hole_width, hole_height), layer=(1, 0))
+    
+    # --- FIX APPLIED HERE ---
+    # Add references to the hole primitive, capture the reference object,
+    # and then move it into position. This avoids the .references attribute.
+    
+    # Top pair
+    ref_tl = holes_to_subtract << hole_primitive
+    ref_tl.move((-hole_center_x, bar_center_y))
+    
+    ref_tr = holes_to_subtract << hole_primitive
+    ref_tr.move((hole_center_x, bar_center_y))
+    
+    # Bottom pair
+    ref_bl = holes_to_subtract << hole_primitive
+    ref_bl.move((-hole_center_x, -bar_center_y))
+    
+    ref_br = holes_to_subtract << hole_primitive
+    ref_br.move((hole_center_x, -bar_center_y))
+
+    # 5. Perform boolean subtraction to get the final shape
+    # Final = Base - (Central_Void + Holes)
+    shapes_to_subtract = [central_void, holes_to_subtract]
+    final_device = gf.boolean(A=base_solid, B=shapes_to_subtract, operation="not", layer=(1, 0))
+
+    c.add_ref(final_device)
+    return c
+
+# Instantiate and view the created device
+device = create_device()
+device.show()
+```

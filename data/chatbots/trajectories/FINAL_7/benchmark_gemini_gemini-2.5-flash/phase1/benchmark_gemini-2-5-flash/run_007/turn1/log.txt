@@ -1,0 +1,132 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def custom_oval_device():
+    """
+    Recreates the geometry of the provided image using GDSFactory parametric functions.
+
+    The device consists of:
+    1. An outer oval frame.
+    2. Two identical internal structures (arms), each with two rectangular holes.
+    The ends of these internal arms seamlessly connect and merge with the inner
+    boundary of the outer oval frame.
+    """
+    c = gf.Component("oval_device")
+    
+    # Define a default cross-section for the layer.
+    # The 'width' parameter here is nominal, as component dimensions define geometry.
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0)) 
+
+    # Device footprint dimensions based on the requirement
+    total_width = 5.5  # microns
+    total_height = 3.0 # microns
+    
+    # --- 1. Create the outer oval frame (material) ---
+    # This is done by creating a larger ellipse and subtracting a smaller, concentric ellipse.
+    
+    # Outer ellipse defines the overall device boundary
+    outer_ellipse = gf.components.ellipse(
+        radii=(total_width / 2, total_height / 2), # (2.75, 1.5)
+        layer=xs.layer
+    )
+    
+    # Inner ellipse is subtracted to create the frame's hollow center
+    # 'frame_thickness' is adjusted to visually match the image, defining the width of the oval wall.
+    frame_thickness = 0.35 
+    inner_ellipse = gf.components.ellipse(
+        radii=(total_width / 2 - frame_thickness, total_height / 2 - frame_thickness), # (2.4, 1.15)
+        layer=xs.layer
+    )
+    
+    # Perform boolean 'NOT' operation to create the oval frame
+    oval_frame = gf.boolean(outer_ellipse, inner_ellipse, operation="not", layer=xs.layer)
+    
+    # --- 2. Create one of the central internal arm structures (material) ---
+    # This structure includes the central rectangular bar and the two rectangular holes.
+    # The flared ends are implicitly created when this arm is merged with the oval_frame
+    # using a boolean 'OR' operation later, allowing it to conform to the oval's curve.
+    
+    bar_width = 0.4 # Width of the central straight sections of the arm
+    hole_size = (0.2, 0.2) # Dimensions of the square holes
+    hole_spacing = 0.3 # Horizontal gap between the two holes
+    # segment_between_holes_length is implicitly (hole_spacing + width_of_one_hole_edge_between_holes)
+    # The straight_end_length parameter defines how much of the straight bar extends past the holes
+    straight_end_length = 0.6 # Length of the straight bar segment on each side, before it flares
+
+    # Calculate the total length of the internal straight part of the arm (material)
+    arm_core_length = (2 * straight_end_length) + (2 * hole_size[0]) + hole_spacing
+    # Example: (2 * 0.6) + (2 * 0.2) + 0.3 = 1.2 + 0.4 + 0.3 = 1.9
+
+    # Create a single long rectangle representing the main body of the arm before holes are cut
+    main_bar_for_arm = gf.components.rectangle(size=(arm_core_length, bar_width), layer=xs.layer, centered=True)
+    
+    # Create the two holes (as separate components for positioning)
+    # Calculate the x-offset for the center of each hole from the center of the main_bar
+    # This offset places the holes symmetrically around the origin.
+    hole_center_x_offset = (hole_size[0] / 2) + (hole_spacing / 2)
+    
+    hole1 = gf.components.rectangle(size=hole_size, layer=xs.layer, centered=True)
+    hole1_ref = gf.Component() << hole1 # Use Component to allow direct manipulation
+    hole1_ref.x = -hole_center_x_offset # Position first hole to the left
+    
+    hole2 = gf.components.rectangle(size=hole_size, layer=xs.layer, centered=True)
+    hole2_ref = gf.Component() << hole2 # Use Component to allow direct manipulation
+    hole2_ref.x = hole_center_x_offset # Position second hole to the right
+    
+    # Combine the holes into a single component for boolean subtraction
+    holes_combined = gf.boolean(hole1_ref, hole2_ref, operation="or", layer=xs.layer)
+    
+    # Subtract the combined holes from the main bar to create the arm's core with holes
+    arm_with_holes_core = gf.boolean(main_bar_for_arm, holes_combined, operation="not", layer=xs.layer)
+    
+    # --- 3. Position the top and bottom arms and merge them with the oval frame ---
+    
+    # Determine the Y-offset for the centerline of each arm from the device center (0,0).
+    # This calculation ensures a 'central_gap_height' between the top and bottom arms.
+    central_gap_height = 0.3 # The desired vertical white space between the two arms
+    y_offset_arm = (central_gap_height + bar_width) / 2
+    # Example: (0.3 + 0.4) / 2 = 0.35.
+    # This places the center of the top arm at y=0.35 and the bottom arm at y=-0.35.
+    
+    # Create references for the top and bottom arms, moving them to their respective positions.
+    # gf.Component instances (like arm_with_holes_core) can be directly manipulated and used in booleans.
+    top_arm_comp = arm_with_holes_core.movey(y_offset_arm)
+    bottom_arm_comp = arm_with_holes_core.movey(-y_offset_arm)
+    
+    # --- 4. Combine all material using boolean 'OR' operations ---
+    # Start with the oval frame, then merge the top arm, then merge the bottom arm.
+    # The 'OR' operation automatically performs polygon union. This means:
+    # - The rectangular arms will extend up to the oval frame.
+    # - Their edges will be clipped and shaped by the inner curve of the oval frame,
+    #   creating the seamlessly merged and flared ends as seen in the image.
+    
+    final_device_component = gf.boolean(oval_frame, top_arm_comp, operation="or", layer=xs.layer)
+    final_device_component = gf.boolean(final_device_component, bottom_arm_comp, operation="or", layer=xs.layer)
+    
+    # Add the resulting combined component to the top-level component
+    c << final_device_component
+    
+    return c
+
+# Example usage and visualization
+if __name__ == "__main__":
+    device = custom_oval_device()
+    # To view the device layout (requires KLayout or similar GDS viewer configured with GDSFactory)
+    device.show() 
+    
+    # To save the device to a GDSII file
+    # device.write_gds("custom_oval_device.gds")
+
+    # For displaying in environments that don't support .show() directly,
+    # you can print a representation or save it and then open manually.
+    print(f"Generated GDSFactory component: {device.name}")
+    
+    # Corrected way to get component bounds in gdsfactory
+    # Use .bbox() to get the bounding box object, or .xsize and .ysize for dimensions.
+    print(f"Device width: {device.xsize} um")
+    print(f"Device height: {device.ysize} um")
+
+```

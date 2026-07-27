@@ -1,0 +1,115 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def trident_coupler_smooth_fixed():
+    c = gf.Component()
+
+    # --- Geometric Parameters ---
+    L_total = 40.0
+    L_taper = 20.0
+    L_fanout = L_total - L_taper
+
+    # Widths
+    w_center_in = 0.5
+    w_center_tip = 0.05
+    w_outer_in = 0.15
+    w_outer_out = 0.6
+
+    # Spacing
+    gap = 0.1
+    # Output vertical center for the top arm
+    # Total height 1.7um -> top edge is +0.85um from center
+    # Center of top arm = 0.85 - (width/2)
+    y_out_center = 0.85 - (w_outer_out / 2)
+
+    # --- 1. Center Waveguide (Inverse Taper) ---
+    center = c << gf.components.taper(
+        length=L_taper,
+        width1=w_center_in,
+        width2=w_center_tip
+    )
+    center.move((0, 0))
+
+    # --- 2. Calculate Geometry ---
+    
+    # Y positions for the top arm
+    y_in = (w_center_in / 2) + gap + (w_outer_in / 2)
+    y_mid = (w_center_tip / 2) + gap + (w_outer_in / 2)
+    y_out = y_out_center
+
+    # Slope of the input section (Converging arms)
+    # This is crucial for eliminating the kink.
+    # slope = dy / dx
+    slope = (y_mid - y_in) / L_taper
+
+    # Cross sections definition
+    xs_in = gf.cross_section.cross_section(width=w_outer_in)
+    xs_out = gf.cross_section.cross_section(width=w_outer_out)
+    
+    # Width transition for the fanout section
+    trans = gf.path.transition(xs_in, xs_out, width_type='sine')
+
+    # --- 3. Bezier Point Generator ---
+    # Manually calculate cubic Bezier points since gf.path.bezier is missing
+    def get_bezier_points(p0, p1, p2, p3, n=101):
+        t = np.linspace(0, 1, n)
+        # Unpack coordinates
+        x0, y0 = p0
+        x1, y1 = p1
+        x2, y2 = p2
+        x3, y3 = p3
+        
+        # Bernstein polynomials for Cubic Bezier
+        x = (1-t)**3 * x0 + 3*(1-t)**2 * t * x1 + 3*(1-t) * t**2 * x2 + t**3 * x3
+        y = (1-t)**3 * y0 + 3*(1-t)**2 * t * y1 + 3*(1-t) * t**2 * y2 + t**3 * y3
+        
+        return list(zip(x, y))
+
+    # --- 4. Define Control Points ---
+    
+    # Control point tension (dx_control). 0.5 * Length is standard for smooth bends.
+    dx_control = L_fanout * 0.5
+
+    # Top Arm Control Points
+    p0 = (L_taper, y_mid)
+    # P1: Extends from P0 along the *input slope* to ensure tangent continuity
+    p1 = (L_taper + dx_control, y_mid + slope * dx_control)
+    # P2: Extends backwards from output horizontally to ensure flat exit
+    p2 = (L_total - dx_control, y_out)
+    p3 = (L_total, y_out)
+
+    # --- 5. Construct Top Arm ---
+    
+    # Part A: Straight Input (Converging)
+    path_a = gf.Path([(0, y_in), (L_taper, y_mid)])
+    top_a = c << gf.path.extrude(path_a, cross_section=xs_in)
+
+    # Part B: Bezier Fanout (Diverging)
+    bezier_pts = get_bezier_points(p0, p1, p2, p3)
+    path_b = gf.Path(bezier_pts)
+    top_b = c << gf.path.extrude_transition(path_b, trans)
+
+    # --- 6. Construct Bottom Arm (Mirrored) ---
+    
+    # Bottom Part A
+    path_a_bot = gf.Path([(0, -y_in), (L_taper, -y_mid)])
+    bot_a = c << gf.path.extrude(path_a_bot, cross_section=xs_in)
+
+    # Bottom Part B
+    # Mirror control points
+    p0_b = (p0[0], -p0[1])
+    p1_b = (p1[0], -p1[1])
+    p2_b = (p2[0], -p2[1])
+    p3_b = (p3[0], -p3[1])
+    
+    bezier_pts_bot = get_bezier_points(p0_b, p1_b, p2_b, p3_b)
+    path_b_bot = gf.Path(bezier_pts_bot)
+    bot_b = c << gf.path.extrude_transition(path_b_bot, trans)
+
+    return c
+
+if __name__ == "__main__":
+    device = trident_coupler_smooth_fixed()
+    device.write_gds("trident_coupler_smooth_fixed.gds")
+    device.show()

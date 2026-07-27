@@ -1,0 +1,59 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+    length = 18.24
+    height = 0.7
+    w = 0.25
+    g = 0.2
+    xs = gf.cross_section.cross_section(width=w, layer=layer)
+    # Middle parallel part
+    coupler = gf.components.coupler_straight(length=length, gap=g, cross_section=xs)
+    coup = c << coupler
+    coup.move((0, 0))
+    # Rungs
+    rung_width = 0.2
+    rung_height = g
+    number_of_rungs = 45
+    center_spacing = length / (number_of_rungs - 1)
+    rung = gf.components.rectangle(size=(rung_width, rung_height), layer=layer)
+    for i in range(number_of_rungs):
+        rung_ref = c << rung
+        rung_ref.move((i * center_spacing - rung_width / 2, w))
+    # Left S-bends and tapers
+    dy_left_top = -0.15
+    dy_left_bottom = 0.15
+    dx_left = 2
+    btl = c << gf.components.bend_s(size=(dx_left, dy_left_top), cross_section=xs)
+    btl.connect("o2", coup.ports["o3"])
+    bbl = c << gf.components.bend_s(size=(dx_left, dy_left_bottom), cross_section=xs)
+    bbl.connect("o2", coup.ports["o1"])
+    taper_length = 2
+    narrow = 0.01
+    taper = gf.components.taper(length=taper_length, width1=narrow, width2=w, layer=layer)
+    tl_taper = c << taper
+    tl_taper.connect("o2", btl.ports["o1"])
+    bl_taper = c << taper
+    bl_taper.connect("o2", bbl.ports["o1"])
+    # Right S-bends and tapers
+    dy_right = 0.15
+    dx_right = 3
+    btr = c << gf.components.bend_s(size=(dx_right, -dy_right), cross_section=xs)
+    btr.connect("o1", coup.ports["o4"])
+    bbr = c << gf.components.bend_s(size=(dx_right, dy_right), cross_section=xs)
+    bbr.connect("o1", coup.ports["o2"])
+    taper_right = gf.components.taper(length=taper_length, width1=w, width2=narrow, layer=layer)
+    tr_taper = c << taper_right
+    tr_taper.connect("o1", btr.ports["o2"])
+    br_taper = c << taper_right
+    br_taper.connect("o1", bbr.ports["o2"])
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")
+```

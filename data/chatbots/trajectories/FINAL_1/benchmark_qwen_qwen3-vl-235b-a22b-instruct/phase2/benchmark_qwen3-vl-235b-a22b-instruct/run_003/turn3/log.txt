@@ -1,0 +1,53 @@
+Turn 3 Response:
+
+Looking at the target image (first image) and the current output (second image), I can see that the current code is creating a Y-junction with two separate input waveguides on the left and two output waveguides on the right that diverge. However, the target image shows a single input waveguide on the left that splits into two output waveguides on the right.
+
+The key differences are:
+1. The target has only one input waveguide, not two
+2. The split happens gradually from a single waveguide, not from two separate waveguides that then diverge
+3. The geometry should show a single waveguide that gradually separates into two
+
+To fix this, I need to:
+1. Create only one input waveguide
+2. Use S-bends to gradually separate this single waveguide into two output paths
+3. Ensure the S-bends are positioned correctly to create the Y-shape
+
+Here's the improved version:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def y_junction():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create single straight waveguide on the left (input)
+    wg = c << gf.components.straight(length=10, cross_section=xs)
+    
+    # Create upper S-bend for the top output
+    s_bend_upper = c << gf.components.bend_s(size=(20, 3), cross_section=xs)
+    s_bend_upper.connect("o1", wg.ports["o2"])
+    
+    # Create lower S-bend for the bottom output (mirror to go downward)
+    s_bend_lower = c << gf.components.bend_s(size=(20, 3), cross_section=xs)
+    s_bend_lower.connect("o1", wg.ports["o2"])
+    s_bend_lower.mirror()
+    
+    # Add ports for external connections
+    c.add_port("o1", port=wg.ports["o1"])  # Input port
+    c.add_port("o2", port=s_bend_upper.ports["o2"])  # Upper output
+    c.add_port("o3", port=s_bend_lower.ports["o2"])  # Lower output
+    
+    return c
+
+# Create the device
+device = y_junction()
+
+# Write to GDS file
+device.write_gds("y_junction.gds")
+```
+
+This revised code creates a single input waveguide that splits into two output waveguides using S-bends, which should better match the target Y-junction geometry. The S-bends will create the gradual separation needed to form the Y-shape.

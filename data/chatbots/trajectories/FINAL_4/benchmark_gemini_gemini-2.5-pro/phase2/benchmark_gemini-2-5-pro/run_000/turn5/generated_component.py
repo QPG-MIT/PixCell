@@ -1,0 +1,115 @@
+import gdsfactory as gf
+import numpy as np
+
+
+@gf.cell
+def waveguide_cosine_arc(
+    bend_size: tuple[float, float], npoints: int = 201, cross_section="strip"
+) -> gf.Component:
+    """
+    Creates a single waveguide arc with a smooth cosine shape, forming a peak.
+    The path starts at (0,0), peaks with a vertical displacement of `dy` at
+    `x=dx`, and returns to y=0 at `x=2*dx`.
+
+    This primitive is designed to create a single, smooth half-period of a wave.
+
+    Args:
+        bend_size: A tuple (dx, dy) where 2*dx is the total horizontal length
+                   and dy is the peak vertical displacement.
+        npoints: The number of points to use for the curve approximation.
+        cross_section: The cross_section of the waveguide.
+    """
+    dx, dy = bend_size
+    length = 2 * dx
+
+    # Generate points for a cosine-shaped path.
+    # A function of the form y = A * (1 - cos(theta)) creates a smooth peak
+    # starting and ending at y=0.
+    x_coords = np.linspace(0, length, npoints)
+
+    # Map x from the range [0, length] to theta in the range [0, 2*pi]
+    # to trace one full cycle of the (1-cos) function.
+    theta = x_coords * (2 * np.pi / length)
+    y_coords = (dy / 2.0) * (1 - np.cos(theta))
+
+    points = np.array([x_coords, y_coords]).T
+
+    # Create the path from the points and extrude it into a component.
+    p = gf.Path(points)
+    c = gf.path.extrude(p, cross_section=cross_section)
+    return c
+
+
+@gf.cell
+def create_device() -> gf.Component:
+    """
+    Creates a component with two waveguides that get closer at the center,
+    forming a symmetric directional coupler shape with smooth cosine curves.
+
+    This matches the target image by creating a peak-shaped bottom waveguide
+    and a trough-shaped top waveguide using a custom cosine path primitive.
+    """
+    # 1. Define device parameters from footprint and visual inspection.
+    footprint_width = 18.0
+    footprint_height = 3.0
+    waveguide_width = 0.5  # Estimated visually from the thick lines.
+    center_gap = 0.5  # Estimated visually from the narrowest point.
+
+    # Define a cross_section for the waveguides.
+    xs = gf.cross_section.cross_section(width=waveguide_width)
+
+    # 2. Calculate geometric parameters for the waveguide paths.
+    # `dx` is half the total width of the device.
+    dx = footprint_width / 2
+
+    # Calculate the y-coordinate of the waveguide centerlines at the ends.
+    y_centerline_end = (footprint_height - waveguide_width) / 2  # (3.0 - 0.5) / 2 = 1.25
+
+    # Calculate the y-coordinate of the centerlines at the center.
+    centerline_separation_center = center_gap + waveguide_width  # 0.5 + 0.5 = 1.0
+    y_centerline_center = centerline_separation_center / 2  # 1.0 / 2 = 0.5
+
+    # `dy` is the vertical amplitude of the cosine curve for one waveguide.
+    dy = y_centerline_end - y_centerline_center  # 1.25 - 0.5 = 0.75
+
+    # 3. Instantiate the base cosine-arc waveguide component.
+    # This primitive creates a smooth peak shape (_/\_).
+    arc_wg = waveguide_cosine_arc(bend_size=(dx, dy), cross_section=xs)
+
+    # 4. Assemble the final device from two instances of the arc waveguide.
+    c = gf.Component("cosine_coupler")
+
+    # Add the bottom waveguide (peak shape).
+    # The primitive starts at (0,0). We center it horizontally by moving it left
+    # by dx, and vertically by moving its ends to -y_centerline_end.
+    ref_bottom = c << arc_wg
+    ref_bottom.move((-dx, -y_centerline_end))
+
+    # Add the top waveguide (trough shape).
+    # This is a vertically mirrored copy of the `arc_wg` primitive, positioned
+    # symmetrically above the origin.
+    ref_top = c << arc_wg
+    ref_top.mirror(p1=(0, 0), p2=(1, 0))  # Mirror vertically across x-axis
+    ref_top.move((-dx, y_centerline_end))
+
+    # 5. Add ports to the final component for connectivity.
+    c.add_port("o1", port=ref_top.ports["o1"])
+    c.add_port("o2", port=ref_bottom.ports["o1"])
+    c.add_port("o3", port=ref_bottom.ports["o2"])
+    c.add_port("o4", port=ref_top.ports["o2"])
+
+    return c
+
+
+# Main execution block for testing and saving the GDS file.
+if __name__ == "__main__":
+    # Create an instance of the final component.
+    device_to_save = create_device()
+
+    # Save the GDS file to disk in the current directory.
+    output_path = device_to_save.write_gds("final_device.gds")
+
+    print(f"Successfully wrote GDS file to: {output_path}")
+
+    # To display the component if running in an interactive environment:
+    # device_to_save.show()

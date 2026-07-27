@@ -1,0 +1,39 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    L = 2.35
+    width_wide = 2.0
+    width_narrow = 0.2
+    layer = (1, 0)
+    
+    xs_wide = gf.cross_section.cross_section(width=width_wide, layer=layer)
+    xs_narrow = gf.cross_section.cross_section(width=width_narrow, layer=layer)
+    
+    transition = gf.path.transition(xs_wide, xs_narrow, width_type='sine')
+    
+    path = gf.path.straight(length=L)
+    
+    arm = gf.path.extrude_transition(path, transition)
+    
+    c = gf.Component()
+    
+    arm_right = c << arm
+    
+    arm_top = c << arm
+    arm_top.rotate(90)
+    
+    arm_left = c << arm
+    arm_left.rotate(180)
+    
+    arm_bottom = c << arm
+    arm_bottom.rotate(270)
+    
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")
+```

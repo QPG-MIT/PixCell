@@ -1,0 +1,70 @@
+Turn 3 Response:
+
+Based on your feedback, the previous script generated a shape that was too wide and bulky at the center (because it used long ellipses centered at the origin). The target image clearly has four distinct "petals" that are pinched (narrow) near the center, balloon out in the middle, and taper back down before extending into straight tips.
+
+We can achieve this perfect "4-leaf clover with straight tips" geometry by using four separate ellipses that are **shifted outwards** from the center, combined with a thin central cross to form the solid core and the straight protruding tips.
+
+Here is the improved code:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def petal_cross_device():
+    """Creates a device with four distinct petals and straight tips."""
+    
+    # 1. Base Parameters matching the total footprint
+    total_size = 4.7
+    cross_w = 0.2
+    
+    # Petal ellipse parameters
+    # By shifting the ellipse outwards from the center, we create deep "valleys" 
+    # at the origin while leaving a fat outer lobe.
+    p_shift = 0.95
+    p_x_radius = 1.05
+    p_y_radius = 0.72  # Plumpness of the petals
+    
+    # 2. Create the basic geometric primitives
+    # The central cross ensures solid core connectivity and provides the exact straight tips 
+    # protruding from the rounded petals.
+    core_cross = gf.components.cross(length=total_size, width=cross_w, layer=(1, 0))
+    
+    # Base horizontal and vertical ellipses for the lobes
+    ellipse_h = gf.components.ellipse(radii=(p_x_radius, p_y_radius), layer=(1, 0))
+    ellipse_v = gf.components.ellipse(radii=(p_y_radius, p_x_radius), layer=(1, 0))
+    
+    # 3. Assemble and position the components
+    temp_c = gf.Component()
+    
+    # Add and shift the four petals radially outwards
+    ref_r = temp_c << ellipse_h
+    ref_r.movex(p_shift)
+    
+    ref_l = temp_c << ellipse_h
+    ref_l.movex(-p_shift)
+    
+    ref_t = temp_c << ellipse_v
+    ref_t.movey(p_shift)
+    
+    ref_b = temp_c << ellipse_v
+    ref_b.movey(-p_shift)
+    
+    # Add the central backbone
+    ref_cross = temp_c << core_cross
+    
+    # 4. Perform sequential boolean unions to merge everything into a clean single polygon
+    u1 = gf.boolean(ref_r, ref_l, operation='or', layer=(1, 0))
+    u2 = gf.boolean(ref_t, ref_b, operation='or', layer=(1, 0))
+    u3 = gf.boolean(u1, u2, operation='or', layer=(1, 0))
+    final_device = gf.boolean(u3, ref_cross, operation='or', layer=(1, 0))
+    
+    return final_device
+
+if __name__ == "__main__":
+    # Create the component
+    c = petal_cross_device()
+    
+    # Save the component to a GDS file
+    c.write_gds("petal_cross_device.gds")
+
+```

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.449343",
+      "api_duration_seconds": 71.42325711250305,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 1268,
+        "total_tokens": 11840
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: taper() got an unexpected keyword argument 'centered'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:22.849407",
+      "api_duration_seconds": 21.011962175369263,
+      "usage": {
+        "input_tokens": 3639,
+        "output_tokens": 1098,
+        "total_tokens": 6333
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:45.339134",
+      "api_duration_seconds": 38.50059390068054,
+      "usage": {
+        "input_tokens": 5243,
+        "output_tokens": 1101,
+        "total_tokens": 10173
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11227,
+    "output_tokens": 3467,
+    "total_tokens": 28346
+  }
+}

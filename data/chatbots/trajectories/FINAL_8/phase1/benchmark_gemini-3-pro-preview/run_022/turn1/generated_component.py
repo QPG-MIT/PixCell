@@ -1,0 +1,136 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreated_device():
+    """
+    Recreation of the slotted directional coupler device based on the 
+    provided image and GDSFactory parametric primitives.
+    """
+    c = gf.Component()
+    
+    # =======================================================================
+    # 1. Define Parametric Cross-Sections
+    # =======================================================================
+    
+    # Central Bus Cross-Section: 
+    # Visually appears to be 5 distinct parallel lines.
+    # Total height approx 0.8um to fit within the 4um budget.
+    c_width = 0.1
+    c_gap = 0.1
+    c_pitch = c_width + c_gap
+    
+    # Define sections for the parallel lines (1 center + 4 offsets)
+    sections_center = [
+        gf.cross_section.Section(width=c_width, offset=c_pitch*1, layer=(1, 0)),
+        gf.cross_section.Section(width=c_width, offset=c_pitch*2, layer=(1, 0)),
+        gf.cross_section.Section(width=c_width, offset=-c_pitch*1, layer=(1, 0)),
+        gf.cross_section.Section(width=c_width, offset=-c_pitch*2, layer=(1, 0)),
+    ]
+    
+    # The base cross_section acts as the center line
+    xs_center = gf.cross_section.cross_section(
+        width=c_width, 
+        layer=(1, 0), 
+        sections=sections_center
+    )
+
+    # Wing Cross-Section (Top/Bottom):
+    # Visually appears to be a block with internal slots.
+    w_width = 0.12
+    w_pitch = 0.22
+    
+    sections_wing = [
+        gf.cross_section.Section(width=w_width, offset=w_pitch*1, layer=(1, 0)),
+        gf.cross_section.Section(width=w_width, offset=w_pitch*2, layer=(1, 0)),
+        gf.cross_section.Section(width=w_width+0.05, offset=w_pitch*3, layer=(1, 0)), 
+    ]
+    xs_wing = gf.cross_section.cross_section(
+        width=w_width, 
+        layer=(1, 0), 
+        sections=sections_wing
+    )
+
+    # =======================================================================
+    # 2. Build Geometry using Primitives
+    # =======================================================================
+
+    # 2.1 Create the Central Straight Bus
+    # Length matches the footprint constraint (120um)
+    central_wg = c << gf.components.straight(length=120, cross_section=xs_center)
+    # Center the bus at (60, 0) so the whole device spans x=0 to x=120
+    central_wg.center = (60, 0)
+
+    # 2.2 Create the Wings (S-Bends)
+    # Split the 120um length into two 60um S-bend segments.
+    bend_length = 60.0
+    y_travel = 0.8  # Vertical displacement of the S-bend
+    
+    # Define the primitive bends
+    # 'bend_down': moves from Y=0 to Y=-y_travel
+    bend_down = gf.components.bend_s(
+        size=(bend_length, -y_travel), 
+        cross_section=xs_wing
+    )
+    
+    # 'bend_up': moves from Y=0 to Y=+y_travel
+    bend_up = gf.components.bend_s(
+        size=(bend_length, y_travel), 
+        cross_section=xs_wing
+    )
+
+    # --- Top Assembly ---
+    # Top Left: Starts high, bends down towards center
+    top_left = c << bend_down
+    
+    # Top Right: Starts low (at center), bends up away
+    top_right = c << bend_up
+    
+    # Connect them
+    top_right.connect("o1", top_left.ports["o2"])
+    
+    # Position Top Assembly
+    # We align the junction (lowest point) to be just above the central bus
+    junction_y_target = 1.1
+    current_junction_y = top_left.ports["o2"].y
+    top_left.movey(junction_y_target - current_junction_y)
+    top_right.movey(junction_y_target - current_junction_y)
+    
+    # Align X start to 0
+    top_left.xmin = 0
+
+    # --- Bottom Assembly (Mirror) ---
+    # Reuse the same components
+    bot_left = c << bend_down
+    bot_right = c << bend_up
+    
+    # Mirror vertically
+    bot_left.mirror_y()
+    bot_right.mirror_y()
+    
+    # Connect
+    bot_right.connect("o1", bot_left.ports["o2"])
+    
+    # Position Bottom Assembly
+    # We align the junction (highest point of bottom wing) just below central bus
+    bot_junction_y_target = -1.1
+    current_bot_junction_y = bot_left.ports["o2"].y
+    bot_left.movey(bot_junction_y_target - current_bot_junction_y)
+    bot_right.movey(bot_junction_y_target - current_bot_junction_y)
+    
+    # Align X start to 0
+    bot_left.xmin = 0
+
+    return c
+
+# =======================================================================
+# 3. Generate Output
+# =======================================================================
+if __name__ == "__main__":
+    device = recreated_device()
+    device.show() 
+    device.write_gds("slotted_coupler.gds")
+    
+    # Verify Footprint using bounding box coordinates
+    width = device.dxmax - device.dxmin
+    height = device.dymax - device.dymin
+    print(f"Device Size: ({width:.2f}, {height:.2f})")

@@ -1,0 +1,136 @@
+Turn 3 Response:
+
+The previous iteration's raster output showed straight outer edges for the side arms, giving the device a blocky appearance compared to the smooth, organic curves of the target image. This was because the previous code extruded a transition along a path fixed at the outer boundary.
+
+To correct this, we need to treat the side arms as curved structures where both the width and the position (offset) change smoothly according to an S-bend ('sine') profile. By defining the arms relative to the central axis ($y=0$) and transitioning their offset and width simultaneously, we achieve the characteristic "bottle" shape where the arms expand outwards while merging inwards.
+
+Here is the improved script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def inverse_taper_ssc():
+    """
+    Inverse taper spot size converter.
+    Features a central triangular taper for mode delocalization, 
+    surrounded by cladding arms that smoothly expand and merge 
+    to form the output waveguide.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions & Parameters ---
+    # Global dimensions
+    L_total = 40.0
+    L_taper = 20.0       # Length of the central inverse taper
+    L_trans = 30.0       # Length where arms expand and merge
+    height_out = 1.7     # Final output width (merged)
+    layer = (1, 0)
+    
+    # Input dimensions (Left side)
+    w_taper_in = 0.7       # Base width of the central taper
+    w_taper_tip = 0.05     # Tip width of the central taper
+    w_arm_in = 0.2         # Starting width of the side arms
+    gap_in = 0.15          # Initial gap between taper and arms
+    
+    # Calculate offsets for the input section
+    # Distance from center to inner edge of arm = (Taper Half-Width) + Gap
+    y_inner_in = (w_taper_in / 2.0) + gap_in
+    # Center position of the arm = Inner Edge + (Arm Half-Width)
+    offset_arm_in = y_inner_in + (w_arm_in / 2.0)
+    
+    # Output dimensions (at L_trans)
+    # The two arms merge to fill the full height (height_out)
+    # Each arm becomes half the total height
+    w_arm_out = height_out / 2.0  
+    # Center position of the merged half
+    offset_arm_out = height_out / 4.0 
+    
+    # --- 1. Central Taper ---
+    taper = c << gf.components.taper(
+        length=L_taper,
+        width1=w_taper_in,
+        width2=w_taper_tip,
+        layer=layer
+    )
+    # Taper is centered at (0,0) by default
+    
+    # --- 2. Side Arms (Transition) ---
+    # We define the transition using a straight path at y=0.
+    # The curvature is handled by the changing 'offset' parameter in the sections.
+    # width_type='sine' applies an S-bend profile to both width and offset.
+    
+    path_trans = gf.path.straight(length=L_trans)
+    
+    # -- Top Arm --
+    # Define Start CrossSection
+    s_top_in = gf.Section(
+        width=w_arm_in, 
+        offset=offset_arm_in, 
+        layer=layer,
+        name="top_arm"
+    )
+    xs_top_in = gf.CrossSection(sections=[s_top_in])
+    
+    # Define End CrossSection
+    s_top_out = gf.Section(
+        width=w_arm_out, 
+        offset=offset_arm_out, 
+        layer=layer,
+        name="top_arm"
+    )
+    xs_top_out = gf.CrossSection(sections=[s_top_out])
+    
+    # Create Transition and Extrude
+    trans_top = gf.path.transition(xs_top_in, xs_top_out, width_type='sine')
+    arm_top = c << gf.path.extrude_transition(path_trans, trans_top)
+    
+    # -- Bottom Arm --
+    # Symmetric to top arm (negative offsets)
+    s_bot_in = gf.Section(
+        width=w_arm_in, 
+        offset=-offset_arm_in, 
+        layer=layer,
+        name="bot_arm"
+    )
+    xs_bot_in = gf.CrossSection(sections=[s_bot_in])
+    
+    s_bot_out = gf.Section(
+        width=w_arm_out, 
+        offset=-offset_arm_out, 
+        layer=layer,
+        name="bot_arm"
+    )
+    xs_bot_out = gf.CrossSection(sections=[s_bot_out])
+    
+    trans_bot = gf.path.transition(xs_bot_in, xs_bot_out, width_type='sine')
+    arm_bot = c << gf.path.extrude_transition(path_trans, trans_bot)
+    
+    # --- 3. Output Waveguide Block ---
+    # Extend the merged block to L_total
+    L_flat = L_total - L_trans
+    if L_flat > 0:
+        out_wg = c << gf.components.rectangle(
+            size=(L_flat, height_out),
+            layer=layer,
+            centered=True
+        )
+        # Position: Left edge at L_trans
+        out_wg.xmin = L_trans
+
+    # --- Ports ---
+    c.add_port("o1", port=taper.ports["o1"])
+    c.add_port(
+        "o2", 
+        center=(L_total, 0), 
+        width=height_out, 
+        orientation=0, 
+        layer=layer
+    )
+    
+    return c
+
+# Create and save
+device = inverse_taper_ssc()
+device.write_gds("inverse_taper_ssc.gds")
+```

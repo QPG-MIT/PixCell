@@ -1,0 +1,84 @@
+Turn 1 Response:
+
+To fix the error and ensure the GDS file is correctly generated, I have included the `write_gds` command at the end of the script. 
+
+The following script uses parametric primitives (`coupler_straight` and `bend_s`) to perfectly recreate the directional coupler. The dimensions are calculated to meet the exact **120 μm x 4 μm** footprint:
+*   **Total Length (120 μm):** 30 μm (left S-bends) + 60 μm (center) + 30 μm (right S-bends).
+*   **Total Height (4 μm):** Waveguide width of 0.5 μm and a central gap of 0.2 μm, with S-bends shifting the waveguides 1.4 μm vertically to reach the boundaries.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreate_directional_coupler():
+    # 1. Component and Cross-Section Definition
+    c = gf.Component("recreated_coupler")
+    
+    # Parameters for 120x4 footprint
+    width = 0.5        # Waveguide width
+    gap = 0.2          # Gap in coupling region
+    length_mid = 60.0  # Length of interaction region
+    dx = 30.0          # Horizontal length of S-bends
+    dy = 1.4           # Vertical shift of S-bends
+    # Calculation: 
+    # Total Height = width/2 (top edge) + dy + gap/2 + width/2 + width/2 + gap/2 + dy + width/2 (bottom)
+    # Total Height = 0.25 + 1.4 + 0.1 + 0.25 + 0.25 + 0.1 + 1.4 + 0.25 = 4.0 um
+    # Total Length = 30 + 60 + 30 = 120 um
+
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+
+    # 2. Create the Central Interaction Region
+    # Provides ports: o1(top-left), o2(bot-left), o3(bot-right), o4(top-right)
+    coupler = c << gf.components.coupler_straight(
+        length=length_mid, 
+        gap=gap, 
+        cross_section=xs
+    )
+
+    # 3. Add S-Bends (Transitions)
+    # Define S-bend primitive
+    sbend = gf.components.bend_s(size=(dx, dy), cross_section=xs)
+
+    # Top Left
+    tl = c << sbend
+    tl.mirror_y() # Mirror to curve "up" towards the input
+    tl.connect("o2", coupler.ports["o1"])
+
+    # Bottom Left
+    bl = c << sbend
+    bl.connect("o2", coupler.ports["o2"])
+
+    # Top Right
+    tr = c << sbend
+    tr.connect("o1", coupler.ports["o4"])
+
+    # Bottom Right
+    br = c << sbend
+    br.mirror_y() # Mirror to curve "down" towards the output
+    br.connect("o1", coupler.ports["o3"])
+
+    # 4. Expose Ports
+    c.add_port("o1", port=tl.ports["o1"])
+    c.add_port("o2", port=bl.ports["o1"])
+    c.add_port("o3", port=tr.ports["o2"])
+    c.add_port("o4", port=br.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Initialize the device
+    component = recreate_directional_coupler()
+    
+    # Save the GDS file (This fixes the "No GDS file produced" error)
+    filename = "directional_coupler.gds"
+    component.write_gds(filename)
+    
+    print(f"GDS file saved as: {filename}")
+    print(f"Device dimensions: {component.xsize:.1f} x {component.ysize:.1f} um")
+    
+    # Attempt to open in viewer if available
+    try:
+        component.show()
+    except Exception:
+        pass
+```

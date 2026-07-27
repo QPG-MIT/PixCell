@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:08.694062",
+      "api_duration_seconds": 10.607427835464478,
+      "usage": {
+        "input_tokens": 4411,
+        "output_tokens": 1306,
+        "total_tokens": 5717
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ImportError: cannot import name 'Component' from 'gdsfactory.typings' (/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/gdsfactory/typings.py). Did you mean: 'component'?",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:21.112630",
+      "api_duration_seconds": 7.808530807495117,
+      "usage": {
+        "input_tokens": 5789,
+        "output_tokens": 898,
+        "total_tokens": 6687
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports bend_euler_gdsfactorypcomponentspbendspbend_euler_R5_A9_90a35c7e_0_0[\"o1\"] and Port \"o2\" (\"500\"/\"600\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:30.450313",
+      "api_duration_seconds": 9.13666820526123,
+      "usage": {
+        "input_tokens": 6767,
+        "output_tokens": 1091,
+        "total_tokens": 7858
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16967,
+    "output_tokens": 3295,
+    "total_tokens": 20262
+  }
+}

@@ -1,0 +1,38 @@
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+from gdsfactory.typings import LayerSpec
+
+@gf.cell
+def simple_cross(
+    length: float = 4.7,
+    width: float = 0.3,
+    layer: LayerSpec = (1, 0),
+) -> gf.Component:
+    """
+    Creates a simple cross shape using GDSFactory primitives.
+
+    Args:
+        length: Total length of the cross arms.
+        width: Width of the cross arms.
+        layer: Layer to draw the shapes on.
+    """
+
+    c = gf.Component()
+
+    # Create vertical arm
+    vert_rect = c << rectangle(size=(width, length), layer=layer, centered=True)
+    vert_rect.center = (0, 0)  # Center the vertical rectangle
+
+    # Create horizontal arm
+    horiz_rect = c << rectangle(size=(length, width), layer=layer, centered=True)
+    horiz_rect.center = (0, 0) # Center the horizontal rectangle
+
+    c.flatten()  # Flatten the component to merge layers if needed
+
+    return c
+
+
+if __name__ == "__main__":
+    c = simple_cross()
+    c.show()
+    c.write_gds("simple_cross.gds")

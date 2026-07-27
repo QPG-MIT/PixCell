@@ -1,0 +1,53 @@
+{
+  "turn": 4,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:26:14.809167",
+      "api_duration_seconds": 57.74957799911499,
+      "usage": {
+        "input_tokens": 3211,
+        "output_tokens": 1447,
+        "total_tokens": 10852
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function directional_cou...function at 0x11cf7cea0>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:27:13.777427",
+      "api_duration_seconds": 35.24815106391907,
+      "usage": {
+        "input_tokens": 4762,
+        "output_tokens": 1654,
+        "total_tokens": 9366
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: extrude_transition() got an unexpected keyword argument 'path'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:27:50.307703",
+      "api_duration_seconds": 16.745326042175293,
+      "usage": {
+        "input_tokens": 6445,
+        "output_tokens": 1427,
+        "total_tokens": 8362
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports Unnamed_2_0_0[\"o1\"] and Port \"o2\" (\"1500\"/\"400\")",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14418,
+    "output_tokens": 4528,
+    "total_tokens": 28580
+  }
+}

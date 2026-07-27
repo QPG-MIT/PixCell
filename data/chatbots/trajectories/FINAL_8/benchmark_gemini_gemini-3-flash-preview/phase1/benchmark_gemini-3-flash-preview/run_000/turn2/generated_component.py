@@ -1,0 +1,94 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreated_device():
+    """
+    Recreates the device with improved visual fidelity for the 120x4um footprint.
+    Increases spacing and uses vertical extensions for the 'horns'.
+    """
+    c = gf.Component("coupler_device")
+    
+    # --- Constraints ---
+    L = 120.0
+    H = 4.0
+    half_h = H / 2.0
+    
+    # --- Parameters ---
+    w_thin = 0.05   # Thinner lines for better contrast
+    w_thick = 0.6   # Substantial base for side bundles
+    
+    # Bend radius for the 'horns'
+    r_base = 1.0 
+    # Horizontal length of the straight center of the side bundles
+    # We shorten this to leave room for the bends at the ends
+    s_len = L - 10.0 
+    
+    layer = (1, 0)
+    # Define cross-sections with a small radius to override default 10um limit
+    xs_thin = gf.cross_section.cross_section(width=w_thin, layer=layer, radius=r_base)
+    xs_thick = gf.cross_section.cross_section(width=w_thick, layer=layer, radius=r_base)
+
+    # 1. Middle Group (5 straight waveguides)
+    # These span the inner width of the device
+    for i in range(-2, 3):
+        mid_wg = c << gf.components.straight(length=s_len + 2*r_base, cross_section=xs_thin)
+        mid_wg.y = i * 0.2  # pitch of 0.2
+        mid_wg.x = 0
+
+    # 2. Side Groups (Top and Bottom Bundles)
+    def add_side_bundle(y_offset_base, is_top=True):
+        direction = 1 if is_top else -1
+        
+        # bundle: 1 thick base + 4 thin waveguides
+        # Offsets are relative to y_offset_base, fanning outward
+        configs = [
+            (w_thick, 0.0, xs_thick),
+            (w_thin, 0.5, xs_thin), # Large gap after thick line
+            (w_thin, 0.7, xs_thin),
+            (w_thin, 0.9, xs_thin),
+            (w_thin, 1.1, xs_thin),
+        ]
+        
+        for w, o, xs in configs:
+            # Concentric radii to maintain parallelism in curves
+            r_local = r_base + o
+            
+            # Straight middle segment
+            straight = c << gf.components.straight(length=s_len, cross_section=xs)
+            straight.y = y_offset_base + (direction * o)
+            straight.x = 0
+            
+            # --- Left Side Horn ---
+            bl = c << gf.components.bend_euler(radius=r_local, angle=90 * direction, cross_section=xs)
+            bl.connect("o1", straight.ports["o1"])
+            
+            # Add vertical straight extension to reach the footprint boundary (y=+/-2)
+            curr_y_l = bl.ports["o2"].center[1]
+            ext_l = abs(half_h * direction - curr_y_l)
+            if ext_l > 0:
+                el = c << gf.components.straight(length=ext_l, cross_section=xs)
+                el.connect("o1", bl.ports["o2"])
+            
+            # --- Right Side Horn ---
+            br = c << gf.components.bend_euler(radius=r_local, angle=-90 * direction, cross_section=xs)
+            br.connect("o1", straight.ports["o2"])
+            
+            # Vertical extension
+            curr_y_r = br.ports["o2"].center[1]
+            ext_r = abs(half_h * direction - curr_y_r)
+            if ext_r > 0:
+                er = c << gf.components.straight(length=ext_r, cross_section=xs)
+                er.connect("o1", br.ports["o2"])
+
+    # Position side bundles with enough gap from the middle group
+    add_side_bundle(y_offset_base=0.8, is_top=True)
+    add_side_bundle(y_offset_base=-0.8, is_top=False)
+
+    # Center the entire component at (0,0)
+    c.center = (0, 0)
+    return c
+
+if __name__ == "__main__":
+    device = recreated_device()
+    device.write_gds("recreated_device_v2.gds")
+    device.show()

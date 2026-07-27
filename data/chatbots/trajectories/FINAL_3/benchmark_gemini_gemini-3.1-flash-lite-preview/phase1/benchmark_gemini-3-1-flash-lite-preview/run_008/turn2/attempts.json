@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:11:17.100298",
+      "api_duration_seconds": 21.319818019866943,
+      "usage": {
+        "input_tokens": 6151,
+        "output_tokens": 921,
+        "total_tokens": 10353
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ComponentBase.add_port() got an unexpected keyword argument 'midpoint'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:11:42.158151",
+      "api_duration_seconds": 17.665018796920776,
+      "usage": {
+        "input_tokens": 7104,
+        "output_tokens": 866,
+        "total_tokens": 10207
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:12:01.114712",
+      "api_duration_seconds": 20.107813119888306,
+      "usage": {
+        "input_tokens": 8475,
+        "output_tokens": 852,
+        "total_tokens": 12528
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 21730,
+    "output_tokens": 2639,
+    "total_tokens": 33088
+  }
+}

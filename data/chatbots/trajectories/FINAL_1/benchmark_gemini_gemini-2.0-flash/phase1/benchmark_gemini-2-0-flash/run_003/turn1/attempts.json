@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:08.666910",
+      "api_duration_seconds": 10.891978025436401,
+      "usage": {
+        "input_tokens": 4411,
+        "output_tokens": 1301,
+        "total_tokens": 5712
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports bend_euler_gdsfactorypcomponentspbendspbend_euler_R10_A_a86bc407_0_0[\"o1\"] and Port \"o2\" (\"500\"/\"700\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:21.413257",
+      "api_duration_seconds": 10.462155103683472,
+      "usage": {
+        "input_tokens": 5791,
+        "output_tokens": 1183,
+        "total_tokens": 6974
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:33.297835",
+      "api_duration_seconds": 7.3673200607299805,
+      "usage": {
+        "input_tokens": 7004,
+        "output_tokens": 880,
+        "total_tokens": 7884
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 17206,
+    "output_tokens": 3364,
+    "total_tokens": 20570
+  }
+}

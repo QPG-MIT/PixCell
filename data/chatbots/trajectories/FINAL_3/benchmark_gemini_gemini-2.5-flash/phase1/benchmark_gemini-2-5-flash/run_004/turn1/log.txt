@@ -1,0 +1,110 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler_like_device():
+    """
+    Creates a symmetric waveguide device with an overall S-bend shape
+    resembling a directional coupler or mode converter.
+
+    The device's dimensions are constrained by the footprint [120, 4] um.
+    """
+    c = gf.Component("symmetric_coupler_like_device")
+
+    # Define the default cross-section for the waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    waveguide_width = xs.width
+
+    # Device footprint dimensions
+    full_length = 120.0
+    full_height = 4.0
+
+    # Calculated center-to-center separations
+    # Outer (input/output) waveguides separation
+    # (full_height - waveguide_width) gives the center-to-center separation
+    # when the top-most point of the top WG is at y=full_height, and
+    # the bottom-most point of the bottom WG is at y=0.
+    # The actual physical gap will be (full_height - 2*waveguide_width)
+    gap_outer_cc = full_height - waveguide_width # 3.5 um center-to-center
+
+    # Inner (middle) waveguides separation
+    # Assuming a physical gap of 0.2um in the middle
+    physical_gap_inner = 0.2
+    gap_inner_cc = physical_gap_inner + waveguide_width # 0.7 um center-to-center
+
+    # Horizontal and vertical dimensions for the S-bend sections
+    # dy_s_bend_path is the vertical displacement a single waveguide undergoes
+    dy_s_bend_path = (gap_outer_cc - gap_inner_cc) / 2 # 1.4 um
+    dx_s_bend = 30.0 # Horizontal length of one S-bend
+
+    # Lengths of the straight sections
+    L_straight_outer = 10.0 # Straight sections at the very beginning and end
+    L_straight_inner = 40.0 # Straight section in the middle, between the S-bends
+
+    # Verify total horizontal length matches the footprint
+    expected_total_length = (2 * L_straight_outer + 2 * dx_s_bend + L_straight_inner)
+    if expected_total_length != full_length:
+        raise ValueError(f"Total length mismatch: Expected {full_length}, Got {expected_total_length}")
+
+    # Bend radius for the smooth transitions.
+    # gf.path.smooth automatically uses appropriate bends (often Euler-like)
+    # based on the radius and control points.
+    R_bend = 10.0 # Visual aesthetic choice for smoothness
+
+    # Calculate Y-coordinates for the centerlines of the waveguides
+    # Top waveguide:
+    y_center_outer_top = full_height - waveguide_width / 2 # 3.75 um
+    y_center_inner_top = full_height / 2 + gap_inner_cc / 2 # 2.35 um
+
+    # Bottom waveguide:
+    y_center_outer_bottom = waveguide_width / 2 # 0.25 um
+    y_center_inner_bottom = full_height / 2 - gap_inner_cc / 2 # 1.65 um
+
+    # Define waypoints for the top waveguide path
+    path_top_points = [
+        (0, y_center_outer_top),                                            # Start (0, 3.75)
+        (L_straight_outer, y_center_outer_top),                             # End of initial straight (10, 3.75)
+        (L_straight_outer + dx_s_bend, y_center_inner_top),                 # End of first S-bend (40, 2.35)
+        (L_straight_outer + dx_s_bend + L_straight_inner, y_center_inner_top), # End of middle straight (80, 2.35)
+        (L_straight_outer + 2 * dx_s_bend + L_straight_inner, y_center_outer_top), # End of second S-bend (110, 3.75)
+        (full_length, y_center_outer_top)                                   # End (120, 3.75)
+    ]
+
+    # Define waypoints for the bottom waveguide path
+    path_bottom_points = [
+        (0, y_center_outer_bottom),                                         # Start (0, 0.25)
+        (L_straight_outer, y_center_outer_bottom),                          # End of initial straight (10, 0.25)
+        (L_straight_outer + dx_s_bend, y_center_inner_bottom),              # End of first S-bend (40, 1.65)
+        (L_straight_outer + dx_s_bend + L_straight_inner, y_center_inner_bottom), # End of middle straight (80, 1.65)
+        (L_straight_outer + 2 * dx_s_bend + L_straight_inner, y_center_outer_bottom), # End of second S-bend (110, 0.25)
+        (full_length, y_center_outer_bottom)                                # End (120, 0.25)
+    ]
+
+    # Create Path objects by smoothly connecting the waypoints
+    # The 'bend_factory' argument is not needed for gf.path.smooth.
+    # It automatically infers the bends based on the radius and points.
+    p_top = gf.path.smooth(points=path_top_points, radius=R_bend)
+    p_bottom = gf.path.smooth(points=path_bottom_points, radius=R_bend)
+
+    # Extrude the paths to create the waveguide geometry
+    wg_top_ref = c << p_top.extrude(xs)
+    wg_bottom_ref = c << p_bottom.extrude(xs)
+
+    # Add ports for external connectivity
+    c.add_port("o1_top", port=wg_top_ref.ports[0])      # First port of top waveguide
+    c.add_port("o2_top", port=wg_top_ref.ports[-1])     # Last port of top waveguide
+    c.add_port("o1_bottom", port=wg_bottom_ref.ports[0])# First port of bottom waveguide
+    c.add_port("o2_bottom", port=wg_bottom_ref.ports[-1])# Last port of bottom waveguide
+
+    return c
+
+# Example usage and visualization
+if __name__ == "__main__":
+    device = symmetric_coupler_like_device()
+    device.show() # Renders the device for visualization
+
+    # FIX: Uncomment this line to save the GDS file
+    device.write_gds("symmetric_coupler_like_device.gds")
+```

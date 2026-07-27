@@ -1,0 +1,62 @@
+import gdsfactory as gf
+
+@gf.cell
+def coupler_device():
+    """
+    Creates the coupler geometry composed of two symmetric arms.
+    Each arm uses S-bends to transition between a 2um separation
+    and a 1um coupling gap.
+    """
+    c = gf.Component()
+    
+    # Define the cross-section (Standard 0.5um wide waveguide)
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Configuration constants
+    # Total length: 120um
+    # We will split this into: 20um (start) + 30um (bend) + 20um (mid) + 30um (bend) + 20um (end)
+    straigth_len = 20
+    bend_size = (30, 0.5) # x=30, shift=0.5um
+    
+    # --- Build Top Arm ---
+    # Starts at y = 1.0 (to maintain a 2um total gap)
+    s1_top = c << gf.components.straight(length=straigth_len, cross_section=xs)
+    s1_top.movey(1.0)
+    
+    b1_top = c << gf.components.bend_s(size=bend_size, cross_section=xs)
+    b1_top.connect("o1", s1_top.ports["o2"])
+    
+    s2_top = c << gf.components.straight(length=straigth_len, cross_section=xs)
+    s2_top.connect("o1", b1_top.ports["o2"])
+    
+    b2_top = c << gf.components.bend_s(size=(30, -0.5), cross_section=xs)
+    b2_top.connect("o1", s2_top.ports["o2"])
+    
+    s3_top = c << gf.components.straight(length=straigth_len, cross_section=xs)
+    s3_top.connect("o1", b2_top.ports["o2"])
+    
+    # --- Build Bottom Arm ---
+    # Starts at y = -1.0
+    s1_bot = c << gf.components.straight(length=straigth_len, cross_section=xs)
+    s1_bot.movey(-1.0)
+    
+    # Mirror the bend direction relative to the top arm
+    b1_bot = c << gf.components.bend_s(size=(30, -0.5), cross_section=xs)
+    b1_bot.connect("o1", s1_bot.ports["o2"])
+    
+    s2_bot = c << gf.components.straight(length=straigth_len, cross_section=xs)
+    s2_bot.connect("o1", b1_bot.ports["o2"])
+    
+    b2_bot = c << gf.components.bend_s(size=(30, 0.5), cross_section=xs)
+    b2_bot.connect("o1", s2_bot.ports["o2"])
+    
+    s3_bot = c << gf.components.straight(length=straigth_len, cross_section=xs)
+    s3_bot.connect("o1", b2_bot.ports["o2"])
+
+    return c
+
+# Create, visualize, and save the device
+if __name__ == "__main__":
+    device = coupler_device()
+    device.show()  # Opens in KLayout
+    device.write_gds("coupler_device.gds")

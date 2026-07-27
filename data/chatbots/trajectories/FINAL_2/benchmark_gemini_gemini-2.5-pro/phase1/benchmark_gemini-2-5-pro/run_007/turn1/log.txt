@@ -1,0 +1,124 @@
+Turn 1 Response:
+
+The error `PortWidthMismatchError` occurs because the `connect` function in gdsfactory strictly requires that the two ports being connected have identical widths.
+
+In your script, the line `bottom_ref.connect("o1", body_ref.ports["e3"])` fails for two reasons:
+1.  **Width Mismatch:** The bottom feature's top port (`o1`) has a width of `3.0 µm` (`bottom_taper_top_width`). The main body's bottom edge is `25.0 µm` wide. `connect` cannot join ports of different widths.
+2.  **Incorrect Port Name:** The default `gf.components.rectangle` component only has ports `o1` (left) and `o2` (right). It does not have top/bottom ports named `e3` or `e4`. The component `gf.components.compass` should be used when top/bottom ports (`n` for north, `s` for south) are needed.
+
+The fix is to replace the `connect` call with manual alignment. Instead of trying to "connect" the differently sized features, we will simply place the center of the bottom feature's top port at the center of the main body's bottom edge. This achieves the intended geometric placement without triggering the port width check.
+
+I have also corrected the `create_prong` sub-component to use `gf.components.compass` so that it has the correct port (`s` for south) for its internal connection, ensuring that part of the code is robust.
+
+### Corrected Script
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_complex_shape():
+    """
+    Recreates the target device by composing parametric primitives.
+
+    The device consists of a main rectangular body, four tapered prongs on top,
+    and a V-shaped taper at the bottom. The final shape is created by
+    a boolean union of all these parts.
+    """
+
+    # --- 1. Define Dimensions ---
+    # Dimensions are derived to fit the 25x10 um footprint and image proportions.
+    main_width = 25.0
+    rect_height = 5.0
+
+    # Top prongs (4 instances)
+    prong_base_width = 4.0
+    prong_top_width = 2.0
+    prong_taper_height = 2.5
+    prong_straight_height = 1.5
+    prong_gap = 3.0  # (25 - 4 * 4.0) / 3 = 3.0
+
+    # Bottom feature
+    bottom_taper_height = 1.0
+    bottom_taper_top_width = 3.0
+    bottom_taper_bottom_width = 1.5
+
+    # --- 2. Create Reusable Prong Sub-Component ---
+    @gf.cell
+    def create_prong():
+        """Creates a single prong by combining a taper and a rectangle."""
+        c = gf.Component("prong")
+
+        taper_component = gf.components.taper(
+            length=prong_taper_height,
+            width1=prong_base_width,
+            width2=prong_top_width,
+        )
+        # **FIX:** Use gf.components.compass to get 'n', 's', 'e', 'w' ports.
+        rect_component = gf.components.compass(
+            size=(prong_top_width, prong_straight_height)
+        )
+
+        r_taper = c << taper_component
+        r_rect = c << rect_component
+        r_taper.rotate(90)
+
+        # **FIX:** Connect the rectangle's south ('s') port to the taper's top port.
+        # The widths now match (both are prong_top_width).
+        r_rect.connect("s", r_taper.ports["o2"])
+        return c
+
+    # --- 3. Assemble the Full Device ---
+    # Create a component to hold all parts before the final boolean merge.
+    assembly = gf.Component("assembly")
+
+    # **FIX:** Use gf.components.compass to get a 's' (south) port for alignment.
+    main_body = gf.components.compass(size=(main_width, rect_height))
+    body_ref = assembly << main_body
+    body_ref.center = (0, 0)
+
+    # Create and place the bottom feature.
+    bottom_taper_component = gf.components.taper(
+        length=bottom_taper_height,
+        width1=bottom_taper_top_width,
+        width2=bottom_taper_bottom_width,
+    )
+    bottom_ref = assembly << bottom_taper_component
+    bottom_ref.rotate(90)
+    
+    # **FIX:** Replace connect with manual alignment to avoid PortWidthMismatchError.
+    # We place the center of the taper's top port ('o1') at the center of the
+    # main body's bottom port ('s').
+    bottom_ref.move(origin=bottom_ref.ports["o1"], destination=body_ref.ports["s"])
+
+    # Instantiate the prong cell.
+    prong_cell = create_prong()
+
+    # Calculate horizontal positions for the four prongs to center them.
+    num_prongs = 4
+    pitch = prong_base_width + prong_gap
+    start_x = - (num_prongs - 1) * pitch / 2
+    x_positions = [start_x + i * pitch for i in range(num_prongs)]
+
+    # Place the four prongs on top of the main body.
+    for x in x_positions:
+        prong_ref = assembly << prong_cell
+        prong_ref.x = x
+        # Align the bottom of the prong with the top of the main body.
+        prong_ref.ymin = body_ref.ymax
+
+    # --- 4. Perform Boolean Union ---
+    # Merge all shapes in the assembly component into a single polygon.
+    final_device = gf.boolean(
+        A=assembly,
+        B=assembly,
+        operation="or",
+        layer=(1, 0)
+    )
+
+    return final_device
+
+# --- Main execution block to generate and view the GDS ---
+if __name__ == "__main__":
+    device = create_complex_shape()
+    device.show(show_ports=False)
+```

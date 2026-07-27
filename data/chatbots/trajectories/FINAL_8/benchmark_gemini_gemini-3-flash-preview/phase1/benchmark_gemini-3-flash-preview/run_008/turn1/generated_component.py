@@ -1,0 +1,89 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreate_device_geometry():
+    c = gf.Component("recreated_device")
+    
+    # Device Dimensions from Footprint (120um x 4um)
+    total_width = 120.0
+    total_height = 4.0
+    layer = (1, 0)
+    
+    # --- Parameters for the horizontal features ---
+    # Based on the image: 3 groups of 5 thin lines, separated by 2 thick bars
+    thin_h = 0.08    # Height of thin lines
+    thin_gap = 0.08  # Gap between thin lines
+    thick_h = 0.6    # Height of the thick solid bars
+    bar_length = 114.0 # Length to overlap with end flares
+    
+    # Helper to create a group of 5 thin lines
+    def add_thin_group(y_center):
+        group_total_h = (5 * thin_h) + (4 * thin_gap)
+        start_y = y_center - (group_total_h / 2) + (thin_h / 2)
+        for i in range(5):
+            # Create component
+            rect = gf.components.rectangle(size=(bar_length, thin_h), layer=layer, centered=True)
+            # Add reference and move the REFERENCE
+            ref = c << rect
+            ref.movey(start_y + i * (thin_h + thin_gap))
+
+    # 1. Add center group of 5 lines
+    add_thin_group(0)
+    
+    # 2. Add two thick bars
+    thick_rect = gf.components.rectangle(size=(bar_length, thick_h), layer=layer, centered=True)
+    y_thick_offset = 0.9
+    
+    ref_thick_top = c << thick_rect
+    ref_thick_top.movey(y_thick_offset)
+    
+    ref_thick_bot = c << thick_rect
+    ref_thick_bot.movey(-y_thick_offset)
+    
+    # 3. Add top and bottom groups of 5 lines
+    y_outer_group_offset = 1.7
+    add_thin_group(y_outer_group_offset)
+    add_thin_group(-y_outer_group_offset)
+
+    # --- 4. Create Flared End Blocks ---
+    # We create a vertical rectangle and subtract an ellipse to get the inward curve
+    pillar_w = 8.0
+    pillar_h = total_height
+    
+    base_pillar = gf.components.rectangle(size=(pillar_w, pillar_h), layer=layer, centered=True)
+    
+    # Elliptical cutout for the flare
+    # This creates the characteristic "waist" seen in the image
+    cutout = gf.components.ellipse(radii=(6.0, 1.8), layer=layer)
+    
+    # Position cutout to bite into the inner face of the pillar
+    # We move the cutout component definition before boolean, or use references
+    # Since boolean needs components, we create a temporary component for the moved cutout
+    cutout_comp = gf.Component("temp_cutout")
+    cref = cutout_comp << cutout
+    cref.movex(-pillar_w/2 - 5.0) # Move to the left side of the pillar block
+    
+    # Boolean "Not" to create the flare
+    side_flare = gf.boolean(A=base_pillar, B=cutout_comp, operation="not", layer=layer)
+    
+    # Add flares at both ends of the 120um footprint
+    # Left Flare
+    left_f = c << side_flare
+    left_f.movex(-total_width/2 + pillar_w/2)
+    
+    # Right Flare (mirrored)
+    right_f = c << side_flare
+    right_f.mirror()
+    right_f.movex(total_width/2 - pillar_w/2)
+
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    device = recreate_device_geometry()
+    
+    # Display the result
+    device.show()
+    
+    # Output file
+    device.write_gds("recreated_device.gds")

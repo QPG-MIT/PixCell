@@ -1,0 +1,49 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.933649",
+      "api_duration_seconds": 8.345940113067627,
+      "usage": {
+        "input_tokens": 4666,
+        "output_tokens": 510,
+        "total_tokens": 5176
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:19.726602",
+      "api_duration_seconds": 0.0,
+      "usage": null,
+      "success": false,
+      "failure_type": "api_error",
+      "error_message": "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The service is currently unavailable.', 'status': 'UNAVAILABLE'}}",
+      "code_extracted": false
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:20.515564",
+      "api_duration_seconds": 5.391573905944824,
+      "usage": {
+        "input_tokens": 5206,
+        "output_tokens": 661,
+        "total_tokens": 5867
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 9872,
+    "output_tokens": 1171,
+    "total_tokens": 11043
+  }
+}

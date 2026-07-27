@@ -1,0 +1,77 @@
+import gdsfactory as gf
+
+@gf.cell
+def create_device():
+    """
+    Creates the four-petal cross shape by performing a boolean union
+    of two ellipses and four rectangular stems.
+    """
+    # 1. Define parameters based on footprint and visual estimation
+    footprint_size = 4.7  # Total width and height in um
+    target_layer = (1, 0) # Define a layer for the geometry
+
+    # Estimate stem dimensions from the image
+    stem_length = 0.35
+    stem_width = 0.25
+
+    # 2. Derive ellipse radii from the total footprint size
+    # Total size = 2 * (major_radius + stem_length)
+    major_radius = footprint_size / 2.0 - stem_length
+    
+    # Estimate minor radius based on the visual "fullness" of the petals
+    minor_radius = major_radius * 0.6
+
+    # 3. Create the primitive components
+    
+    # Ellipse for horizontal arms
+    ellipse_h = gf.components.ellipse(radii=(major_radius, minor_radius), layer=target_layer)
+    
+    # Ellipse for vertical arms (radii swapped)
+    ellipse_v = gf.components.ellipse(radii=(minor_radius, major_radius), layer=target_layer)
+    
+    # Stem for vertical arms
+    stem_v = gf.components.rectangle(size=(stem_width, stem_length), layer=target_layer)
+    
+    # Stem for horizontal arms (dimensions swapped)
+    stem_h = gf.components.rectangle(size=(stem_length, stem_width), layer=target_layer)
+
+    # 4. Create the main component for assembly
+    c = gf.Component("petal_cross")
+
+    # 5. Create the base body by taking the union of the two ellipses
+    base_body = gf.boolean(A=ellipse_h, B=ellipse_v, operation="or", layer=target_layer)
+    c.add_ref(base_body)
+
+    # 6. Add and position the four stems
+    # Top stem
+    s_top = c << stem_v
+    s_top.movey(major_radius + stem_length / 2)
+
+    # Bottom stem
+    s_bottom = c << stem_v
+    s_bottom.movey(-(major_radius + stem_length / 2))
+
+    # Right stem
+    s_right = c << stem_h
+    s_right.movex(major_radius + stem_length / 2)
+    
+    # Left stem
+    s_left = c << stem_h
+    s_left.movex(-(major_radius + stem_length / 2))
+    
+    # 7. Flatten the component to merge all shapes into a single polygon
+    # This is an effective way to union all the placed references.
+    c.flatten()
+
+    return c
+
+# Instantiate the component
+device = create_device()
+
+# FIX: Add the command to write the component to a GDS file.
+# This was missing and is the reason no file was produced.
+device.write_gds("device.gds")
+
+# Optional: You can still show the GDS in a viewer for verification.
+# device.show()
+# print(f"Device size: {device.size}")

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.920849",
+      "api_duration_seconds": 122.56172204017639,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 1819,
+        "total_tokens": 17707
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'circle_gdsfactorypcomponentspshapespcircle_R1p5_AR2p5_L1_0' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:14.023452",
+      "api_duration_seconds": 37.62070417404175,
+      "usage": {
+        "input_tokens": 4224,
+        "output_tokens": 1721,
+        "total_tokens": 9445
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: bad operand type for unary -: 'tuple'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:53.077642",
+      "api_duration_seconds": 25.2480309009552,
+      "usage": {
+        "input_tokens": 5971,
+        "output_tokens": 1751,
+        "total_tokens": 9284
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12542,
+    "output_tokens": 5291,
+    "total_tokens": 36436
+  }
+}

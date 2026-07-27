@@ -1,0 +1,75 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def symmetric_directional_coupler(
+    length: float = 18.0,
+    total_height: float = 3.0,
+    waveguide_width: float = 0.6,
+    gap_center: float = 0.1,
+    num_points: int = 200,
+) -> gf.Component:
+    """
+    Creates a symmetric directional coupler where two waveguides
+    curve toward each other in the middle, creating a coupling region.
+    
+    Parameters:
+        length: Total length of the device (x-direction)
+        total_height: Total height of the device (y-direction)
+        waveguide_width: Width of each waveguide
+        gap_center: Gap between waveguides at the center (coupling region)
+        num_points: Number of points for path discretization
+    """
+    c = gf.Component()
+    
+    # Calculate vertical center of the device
+    y_center = total_height / 2
+    
+    # Distance from y_center to waveguide center at the edges
+    # Waveguides positioned to span full height at edges
+    d_edge = (total_height - waveguide_width) / 2
+    
+    # Distance from y_center to waveguide center at the center
+    # Based on the specified coupling gap
+    d_center = (gap_center + waveguide_width) / 2
+    
+    # Create x coordinates along the device length
+    x = np.linspace(0, length, num_points)
+    
+    # Create sinusoidal profile for the distance from center
+    # Cosine profile: d = d_edge at x=0 and x=length, d = d_center at x=length/2
+    d = (d_edge + d_center) / 2 + (d_edge - d_center) / 2 * np.cos(2 * np.pi * x / length)
+    
+    # Calculate y positions for top and bottom waveguide centers
+    y_top = y_center + d
+    y_bottom = y_center - d
+    
+    # Create path points as list of tuples
+    points_top = [(xi, yi) for xi, yi in zip(x, y_top)]
+    points_bottom = [(xi, yi) for xi, yi in zip(x, y_bottom)]
+    
+    # Create Path objects
+    path_top = gf.Path(points_top)
+    path_bottom = gf.Path(points_bottom)
+    
+    # Create cross section for the waveguides
+    xs = gf.cross_section.cross_section(width=waveguide_width, layer=(1, 0))
+    
+    # Extrude paths to create waveguide geometry
+    wg_top = c << gf.path.extrude(path_top, cross_section=xs)
+    wg_bottom = c << gf.path.extrude(path_bottom, cross_section=xs)
+    
+    # Add ports for external connections
+    c.add_port("o1", port=wg_top.ports["o1"])     # Top waveguide, left end
+    c.add_port("o2", port=wg_top.ports["o2"])     # Top waveguide, right end
+    c.add_port("o3", port=wg_bottom.ports["o1"])  # Bottom waveguide, left end
+    c.add_port("o4", port=wg_bottom.ports["o2"])  # Bottom waveguide, right end
+    
+    return c
+
+
+# Create the device instance
+device = symmetric_directional_coupler()
+
+# Save to GDS file
+device.write_gds("symmetric_directional_coupler.gds")

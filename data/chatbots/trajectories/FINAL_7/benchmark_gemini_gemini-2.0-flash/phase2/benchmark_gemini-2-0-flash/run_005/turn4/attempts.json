@@ -1,0 +1,39 @@
+{
+  "turn": 4,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:51.184115",
+      "api_duration_seconds": 11.242894172668457,
+      "usage": {
+        "input_tokens": 3880,
+        "output_tokens": 1456,
+        "total_tokens": 5336
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<3 lines>...\n    )\nValueError: Cellname capsule already exists in the layout/KCLayout. Please make sure the cellname is unique or pass `allow_duplicate` when creating the library",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:04.342166",
+      "api_duration_seconds": 8.49098801612854,
+      "usage": {
+        "input_tokens": 5397,
+        "output_tokens": 1188,
+        "total_tokens": 6585
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 9277,
+    "output_tokens": 2644,
+    "total_tokens": 11921
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:33:31.312699",
+      "api_duration_seconds": 906.8449783325195,
+      "usage": {
+        "input_tokens": 2769,
+        "output_tokens": 34672,
+        "total_tokens": 37441
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: array() got an unexpected keyword argument 'spacing'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:48:39.416482",
+      "api_duration_seconds": 141.52679204940796,
+      "usage": {
+        "input_tokens": 3454,
+        "output_tokens": 5393,
+        "total_tokens": 8847
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:51:02.161093",
+      "api_duration_seconds": 173.72736501693726,
+      "usage": {
+        "input_tokens": 4513,
+        "output_tokens": 6911,
+        "total_tokens": 11424
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 4.904 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10736,
+    "output_tokens": 46976,
+    "total_tokens": 57712
+  }
+}

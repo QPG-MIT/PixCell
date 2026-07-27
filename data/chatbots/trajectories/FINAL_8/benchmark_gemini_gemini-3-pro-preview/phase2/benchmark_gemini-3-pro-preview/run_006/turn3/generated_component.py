@@ -1,0 +1,123 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_parametric():
+    """
+    Constructs a multi-waveguide directional coupler with adiabatic outer structures.
+    
+    The device geometry includes:
+    1. Central Bundle: 5 straight waveguides centered at y=0.
+    2. Side Bundles: 3 straight waveguides above and below the center.
+    3. Outer Blocks: Large solid structures with adiabatic cosine-tapered outer edges
+       and internal longitudinal slots (mimicking merging waveguides).
+    """
+    c = gf.Component()
+
+    # --- Dimensions & Parameters ---
+    length = 120.0
+    
+    # Waveguide dimensions (tuned for visual density)
+    w_wg = 0.15          # Waveguide width
+    g_wg = 0.15          # Gap between waveguides
+    g_sep = 0.25         # Separation between bundles
+    
+    layer_wg = (1, 0)
+    xs_wg = gf.cross_section.cross_section(width=w_wg, layer=layer_wg)
+
+    # --- 1. Waveguide Generation ---
+    pitch = w_wg + g_wg
+    
+    # Central Bundle: 5 lines, centered at y=0
+    # Indices: -2, -1, 0, 1, 2
+    for i in range(-2, 3):
+        wg = c << gf.components.straight(length=length, cross_section=xs_wg)
+        wg.movey(i * pitch)
+    
+    # Y-coord of the top edge of the central bundle (center + 2*pitch + half width)
+    y_center_top_edge = 2 * pitch + w_wg/2
+    
+    # Side Bundle Start Position
+    y_side_start_center = y_center_top_edge + g_sep + w_wg/2
+    
+    # Top Side Bundle: 3 lines
+    for i in range(3):
+        wg = c << gf.components.straight(length=length, cross_section=xs_wg)
+        wg.movey(y_side_start_center + i * pitch)
+        
+    # Bottom Side Bundle: 3 lines (Mirrored)
+    for i in range(3):
+        wg = c << gf.components.straight(length=length, cross_section=xs_wg)
+        wg.movey(-(y_side_start_center + i * pitch))
+
+    # --- 2. Outer Block Construction ---
+    # Position: Starts after the last side waveguide
+    y_side_top_edge = y_side_start_center + 2 * pitch + w_wg/2
+    y_block_pos = y_side_top_edge + g_sep # Position of the flat inner edge
+
+    def create_slotted_block():
+        """
+        Creates a solid block with a curved outer edge and internal slots.
+        Uses boolean operations on NEW components (safe).
+        """
+        # A. Create Solid Curved Body using a Polygon
+        # Dimensions for the bulk mass
+        w_min = 1.0
+        w_max = 4.0
+        
+        # Generate cosine taper profile: Wide at ends, Narrow at center
+        num_pts = 201
+        x = np.linspace(0, length, num_pts)
+        # 0.5 * (1 + cos) goes 1 -> 0 -> 1
+        factor = 0.5 * (1 + np.cos(2 * np.pi * x / length))
+        w_profile = w_min + (w_max - w_min) * factor
+        
+        # Define vertices
+        # Top edge follows w_profile, Bottom edge is flat at y=0
+        pts_top = np.stack((x, w_profile), axis=1)
+        pts_bot = np.stack((x[::-1], np.zeros_like(x)), axis=1)
+        pts = np.concatenate((pts_top, pts_bot))
+        
+        solid = gf.Component()
+        solid.add_polygon(pts, layer=layer_wg)
+        
+        # B. Create Slots (Negative Space) to define "rails"
+        slots = gf.Component()
+        
+        # Slot 1: Separates Rail 1 from Rail 2
+        # Position: Starts after Rail 1 (width w_wg)
+        s1 = slots << gf.components.rectangle(size=(length, g_wg), layer=layer_wg, centered=False)
+        s1.movey(w_wg) # Move the reference, NOT the component
+        
+        # Slot 2: Separates Rail 2 from Bulk
+        # Position: Starts after Rail 2 (starts at w_wg + g_wg, width w_wg)
+        # y = w_wg + g_wg + w_wg = 2*w_wg + g_wg
+        s2 = slots << gf.components.rectangle(size=(length, g_wg), layer=layer_wg, centered=False)
+        s2.movey(2 * w_wg + g_wg) # Move the reference
+        
+        # C. Boolean Operation (Solid MINUS Slots)
+        # Returns a new flat component
+        return gf.boolean(solid, slots, operation="not", layer=layer_wg)
+
+    # Instantiate the block
+    block = create_slotted_block()
+    
+    # Place Top Block
+    ref_top = c << block
+    ref_top.movey(y_block_pos)
+    
+    # Place Bottom Block
+    # Mirror across X-axis, then translate
+    ref_bot = c << block
+    ref_bot.mirror(p1=(0,0), p2=(1,0)) # Mirror vertically (flat edge stays at y=0, body goes -y)
+    ref_bot.movey(-y_block_pos)        # Move flat edge to correct separation
+    
+    # --- 3. Ports ---
+    c.add_port("o1", center=(0, 0), width=w_wg, orientation=180, layer=layer_wg)
+    c.add_port("o2", center=(length, 0), width=w_wg, orientation=0, layer=layer_wg)
+
+    return c
+
+if __name__ == "__main__":
+    component = device_parametric()
+    component.write_gds("parametric_coupler.gds")

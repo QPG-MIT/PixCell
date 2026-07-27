@@ -1,0 +1,61 @@
+Turn 1 Response:
+
+The error occurs because the `numpy` generated coordinates have floating-point precision that does not align with the standard GDSII grid (usually 1nm). When `gdsfactory` tries to build the component, it rejects these "off-grid" coordinates.
+
+We can fix this by snapping the coordinates to the grid (rounding to 3 decimal places, which corresponds to 1nm resolution) before creating the `Path`.
+
+Here is the corrected, robust script:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def adiabatic_coupler():
+    c = gf.Component()
+    
+    # 1. Define Cross-Sections
+    xs_wide = gf.cross_section.cross_section(width=0.8, layer=(1, 0))
+    xs_narrow = gf.cross_section.cross_section(width=0.2, layer=(1, 0))
+
+    # 2. Define Transitions (Wide <-> Narrow)
+    trans_w2n = gf.path.transition(xs_wide, xs_narrow, width_type='sine')
+    trans_n2w = gf.path.transition(xs_narrow, xs_wide, width_type='sine')
+
+    # 3. Parametric Path Generation
+    length = 18
+    num_points = 100
+    x = np.linspace(0, length, num_points)
+    
+    # S-curve trajectories
+    y_top = 0.6 + 0.4 * np.cos(2 * np.pi * x / length)
+    y_bot = -0.6 - 0.4 * np.cos(2 * np.pi * x / length)
+    
+    # FIX: Round coordinates to 3 decimal places (1nm grid) to ensure on-grid placement
+    points_top = [(round(xi, 3), round(yi, 3)) for xi, yi in zip(x, y_top)]
+    points_bot = [(round(xi, 3), round(yi, 3)) for xi, yi in zip(x, y_bot)]
+
+    # 4. Extrude with transitions
+    # Split the path in half to apply W->N then N->W transitions
+    mid = num_points // 2
+    
+    # Top arm segments
+    top_left = c << gf.path.extrude_transition(gf.Path(points_top[:mid+1]), trans_w2n)
+    top_right = c << gf.path.extrude_transition(gf.Path(points_top[mid:]), trans_n2w)
+    top_right.connect("o1", top_left.ports["o2"])
+
+    # Bottom arm segments
+    bot_left = c << gf.path.extrude_transition(gf.Path(points_bot[:mid+1]), trans_w2n)
+    bot_right = c << gf.path.extrude_transition(gf.Path(points_bot[mid:]), trans_n2w)
+    bot_right.connect("o1", bot_left.ports["o2"])
+
+    return c
+
+# Generate and view the component
+device = adiabatic_coupler()
+device.show()
+```
+
+### Key Improvements:
+*   **Coordinate Rounding:** Added `round(val, 3)` to the point generation. This ensures every coordinate aligns with a 1nm grid, satisfying the foundry constraints and eliminating the `ValueError`.
+*   **Parametric Integrity:** The geometry is still fully generated from mathematical formulas, ensuring it remains parametric and editable.

@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:31:08.429227",
+      "api_duration_seconds": 327.4001569747925,
+      "usage": {
+        "input_tokens": 5364,
+        "output_tokens": 12569,
+        "total_tokens": 17933
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:36:36.970138",
+      "api_duration_seconds": 76.22377705574036,
+      "usage": {
+        "input_tokens": 7212,
+        "output_tokens": 2903,
+        "total_tokens": 10115
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'int' object is not subscriptable",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:37:54.333250",
+      "api_duration_seconds": 60.222309827804565,
+      "usage": {
+        "input_tokens": 8810,
+        "output_tokens": 1782,
+        "total_tokens": 10592
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 21386,
+    "output_tokens": 17254,
+    "total_tokens": 38640
+  }
+}

@@ -1,0 +1,101 @@
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler_improved():
+    """
+    Creates a symmetric directional coupler with a defined footprint of 18x3 um.
+    Parameters tuned to match visual target:
+    - Waveguide width: 0.7 um (Reduced to match target aspect ratio better)
+    - Coupling gap: 0.4 um (Maintained to provide distinct separation)
+    - Coupling length: 6.0 um (Increased to define the flat central region more clearly and steepen the bends)
+    """
+    c = gf.Component()
+
+    # --- Geometric Constraints ---
+    length = 18.0
+    total_height = 3.0
+    
+    # Tuned parameters based on visual inspection
+    wg_width = 0.7   # Thinner waveguides to match the visual weight of the black lines
+    gap_min = 0.4    # Minimum gap at the center
+    lc = 6.0         # Length of the straight coupling region (increased to match the flat center)
+    
+    # Derived dimensions
+    bend_length = (length - lc) / 2
+    
+    # Y-coordinates calculations
+    # Input: Aligned to outer limits +/- 1.5 um to maximize footprint usage
+    # Top Input Center: Top edge at 1.5 -> Center at 1.5 - (0.7/2) = 1.15
+    y_input_top = (total_height / 2) - (wg_width / 2)
+    y_input_bot = -y_input_top
+    
+    # Waist: Just above central gap
+    # Top Waist Center: (gap/2) + (width/2) = 0.2 + 0.35 = 0.55
+    y_waist_top = (gap_min / 2) + (wg_width / 2)
+    y_waist_bot = -y_waist_top
+    
+    # Vertical drop for S-bends
+    # Top arm must drop from Input Y to Waist Y
+    dy_top = y_waist_top - y_input_top  # 0.55 - 1.15 = -0.6
+    
+    # Bottom arm must rise from Input Y to Waist Y
+    dy_bot = y_waist_bot - y_input_bot  # -0.55 - (-1.15) = 0.6
+
+    # Define Cross Section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Define Primitives ---
+    
+    # 1. Straight Section (Central Waist)
+    straight_comp = gf.components.straight(length=lc, cross_section=xs)
+    
+    # 2. Input Bends
+    # bend_s size is (x_length, y_height)
+    bend_in_top = gf.components.bend_s(size=(bend_length, dy_top), cross_section=xs)
+    bend_in_bot = gf.components.bend_s(size=(bend_length, dy_bot), cross_section=xs)
+    
+    # 3. Output Bends
+    # Output moves from Waist Y back to Input Y
+    # The vertical change is opposite to the input bend
+    bend_out_top = gf.components.bend_s(size=(bend_length, -dy_top), cross_section=xs)
+    bend_out_bot = gf.components.bend_s(size=(bend_length, -dy_bot), cross_section=xs)
+
+    # --- Assembly ---
+    
+    # -- Top Arm --
+    # 1. Input Bend
+    t1 = c << bend_in_top
+    t1.move((0, y_input_top))
+    
+    # 2. Waist
+    t2 = c << straight_comp
+    t2.connect("o1", t1.ports["o2"])
+    
+    # 3. Output Bend
+    t3 = c << bend_out_top
+    t3.connect("o1", t2.ports["o2"])
+    
+    # -- Bottom Arm --
+    # 1. Input Bend
+    b1 = c << bend_in_bot
+    b1.move((0, y_input_bot))
+    
+    # 2. Waist
+    b2 = c << straight_comp
+    b2.connect("o1", b1.ports["o2"])
+    
+    # 3. Output Bend
+    b3 = c << bend_out_bot
+    b3.connect("o1", b2.ports["o2"])
+    
+    # Expose ports
+    c.add_port("o1", port=t1.ports["o1"])
+    c.add_port("o2", port=b1.ports["o1"])
+    c.add_port("o3", port=t3.ports["o2"])
+    c.add_port("o4", port=b3.ports["o2"])
+
+    return c
+
+# Create and save
+device = symmetric_coupler_improved()
+device.write_gds("symmetric_coupler_improved.gds")

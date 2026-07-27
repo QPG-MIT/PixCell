@@ -1,0 +1,88 @@
+Turn 1 Response:
+
+To recreate the geometry shown in the image while respecting the "parametric primitives" and "no raw polygons" constraints, we can use the `gf.components.rectangle` primitive within a loop.
+
+By calculating the `length` of each rectangle based on its vertical position (using a parabolic function), we can approximate the curved edges of the device footprint naturally. This approach uses the GDSFactory catalog primitives and parametric control rather than hardcoded vertex lists.
+
+Here is the GDSFactory implementation:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_geometry(
+    length=120.0, 
+    height=4.0, 
+    num_lines=5, 
+    curvature=0.005
+):
+    """
+    Recreates the device geometry using parametric rectangle primitives.
+    
+    The device is composed of three sections:
+    1. Top section: Curved edges, lines length varies with Y.
+    2. Middle section: Straight lines, full length.
+    3. Bottom section: Mirror of top.
+    """
+    c = gf.Component()
+    
+    # Define the cross-section of the lines
+    xs = gf.cross_section.cross_section(width=0.2, layer=(1, 0))
+    
+    # Spacing parameters
+    pitch = 0.4
+    gap_between_sections = 0.6
+    
+    # Generate geometry
+    # Middle block (Constant length 120um)
+    for i in range(num_lines):
+        y_pos = (i - (num_lines - 1) / 2) * pitch
+        rect = c << gf.components.rectangle(
+            size=(length, 0.2), 
+            layer=(1, 0), 
+            centered=True
+        )
+        rect.movey(y_pos)
+
+    # Top/Bottom blocks (Curved length)
+    # We calculate lengths using a parabola: L(y) = L_max - k * y^2
+    # This creates the curved side boundary effect.
+    for section_sign in [1, -1]:  # 1 for top, -1 for bottom
+        section_offset = section_sign * (num_lines * pitch / 2 + gap_between_sections)
+        
+        for i in range(num_lines):
+            # Calculate Y position
+            y_offset = (i - (num_lines - 1) / 2) * pitch
+            y_pos = section_offset + y_offset
+            
+            # Calculate length based on parabola to create curve
+            # The further from the center (0), the shorter the line
+            line_len = length - (curvature * (y_pos**2))
+            
+            rect = c << gf.components.rectangle(
+                size=(line_len, 0.2), 
+                layer=(1, 0), 
+                centered=True
+            )
+            rect.movey(y_pos)
+
+    return c
+
+# Create and display
+device = device_geometry()
+
+# Write to GDS
+device.write_gds("parametric_device.gds")
+
+# Optional: View it
+# device.show()
+```
+
+### Explanation of the Strategy:
+1.  **Parametric Construction:** Instead of drawing polygons, we use `gf.components.rectangle` as the fundamental building block.
+2.  **Geometric Logic:**
+    *   **Middle Section:** We place 5 rectangles of a constant length (`length=120`).
+    *   **Curved Edges:** To achieve the curved look on the top and bottom sections, we apply a mathematical function (`curvature * y^2`) to the length of each rectangle. As the Y-position increases (moving away from the center), the length of the rectangle decreases, creating the curved side boundary effect.
+    *   **Mirror Symmetry:** We loop twice (`[1, -1]`) for the Y-offset, creating the mirrored top and bottom sections automatically.
+3.  **Compliance:** This script relies entirely on `gf.components.rectangle` (a primitive from the provided catalog) and standard geometric assembly, satisfying the requirement to avoid hardcoded polygon vertices.

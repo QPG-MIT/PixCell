@@ -1,0 +1,80 @@
+Turn 4 Response:
+
+Okay, I understand the goal.  The current output is just a straight line, and the objective is to match the MZI-like structure in the target image. The target image resembles a symmetric directional coupler with two inputs/outputs and two central coupling regions. The code needs to create this kind of structure. I will use the `coupler_straight` and `bend_euler` functions to construct the coupler.
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import bend_euler, straight, coupler_straight
+
+@gf.cell
+def directional_coupler(length_straight=20.0, bend_radius=10.0, gap=0.3, coupler_length=10.0):
+    """Directional coupler structure.
+
+    Args:
+        length_straight: Length of the input/output straight sections.
+        bend_radius: Radius of the Euler bends.
+        gap: Gap between the two central waveguides.
+        coupler_length: Length of the coupling region.
+    """
+    c = gf.Component("directional_coupler")
+    xs = gf.cross_section.cross_section(width=0.5)
+
+    # Input waveguides
+    input_straight1 = c << straight(length=length_straight, cross_section=xs)
+    input_straight1.name = "input_straight1"
+
+    input_straight2 = c << straight(length=length_straight, cross_section=xs)
+    input_straight2.name = "input_straight2"
+    input_straight2.movey(gap + xs.width)
+
+    # First bend
+    bend1 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend1.name = "bend1"
+    bend1.connect("o1", input_straight1.ports["o2"])
+
+    # Second bend
+    bend2 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend2.name = "bend2"
+    bend2.connect("o1", input_straight2.ports["o2"])
+
+    # Coupler
+    coupler = c << coupler_straight(length=coupler_length, gap=gap, cross_section=xs)
+    coupler.name = "coupler"
+    coupler.connect("o1", bend1.ports["o2"])
+    coupler.connect("o3", bend2.ports["o2"])
+
+    # Third bend
+    bend3 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend3.name = "bend3"
+    bend3.rotate(angle=180)
+    bend3.connect("o1", coupler.ports["o2"])
+
+    # Fourth bend
+    bend4 = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend4.name = "bend4"
+    bend4.rotate(angle=180)
+    bend4.connect("o1", coupler.ports["o4"])
+
+    # Output straight
+    output_straight1 = c << straight(length=length_straight, cross_section=xs)
+    output_straight1.name = "output_straight1"
+    output_straight1.connect("o1", bend3.ports["o2"])
+
+    output_straight2 = c << straight(length=length_straight, cross_section=xs)
+    output_straight2.name = "output_straight2"
+    output_straight2.connect("o1", bend4.ports["o2"])
+
+    # Ports
+    c.add_port("o1", port=input_straight1.ports["o1"])
+    c.add_port("o2", port=output_straight1.ports["o2"])
+    c.add_port("o3", port=input_straight2.ports["o1"])
+    c.add_port("o4", port=output_straight2.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    dc = directional_coupler()
+    dc.write_gds("directional_coupler.gds")
+    dc.show()
+    print("GDS file 'directional_coupler.gds' created.")
+```

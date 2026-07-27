@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:08.940870",
+      "api_duration_seconds": 52.52822923660278,
+      "usage": {
+        "input_tokens": 3182,
+        "output_tokens": 1341,
+        "total_tokens": 10637
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:03.061587",
+      "api_duration_seconds": 26.90774703025818,
+      "usage": {
+        "input_tokens": 4549,
+        "output_tokens": 1061,
+        "total_tokens": 8566
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:31.745812",
+      "api_duration_seconds": 29.05176877975464,
+      "usage": {
+        "input_tokens": 6110,
+        "output_tokens": 1243,
+        "total_tokens": 10228
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: bad operand type for unary -: 'tuple'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13841,
+    "output_tokens": 3645,
+    "total_tokens": 29431
+  }
+}

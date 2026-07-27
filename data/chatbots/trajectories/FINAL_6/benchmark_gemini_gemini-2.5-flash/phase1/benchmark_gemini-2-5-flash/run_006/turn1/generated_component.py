@@ -1,0 +1,132 @@
+import gdsfactory as gf
+
+# Define a default layer for all geometry
+DEFAULT_LAYER = (1, 0)
+
+@gf.cell
+def make_petal_arm(
+    L_petal_body: float = 1.85,  # Length of the elliptical body
+    W_petal_body: float = 0.8,   # Max width of the elliptical body
+    L_tip: float = 0.5,          # Length of the straight tip
+    W_tip: float = 0.2,          # Width of the straight tip
+    layer: tuple = DEFAULT_LAYER,
+) -> gf.Component:
+    """
+    Creates a single arm of the custom cross shape, pointing upwards.
+    The arm starts at y=0 and extends to y=(L_petal_body + L_tip).
+    It consists of an elliptical body and a rectangular tip, combined with boolean OR.
+    """
+
+    # 1. Create the elliptical body and position it
+    # We create a new Component to act as a container for the positioned ellipse.
+    positioned_ellipse_component = gf.Component("positioned_ellipse")
+    # Add the ellipse primitive as a reference to this container.
+    ellipse_ref = positioned_ellipse_component << gf.components.ellipse(
+        radii=(W_petal_body / 2, L_petal_body / 2),
+        layer=layer
+    )
+    # Move the reference (which is mutable) so its bottom point is at y=0.
+    ellipse_ref.movey(L_petal_body / 2)
+
+    # 2. Create the rectangular tip and position it
+    # We create another new Component to act as a container for the positioned rectangle.
+    positioned_rectangle_component = gf.Component("positioned_rectangle")
+    # Add the rectangle primitive as a reference to this container.
+    rectangle_ref = positioned_rectangle_component << gf.components.rectangle(
+        size=(W_tip, L_tip),
+        layer=layer,
+        centered=True
+    )
+    # Move the reference so its bottom edge connects to the top edge of the ellipse body.
+    rectangle_ref.movey(L_petal_body + L_tip / 2)
+
+    # 3. Combine the two positioned components using a boolean OR operation.
+    # gf.boolean operates on the combined polygons within the input Component objects.
+    # This creates a *new* Component containing the union of the shapes.
+    arm_combined = gf.boolean(
+        positioned_ellipse_component,
+        positioned_rectangle_component,
+        operation="or",
+        layer=layer
+    )
+    
+    return arm_combined
+
+@gf.cell
+def custom_cross_shape(
+    L_petal_body: float = 1.85,  # Length of the elliptical body of a petal
+    W_petal_body: float = 0.8,   # Max width of the elliptical body of a petal
+    L_tip: float = 0.5,          # Length of the straight tip of a petal
+    W_tip: float = 0.2,          # Width of the straight tip of a petal
+    layer: tuple = DEFAULT_LAYER,
+) -> gf.Component:
+    """
+    Recreates the custom cross geometry shown in the image.
+    It consists of four symmetrically rotated "petal" arms combined using boolean OR.
+    """
+    c = gf.Component("custom_cross_shape")
+
+    # Create the base arm component definition. This component will be rotated.
+    # It is returned from `make_petal_arm` and acts as a template.
+    arm_template = make_petal_arm(L_petal_body, W_petal_body, L_tip, W_tip, layer)
+
+    # To modify the geometry of an arm (like rotating it) before a boolean operation,
+    # we must work on a *copy* of the arm_template.
+    # Otherwise, the Component object returned by `make_petal_arm` is treated
+    # as a locked cell definition.
+
+    # 1. Arm pointing upwards (no rotation needed, it's already oriented upwards)
+    arm_up_transformed = arm_template.copy()
+
+    # 2. Arm pointing to the right (rotate the copy by -90 degrees)
+    arm_right_transformed = arm_template.copy()
+    arm_right_transformed.rotate(angle=-90)
+
+    # 3. Arm pointing downwards (rotate the copy by -180 degrees)
+    arm_down_transformed = arm_template.copy()
+    arm_down_transformed.rotate(angle=-180)
+
+    # 4. Arm pointing to the left (rotate the copy by -270 degrees)
+    arm_left_transformed = arm_template.copy()
+    arm_left_transformed.rotate(angle=-270)
+
+    # Perform a series of boolean OR operations to combine all four transformed arms.
+    # `gf.boolean` creates a new Component from the union of its inputs.
+    combined_shape = gf.boolean(arm_up_transformed, arm_right_transformed, operation="or", layer=layer)
+    combined_shape = gf.boolean(combined_shape, arm_down_transformed, operation="or", layer=layer)
+    combined_shape = gf.boolean(combined_shape, arm_left_transformed, operation="or", layer=layer)
+
+    # Add the final combined shape to the main component `c`.
+    c.add_ref(combined_shape)
+    
+    return c
+
+# --- Example Usage and Footprint Verification ---
+if __name__ == "__main__":
+    # Create the device
+    device = custom_cross_shape()
+    
+    # Write the GDS file
+    device.write_gds("custom_cross_shape.gds")
+    print("Generated custom_cross_shape.gds")
+
+    # Verify the device footprint against the constraint
+    bbox = device.bbox  # Get the bounding box of the device
+    width = bbox[1][0] - bbox[0][0]
+    height = bbox[1][1] - bbox[0][1]
+    
+    print(f"\nDevice Bounding Box: {bbox}")
+    print(f"Device Width: {width:.3f} um")
+    print(f"Device Height: {height:.3f} um")
+
+    # Expected footprint from the constraint
+    expected_width = 4.7
+    expected_height = 4.7
+    
+    # Assertions for verification (allowing for minor floating point inaccuracies)
+    assert abs(width - expected_width) < 1e-3, f"Width mismatch: {width:.3f} vs {expected_width:.1f}"
+    assert abs(height - expected_height) < 1e-3, f"Height mismatch: {height:.3f} vs {expected_height:.1f}"
+    print("Footprint matches the constraint.")
+
+    # Optional: Display the component using KLayout (requires KLayout to be installed and configured)
+    # gf.show(device)

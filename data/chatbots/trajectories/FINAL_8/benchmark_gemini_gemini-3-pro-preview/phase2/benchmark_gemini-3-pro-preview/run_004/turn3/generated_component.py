@@ -1,0 +1,101 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_120_4():
+    """
+    Parametric reproduction of the coupled waveguide grating device.
+    Features:
+    - 120um x 4um footprint constraint.
+    - Curved vertical bus waveguides (rails) creating a device waist.
+    - Central stack of 10 horizontal grating lines (5 pairs).
+    - Variable grating parameters: Lines get thicker and longer away from the center.
+    """
+    c = gf.Component()
+
+    # ==========================================
+    # 1. Geometric Parameters
+    # ==========================================
+    # Device Constraints
+    L_total = 120.0
+    H_total = 4.0
+    
+    # Bus Waveguide (Rail) Parameters
+    # The rails follow a parabolic profile: x = a*y^2 + x_waist
+    w_rail = 0.45           # Width of the vertical side rails
+    x_outer = L_total / 2.0 # X position at top/bottom (y=2.0) -> 60.0
+    x_inner = 47.0          # X position at waist (y=0). Defines constriction.
+    
+    # Grating Stack Parameters
+    n_pairs = 5             # Number of symmetric pairs (10 lines total)
+    gap_coupling = 0.20     # Constant gap between grating tips and side rails
+    
+    # Vertical distribution (Pitch and Line Widths)
+    # We fit 5 lines in the half-height (2.0um).
+    # Pitch ~ 0.38um.
+    y_centers = np.array([0.19, 0.57, 0.95, 1.33, 1.71])
+    
+    # Line widths (thickness in Y) taper from thin (center) to thick (outer)
+    # This creates the visual effect of the "solid" blocks with thin gaps at the edges
+    widths = np.array([0.15, 0.18, 0.22, 0.26, 0.30])
+    
+    layer = (1, 0)
+
+    # ==========================================
+    # 2. Build Side Rails (Curved Bus Waveguides)
+    # ==========================================
+    # Generate points for the parabolic rail path
+    num_points = 101
+    y_rail = np.linspace(-H_total/2, H_total/2, num_points)
+    # Parabolic equation: x(y)
+    x_rail_profile = x_inner + (x_outer - x_inner) * (y_rail / (H_total/2))**2
+    
+    # Create Rail Cross-section
+    xs_rail = gf.cross_section.cross_section(width=w_rail, layer=layer)
+    
+    # 2a. Right Rail
+    pts_right = list(zip(x_rail_profile, y_rail))
+    path_right = gf.Path(pts_right)
+    rail_r = c << gf.path.extrude(path_right, xs_rail)
+    
+    # 2b. Left Rail (Mirror of Right)
+    rail_l = c << gf.path.extrude(path_right, xs_rail)
+    rail_l.mirror(p1=(0,0), p2=(0,1)) # Mirror across Y axis
+
+    # ==========================================
+    # 3. Build Horizontal Grating Lines
+    # ==========================================
+    # Iterate through the defined Y levels to place waveguides
+    
+    for y_c, w_bar in zip(y_centers, widths):
+        # Calculate the X position of the rail centerline at this specific Y
+        # We use the same parabolic equation as the rails
+        rail_x_at_y = x_inner + (x_outer - x_inner) * (y_c / (H_total/2))**2
+        
+        # Calculate the available length for the horizontal bar
+        # The bar must stop before hitting the rail.
+        # Limit = (Rail Center X) - (Rail Half Width) - (Coupling Gap)
+        x_limit = rail_x_at_y - (w_rail / 2) - gap_coupling
+        bar_length = 2 * x_limit
+        
+        # Create Top Bar
+        bar_top = c << gf.components.rectangle(
+            size=(bar_length, w_bar), 
+            layer=layer, 
+            centered=True
+        )
+        bar_top.movey(y_c)
+        
+        # Create Bottom Bar (Symmetric)
+        bar_bot = c << gf.components.rectangle(
+            size=(bar_length, w_bar), 
+            layer=layer, 
+            centered=True
+        )
+        bar_bot.movey(-y_c)
+
+    return c
+
+if __name__ == "__main__":
+    device = device_120_4()
+    device.write_gds("device_120_4.gds")

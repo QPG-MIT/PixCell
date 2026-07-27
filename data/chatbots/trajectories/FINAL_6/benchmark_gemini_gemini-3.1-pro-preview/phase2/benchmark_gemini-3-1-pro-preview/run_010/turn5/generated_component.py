@@ -1,0 +1,73 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def stylized_cross() -> gf.Component:
+    """
+    Creates a stylized cross with four plump petals that feature deep central 
+    indents and smoothly taper into thin straight arms.
+    """
+    c = gf.Component()
+    target_layer = (1, 0)
+
+    # 1. Base Thin Cross
+    # Provides the exact 4.7um footprint constraint and the outer thin arms.
+    cross_len = 4.7
+    cross_width = 0.15 
+    base_cross = gf.components.cross(length=cross_len, width=cross_width, layer=target_layer)
+    
+    # 2. Custom Mathematical Petals
+    petal_length = 1.85      # Length of the bulging petal part
+    max_half_width = 0.70    # Plumpness of the petal
+    end_half_width = cross_width / 2.0  # Match the straight arm width perfectly
+    
+    # Generate the top-half curve of the rightward petal using a pure sine wave.
+    # This creates a perfect "almond/lens" shape that forms sharp V-indents at the center.
+    num_points = 100
+    x = np.linspace(0, petal_length, num_points)
+    amplitude = max_half_width - end_half_width
+    y = end_half_width + amplitude * np.sin(np.pi * x / petal_length)
+    
+    # Build closed polygon points for the base rightward petal
+    pts_top = np.column_stack((x, y))
+    pts_bot = np.column_stack((x[::-1], -y[::-1]))
+    pts0 = np.vstack((pts_top, pts_bot))
+    
+    # Create exact orthogonal rotations using coordinate swapping 
+    # to avoid any floating-point gaps or overlaps
+    pts90 = np.column_stack((-pts0[:, 1], pts0[:, 0]))
+    pts180 = np.column_stack((-pts0[:, 0], -pts0[:, 1]))
+    pts270 = np.column_stack((pts0[:, 1], -pts0[:, 0]))
+    
+    # Create independent components for each rotated petal
+    c0 = gf.Component()
+    c0.add_polygon(pts0, layer=target_layer)
+    
+    c90 = gf.Component()
+    c90.add_polygon(pts90, layer=target_layer)
+    
+    c180 = gf.Component()
+    c180.add_polygon(pts180, layer=target_layer)
+    
+    c270 = gf.Component()
+    c270.add_polygon(pts270, layer=target_layer)
+    
+    # 3. Boolean Composition
+    # Sequentially OR all the parts to produce one cleanly merged polygon
+    u1 = gf.boolean(c0, c90, operation='or', layer=target_layer)
+    u2 = gf.boolean(c180, c270, operation='or', layer=target_layer)
+    u3 = gf.boolean(u1, u2, operation='or', layer=target_layer)
+    
+    # Merge the 4-petal core with the backbone cross
+    final_geom = gf.boolean(u3, base_cross, operation='or', layer=target_layer)
+    
+    c << final_geom
+    
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    c = stylized_cross()
+    
+    # Save the component to a GDS file
+    c.write_gds("stylized_cross.gds")

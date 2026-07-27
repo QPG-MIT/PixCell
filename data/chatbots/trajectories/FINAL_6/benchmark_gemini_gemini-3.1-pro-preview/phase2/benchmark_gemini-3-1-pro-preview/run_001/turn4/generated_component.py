@@ -1,0 +1,77 @@
+import gdsfactory as gf
+
+@gf.cell
+def almond_petal(length=2.0, width=1.2):
+    """Creates a pointed almond (vesica piscis) shape by intersecting two circles."""
+    W = width
+    L = length
+    
+    # Calculate offset (D) and radius (R) for the intersecting circles
+    # so they perfectly meet at x=0 and x=L with a max width of W.
+    D = (L**2 - W**2) / (4 * W)
+    R = D + W / 2.0
+    
+    # Use standard circles
+    c1 = gf.components.circle(radius=R)
+    c2 = gf.components.circle(radius=R)
+    
+    # Offset the two circles vertically
+    temp1 = gf.Component()
+    ref1 = temp1 << c1
+    ref1.move((L/2, D))
+    
+    temp2 = gf.Component()
+    ref2 = temp2 << c2
+    ref2.move((L/2, -D))
+    
+    # The geometric intersection yields the perfect leaf shape tapering to (0,0)
+    return gf.boolean(temp1, temp2, operation='and', layer=(1, 0))
+
+@gf.cell
+def petal_cross_device():
+    """Creates a device with four almond-shaped petals and straight tips."""
+    
+    # Total device footprint and core dimensions
+    total_size = 4.7
+    cross_w = 0.2
+    
+    # Petal specific dimensions
+    # Length of 2.0 leaves 0.35um on each side for the straight tips to emerge
+    p_len = 2.0
+    p_width = 1.2
+    
+    # Generate our primitives
+    single_petal = almond_petal(length=p_len, width=p_width)
+    core_cross = gf.components.cross(length=total_size, width=cross_w, layer=(1, 0))
+    
+    c_temp = gf.Component()
+    
+    # Add and fan out the four petals from the origin
+    p1 = c_temp << single_petal
+    
+    p2 = c_temp << single_petal
+    p2.rotate(90)
+    
+    p3 = c_temp << single_petal
+    p3.rotate(180)
+    
+    p4 = c_temp << single_petal
+    p4.rotate(270)
+    
+    # Add the central backbone (provides the straight tips and secures the origin)
+    cr = c_temp << core_cross
+    
+    # Perform sequential boolean unions to merge everything safely into a clean single polygon
+    u1 = gf.boolean(p1, p2, operation='or', layer=(1, 0))
+    u2 = gf.boolean(p3, p4, operation='or', layer=(1, 0))
+    u3 = gf.boolean(u1, u2, operation='or', layer=(1, 0))
+    final_device = gf.boolean(u3, cr, operation='or', layer=(1, 0))
+    
+    return final_device
+
+if __name__ == "__main__":
+    # Create the component
+    c = petal_cross_device()
+    
+    # Save the component to a GDS file
+    c.write_gds("petal_cross_device.gds")

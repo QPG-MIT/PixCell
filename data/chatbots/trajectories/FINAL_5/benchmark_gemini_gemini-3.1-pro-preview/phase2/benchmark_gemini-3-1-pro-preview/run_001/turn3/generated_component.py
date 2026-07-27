@@ -1,0 +1,104 @@
+import gdsfactory as gf
+
+@gf.cell
+def grating_section(length, w, tooth_w, tooth_pitch, tooth_h):
+    """Creates a straight waveguide section with grating teeth fused to its bottom edge."""
+    c = gf.Component()
+    wg = c << gf.components.straight(length=length, width=w)
+    
+    num_teeth = int(length / tooth_pitch)
+    start_x = (length - (num_teeth * tooth_pitch)) / 2
+    
+    overlap = 0.001 # Small overlap guarantees clean polygon merging
+    
+    for i in range(num_teeth):
+        x_pos = start_x + i * tooth_pitch + (tooth_pitch - tooth_w) / 2
+        # centered=False places the local origin at the bottom-left of the rectangle
+        tooth = c << gf.components.rectangle(size=(tooth_w, tooth_h + overlap), centered=False)
+        # Position extending exactly tooth_h below the waveguide
+        tooth.move((x_pos, -w/2 - tooth_h))
+        
+    c.add_port("o1", port=wg.ports["o1"])
+    c.add_port("o2", port=wg.ports["o2"])
+    return c
+
+@gf.cell
+def half_device():
+    """Builds one folded arm (inner + outer). 
+    Local coordinates start with the inner straight taper at x=0, pointing left.
+    """
+    c = gf.Component()
+    
+    w = 0.05
+    w_tip = 0.002
+    xs = gf.cross_section.cross_section(width=w)
+    
+    # --- Inner Arm ---
+    # 1. Inner Straight Taper
+    taper = c << gf.components.taper(length=0.6, width1=w_tip, width2=w)
+    
+    # 2. Plain Section 1 (Longer side before gratings)
+    p1 = c << gf.components.straight(length=1.65, width=w)
+    p1.connect("o1", taper.ports["o2"])
+    
+    # 3. Grating Section (Teeth face down towards -y locally)
+    grat = c << grating_section(length=9.0, w=w, tooth_w=0.1, tooth_pitch=0.2, tooth_h=0.03)
+    grat.connect("o1", p1.ports["o2"])
+    
+    # 4. Plain Section 2 (Shorter gap to U-turn)
+    p2 = c << gf.components.straight(length=0.4, width=w)
+    p2.connect("o1", grat.ports["o2"])
+    
+    # Total Inner Length calculated: 0.6 + 1.65 + 9.0 + 0.4 = 11.65um
+    
+    # --- U-Turn & Outer Arm ---
+    # 5. U-turn
+    p_uturn = gf.path.arc(radius=0.06, angle=180)
+    uturn = c << gf.path.extrude(p_uturn, cross_section=xs)
+    uturn.connect("o1", p2.ports["o2"])
+    
+    # 6. Outer Arm Straight 
+    # Exact length matches inner arm straight length so they align perfectly
+    out_str = c << gf.components.straight(length=11.65, width=w)
+    out_str.connect("o1", uturn.ports["o2"])
+    
+    # 7. Outer Arm Sweeping Curved Tail
+    # Arc parameters mathematically tuned to provide dx=3.47 and total y<0.35 footprint limit
+    p_tail = gf.path.arc(radius=50.0, angle=-3.98) 
+    trans = gf.path.transition(
+        xs,
+        gf.cross_section.cross_section(width=w_tip)
+    )
+    tail = c << gf.path.extrude_transition(p_tail, trans)
+    tail.connect("o1", out_str.ports["o2"])
+    
+    return c
+
+@gf.cell
+def full_device():
+    """Assembles the symmetric target layout to hit the 18.24 x 0.7 um footprint limit."""
+    c = gf.Component()
+    
+    # --- Central Waveguide ---
+    w_center = 0.05
+    # Length bridges exactly the distance between the two inner tapers
+    center_wg = c << gf.components.straight(length=11.30, width=w_center)
+    # Start at -5.65 so it perfectly spans -5.65 to +5.65
+    center_wg.move((-5.65, 0))
+    
+    # --- Top Arm ---
+    top = c << half_device()
+    # Align the inner taper tip exactly with the center WG's left edge
+    top.move((-5.65, 0.09))
+    
+    # --- Bottom Arm ---
+    bot = c << half_device()
+    bot.rotate(180)
+    # The inner taper tip is now local (0,0). Move it exactly to center WG's right edge
+    bot.move((5.65, -0.09))
+    
+    return c
+
+if __name__ == "__main__":
+    device = full_device()
+    device.write_gds("output.gds")

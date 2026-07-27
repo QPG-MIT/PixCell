@@ -1,0 +1,50 @@
+import gdsfactory as gf
+
+@gf.cell
+def wavy_coupler():
+    c = gf.Component()
+    length_total = 18.0
+    height = 3.0
+    w = 0.5
+    gap = 0.2
+    straight_length = 4.0  # Adjusted to avoid min_bend_radius error while maintaining a flatter coupling region
+    dx = (length_total - straight_length) / 2
+    sep_ends = height - w  # Separation of centers at ends
+    sep_middle = w + gap
+    dy = (sep_ends - sep_middle) / 2
+    xs = gf.cross_section.cross_section(width=w, layer=(1, 0))
+
+    # Lower waveguide
+    bend_lower_left = gf.components.bend_s(size=(dx, dy), cross_section=xs)
+    straight_lower = gf.components.straight(length=straight_length, cross_section=xs)
+    bend_lower_right = gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+
+    bll = c << bend_lower_left
+    sl = c << straight_lower
+    sl.connect("o1", bll.ports["o2"])
+    blr = c << bend_lower_right
+    blr.connect("o1", sl.ports["o2"])
+
+    # Upper waveguide
+    bend_upper_left = gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+    straight_upper = gf.components.straight(length=straight_length, cross_section=xs)
+    bend_upper_right = gf.components.bend_s(size=(dx, dy), cross_section=xs)
+
+    bul = c << bend_upper_left
+    bul.move((0, sep_ends))
+    su = c << straight_upper
+    su.connect("o1", bul.ports["o2"])
+    bur = c << bend_upper_right
+    bur.connect("o1", su.ports["o2"])
+
+    # Expose ports
+    c.add_port("o1", port=bll.ports["o1"])  # lower left
+    c.add_port("o2", port=bul.ports["o1"])  # upper left
+    c.add_port("o3", port=blr.ports["o2"])  # lower right
+    c.add_port("o4", port=bur.ports["o2"])  # upper right
+
+    return c
+
+# Create and save
+device = wavy_coupler()
+device.write_gds("my_device.gds")

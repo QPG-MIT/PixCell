@@ -1,0 +1,98 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+from gdsfactory import Component
+
+@gf.cell
+def my_device() -> Component:
+    """Replicates the provided geometry using GDSFactory parametric functions."""
+    c = gf.Component("my_device")
+
+    # Define waveguide cross-section
+    xs = gf.cross_section.cross_section(width=0.2, layer=(1, 0), radius=2) # Specify radius here
+
+    # Define spacing for the grating sections
+    period = 0.3
+    num_periods = 40
+
+    # 1. Top waveguide with grating:
+
+    # Straight waveguide
+    wg_top = c << gf.components.straight(length=5, cross_section=xs)
+
+    # Top S bend
+    bend_top_curve = c << gf.components.bend_euler(radius=2, angle=-90, cross_section=xs)
+    bend_top_curve.connect("o1", wg_top.ports["o2"])
+
+    # Top U-shaped bend
+    bend_top_u = c << gf.components.bend_euler(radius=2, angle=-180, cross_section=xs)
+    bend_top_u.connect("o1", bend_top_curve.ports["o2"])
+
+    #Straight after U
+    straight_after_u = c << gf.components.straight(length=5, cross_section=xs)
+    straight_after_u.connect("o1", bend_top_u.ports["o2"])
+
+    #Gratings on top waveguide
+    grating_top = gf.Component()
+    for i in range(num_periods):
+        rect = grating_top << rectangle(size=(period/2, xs.width), layer=(1, 0), centered=True)
+        rect.movex(i * period - num_periods * period/2)
+    grating_top_ref = c << grating_top
+    grating_top_ref.connect("o1", straight_after_u.ports["o2"])
+        
+
+    # 2. Bottom waveguide with grating:
+
+    # Straight waveguide
+    wg_bottom = c << gf.components.straight(length=5, cross_section=xs)
+
+    # Bottom S bend
+    bend_bottom_curve = c << gf.components.bend_euler(radius=2, angle=90, cross_section=xs)
+    bend_bottom_curve.connect("o1", wg_bottom.ports["o2"])
+
+    # Bottom U-shaped bend
+    bend_bottom_u = c << gf.components.bend_euler(radius=2, angle=180, cross_section=xs)
+    bend_bottom_u.connect("o1", bend_bottom_curve.ports["o2"])
+
+    #Straight after U
+    straight_after_u_bottom = c << gf.components.straight(length=5, cross_section=xs)
+    straight_after_u_bottom.connect("o1", bend_bottom_u.ports["o2"])
+
+    #Gratings on bottom waveguide
+    grating_bottom = gf.Component()
+    for i in range(num_periods):
+        rect = grating_bottom << rectangle(size=(period/2, xs.width), layer=(1, 0), centered=True)
+        rect.movex(i * period - num_periods * period/2)
+    grating_bottom_ref = c << grating_bottom
+    grating_bottom_ref.connect("o1", straight_after_u_bottom.ports["o2"])
+
+
+    # 3. Center bar:
+    center_bar = c << gf.components.straight(length=num_periods * period, width = 0.02, layer=(1, 0))
+    center_bar.movey((xs.width / 2) + 0.02)
+    center_bar.movex(-num_periods * period/2)
+
+
+    # 4. Center waveguide
+    center_wg = c << gf.components.straight(length=num_periods * period, width = xs.width, layer=(1, 0))
+    center_wg.movex(-num_periods * period/2)
+    center_wg.movey((xs.width / 2) + 0.08) #Move above center bar
+
+    # Add ports
+    c.add_port("o1", port=wg_top.ports["o1"])
+    c.add_port("o2", port=wg_bottom.ports["o1"])
+
+    return c
+
+if __name__ == "__main__":
+    device = my_device()
+    device.show(show_ports=True)
+```
+
+**Reasoning for the fix:**
+
+The error message "ValueError: min_bend_radius 2 < CrossSection.radius_min 10.0" indicates that the bend radius specified in the `bend_euler` components is smaller than the minimum bend radius allowed by the `cross_section`. By default, `gf.cross_section.cross_section` has a `radius_min` of 10.0.
+
+To fix this, we need to explicitly set the `radius` parameter within the `gf.cross_section.cross_section` function to a value less than or equal to our bend radius. I have set it to 2, the same as the radius used in the bends. If you wanted to use different radii, you could define separate cross-sections for the bends and the straights.

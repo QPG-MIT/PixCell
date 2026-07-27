@@ -1,0 +1,60 @@
+import gdsfactory as gf
+
+@gf.cell
+def bottles_in_crate():
+    """
+    Creates a device shape resembling 4 bottles in a crate/carrier.
+    
+    Features:
+    - Rectangular crate base
+    - 4 tapered bottle neck shapes extending upward
+    - Small triangular stake/notch pointing downward
+    
+    Fits within 25 x 10 μm footprint.
+    """
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Design parameters (in micrometers)
+    box_width = 20.0
+    box_height = 5.0
+    bottle_neck_height = 4.0
+    bottle_top_width = 1.8
+    bottle_base_width = 4.5
+    notch_width = 2.0
+    notch_height = 1.0
+    
+    # Four bottle positions (evenly spaced)
+    bottle_x_positions = [-7.5, -2.5, 2.5, 7.5]
+    
+    # Create main rectangular crate
+    c.add_polygon([
+        (-box_width/2, -box_height/2),
+        (-box_width/2, box_height/2),
+        (box_width/2, box_height/2),
+        (box_width/2, -box_height/2),
+    ], layer=layer)
+    
+    # Create four bottle neck trapezoids (tapered from wide base to narrow top)
+    for x in bottle_x_positions:
+        c.add_polygon([
+            (x - bottle_base_width/2, box_height/2),              # bottom-left
+            (x - bottle_top_width/2, box_height/2 + bottle_neck_height),   # top-left
+            (x + bottle_top_width/2, box_height/2 + bottle_neck_height),   # top-right
+            (x + bottle_base_width/2, box_height/2),              # bottom-right
+        ], layer=layer)
+    
+    # Create bottom triangular notch (pointing downward)
+    c.add_polygon([
+        (-notch_width/2, -box_height/2),     # left corner
+        (notch_width/2, -box_height/2),      # right corner
+        (0, -box_height/2 - notch_height)    # bottom tip
+    ], layer=layer)
+    
+    return c
+
+
+# Generate and save the device
+if __name__ == "__main__":
+    device = bottles_in_crate()
+    device.write_gds("bottles_in_crate.gds")

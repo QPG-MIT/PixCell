@@ -1,0 +1,89 @@
+import gdsfactory as gf
+
+@gf.cell
+def stadium_device():
+    """
+    Recreates the device geometry from the image.
+    Footprint: 5.5um x 3.0um.
+    Fixes the 'NoneType' error by performing boolean OR between two components.
+    """
+    layer = (1, 0)
+    
+    # --- 1. Dimensions based on 5.5um x 3.0um footprint ---
+    total_w = 5.5
+    total_h = 3.0
+    ring_thick = 0.45
+    
+    # For a stadium: Total Width = 2*Radius + Straight_Length
+    # Total Height = 2*Radius
+    radius = total_h / 2  # 1.5
+    straight_l = total_w - (2 * radius)  # 5.5 - 3.0 = 2.5
+    
+    # --- 2. Create the Outer Ring Component ---
+    ring_comp = gf.Component("ring")
+    
+    # Define a closed loop path for the stadium shape
+    # Using the mean radius for extrusion
+    mean_radius = radius - (ring_thick / 2)
+    p_ring = gf.path.straight(length=straight_l)
+    p_ring += gf.path.arc(radius=mean_radius, angle=180)
+    p_ring += gf.path.straight(length=straight_l)
+    p_ring += gf.path.arc(radius=mean_radius, angle=180)
+    
+    # Extrude the path and center it
+    ring_geom = gf.path.extrude(p_ring, width=ring_thick, layer=layer)
+    ring_ref = ring_comp << ring_geom
+    ring_ref.move((-straight_l / 2, radius))
+    
+    # --- 3. Create the Internal Network Component ---
+    internal_comp = gf.Component("internal")
+    
+    arm_y_offset = 0.65
+    arm_width = 0.22
+    box_w = 0.8
+    box_h = 0.45
+    box_gap = 0.15
+    x_junction = -2.1  # Connection point to ring interior
+    x_bend = -1.2
+    
+    # Helper to add one horizontal branch (top or bottom)
+    def add_branch(parent, sign_y):
+        y_pos = sign_y * arm_y_offset
+        
+        # Path for the arm branching from the center to sides
+        pts = [(x_junction, 0), (x_bend, y_pos), (-x_bend, y_pos), (-x_junction, 0)]
+        p_arm = gf.path.smooth(pts, radius=0.3)
+        parent << gf.path.extrude(p_arm, width=arm_width, layer=layer)
+        
+        # Add the two rectangular 'boxes' on the branch
+        b1 = parent << gf.components.rectangle(size=(box_w, box_h), centered=True, layer=layer)
+        b1.move((-(box_w + box_gap)/2, y_pos))
+        
+        b2 = parent << gf.components.rectangle(size=(box_w, box_h), centered=True, layer=layer)
+        b2.move(((box_w + box_gap)/2, y_pos))
+
+    # Add top and bottom branches
+    add_branch(internal_comp, 1)
+    add_branch(internal_comp, -1)
+    
+    # Add wide junction blocks at the left and right connection points
+    junc_rect = gf.components.rectangle(size=(0.45, 0.8), centered=True, layer=layer)
+    jl = internal_comp << junc_rect
+    jl.movex(x_junction)
+    jr = internal_comp << junc_rect
+    jr.movex(-x_junction)
+
+    # --- 4. Final Boolean Operation ---
+    # Merge the ring and internal structure into one single polygon component
+    # This avoids B=None by providing two defined components
+    device = gf.boolean(A=ring_comp, B=internal_comp, operation="or", layer=layer)
+    
+    return device
+
+if __name__ == "__main__":
+    # Build and show the device
+    c = stadium_device()
+    c.show()
+    
+    # Save the geometry
+    c.write_gds("stadium_recreation.gds")

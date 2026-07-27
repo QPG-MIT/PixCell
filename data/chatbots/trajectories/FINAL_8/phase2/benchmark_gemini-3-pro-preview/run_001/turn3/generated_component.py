@@ -1,0 +1,102 @@
+import gdsfactory as gf
+
+@gf.cell
+def striped_coupler_corrected():
+    """
+    Recreates the asymmetric striped directional coupler.
+    Structure per arm: 3 thin inner stripes + 1 thick outer block.
+    """
+    c = gf.Component()
+
+    # --- Dimensions ---
+    # Longitudinal
+    len_bend = 30.0
+    len_straight = 60.0
+    
+    # Transverse (Cross-Section)
+    w_thin = 0.12       # Width of the 3 thin inner lines
+    w_thick = 0.6       # Width of the 1 thick outer block
+    gap_lines = 0.12    # Gap between stripes within an arm
+    gap_couple = 0.2    # Central gap between the Top and Bottom arms
+    
+    # Vertical shift for S-bends (Input to Coupling transition)
+    dy = 0.5
+
+    # --- Cross Section Definition ---
+    # We define the reference Path as the center of the INNERMOST thin line.
+    # We then add sections OFFSET OUTWARDS from this path.
+    
+    # Calculate Offsets (Center-to-Center distance)
+    # 1. 2nd Thin Line (Offset outwards by width + gap)
+    off_2 = w_thin + gap_lines
+    
+    # 2. 3rd Thin Line
+    off_3 = off_2 + w_thin + gap_lines
+    
+    # 3. Thick Outer Block
+    # Distance = (Half Thin Width) + Gap + (Half Thick Width)
+    dist_to_thick = (w_thin / 2) + gap_lines + (w_thick / 2)
+    off_4 = off_3 + dist_to_thick
+
+    # Create Sections for Top Arm (Outwards = Positive Y / Up)
+    s_top_2 = gf.Section(width=w_thin, offset=off_2, layer=(1, 0))
+    s_top_3 = gf.Section(width=w_thin, offset=off_3, layer=(1, 0))
+    s_top_4 = gf.Section(width=w_thick, offset=off_4, layer=(1, 0))
+    
+    xs_top = gf.cross_section.cross_section(
+        width=w_thin, # This is the main path (Innermost line)
+        sections=[s_top_2, s_top_3, s_top_4],
+        layer=(1, 0)
+    )
+
+    # Create Sections for Bottom Arm (Outwards = Negative Y / Down)
+    s_bot_2 = gf.Section(width=w_thin, offset=-off_2, layer=(1, 0))
+    s_bot_3 = gf.Section(width=w_thin, offset=-off_3, layer=(1, 0))
+    s_bot_4 = gf.Section(width=w_thick, offset=-off_4, layer=(1, 0))
+    
+    xs_bot = gf.cross_section.cross_section(
+        width=w_thin, # This is the main path (Innermost line)
+        sections=[s_bot_2, s_bot_3, s_bot_4],
+        layer=(1, 0)
+    )
+
+    # --- Positioning ---
+    # Determine Y-coordinate of the Path (Innermost line) in the coupling region.
+    # The path center is (gap/2 + thin_width/2) away from y=0.
+    y_path_top_c = (gap_couple / 2) + (w_thin / 2)
+    y_path_bot_c = -y_path_top_c
+
+    # --- Component Assembly ---
+
+    # 1. Top Arm
+    # Input S-Bend: Starts HIGH, goes DOWN (-dy) to coupling level
+    top_in = c << gf.components.bend_s(size=(len_bend, -dy), cross_section=xs_top)
+    top_in.movey(y_path_top_c + dy) # Shift start point up
+    
+    # Straight Coupling Region
+    top_mid = c << gf.components.straight(length=len_straight, cross_section=xs_top)
+    top_mid.connect("o1", top_in.ports["o2"])
+    
+    # Output S-Bend: Starts LOW, goes UP (+dy)
+    top_out = c << gf.components.bend_s(size=(len_bend, dy), cross_section=xs_top)
+    top_out.connect("o1", top_mid.ports["o2"])
+
+    # 2. Bottom Arm
+    # Input S-Bend: Starts LOW, goes UP (+dy) to coupling level
+    bot_in = c << gf.components.bend_s(size=(len_bend, dy), cross_section=xs_bot)
+    bot_in.movey(y_path_bot_c - dy) # Shift start point down
+    
+    # Straight Coupling Region
+    bot_mid = c << gf.components.straight(length=len_straight, cross_section=xs_bot)
+    bot_mid.connect("o1", bot_in.ports["o2"])
+    
+    # Output S-Bend: Starts HIGH, goes DOWN (-dy)
+    bot_out = c << gf.components.bend_s(size=(len_bend, -dy), cross_section=xs_bot)
+    bot_out.connect("o1", bot_mid.ports["o2"])
+
+    return c
+
+# Generate and Export
+device = striped_coupler_corrected()
+device.show()
+device.write_gds("striped_coupler_final.gds")

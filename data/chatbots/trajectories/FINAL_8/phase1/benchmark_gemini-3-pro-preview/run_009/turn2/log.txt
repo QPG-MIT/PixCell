@@ -1,0 +1,128 @@
+Turn 2 Response:
+
+Based on the visual analysis of the target image and the feedback from the previous render, I have refined the script.
+
+**Key Adjustments:**
+1.  **Density and Line Width:** The original image shows a very dense structure where the black lines (waveguides) are significantly wider than the white gaps. I have updated the `wg_width` to `0.2um` and `gap` to `0.05um` (4:1 ratio) to replicate this "solid block" appearance.
+2.  **Parallel Flaring:** In the previous render, the outer waveguides fanned out (variable pitch). The original image shows the outer "cladding" blocks moving as coherent stacks—internal spacing remains constant, but the whole block bends away from the center. I implemented this by applying a constant S-bend offset to all lines in the top/bottom blocks.
+3.  **Footprint Constraints (120x4um):** The device is approximately 13 lines tall (5 center + 4 top + 4 bottom). With a pitch of 0.25um, the dense central stack is ~3.2um high. This leaves ~0.8um of vertical space for the flaring (0.4um per side) to stay strictly within the 4um height limit while still creating the visible "U" shape profile.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def grating_coupler_refined():
+    """
+    Refined recreation of the device geometry matching the dense, high-contrast look.
+    - Footprint: 120um x 4um
+    - Structure: Central straight bus flanked by coherent outer blocks that flare outwards.
+    """
+    c = gf.Component()
+
+    # --- Dimensions & Constraints ---
+    length_total = 120.0
+    
+    # Waveguide Parameters (Tuned for visual match)
+    # High fill-factor: Width is 4x the gap.
+    wg_width = 0.2
+    wg_gap = 0.05
+    pitch = wg_width + wg_gap
+    
+    # Line Counts inferred from image
+    num_center = 5
+    num_top = 4
+    num_bot = 4
+    
+    # Longitudinal Geometry
+    # Short, sharp bends at the ends, long flat section in the middle.
+    bend_length = 15.0
+    flat_length = length_total - 2 * bend_length
+    
+    # Vertical Geometry
+    # Flare height: How much the outer blocks shift away from the center.
+    # Chosen to fit within the 4um total height budget (3.2um stack + 0.8um flare space).
+    flare_dy = 0.35 
+
+    # --- 1. Central Bus ---
+    # 5 Straight parallel lines centered at y=0.
+    # These run the full length of the device straight.
+    
+    # Calculate starting Y to center the group
+    center_height = (num_center - 1) * pitch
+    y_start_center = -center_height / 2
+    
+    for i in range(num_center):
+        y = y_start_center + i * pitch
+        # Central lines are simple straight waveguides
+        wg = c << gf.components.straight(length=length_total, width=wg_width)
+        wg.y = y
+
+    # --- 2. Top Flaring Block ---
+    # A stack of 4 waveguides.
+    # In the middle (flat) section, they maintain the standard pitch relative to the center.
+    # At the ends (bends), the ENTIRE block shifts UP by 'flare_dy'.
+    
+    # Start Y is one pitch above the top central line
+    y_start_top = y_start_center + (num_center * pitch)
+    
+    for i in range(num_top):
+        # Y position in the middle "flat" section
+        y_flat = y_start_top + i * pitch
+        
+        # A. Middle Flat Section
+        flat = c << gf.components.straight(length=flat_length, width=wg_width)
+        flat.x = length_total / 2
+        flat.y = y_flat
+        
+        # B. Left S-Bend (Entry)
+        # We need a bend that comes from a HIGHER y (flared out) down to the `y_flat`.
+        # Standard bend_s goes (0,0)->(L, h).
+        # To go Right-and-Down, we use a negative height.
+        # We connect the END (o2) of the bend to the START (o1) of the flat section.
+        # This effectively positions the start of the bend at (x_flat_start - L, y_flat + flare_dy).
+        bend_l = c << gf.components.bend_s(size=(bend_length, -flare_dy), width=wg_width)
+        bend_l.connect("o2", flat.ports["o1"])
+        
+        # C. Right S-Bend (Exit)
+        # We need a bend that goes from `y_flat` UP to a higher y (flared out).
+        # Standard bend_s with positive height does exactly this (Right-and-Up).
+        bend_r = c << gf.components.bend_s(size=(bend_length, flare_dy), width=wg_width)
+        bend_r.connect("o1", flat.ports["o2"])
+
+    # --- 3. Bottom Flaring Block ---
+    # Mirror logic of the Top Block.
+    # Middle section maintains standard pitch.
+    # Ends shift DOWN by 'flare_dy'.
+    
+    y_start_bot = y_start_center - pitch
+    
+    for i in range(num_bot):
+        # Y position in the middle (iterating downwards)
+        y_flat = y_start_bot - i * pitch
+        
+        # A. Middle Flat Section
+        flat = c << gf.components.straight(length=flat_length, width=wg_width)
+        flat.x = length_total / 2
+        flat.y = y_flat
+        
+        # B. Left S-Bend (Entry)
+        # We need a bend that comes from a LOWER y (flared down) up to `y_flat`.
+        # Path: Right-and-Up.
+        # size=(L, flare_dy).
+        bend_l = c << gf.components.bend_s(size=(bend_length, flare_dy), width=wg_width)
+        bend_l.connect("o2", flat.ports["o1"])
+        
+        # C. Right S-Bend (Exit)
+        # We need a bend that goes from `y_flat` DOWN to a lower y.
+        # Path: Right-and-Down.
+        # size=(L, -flare_dy).
+        bend_r = c << gf.components.bend_s(size=(bend_length, -flare_dy), width=wg_width)
+        bend_r.connect("o1", flat.ports["o2"])
+
+    return c
+
+# Generate and save
+device = grating_coupler_refined()
+device.show()
+device.write_gds("refined_device.gds")
+```

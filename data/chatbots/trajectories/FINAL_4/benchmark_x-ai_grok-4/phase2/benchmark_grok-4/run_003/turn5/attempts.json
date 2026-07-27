@@ -1,0 +1,39 @@
+{
+  "turn": 5,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:45:07.452296",
+      "api_duration_seconds": 710.167876958847,
+      "usage": {
+        "input_tokens": 3617,
+        "output_tokens": 30228,
+        "total_tokens": 33845
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o4' is not a valid port name or index. Available ports: ['o1', 'o2']\"\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_4/benchmark_x-ai_grok-4/phase2/benchmark_grok-4/run_003/turn5/generated_component.py\", line 51, in <module>\n    device = my_device()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/pytho",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:57:00.605501",
+      "api_duration_seconds": 198.81095504760742,
+      "usage": {
+        "input_tokens": 4554,
+        "output_tokens": 8467,
+        "total_tokens": 13021
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 8171,
+    "output_tokens": 38695,
+    "total_tokens": 46866
+  }
+}

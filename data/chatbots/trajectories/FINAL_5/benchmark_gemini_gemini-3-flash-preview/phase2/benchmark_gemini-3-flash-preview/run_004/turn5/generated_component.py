@@ -1,0 +1,96 @@
+import gdsfactory as gf
+
+@gf.cell(check_instances=False)
+def grating_device_v7():
+    """
+    Corrected grating device matching the target topology:
+    Tail -> Outer Straight -> U-turn -> Inner Grating Straight.
+    Point-symmetric around a central bar.
+    """
+    # --- Dimensions ---
+    L_TOTAL = 18.24
+    LAYER = (1, 0)
+    
+    W_WG = 0.05          # Width of the waveguide arms
+    W_BAR = 0.012        # Width of the central thin bar
+    R_LOOP = 0.15        # Radius for the 180-degree turn
+    R_TAIL = 0.5         # Radius for the curved tail at the start
+    
+    L_OUTER = 12.0       # Length of the top/outer straight segment
+    L_INNER = 9.0        # Length of the inner segment with gratings
+    
+    G_PERIOD = 0.16
+    G_HEIGHT = 0.12
+    G_DUTY = 0.5
+
+    c = gf.Component("grating_device_v7")
+
+    # 1. Central Thin Horizontal Bar
+    c << gf.components.rectangle(size=(L_TOTAL, W_BAR), layer=LAYER, centered=True)
+
+    @gf.cell(check_instances=False)
+    def make_arm():
+        a = gf.Component("arm_template")
+        
+        # Build path: Tail Curve -> Outer Straight -> U-turn -> Inner Straight
+        # We start at the curved tip
+        p = gf.Path()
+        p.append(gf.path.euler(radius=R_TAIL, angle=75)) # Curve up/down
+        p.append(gf.path.straight(length=L_OUTER))      # Outer straight segment
+        p.append(gf.path.euler(radius=R_LOOP, angle=-180)) # U-turn back inwards
+        p.append(gf.path.straight(length=L_INNER))      # Inner straight segment
+        
+        xs = gf.cross_section.cross_section(width=W_WG, layer=LAYER)
+        body = a << gf.path.extrude(p, cross_section=xs)
+        
+        # Add Grating Teeth to the inner segment
+        # The inner segment is the last part of the path.
+        # We place them relative to the final port (o2)
+        num_teeth = int(L_INNER / G_PERIOD)
+        tooth_w = round(G_PERIOD * G_DUTY / 0.002) * 0.002
+        tooth_rect = gf.components.rectangle(size=(tooth_w, G_HEIGHT), layer=LAYER, centered=True)
+        
+        # The 'o2' port is at the end of the inner segment, pointing West.
+        # We move backwards along the inner segment to place teeth.
+        end_port = body.ports["o2"]
+        for i in range(num_teeth):
+            t = a << tooth_rect
+            # Move from the end of the segment back towards the U-turn
+            tx = end_port.center[0] + (i + 0.5) * G_PERIOD
+            # Teeth point "down" (relative to the arm's local coordinate) 
+            # towards the center of the device
+            ty = end_port.center[1] - (W_WG/2 + G_HEIGHT/2)
+            t.move((tx, ty))
+            
+        return a
+
+    # 3. Instantiate and Place Arms
+    arm_ref = make_arm()
+    
+    # Calculate vertical offset to center the gratings around the middle bar
+    # The inner segment 'y' is R_LOOP * 2 away from the outer segment.
+    y_gap = 0.04
+    # Vertical move: move the inner segment close to y=0
+    # In 'make_arm', the path starts at (0,0). After extrude, the outer segment is at y~0.
+    # The inner segment is at y ~ -2*R_LOOP.
+    # We want y_inner - G_HEIGHT/2 = y_gap.
+    # So we shift the whole arm up by (2*R_LOOP + G_HEIGHT + y_gap)
+    y_shift = (2 * R_LOOP) + (W_WG/2 + G_HEIGHT) + y_gap
+    
+    # Top Arm (Right-hand U-turn)
+    top = c << arm_ref
+    top.move((-7.5, y_shift)) # Adjust x to center roughly
+    
+    # Bottom Arm (Left-hand U-turn, point symmetric)
+    bot = c << arm_ref
+    bot.rotate(180)
+    bot.move((7.5, -y_shift))
+
+    # Flatten the component to bake in rotations and fix grid issues before returning
+    c.flatten()
+    return c
+
+if __name__ == "__main__":
+    device = grating_device_v7()
+    device.write_gds("grating_device_v7.gds")
+    device.show()

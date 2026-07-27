@@ -1,0 +1,85 @@
+import gdsfactory as gf
+
+# 1. Define the CrossSection
+# We define a standard cross-section with a minimal bend radius
+xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0), radius_min=2.0)
+
+@gf.cell
+def grating_arm(u_bend_side="right", length=20, radius=5.0):
+    """
+    Creates an arm with a straight section, a U-bend, and a flare.
+    u_bend_side: "right" or "left"
+    """
+    c = gf.Component()
+    
+    # Create the straight section
+    straight = c << gf.components.straight(length=length, cross_section=xs)
+    
+    # --- Add Gratings ---
+    # We place gratings along the length of the straight section
+    tooth_w = 0.2
+    tooth_l = 0.3
+    period = 0.5
+    num_teeth = int(length / period)
+    
+    # We place teeth relative to the straight section center
+    for i in range(num_teeth):
+        x = (i * period) - (length / 2) + (period/2)
+        # Position slightly offset from the waveguide center (width/2 + gap/2)
+        # We assume the gap is 0.4, so offset is 0.25 + 0.15 = 0.4
+        y_offset = (0.5/2 + tooth_l/2) + 0.1 
+        
+        tooth = c << gf.components.rectangle(size=(tooth_w, tooth_l), layer=(1, 0))
+        tooth.center = (x, y_offset)
+
+    # --- Add Bends ---
+    # U-Bend (180 deg) and Flare (45 deg)
+    bend_u = gf.components.bend_euler(radius=radius, angle=180, cross_section=xs)
+    bend_f = gf.components.bend_euler(radius=radius, angle=45, cross_section=xs)
+    
+    if u_bend_side == "right":
+        # U-bend on port 2 (right), Flare on port 1 (left)
+        u = c << bend_u
+        f = c << bend_f
+        u.connect("o1", straight.ports["o2"])
+        f.connect("o1", straight.ports["o1"])
+        # Rotate flare to point outward
+        f.rotate(angle=180, center=f.ports["o1"].center) 
+        
+        c.add_port("o1", port=f.ports["o2"])
+        c.add_port("o2", port=u.ports["o2"])
+        
+    else: # u_bend_side == "left"
+        # U-bend on port 1 (left), Flare on port 2 (right)
+        u = c << bend_u
+        f = c << bend_f
+        u.connect("o1", straight.ports["o1"])
+        f.connect("o1", straight.ports["o2"])
+        # Rotate flare to point outward
+        f.rotate(angle=180, center=f.ports["o1"].center)
+        
+        c.add_port("o1", port=u.ports["o2"])
+        c.add_port("o2", port=f.ports["o2"])
+
+    return c
+
+@gf.cell
+def full_device():
+    c = gf.Component()
+    gap = 0.4
+    
+    # Create the two mirrored arms
+    top_arm = c << grating_arm(u_bend_side="right")
+    bot_arm = c << grating_arm(u_bend_side="left")
+    
+    # Align them vertically
+    top_arm.movey(gap/2 + 0.25)
+    bot_arm.movey(-(gap/2 + 0.25))
+    
+    return c
+
+if __name__ == "__main__":
+    c = full_device()
+    c.show()
+    c.write_gds("device.gds")
+    print("Geometry generated successfully.")

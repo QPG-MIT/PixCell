@@ -1,0 +1,91 @@
+Turn 4 Response:
+
+You're encountering this error because GDSFactory expects the `layer` parameter in the `Port` constructor to be a tuple of integers, but there might be an internal conversion issue. Let me fix this by using the `gf.get_layer()` function to ensure we're passing a valid layer specification, or alternatively, I can create the ports by referencing the existing component's geometry.
+
+Here's the corrected version using a more robust approach:
+
+```python
+import gdsfactory as gf
+
+def simple_horizontal_rectangle_device():
+    c = gf.Component()
+    
+    # Create a horizontal rectangle matching the footprint constraint
+    # Size is (width, height) = (120.0, 4.0)
+    rect = c << gf.components.rectangle(size=(120.0, 4.0), layer=(1, 0), centered=False)
+    
+    # Position the rectangle at origin
+    rect.move((0, 0))
+    
+    # Add ports at the left and right ends using the component's layer
+    layer = (1, 0)
+    
+    # Create ports at the center of the left and right edges
+    left_port = gf.Port(
+        name="o1", 
+        center=(0, 2.0),  # center of left edge (y = height/2)
+        width=4.0, 
+        orientation=180,
+        layer=layer
+    )
+    right_port = gf.Port(
+        name="o2", 
+        center=(120.0, 2.0),  # center of right edge (x = length, y = height/2)
+        width=4.0, 
+        orientation=0,
+        layer=layer
+    )
+    
+    c.add_port("o1", port=left_port)
+    c.add_port("o2", port=right_port)
+    
+    return c
+
+# Create and save the device
+device = simple_horizontal_rectangle_device()
+device.write_gds("simple_horizontal_rectangle.gds")
+```
+
+If the above still doesn't work due to layer conversion issues, here's an alternative approach that avoids manually creating ports and instead uses the rectangle's geometry to define ports:
+
+```python
+import gdsfactory as gf
+
+def simple_horizontal_rectangle_device():
+    c = gf.Component()
+    
+    # Create a horizontal rectangle matching the footprint constraint
+    # Size is (width, height) = (120.0, 4.0)
+    rect = c << gf.components.rectangle(size=(120.0, 4.0), layer=(1, 0), centered=False)
+    
+    # Position the rectangle at origin
+    rect.move((0, 0))
+    
+    # Add ports at the left and right ends
+    # Create ports using the component's layer
+    layer = (1, 0)
+    
+    # Create ports at the center of the left and right edges
+    c.add_port(
+        name="o1",
+        center=(0, 2.0),
+        width=4.0,
+        orientation=180,
+        layer=layer
+    )
+    c.add_port(
+        name="o2",
+        center=(120.0, 2.0),
+        width=4.0,
+        orientation=0,
+        layer=layer
+    )
+    
+    return c
+
+# Create and save the device
+device = simple_horizontal_rectangle_device()
+device.write_gds("simple_horizontal_rectangle.gds")
+```
+
+This second version directly adds ports to the component using `c.add_port()` which is more straightforward and should avoid the layer conversion issues.

@@ -1,0 +1,114 @@
+Turn 4 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def custom_coupler_crossover_shape() -> gf.Component:
+    """
+    Recreates the geometry shown in the image (crossover) using GDSFactory parametric functions.
+    This version uses gf.path.smooth to achieve a smoother, more rounded crossover shape.
+
+    The device consists of two waveguides that start separated, bend towards each other,
+    cross over in the central section, and then bend away to swap their final vertical positions.
+
+    The total footprint is 120um x 4um, with the waveguides having a width of 0.5um.
+    """
+    c = gf.Component("custom_coupler_crossover_shape")
+    
+    # Define the cross-section for the waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    # Device footprint constraints
+    total_length = 120.0  # Total length of the device in um
+    total_height = 4.0    # Total height (vertical span) of the device in um
+
+    # Calculate waveguide offsets based on total_height and waveguide_width
+    waveguide_width = xs.width
+    
+    # Y-coordinate for the center of the outer waveguides (topmost and bottommost input/output position)
+    outer_y_offset = total_height / 2 - waveguide_width / 2 # = 2.0 - 0.25 = 1.75 um
+
+    # Define horizontal segments for the device structure
+    L_straight_end = 20.0  # Length of the straight input/output sections
+    x_crossover_start = L_straight_end
+    x_crossover_end = total_length - L_straight_end
+    x_crossover_center = total_length / 2 # Center point for the crossover along X-axis
+
+    # --- Waypoints for the Top Waveguide ---
+    # Path goes from (0, +outer_y_offset) to (total_length, -outer_y_offset)
+    waypoints_top = [
+        (0, outer_y_offset),                            # Start (left input)
+        (x_crossover_start, outer_y_offset),            # End of left straight
+        (x_crossover_center, 0),                        # Central crossing point
+        (x_crossover_end, -outer_y_offset),             # Start of right straight
+        (total_length, -outer_y_offset),                # End (right output)
+    ]
+
+    # --- Waypoints for the Bottom Waveguide ---
+    # Path goes from (0, -outer_y_offset) to (total_length, +outer_y_offset)
+    waypoints_bot = [
+        (0, -outer_y_offset),                           # Start (left input)
+        (x_crossover_start, -outer_y_offset),           # End of left straight
+        (x_crossover_center, 0),                        # Central crossing point
+        (x_crossover_end, outer_y_offset),              # Start of right straight
+        (total_length, outer_y_offset),                 # End (right output)
+    ]
+    
+    # --- Create Smoothed Paths ---
+    # Use gf.path.smooth to create paths with smooth Euler-like bends.
+    # The 'radius' parameter controls the minimum bend radius. A larger radius results in smoother curves.
+    # IMPORTANT FIX: gf.path.smooth expects waypoints and radius, but NOT cross_section.
+    # The cross_section is applied during extrusion (gf.path.extrude).
+    smooth_radius = 10.0 # This radius determines the smoothness of the bends. Adjust if needed.
+
+    path_top_smoothed = gf.path.smooth(waypoints_top, radius=smooth_radius)
+    path_bot_smoothed = gf.path.smooth(waypoints_bot, radius=smooth_radius)
+
+    # --- Extrude Paths to Components ---
+    # Convert the smoothed paths into GDS components by applying the cross_section
+    wg_top_ref = c << gf.path.extrude(path_top_smoothed, cross_section=xs)
+    wg_bot_ref = c << gf.path.extrude(path_bot_smoothed, cross_section=xs)
+
+    # --- Expose the input/output ports of the main component ---
+    # Standard 2x2 port naming convention: o1 (top-left), o2 (bottom-left),
+    # o3 (top-right), o4 (bottom-right).
+    # For a crossover, inputs o1 and o2 swap positions to outputs o4 and o3 respectively.
+    c.add_port("o1", port=wg_top_ref.ports["o1"])   # Input port for the waveguide starting at top-left
+    c.add_port("o2", port=wg_bot_ref.ports["o1"])   # Input port for the waveguide starting at bottom-left
+    
+    # Output ports are swapped due to the crossover
+    c.add_port("o3", port=wg_bot_ref.ports["o2"])  # Output port for the waveguide that started at bottom-left (now top-right)
+    c.add_port("o4", port=wg_top_ref.ports["o2"])  # Output port for the waveguide that started at top-left (now bottom-right)
+
+    return c
+
+if __name__ == "__main__":
+    # Create an instance of the custom coupler shape
+    my_device = custom_coupler_crossover_shape()
+    
+    # Print the bounding box and dimensions to verify against the footprint constraint
+    bbox = my_device.bbox()
+    
+    # Access width and height directly from the DBox object
+    width = bbox.width()
+    height = bbox.height()
+    
+    print(f"Device Bounding Box: {bbox}")
+    print(f"Device Width: {width:.3f} um, Height: {height:.3f} um")
+    
+    # Check against the desired footprint
+    expected_width = 120.0
+    expected_height = 4.0
+    print(f"Expected Width: {expected_width} um, Expected Height: {expected_height} um")
+
+    # Assertions to ensure the dimensions are as expected within a small tolerance
+    assert abs(width - expected_width) < 1e-3, f"Width mismatch: Expected {expected_width}, Got {width}"
+    assert abs(height - expected_height) < 1e-3, f"Height mismatch: Expected {expected_height}, Got {height}"
+    
+    # Save the component to a GDSII file
+    my_device.write_gds("custom_coupler_crossover_shape.gds")
+    
+    # Display the component using the GDSFactory viewer (requires KLayout or similar)
+    # gf.show(my_device) # Uncomment to view the generated GDS in KLayout
+```

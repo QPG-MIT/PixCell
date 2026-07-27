@@ -1,0 +1,120 @@
+import gdsfactory as gf
+
+@gf.cell
+def custom_coupler_crossover_shape() -> gf.Component:
+    """
+    Recreates the geometry shown in the image (crossover) using GDSFactory parametric functions.
+
+    The device consists of two waveguides that start separated, bend towards each other,
+    cross over in the central section, and then bend away to swap their final vertical positions.
+
+    The total footprint is 120um x 4um, with the waveguides having a width of 0.5um.
+    """
+    c = gf.Component("custom_coupler_crossover_shape")
+    
+    # Define the cross-section for the waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    # Device footprint constraints
+    total_length = 120.0  # Total length of the device in um
+    total_height = 4.0    # Total height (vertical span) of the device in um
+
+    # Calculate waveguide offsets based on total_height and waveguide_width
+    waveguide_width = xs.width
+    
+    # Y-coordinate for the center of the outer waveguides (topmost and bottommost input/output position)
+    # This ensures the outer edges of the waveguides are exactly at +/- total_height/2
+    # outer_y_offset is the y-coordinate of the center of the waveguide.
+    outer_y_offset = total_height / 2 - waveguide_width / 2  # 2.0 - 0.25 = 1.75 um
+
+    # For a true crossover, the top waveguide starting at +outer_y_offset must end at -outer_y_offset.
+    # The bottom waveguide starting at -outer_y_offset must end at +outer_y_offset.
+    # The total vertical displacement for each waveguide in the crossover section is 2 * outer_y_offset.
+    dy_crossover_bend = 2 * outer_y_offset # 2 * 1.75 = 3.5 um
+
+    # Divide the total_length into segments for the construction:
+    # There will be a straight input segment, followed by a single S-bend for the crossover,
+    # and then a straight output segment.
+    # Total length: L_straight_end (left) + dx_crossover_bend (middle) + L_straight_end (right)
+    
+    L_straight_end = 20.0  # Length of the straight input/output sections
+    dx_crossover_bend = total_length - (2 * L_straight_end) # 120 - (2 * 20) = 80.0 um
+    
+    # Ensure the calculated crossover bend length is non-negative
+    if dx_crossover_bend < 0:
+        raise ValueError(
+            f"Calculated horizontal length for crossover bend ({dx_crossover_bend} um) is negative. "
+            "Adjust L_straight_end parameter so that 2 * L_straight_end <= total_length."
+        )
+    
+    # --- Top Waveguide Construction ---
+    # 1. Left straight section: positioned at the top outer Y-offset
+    wg_top_left = c << gf.components.straight(length=L_straight_end, cross_section=xs)
+    wg_top_left.movey(outer_y_offset) # Move the waveguide's center to outer_y_offset
+
+    # 2. Crossover S-bend for top waveguide: curves downwards from +outer_y_offset to -outer_y_offset
+    # The 'dy' is negative as it moves to a lower y-coordinate.
+    bend_crossover_top = c << gf.components.bend_s(size=(dx_crossover_bend, -dy_crossover_bend), cross_section=xs)
+    bend_crossover_top.connect("o1", wg_top_left.ports["o2"])
+
+    # 3. Right straight section: positioned at the bottom outer Y-offset (after crossing)
+    wg_top_right = c << gf.components.straight(length=L_straight_end, cross_section=xs)
+    wg_top_right.connect("o1", bend_crossover_top.ports["o2"])
+    # The y-position of wg_top_right will automatically be -outer_y_offset due to the connection.
+
+    # --- Bottom Waveguide Construction ---
+    # 1. Left straight section: positioned at the bottom outer Y-offset
+    wg_bot_left = c << gf.components.straight(length=L_straight_end, cross_section=xs)
+    wg_bot_left.movey(-outer_y_offset) # Move the waveguide's center to -outer_y_offset
+
+    # 2. Crossover S-bend for bottom waveguide: curves upwards from -outer_y_offset to +outer_y_offset
+    # The 'dy' is positive as it moves to a higher y-coordinate.
+    bend_crossover_bot = c << gf.components.bend_s(size=(dx_crossover_bend, dy_crossover_bend), cross_section=xs)
+    bend_crossover_bot.connect("o1", wg_bot_left.ports["o2"])
+
+    # 3. Right straight section: positioned at the top outer Y-offset (after crossing)
+    wg_bot_right = c << gf.components.straight(length=L_straight_end, cross_section=xs)
+    wg_bot_right.connect("o1", bend_crossover_bot.ports["o2"])
+    # The y-position of wg_bot_right will automatically be outer_y_offset due to the connection.
+
+    # --- Expose the input/output ports of the main component ---
+    # Standard 2x2 port naming convention: o1 (top-left), o2 (bottom-left),
+    # o3 (top-right), o4 (bottom-right).
+    # For a crossover, inputs o1 and o2 swap positions to outputs o4 and o3 respectively.
+    c.add_port("o1", port=wg_top_left.ports["o1"])   # Input port for the waveguide starting at top-left
+    c.add_port("o2", port=wg_bot_left.ports["o1"])   # Input port for the waveguide starting at bottom-left
+    
+    # Output ports are swapped due to the crossover
+    c.add_port("o3", port=wg_bot_right.ports["o2"])  # Output port for the waveguide that started at bottom-left (now top-right)
+    c.add_port("o4", port=wg_top_right.ports["o2"])  # Output port for the waveguide that started at top-left (now bottom-right)
+
+    return c
+
+if __name__ == "__main__":
+    # Create an instance of the custom coupler shape
+    my_device = custom_coupler_crossover_shape()
+    
+    # Print the bounding box and dimensions to verify against the footprint constraint
+    bbox = my_device.bbox()
+    
+    # Access width and height directly from the DBox object
+    width = bbox.width()
+    height = bbox.height()
+    
+    print(f"Device Bounding Box: {bbox}")
+    print(f"Device Width: {width:.3f} um, Height: {height:.3f} um")
+    
+    # Check against the desired footprint
+    expected_width = 120.0
+    expected_height = 4.0
+    print(f"Expected Width: {expected_width} um, Expected Height: {expected_height} um")
+
+    # Assertions to ensure the dimensions are as expected within a small tolerance
+    assert abs(width - expected_width) < 1e-3, f"Width mismatch: Expected {expected_width}, Got {width}"
+    assert abs(height - expected_height) < 1e-3, f"Height mismatch: Expected {expected_height}, Got {height}"
+    
+    # Save the component to a GDSII file
+    my_device.write_gds("custom_coupler_crossover_shape.gds")
+    
+    # Display the component using the GDSFactory viewer (requires KLayout or similar)
+    # gf.show(my_device) # Uncomment to view the generated GDS in KLayout

@@ -1,0 +1,55 @@
+Turn 3 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def wavy_coupler():
+    c = gf.Component()
+    length_total = 18.0
+    height = 3.0
+    w = 0.5
+    gap = 0.2
+    straight_length = 12.0  # Increased for flatter coupling region
+    bend_length = (length_total - straight_length) / 2
+    sep_ends = height - w  # Separation of centers at ends
+    sep_middle = w + gap
+    dy = (sep_ends - sep_middle) / 2
+    xs = gf.cross_section.cross_section(width=w, layer=(1, 0))
+
+    # Lower waveguide using smooth path
+    points_lower = [
+        (0, 0),
+        (bend_length, dy),
+        (length_total - bend_length, dy),
+        (length_total, 0)
+    ]
+    path_lower = gf.path.smooth(points=points_lower, radius=1.0)
+    wg_lower = gf.path.extrude(path_lower, cross_section=xs)
+
+    # Upper waveguide using smooth path
+    points_upper = [
+        (0, sep_ends),
+        (bend_length, sep_ends - dy),
+        (length_total - bend_length, sep_ends - dy),
+        (length_total, sep_ends)
+    ]
+    path_upper = gf.path.smooth(points=points_upper, radius=1.0)
+    wg_upper = gf.path.extrude(path_upper, cross_section=xs)
+
+    # Add to component
+    lower = c << wg_lower
+    upper = c << wg_upper
+
+    # Expose ports
+    c.add_port("o1", port=lower.ports["o1"])  # lower left
+    c.add_port("o2", port=upper.ports["o1"])  # upper left
+    c.add_port("o3", port=lower.ports["o2"])  # lower right
+    c.add_port("o4", port=upper.ports["o2"])  # upper right
+
+    return c
+
+# Create and save
+device = wavy_coupler()
+device.write_gds("my_device.gds")
+```

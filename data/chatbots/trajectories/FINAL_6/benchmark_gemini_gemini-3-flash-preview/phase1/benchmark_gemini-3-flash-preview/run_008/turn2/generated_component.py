@@ -1,0 +1,75 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_arm():
+    """
+    Constructs one arm of the device by extruding a path with a 
+    varying width profile (core -> bulge -> neck -> tip).
+    """
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # 1. Define dimensions to fit the 4.7um total span
+    # Each arm is 2.35um long (4.7 / 2)
+    l_core_to_bulge = 0.55  # Distance from center to the fattest point
+    l_bulge_to_neck = 1.55  # Distance from bulge to the start of the rectangular tip
+    l_tip = 0.25           # Length of the straight rectangular tip
+    
+    # Define widths based on visual proportions
+    w_core = 0.85          # Width at the very center junction
+    w_bulge = 1.35         # Maximum width of the "petal"
+    w_tip = 0.25           # Width of the rectangular terminal
+    
+    # 2. Create Cross-Sections
+    # These define the starting and ending widths for transitions
+    xs_core = gf.cross_section.cross_section(width=w_core, layer=layer)
+    xs_bulge = gf.cross_section.cross_section(width=w_bulge, layer=layer)
+    xs_tip = gf.cross_section.cross_section(width=w_tip, layer=layer)
+    
+    # 3. Create the profile segments using Path Extrusion
+    # Segment A: Center to Bulge (Sine transition for organic curve)
+    p1 = gf.path.straight(length=l_core_to_bulge)
+    t1 = gf.path.transition(xs_core, xs_bulge, width_type='sine')
+    s1 = c << gf.path.extrude_transition(p1, t1)
+    
+    # Segment B: Bulge to Neck (Sine transition back down)
+    p2 = gf.path.straight(length=l_bulge_to_neck)
+    t2 = gf.path.transition(xs_bulge, xs_tip, width_type='sine')
+    s2 = c << gf.path.extrude_transition(p2, t2)
+    s2.connect("o1", s1.ports["o2"])
+    
+    # Segment C: Rectangular Tip
+    s3 = c << gf.components.straight(length=l_tip, cross_section=xs_tip)
+    s3.connect("o1", s2.ports["o2"])
+    
+    # Add a port at the base to simplify rotation at the center
+    c.add_port("o1", port=s1.ports["o1"])
+    return c
+
+@gf.cell
+def bulging_cross_recreation():
+    """
+    Assembles 4 bulging arms with 90-degree rotations.
+    """
+    c = gf.Component()
+    arm = device_arm()
+    
+    for i in range(4):
+        # Add the arm reference and rotate around the origin (0,0)
+        ref = c << arm
+        ref.rotate(90 * i)
+        
+    # Add a small central square to ensure the core is perfectly solid
+    c << gf.components.rectangle(size=(0.85, 0.85), layer=(1, 0), centered=True)
+    
+    return c
+
+if __name__ == "__main__":
+    component = bulging_cross_recreation()
+    
+    # Verify Footprint: 2.35um * 2 = 4.7um
+    print(f"Device width: {component.dxsize:.3f} um")
+    print(f"Device height: {component.dysize:.3f} um")
+    
+    component.show()
+    component.write_gds("bulging_cross_path.gds")

@@ -1,0 +1,89 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def star_cross_device():
+    """
+    Creates a star/flower shaped cross device.
+    
+    Refinements V3:
+    - Replaced the 'crossed ellipses' model with 4 distinct rotated petals.
+    - Each petal is an ellipse shifted away from the center.
+    - This creates the correct "pinched" center and "bulbous" arm profile seen in the target.
+    - Calculated ellipse dimensions ensuring smooth connectivity to the stubs and a solid center.
+    """
+    c = gf.Component()
+
+    # 1. Define Constraints & Dimensions
+    footprint = 4.7
+    
+    # Parameters tuned to match the visual features of the target
+    stub_length = 0.4      # Length of the rectangular port section
+    stub_width = 0.28      # Thin ports (approx matched to image)
+    petal_width = 1.7      # Width of the petal at its widest point (creates the fat lobe)
+    
+    # 2. Geometric Calculations for One Petal (North facing)
+    # The petal fills the space between the center and the stub
+    # Max extent of the petal (y-coordinate where it meets the stub)
+    y_junction = footprint / 2 - stub_length
+    
+    # To get the lobe shape, we center the ellipse halfway along the petal arm.
+    # This puts the "hips" (widest point) of the petal in the middle of the arm.
+    y_ellipse_center = y_junction / 2
+    
+    # Horizontal radius (determines petal fatness)
+    rx = petal_width / 2
+    
+    # Vertical radius (ry) calculation:
+    # We need the ellipse to have a width of 'stub_width' at y = y_junction.
+    # Ellipse Equation relative to its center: (x/rx)^2 + (y/ry)^2 = 1
+    # At the connection interface:
+    x_rel = stub_width / 2
+    y_rel = y_junction - y_ellipse_center  # Distance from ellipse center to tip
+    
+    # Solve for ry:
+    # (y_rel/ry)^2 = 1 - (x_rel/rx)^2
+    discriminant = 1 - (x_rel / rx)**2
+    
+    # Safety check (rx must be > x_rel)
+    if discriminant <= 0:
+        ry = y_rel 
+    else:
+        ry = y_rel / np.sqrt(discriminant)
+        
+    # Note: With these parameters, the bottom of the ellipse (y_center - ry) will
+    # slightly cross y=0, ensuring the four petals fuse at the center without a hole.
+
+    # 3. Create the Petal Sub-Component
+    # We build one petal pointing North, then reference it 4 times
+    petal = gf.Component("petal_sub")
+    
+    # The Ellipse Body
+    e = gf.components.ellipse(radii=(rx, ry), layer=(1, 0))
+    ref_e = petal << e
+    ref_e.movey(y_ellipse_center)
+    
+    # The Rectangular Stub
+    stub = gf.components.rectangle(size=(stub_width, stub_length), layer=(1, 0), centered=True)
+    ref_s = petal << stub
+    ref_s.movey(y_junction + stub_length / 2)
+    
+    # 4. Assembly (Rotational Symmetry)
+    # Add 4 instances of the petal, rotated 0, 90, 180, 270 degrees
+    for i in range(4):
+        ref = c << petal
+        ref.rotate(90 * i)
+    
+    # 5. Define Ports
+    # Add standard ports at the footprint boundaries
+    c.add_port("o1", center=(-footprint/2, 0), width=stub_width, orientation=180, layer=(1,0))
+    c.add_port("o2", center=(footprint/2, 0), width=stub_width, orientation=0, layer=(1,0))
+    c.add_port("o3", center=(0, footprint/2), width=stub_width, orientation=90, layer=(1,0))
+    c.add_port("o4", center=(0, -footprint/2), width=stub_width, orientation=270, layer=(1,0))
+    
+    return c
+
+# Create and save
+device = star_cross_device()
+device.write_gds("star_cross_refined_v3.gds")
+device.show()

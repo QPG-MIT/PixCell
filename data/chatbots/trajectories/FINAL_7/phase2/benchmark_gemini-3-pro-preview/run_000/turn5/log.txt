@@ -1,0 +1,156 @@
+Turn 5 Response:
+
+Based on the analysis of the discrepancies—specifically the thinness of the diagonal arms and the "stick-like" appearance in the previous render—I have refined the script.
+
+**Key Changes:**
+1.  **Thick Diagonal Arms:** Increased the width of the diagonal connectors (`w_diag`) to `0.5µm`. This matches the outer ring width, creating the robust, "filled" look seen in the original image.
+2.  **Geometric Integration:**
+    *   The height of the modulation pads (`h_pad`) is set to `0.5µm` to match the diagonal width. This ensures the diagonal arm merges flush with the pad, eliminating the "step" artifact.
+    *   The connection point on the outer ring is retracted slightly along the straight section (`x_ring_connect`) to ensure the thick diagonal arm doesn't protrude past the smooth outer wall of the racetrack.
+3.  **Pad Proportions:** Adjusted pad width and gap to create a tighter internal cluster, which provides the necessary space for the diagonal arms to angle correctly.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def racetrack_modulator():
+    """
+    Final Racetrack Modulator Reconstruction
+    Footprint: 5.5um x 3.0um
+    
+    Improvements:
+    - Diagonal arms width increased to 0.5um (matches ring).
+    - Hollow pad frames sized to merge flush with diagonals.
+    - Connection points tuned for smooth boolean union.
+    """
+    c = gf.Component()
+
+    # =======================================================================
+    # 1. Dimensions & Parameters
+    # =======================================================================
+    # -- Device Footprint --
+    width_device = 5.5
+    height_device = 3.0
+    
+    # -- Waveguide Geometry --
+    w_wg = 0.5  # Width of the outer ring and diagonal arms
+    
+    # Radius (center-to-center)
+    r_center = (height_device - w_wg) / 2      # 1.25 um
+    # Straight Section Length
+    l_straight = width_device - height_device  # 2.5 um
+    
+    # -- Internal Geometry --
+    y_arm_offset = 0.65       # Vertical center of the internal arms
+    
+    # Hollow Pad Dimensions
+    # Height matches w_wg so the diagonal connects flush
+    h_pad = 0.5               
+    w_pad = 0.65              
+    w_stroke = 0.15           # Frame wall thickness
+    pad_gap = 0.35            # Gap between left/right pads
+    
+    w_wire = 0.12             # Thin central wire width
+
+    # -- Coordinate Calculation --
+    # 1. Outer Ring Connection Point
+    # We connect the diagonal slightly before the end of the straight section
+    # to ensure the thick arm doesn't create a bump on the outer curve.
+    # Straight ends at 1.25. Retract to 1.1
+    x_ring_connect = 1.1
+    
+    # 2. Pad Positions
+    x_pad_center = pad_gap/2 + w_pad/2
+    x_pad_inner = pad_gap/2
+    x_pad_outer = pad_gap/2 + w_pad  # ~0.825
+
+    # =======================================================================
+    # 2. Cross Sections
+    # =======================================================================
+    xs_main = gf.cross_section.cross_section(width=w_wg, layer=(1, 0), radius=r_center)
+    xs_wire = gf.cross_section.cross_section(width=w_wire, layer=(1, 0))
+
+    # =======================================================================
+    # 3. Build Outer Racetrack
+    # =======================================================================
+    # Straights
+    s_top = c << gf.components.straight(length=l_straight, cross_section=xs_main)
+    s_top.move((-l_straight/2, r_center))
+    
+    s_bot = c << gf.components.straight(length=l_straight, cross_section=xs_main)
+    s_bot.move((-l_straight/2, -r_center))
+    
+    # Bends
+    bend = gf.components.bend_circular(radius=r_center, angle=180, cross_section=xs_main)
+    
+    bl = c << bend
+    bl.connect("o1", s_top.ports["o1"])
+    
+    br = c << bend
+    br.connect("o1", s_bot.ports["o2"])
+
+    # =======================================================================
+    # 4. Build Internal Arms
+    # =======================================================================
+    
+    # Define the hollow pad shape
+    def create_pad():
+        outer = gf.components.rectangle(size=(w_pad, h_pad), layer=(1,0), centered=True)
+        
+        inner_w = w_pad - 2*w_stroke
+        inner_h = h_pad - 2*w_stroke
+        inner = gf.components.rectangle(size=(inner_w, inner_h), layer=(1,0), centered=True)
+        
+        return gf.boolean(outer, inner, 'not', layer=(1,0))
+
+    pad_shape = create_pad()
+
+    def build_arm(sign_y):
+        """
+        Builds top (+1) or bottom (-1) arm.
+        """
+        y_loc = sign_y * y_arm_offset
+        y_ring = sign_y * r_center
+        
+        # A. Place Pads
+        pl = c << pad_shape
+        pl.move((-x_pad_center, y_loc))
+        
+        pr = c << pad_shape
+        pr.move((x_pad_center, y_loc))
+        
+        # B. Central Wire
+        wire_path = gf.Path([(-x_pad_inner, y_loc), (x_pad_inner, y_loc)])
+        c << gf.path.extrude(wire_path, cross_section=xs_wire)
+        
+        # C. Diagonal Connectors
+        # We extend the diagonal slightly into the pad (x_pad_outer - 0.05) 
+        # and slightly into the ring (x_ring_connect) for robust connection.
+        # Since h_pad == w_diag, centering on y_loc makes edges flush.
+        
+        # Left Diagonal
+        p_left = gf.Path([
+            (-x_ring_connect, y_ring), 
+            (-x_pad_outer + 0.05, y_loc)
+        ])
+        c << gf.path.extrude(p_left, cross_section=xs_main)
+        
+        # Right Diagonal
+        p_right = gf.Path([
+            (x_ring_connect, y_ring), 
+            (x_pad_outer - 0.05, y_loc)
+        ])
+        c << gf.path.extrude(p_right, cross_section=xs_main)
+
+    # Build Top Arm
+    build_arm(1)
+    
+    # Build Bottom Arm
+    build_arm(-1)
+
+    return c
+
+if __name__ == "__main__":
+    device = racetrack_modulator()
+    device.write_gds("racetrack_device.gds")
+```

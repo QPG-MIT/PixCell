@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.782921",
+      "api_duration_seconds": 46.32527422904968,
+      "usage": {
+        "input_tokens": 3162,
+        "output_tokens": 1243,
+        "total_tokens": 9821
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:58.812682",
+      "api_duration_seconds": 19.74714207649231,
+      "usage": {
+        "input_tokens": 4877,
+        "output_tokens": 1196,
+        "total_tokens": 7502
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:26.194794",
+      "api_duration_seconds": 21.315961837768555,
+      "usage": {
+        "input_tokens": 6092,
+        "output_tokens": 1224,
+        "total_tokens": 9413
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14131,
+    "output_tokens": 3663,
+    "total_tokens": 26736
+  }
+}

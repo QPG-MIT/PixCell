@@ -1,0 +1,81 @@
+import gdsfactory as gf
+
+@gf.cell
+def device():
+    """
+    Creates a four-petal cross shape with a specified footprint using
+    parametric GDSFactory components and boolean operations.
+
+    The shape is constructed by taking the union of a central quatrefoil
+    (made from two ellipses) and a cross that defines the stems and
+    overall footprint.
+    """
+    # --- Parameters derived from footprint and visual inspection ---
+
+    # Define the GDS layer for all geometry.
+    TARGET_LAYER = (1, 0)
+
+    # The overall footprint of the device is 4.7x4.7 um.
+    footprint = 4.7
+
+    # The width of the straight "stem" sections at the tips of the cross.
+    stem_width = 0.4
+
+    # The "petals" are formed by the union of two ellipses.
+    # The major radius of the ellipse defines the length of the curved petal part.
+    # It is chosen to be slightly less than half the footprint to leave a short stem.
+    petal_length_radius = 2.2
+
+    # The minor radius of the ellipse defines the width or "fatness" of the petals.
+    petal_width_radius = 1.1
+
+    # --- Component Creation and Assembly ---
+
+    # 1. Create a cross component on the target layer.
+    cross_stems = gf.components.cross(
+        length=footprint, width=stem_width, layer=TARGET_LAYER
+    )
+
+    # 2. Create a horizontally-oriented ellipse on the target layer.
+    ellipse_horizontal = gf.components.ellipse(
+        radii=(petal_length_radius, petal_width_radius), layer=TARGET_LAYER
+    )
+
+    # 3. Create a vertically-oriented ellipse on the target layer.
+    ellipse_vertical = gf.components.ellipse(
+        radii=(petal_width_radius, petal_length_radius), layer=TARGET_LAYER
+    )
+
+    # 4. Perform boolean 'or' (union) operations.
+    #    FIX: Added the required 'layer' argument to both boolean calls.
+    #    First, union the two ellipses to create the central quatrefoil body.
+    body = gf.boolean(
+        A=ellipse_horizontal, B=ellipse_vertical, operation="or", layer=TARGET_LAYER
+    )
+
+    #    Second, union the quatrefoil body with the cross. This adds the stems
+    #    and finalizes the shape.
+    final_shape = gf.boolean(
+        A=body, B=cross_stems, operation="or", layer=TARGET_LAYER
+    )
+
+    # Create a new, clean component to hold the final geometry.
+    c = gf.Component()
+    # Add the final combined shape as a reference.
+    _ = c << final_shape
+    # It's good practice to flatten the hierarchy after boolean operations
+    # to produce a single, clean polygon set.
+    c.flatten()
+    return c
+
+# --- Main execution block ---
+# This part is correct and instantiates the component and saves it.
+if __name__ == "__main__":
+    # 1. Create an instance of the component defined above.
+    my_device_instance = device()
+
+    # 2. (Optional) Display the component in the KLayout viewer.
+    my_device_instance.show()
+
+    # 3. Save the component to a GDS file. This is the crucial step.
+    my_device_instance.write_gds("output.gds")

@@ -1,0 +1,39 @@
+{
+  "turn": 3,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:30:14.908944",
+      "api_duration_seconds": 100.94520807266235,
+      "usage": {
+        "input_tokens": 3576,
+        "output_tokens": 1733,
+        "total_tokens": 16926
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_8/benchmark_gemini_gemini-2.5-pro/phase2/benchmark_gemini-2-5-pro/run_009/turn3/generated_component.py\", line 115, in <module>\n    device = create_symmetric_waveguide_structure()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:31:57.475375",
+      "api_duration_seconds": 39.97363901138306,
+      "usage": {
+        "input_tokens": 5849,
+        "output_tokens": 1612,
+        "total_tokens": 10810
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 9425,
+    "output_tokens": 3345,
+    "total_tokens": 27736
+  }
+}

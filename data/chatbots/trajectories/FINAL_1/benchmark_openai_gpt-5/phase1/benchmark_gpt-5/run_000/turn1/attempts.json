@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:25:08.336380",
+      "api_duration_seconds": 201.32984828948975,
+      "usage": {
+        "input_tokens": 3062,
+        "output_tokens": 9196,
+        "total_tokens": 12258
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports bend_s_gdsfactorypcomponentspbendspbend_s_S8_0p55_N99_C_5141633e_0_0[\"o1\"] and Port \"o2\" (\"500\"/\"1100\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:28:30.937275",
+      "api_duration_seconds": 69.42408394813538,
+      "usage": {
+        "input_tokens": 4012,
+        "output_tokens": 2289,
+        "total_tokens": 6301
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:29:46.810585",
+      "api_duration_seconds": 83.54941296577454,
+      "usage": {
+        "input_tokens": 4785,
+        "output_tokens": 3248,
+        "total_tokens": 8033
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11859,
+    "output_tokens": 14733,
+    "total_tokens": 26592
+  }
+}

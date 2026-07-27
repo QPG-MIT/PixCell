@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.886750",
+      "api_duration_seconds": 75.93454098701477,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 2298,
+        "total_tokens": 19279
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: cross() got an unexpected keyword argument 'centered'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:27.196849",
+      "api_duration_seconds": 8.141879796981812,
+      "usage": {
+        "input_tokens": 4671,
+        "output_tokens": 1282,
+        "total_tokens": 6196
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'geometry'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:37.033048",
+      "api_duration_seconds": 14.832176923751831,
+      "usage": {
+        "input_tokens": 5982,
+        "output_tokens": 1463,
+        "total_tokens": 9010
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.functions' has no attribute 'offset'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13000,
+    "output_tokens": 5043,
+    "total_tokens": 34485
+  }
+}

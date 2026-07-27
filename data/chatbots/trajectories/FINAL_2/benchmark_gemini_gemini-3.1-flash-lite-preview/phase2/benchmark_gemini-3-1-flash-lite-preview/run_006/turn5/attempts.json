@@ -1,0 +1,53 @@
+{
+  "turn": 5,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:12:40.273380",
+      "api_duration_seconds": 25.12881875038147,
+      "usage": {
+        "input_tokens": 4837,
+        "output_tokens": 858,
+        "total_tokens": 9710
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key=DPort(self.name='top_0', self.width=3.0, trans=r90 *1 -9,5, layer=WG (1/0), port_type=optical) is not a valid port name or index. Available ports: ['top_0', 'top_1', 'top_2', 'top_3', 'bot_0']\"",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:13:06.817526",
+      "api_duration_seconds": 15.236154079437256,
+      "usage": {
+        "input_tokens": 5816,
+        "output_tokens": 722,
+        "total_tokens": 8728
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'geometry'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:13:23.348750",
+      "api_duration_seconds": 13.538290977478027,
+      "usage": {
+        "input_tokens": 6567,
+        "output_tokens": 750,
+        "total_tokens": 9226
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 17220,
+    "output_tokens": 2330,
+    "total_tokens": 27664
+  }
+}

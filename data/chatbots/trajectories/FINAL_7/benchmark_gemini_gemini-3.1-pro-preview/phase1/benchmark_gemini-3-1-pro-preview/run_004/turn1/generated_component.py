@@ -1,0 +1,119 @@
+import gdsfactory as gf
+
+@gf.cell
+def holed_block(length=2.3, width=0.5, rail_w=0.1, strut_w=0.2):
+    """Constructs the thick section with two rectangular holes."""
+    c = gf.Component()
+    hole_len = (length - 3 * strut_w) / 2.0
+    
+    # Top and Bottom Rails
+    rt = c << gf.components.rectangle(size=(length, rail_w), layer=(1, 0))
+    rt.move((0, width/2 - rail_w))
+    
+    rb = c << gf.components.rectangle(size=(length, rail_w), layer=(1, 0))
+    rb.move((0, -width/2))
+    
+    # Left, Middle, and Right Vertical Struts
+    sl = c << gf.components.rectangle(size=(strut_w, width), layer=(1, 0))
+    sl.move((0, -width/2))
+    
+    sm = c << gf.components.rectangle(size=(strut_w, width), layer=(1, 0))
+    sm.move((strut_w + hole_len, -width/2))
+    
+    sr = c << gf.components.rectangle(size=(strut_w, width), layer=(1, 0))
+    sr.move((length - strut_w, -width/2))
+    
+    # Define connection ports
+    c.add_port("o1", center=(0, 0), width=width, orientation=180, layer=(1, 0))
+    c.add_port("o2", center=(length, 0), width=width, orientation=0, layer=(1, 0))
+    return c
+
+@gf.cell
+def mzi_arm_assembly():
+    """Constructs a single horizontal MZI arm with tapers."""
+    c = gf.Component()
+    
+    # Assembly sequence: taper up -> holed block -> taper down
+    t1 = c << gf.components.taper(length=0.4, width1=0.1, width2=0.5, layer=(1, 0))
+    hb = c << holed_block(length=2.3, width=0.5, rail_w=0.1, strut_w=0.2)
+    t2 = c << gf.components.taper(length=0.4, width1=0.5, width2=0.1, layer=(1, 0))
+    
+    hb.connect("o1", t1.ports["o2"])
+    t2.connect("o1", hb.ports["o2"])
+    
+    c.add_port("o1", port=t1.ports["o1"])
+    c.add_port("o2", port=t2.ports["o2"])
+    return c
+
+@gf.cell
+def inner_structure():
+    """Constructs the full inner split branching structure."""
+    c = gf.Component()
+    # Explicitly providing radius_min avoids the strict >10um error on tight S-bends
+    xs_thin = gf.cross_section.cross_section(width=0.1, layer=(1, 0), radius_min=0.01)
+    
+    # Left inner stub
+    stub_l = c << gf.components.straight(length=0.2, cross_section=xs_thin)
+    
+    # Splitter S-bends
+    sbend_tl = c << gf.components.bend_s(size=(0.6, 0.5), cross_section=xs_thin)
+    sbend_bl = c << gf.components.bend_s(size=(0.6, -0.5), cross_section=xs_thin)
+    
+    # Arms
+    arm_t = c << mzi_arm_assembly()
+    arm_b = c << mzi_arm_assembly()
+    
+    # Combiner S-bends
+    sbend_tr = c << gf.components.bend_s(size=(0.6, -0.5), cross_section=xs_thin)
+    sbend_br = c << gf.components.bend_s(size=(0.6, 0.5), cross_section=xs_thin)
+    
+    # Right inner stub
+    stub_r = c << gf.components.straight(length=0.2, cross_section=xs_thin)
+    
+    # Connect everything
+    sbend_tl.connect("o1", stub_l.ports["o2"])
+    sbend_bl.connect("o1", stub_l.ports["o2"])
+    
+    arm_t.connect("o1", sbend_tl.ports["o2"])
+    arm_b.connect("o1", sbend_bl.ports["o2"])
+    
+    sbend_tr.connect("o1", arm_t.ports["o2"])
+    sbend_br.connect("o1", arm_b.ports["o2"])
+    
+    stub_r.connect("o1", sbend_tr.ports["o2"])
+    
+    return c
+
+@gf.cell
+def target_device():
+    """Main assembly integrating the racetrack ring bounds and the inner MZI structure."""
+    c = gf.Component()
+
+    # 1. Outer Racetrack Ring (Total Footprint: X=5.5, Y=3.0)
+    xs_ring = gf.cross_section.cross_section(width=0.4, layer=(1, 0), radius_min=0.01)
+    p = gf.Path()
+    p.append(gf.path.straight(length=2.5))
+    p.append(gf.path.arc(radius=1.3, angle=180))
+    p.append(gf.path.straight(length=2.5))
+    p.append(gf.path.arc(radius=1.3, angle=180))
+
+    ring = c << gf.path.extrude(p, cross_section=xs_ring)
+    
+    # Translate to perfectly center the racetrack bounding box
+    ring.move((-1.25, -1.3))
+
+    # 2. Inner Assembly Positioning
+    inner = c << inner_structure()
+    
+    # The inner gap between the semi-circles is exactly 4.7 um wide (-2.35 to 2.35). 
+    # The length of the `inner_structure` is precisely built to span 4.7 um.
+    inner.move((-2.35, 0))
+
+    return c
+
+if __name__ == "__main__":
+    # Create the final component
+    device = target_device()
+    
+    # Save to file to produce the missing GDS artifact
+    device.write_gds("target_device.gds")

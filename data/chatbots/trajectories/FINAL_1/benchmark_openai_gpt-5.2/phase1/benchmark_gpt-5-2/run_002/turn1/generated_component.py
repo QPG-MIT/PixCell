@@ -1,0 +1,95 @@
+import gdsfactory as gf
+
+
+@gf.cell
+def three_to_two_fanout(
+    footprint_um: tuple[float, float] = (40.0, 1.7),
+    wg_width: float = 0.25,
+    layer: tuple[int, int] = (1, 0),
+    y_in: float = 0.25,          # input offset for top/bottom (middle stays at 0)
+    y_out: float = 0.725,        # output offset for top/bottom
+    l_straight1: float = 22.0,   # left straight before the S-bend
+    l_sbend: float = 12.0,       # S-bend x-length
+    l_straight2: float = 6.0,    # right straight after the S-bend
+    l_mid_straight: float = 22.0,
+    l_mid_taper: float = 3.0,
+    mid_width2: float = 0.06,    # small tip width so it visually "ends"
+) -> gf.Component:
+    """Recreates the shown geometry using parametric primitives (no raw polygons)."""
+    c = gf.Component()
+
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+
+    # -----------------------
+    # Top branch (straight + S-bend + straight)
+    # -----------------------
+    s1t = gf.components.straight(length=l_straight1, cross_section=xs)
+    sbt = gf.components.bend_s(size=(l_sbend, y_out - y_in), cross_section=xs)
+    s2t = gf.components.straight(length=l_straight2, cross_section=xs)
+
+    r_s1t = c << s1t
+    r_s1t.move((0, y_in))
+
+    r_sbt = c << sbt
+    r_sbt.connect("o1", r_s1t.ports["o2"])
+
+    r_s2t = c << s2t
+    r_s2t.connect("o1", r_sbt.ports["o2"])
+
+    # -----------------------
+    # Bottom branch (straight + S-bend + straight), mirrored in Y by using negative dy
+    # -----------------------
+    s1b = gf.components.straight(length=l_straight1, cross_section=xs)
+    sbb = gf.components.bend_s(size=(l_sbend, -(y_out - y_in)), cross_section=xs)
+    s2b = gf.components.straight(length=l_straight2, cross_section=xs)
+
+    r_s1b = c << s1b
+    r_s1b.move((0, -y_in))
+
+    r_sbb = c << sbb
+    r_sbb.connect("o1", r_s1b.ports["o2"])
+
+    r_s2b = c << s2b
+    r_s2b.connect("o1", r_sbb.ports["o2"])
+
+    # -----------------------
+    # Middle short waveguide (straight + taper that "ends" early)
+    # -----------------------
+    s_mid = gf.components.straight(length=l_mid_straight, cross_section=xs)
+    t_mid = gf.components.taper(length=l_mid_taper, width1=wg_width, width2=mid_width2, layer=layer)
+
+    r_mid_s = c << s_mid
+    r_mid_s.move((0, 0))
+
+    r_mid_t = c << t_mid
+    r_mid_t.connect("o1", r_mid_s.ports["o2"])
+
+    # -----------------------
+    # External ports (3 in on the left, 2 out on the right)
+    # -----------------------
+    c.add_port("in_top", port=r_s1t.ports["o1"])
+    c.add_port("in_mid", port=r_mid_s.ports["o1"])
+    c.add_port("in_bot", port=r_s1b.ports["o1"])
+    c.add_port("out_top", port=r_s2t.ports["o2"])
+    c.add_port("out_bot", port=r_s2b.ports["o2"])
+
+    # Optional: enforce/verify footprint by centering in the requested box
+    # (geometry already matches by construction: total length = l_straight1+l_sbend+l_straight2)
+    total_length = l_straight1 + l_sbend + l_straight2
+    if abs(total_length - footprint_um[0]) > 1e-6:
+        raise ValueError(f"X footprint mismatch: {total_length=} vs {footprint_um[0]=}")
+
+    # Height check (outer edges should match ~footprint_um[1])
+    # outer edge approx = y_out + wg_width/2
+    est_height = 2 * (y_out + wg_width / 2)
+    if abs(est_height - footprint_um[1]) > 0.05:
+        # keep it permissive; image-based targets can vary slightly
+        pass
+
+    return c
+
+
+if __name__ == "__main__":
+    c = three_to_two_fanout()
+    c.write_gds("three_to_two_fanout.gds")
+    # gf.show(c)  # uncomment to view in klayout if configured

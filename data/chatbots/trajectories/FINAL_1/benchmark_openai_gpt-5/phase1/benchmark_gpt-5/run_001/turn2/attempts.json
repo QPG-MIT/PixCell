@@ -1,0 +1,39 @@
+{
+  "turn": 2,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:30:35.692428",
+      "api_duration_seconds": 111.51885390281677,
+      "usage": {
+        "input_tokens": 5603,
+        "output_tokens": 4386,
+        "total_tokens": 9989
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports bend_s_gdsfactorypcomponentspbendspbend_s_S6_0p6_N99_CS_d70793a3_0_0[\"o1\"] and Port \"o2\" (\"900\"/\"120\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:32:28.573686",
+      "api_duration_seconds": 34.26094889640808,
+      "usage": {
+        "input_tokens": 6414,
+        "output_tokens": 1627,
+        "total_tokens": 8041
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12017,
+    "output_tokens": 6013,
+    "total_tokens": 18030
+  }
+}

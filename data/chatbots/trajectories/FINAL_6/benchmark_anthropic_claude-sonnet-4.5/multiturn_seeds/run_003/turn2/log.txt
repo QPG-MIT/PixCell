@@ -1,0 +1,54 @@
+Turn 2 Response:
+
+Looking at the comparison, I can see that the lobes need to be much more elongated and narrow. The horizontal ellipse should be wider and flatter, and the vertical ellipse should be taller and narrower. Here's the improved version:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def four_lobe_cross():
+    """
+    Creates a four-lobed cross pattern with elongated elliptical arms.
+    Matches the footprint of 4.7 x 4.7 microns.
+    """
+    c = gf.Component()
+    
+    # Dimensions based on 4.7 x 4.7 um footprint
+    total_length = 4.7   # Full span in each direction
+    arm_thickness = 0.65  # Thickness of each arm (narrower for more elongation)
+    
+    # Create horizontal ellipse (very wide and flat)
+    # This creates the left and right lobes
+    h_ellipse = gf.components.ellipse(
+        radii=(total_length/2, arm_thickness),
+        layer=(1, 0)
+    )
+    
+    # Create vertical ellipse (very tall and narrow)
+    # This creates the top and bottom lobes
+    v_ellipse = gf.components.ellipse(
+        radii=(arm_thickness, total_length/2),
+        layer=(1, 0)
+    )
+    
+    # Combine using boolean OR to create the four-lobed cross
+    result = gf.boolean(h_ellipse, v_ellipse, operation="or", layer=(1, 0))
+    
+    # Add the result to the component
+    c << result
+    
+    return c
+
+# Create and save the device
+device = four_lobe_cross()
+device.write_gds("four_lobe_cross.gds")
+print(f"Device created with bounding box: {device.bbox}")
+```
+
+Key improvements:
+1. **Reduced arm thickness** from 1.6 to 0.65 μm - this creates much more elongated, tapered lobes
+2. **Better proportions** - the horizontal ellipse is now 4.7 μm wide but only 1.3 μm tall (2 × 0.65)
+3. **More pronounced pinching** at the center where the ellipses overlap
+4. **Matches the target shape** with narrow, elongated lobes extending from a central junction
+
+The boolean OR operation naturally creates the smooth, tapered lobes with the characteristic bottleneck shape near the center.

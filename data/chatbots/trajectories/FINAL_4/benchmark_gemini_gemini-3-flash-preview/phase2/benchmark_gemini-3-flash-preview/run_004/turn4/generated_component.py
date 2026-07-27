@@ -1,0 +1,98 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_organic():
+    """
+    Directional coupler with maximized S-bend length for organic, smooth curves.
+    Footprint: 18um x 3um.
+    
+    Refinements for Turn 4:
+    - Minimized L_ends and L_waist to give more room for the S-bends to be "lazy".
+    - Adjusted width to 0.55 for better visual weight in the 3um vertical span.
+    - Set gap to 0.15 for a clear but tight coupling region.
+    """
+    c = gf.Component("directional_coupler_v4")
+    
+    # 1. Design Parameters
+    L_total = 18.0
+    H_total = 3.0
+    w = 0.55        # Balanced width for the 3um height
+    gap = 0.15      # Center gap
+    
+    # We want most of the 18um to be the curve to match the visual fluidity.
+    L_ends = 0.2    # Minimal horizontal entry/exit
+    L_waist = 0.6   # Short parallel coupling section
+    
+    # Calculate the horizontal length of each S-bend segment
+    # There are 4 S-bends total in the layout (2 per waveguide)
+    L_sbend = (L_total - 2 * L_ends - L_waist) / 2 # ~8.5 um
+    
+    # Calculate the vertical offset (dy) for the S-bend
+    # Start center: +/- (H_total/2 - w/2)
+    # Waist center: +/- (gap/2 + w/2)
+    y_start = H_total / 2 - w / 2
+    y_waist = gap / 2 + w / 2
+    dy = y_start - y_waist
+    
+    xs = gf.cross_section.cross_section(width=w, layer=(1, 0))
+    
+    # 2. Build Top Waveguide
+    # Start at left edge
+    t1 = c << gf.components.straight(length=L_ends, cross_section=xs)
+    t1.movey(y_start)
+    t1.movex(-L_total / 2)
+    
+    # Curve down to the center
+    t2 = c << gf.components.bend_s(size=(L_sbend, -dy), cross_section=xs)
+    t2.connect("o1", t1.ports["o2"])
+    
+    # Short coupling section
+    t3 = c << gf.components.straight(length=L_waist, cross_section=xs)
+    t3.connect("o1", t2.ports["o2"])
+    
+    # Curve back up to the end
+    t4 = c << gf.components.bend_s(size=(L_sbend, dy), cross_section=xs)
+    t4.connect("o1", t3.ports["o2"])
+    
+    # Exit straight
+    t5 = c << gf.components.straight(length=L_ends, cross_section=xs)
+    t5.connect("o1", t4.ports["o2"])
+    
+    # 3. Build Bottom Waveguide (Symmetric mirror)
+    # Start at left edge
+    b1 = c << gf.components.straight(length=L_ends, cross_section=xs)
+    b1.movey(-y_start)
+    b1.movex(-L_total / 2)
+    
+    # Curve up to the center
+    b2 = c << gf.components.bend_s(size=(L_sbend, dy), cross_section=xs)
+    b2.connect("o1", b1.ports["o2"])
+    
+    # Short coupling section
+    b3 = c << gf.components.straight(length=L_waist, cross_section=xs)
+    b3.connect("o1", b2.ports["o2"])
+    
+    # Curve back down to the end
+    b4 = c << gf.components.bend_s(size=(L_sbend, -dy), cross_section=xs)
+    b4.connect("o1", b3.ports["o2"])
+    
+    # Exit straight
+    b5 = c << gf.components.straight(length=L_ends, cross_section=xs)
+    b5.connect("o1", b4.ports["o2"])
+    
+    # 4. Define Ports
+    c.add_port("o1", port=t1.ports["o1"])
+    c.add_port("o2", port=b1.ports["o1"])
+    c.add_port("o3", port=t5.ports["o2"])
+    c.add_port("o4", port=b5.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    # Instantiate and write GDS
+    component = directional_coupler_organic()
+    component.write_gds("coupler_v4.gds")
+    
+    # Print verification
+    print(f"Device size: {component.dxsize:.2f} x {component.dysize:.2f} um")
+    component.show()

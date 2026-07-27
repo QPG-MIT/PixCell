@@ -1,0 +1,74 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+    width = 0.5
+    arm_start_width = 0.25
+    y_offset = width / 4  # 0.125
+    gap = 0.1
+    l_short = 4.0
+    l_long = 25.0
+    l_stem = 2.0
+    dx = 8.8
+    dy = 0.85
+    small = 1e-3  # Small positive width to avoid validation error
+
+    # Double taper helper
+    def double_taper(length, max_width, layer):
+        comp = gf.Component()
+        t1 = comp << gf.components.taper(length=length/2, width1=small, width2=max_width, layer=layer)
+        t2 = comp << gf.components.taper(length=length/2, width1=max_width, width2=small, layer=layer)
+        t2.connect("o1", t1.ports["o2"])
+        return comp
+
+    # Left double taper
+    dt1 = c << double_taper(l_short, width, layer)
+    dt1.move((0, 0))
+
+    # Middle double taper
+    x = l_short + gap
+    dt2 = c << double_taper(l_long, width, layer)
+    dt2.move((x, 0))
+
+    # Right stem
+    x = x + l_long + gap
+    stem = c << gf.components.taper(length=l_stem, width1=small, width2=width, layer=layer)
+    stem.move((x, 0))
+
+    # Upper arm
+    control_points_u = [
+        (0.0, y_offset),
+        (dx / 2, y_offset),
+        (dx / 2, y_offset + dy),
+        (dx, y_offset + dy),
+    ]
+    path_u = gf.path.bezier(control_points=control_points_u)
+    xs_start = gf.cross_section.cross_section(width=arm_start_width, layer=layer)
+    xs_end = gf.cross_section.cross_section(width=small, layer=layer)
+    transition = gf.path.transition(xs_start, xs_end, width_type='linear')
+    arm_u = gf.path.extrude_transition(path_u, transition)
+    au = c << arm_u
+    au.connect("o1", stem.ports["o2"])
+
+    # Lower arm
+    control_points_l = [
+        (0.0, -y_offset),
+        (dx / 2, -y_offset),
+        (dx / 2, -y_offset - dy),
+        (dx, -y_offset - dy),
+    ]
+    path_l = gf.path.bezier(control_points=control_points_l)
+    arm_l = gf.path.extrude_transition(path_l, transition)
+    al = c << arm_l
+    al.connect("o1", stem.ports["o2"])
+
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")
+```

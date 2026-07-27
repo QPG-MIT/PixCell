@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.953535",
+      "api_duration_seconds": 109.616623878479,
+      "usage": {
+        "input_tokens": 3155,
+        "output_tokens": 1233,
+        "total_tokens": 14506
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S120_0_ffcc006e' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:01.628878",
+      "api_duration_seconds": 21.827641010284424,
+      "usage": {
+        "input_tokens": 4446,
+        "output_tokens": 1320,
+        "total_tokens": 6877
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'circle_gdsfactorypcomponentspshapespcircle_R15_AR2p5_L1_0' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:24.887158",
+      "api_duration_seconds": 25.74540400505066,
+      "usage": {
+        "input_tokens": 5823,
+        "output_tokens": 1179,
+        "total_tokens": 8918
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13424,
+    "output_tokens": 3732,
+    "total_tokens": 30301
+  }
+}

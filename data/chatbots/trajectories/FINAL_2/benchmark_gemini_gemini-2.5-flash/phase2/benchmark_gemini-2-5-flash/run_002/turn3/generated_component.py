@@ -1,0 +1,164 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def my_device():
+    """
+    Recreates the geometry from the provided image using GDSFactory parametric functions.
+
+    The device consists of a main rectangular body with a V-shaped notch at the bottom,
+    and four tapered pillars (towers) on top.
+
+    The entire geometry is designed to fit within a 25um x 10um footprint.
+    """
+    c = gf.Component("my_device")
+    layer = (1, 0) # Default layer for all geometry
+
+    # Device footprint constraint (total width and height)
+    total_width = 25.0
+    total_height = 10.0
+
+    # Small overlap epsilon to ensure boolean operations merge/cut correctly.
+    overlap_epsilon = 0.001 # A small value, e.g., 1 nanometer
+
+    # --- Dimension Breakdown (adjusted to fit 25x10um footprint based on visual comparison) ---
+    # We define the total height (10um) as spanning from the lowest point of the notch
+    # to the highest point of the towers, centered around Y=0.
+
+    # 1. Notch Dimensions (V-shape cut at the bottom of the main body)
+    notch_height = 2.0  # Increased for a deeper notch (was 1.5)
+    notch_top_width = total_width / 4.0 # 6.25um. Increased for a wider notch at its top edge (was 3.0)
+
+    # Calculate Y-coordinates for the overall device vertical placement.
+    # The lowest point of the notch is at -total_height/2
+    Y_notch_bottom_actual = -total_height / 2.0 # = -5.0
+    # The bottom edge of the main rectangular body (where the notch starts)
+    Y_main_body_bottom = Y_notch_bottom_actual + notch_height # = -5.0 + 2.0 = -3.0
+
+    # Let's estimate Y_main_body_top (top of the main rectangle, base of towers)
+    # This determines the height of the main rectangular block.
+    Y_main_body_top = 1.5 # Keeping this consistent with previous turn's visual estimation
+    main_body_rect_height = Y_main_body_top - Y_main_body_bottom # = 1.5 - (-3.0) = 4.5
+
+    # 2. Tower (Pillars on top of the main body) Dimensions
+    # The total height of the towers, from Y_main_body_top to the top of the footprint.
+    tower_total_height = total_height / 2.0 - Y_main_body_top # = 5.0 - 1.5 = 3.5
+
+    # Breakdown tower height into top rectangular part and tapered part
+    tower_top_height = 1.0  # Slightly shorter rectangular top part (was 1.5)
+    tower_taper_height = 2.5 # Taller tapered part (was 2.0). Sums to 3.5.
+
+    # Tower widths
+    tower_bottom_width = 3.8 # Wider base for towers (was 2.5), to reduce gaps
+    tower_top_width = 2.0   # Wider top for towers (was 1.5)
+
+    main_body_rect_width = total_width # Main body spans the full width
+
+    # --- Constructing the Geometry ---
+
+    # 1. Create Main Body Rectangle Component (positioned)
+    base_rect_component = gf.components.rectangle(
+        size=(main_body_rect_width, main_body_rect_height), layer=layer, centered=True
+    )
+    main_rect_positioned = base_rect_component.copy()
+    # Move the main rectangle so its bottom (ymin) is at Y_main_body_bottom.
+    main_rect_positioned.movey(Y_main_body_bottom - main_rect_positioned.ymin)
+
+
+    # 2. Create Notch Triangle Component (positioned and rotated for subtraction)
+    base_notch_triangle_component = gf.components.triangle(x=notch_top_width, y=notch_height, layer=layer)
+    notch_triangle_transformed = base_notch_triangle_component.copy()
+    notch_triangle_transformed.rotate(180) # Now it points downwards (ymax=0, ymin=-notch_height in its local coord system)
+    # Position the notch triangle. Its base (ymax after rotation) needs to slightly overlap
+    # the bottom of the main rectangle (Y_main_body_bottom) for the boolean subtraction to work.
+    # So, move its ymax to Y_main_body_bottom + overlap_epsilon.
+    notch_triangle_transformed.movey(Y_main_body_bottom + overlap_epsilon - notch_triangle_transformed.ymax)
+
+    # Perform boolean subtraction to create the main body with the notch.
+    main_body_with_notch = gf.boolean(main_rect_positioned, notch_triangle_transformed, operation="not", layer=layer)
+
+
+    # 3. Define a Reusable Single Tower Component
+    @gf.cell
+    def _single_tower_component(top_width, top_height, taper_height, bottom_width, layer):
+        """Creates a single tower (pillar) component.
+        Its local origin (0,0) will be at the bottom-center of its wider base."""
+        tower_comp = gf.Component("single_tower_sub")
+
+        # Top rectangular part of the tower
+        rect_part_base = gf.components.rectangle(size=(top_width, top_height), layer=layer, centered=True)
+        rect_ref = tower_comp << rect_part_base # Add as a reference to the sub-component
+
+        # Tapered (trapezoidal) part of the tower
+        # taper(length=L, width1=W1, width2=W2) creates a taper from W1 to W2 along length L.
+        # It's initially horizontal, centered on the x-axis, from x=0 to x=L.
+        taper_horizontal_base = gf.components.taper(
+            length=taper_height, width1=bottom_width, width2=top_width, layer=layer
+        )
+        taper_ref = tower_comp << taper_horizontal_base # Add as a reference to the sub-component
+        taper_ref.rotate(90) # Rotates around (0,0).
+        # After rotation, its ymin is 0, ymax is taper_height, and x is centered at 0.
+
+        # Position the rectangle part on top of the taper part.
+        rect_ref.x = taper_ref.x # Align centers horizontally (both are 0 relative to tower_comp)
+        rect_ref.ymin = taper_ref.ymax # Align bottom of rect to top of taper
+
+        return tower_comp
+
+    single_tower_comp_template = _single_tower_component(
+        top_width=tower_top_width,
+        top_height=tower_top_height,
+        taper_height=tower_taper_height,
+        bottom_width=tower_bottom_width,
+        layer=layer
+    )
+
+    # 4. Create and Position the Four Towers
+    num_towers = 4
+
+    # Calculate horizontal spacing to distribute towers evenly across `total_width`.
+    # `num_towers + 1` gaps (one before first, one after last, `num_towers - 1` in between).
+    gap_width = (total_width - (num_towers * tower_bottom_width)) / (num_towers + 1)
+
+    tower_x_centers = []
+    # Calculate the x-coordinates for the center of each tower.
+    # Start from the left edge of the overall footprint, add one gap, then half a tower width.
+    current_x = -total_width / 2.0 + gap_width + (tower_bottom_width / 2.0)
+    for _ in range(num_towers):
+        tower_x_centers.append(current_x)
+        current_x += (tower_bottom_width + gap_width) # Move to the center of the next tower
+
+    positioned_tower_components = []
+    for x_center in tower_x_centers:
+        # Create a *copy* of the single_tower_comp_template for each placement.
+        tower_instance = single_tower_comp_template.copy()
+        tower_instance.x = x_center
+        # Position the tower so its bottom (ymin=0 in _single_tower_component's local system)
+        # is slightly *below* Y_main_body_top to ensure overlap for the boolean union.
+        tower_instance.movey(Y_main_body_top - overlap_epsilon)
+        positioned_tower_components.append(tower_instance)
+
+    # 5. Union all components into a single GDS shape
+    # Collect all top-level components that need to be unioned.
+    components_to_union = [main_body_with_notch] + positioned_tower_components
+
+    # Create a temporary component to hold all these, just for the boolean operation.
+    temp_container_for_final_union = gf.Component("temp_container_for_final_union")
+    for comp_to_add in components_to_union:
+        # Add references to the temporary container. gf.boolean will flatten these.
+        temp_container_for_final_union << comp_to_add
+
+    # Perform a self-boolean "or" operation on the temporary container to union all parts.
+    final_merged_geometry = gf.boolean(
+        temp_container_for_final_union, temp_container_for_final_union, operation="or", layer=layer
+    )
+
+    # Add only the final merged geometry as a reference to the main component `c`.
+    c << final_merged_geometry
+
+    return c
+
+if __name__ == "__main__":
+    device = my_device()
+    device.write_gds("my_device.gds")
+    # device.show() # Uncomment to visualize with KLayout if installed

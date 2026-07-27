@@ -1,0 +1,62 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def finger():
+    layer = (1, 0)
+    xs_narrow = gf.cross_section.cross_section(width=0.5, layer=layer)
+    xs_wide = gf.cross_section.cross_section(width=4, layer=layer)
+    p = gf.path.straight(length=3)
+    tr = gf.path.transition(xs_wide, xs_narrow, width_type='linear')
+    t = gf.path.extrude_transition(p, tr)
+    f = gf.Component()
+    t_ref = f << t
+    s = gf.components.straight(length=3, cross_section=xs_narrow)
+    s_ref = f << s
+    s_ref.connect("o1", t_ref.ports["o2"])
+    return f
+
+@gf.cell
+def my_device():
+    layer = (1, 0)
+
+    # Rectangle component positioned
+    rect_c = gf.Component()
+    rect = gf.components.rectangle(size=(25, 2), layer=layer, centered=True)
+    rect_ref = rect_c << rect
+    rect_ref.move((12.5, 3))
+
+    # Bottom taper positioned
+    btaper_c = gf.Component()
+    xs_wide = gf.cross_section.cross_section(width=10, layer=layer)
+    xs_narrow = gf.cross_section.cross_section(width=0.01, layer=layer)
+    p = gf.path.straight(length=3)
+    tr = gf.path.transition(xs_wide, xs_narrow, width_type='linear')
+    bt = gf.path.extrude_transition(p, tr)
+    bt_ref = btaper_c << bt
+    bt_ref.rotate(-90)
+    bt_ref.move((0, 0), (12.5, 2))
+
+    # Start with rectangle
+    combined = rect_c
+
+    # Union with bottom taper
+    combined = gf.boolean(combined, btaper_c, operation="or", layer=layer)
+
+    # Four fingers positioned and unioned one by one
+    centers = [5, 10, 15, 20]
+    for xc in centers:
+        finger_c = gf.Component()
+        fg = finger()
+        fg_ref = finger_c << fg
+        fg_ref.rotate(90)
+        fg_ref.move((0, 0), (xc, 4))
+        combined = gf.boolean(combined, finger_c, operation="or", layer=layer)
+
+    return combined
+
+device = my_device()
+device.write_gds("my_device.gds")
+```

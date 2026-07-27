@@ -1,0 +1,87 @@
+Looking at the image, I can see two black curved shapes that look like smooth, wavy bands. They appear to be two parallel waveguides with sinusoidal or smooth wave-like patterns.
+
+The shapes have:
+1. Two horizontal bands that curve in a wave pattern
+2. They appear to be out of phase with each other
+3. The bands have uniform width
+4. The overall footprint constraint is [18, 3] micrometers
+
+Given the footprint of 18 x 3 µm, and the two wavy bands, I need to create two waveguides that follow a sinusoidal or smooth curved path.
+
+Looking more carefully, these appear to be two waveguides that undulate in opposite directions, creating a wave pattern. The white space between them varies.
+
+I can use the Path system in gdsfactory to create these curved paths. I'll need to:
+1. Create points that follow a sinusoidal pattern
+2. Extrude these paths with a cross-section to create the waveguides
+
+Let me analyze the proportions:
+- Total width: 18 µm
+- Total height: 3 µm
+- There are two bands, so each band might be around 0.5-0.7 µm wide
+- The wave pattern seems to have about 2-3 periods across the 18 µm length
+
+Let me create a script that generates this pattern using Path and smooth curves or directly by calculating sinusoidal points.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def wavy_waveguides():
+    c = gf.Component()
+    
+    # Parameters
+    length = 18
+    height = 3
+    wg_width = 0.5
+    num_periods = 2.5
+    amplitude = 0.6
+    
+    # Create points for sinusoidal paths
+    npoints = 200
+    x = np.linspace(0, length, npoints)
+    
+    # Top waveguide oscillates around y = 1.95, bottom around y = 1.05, with opposite phase
+    y1 = height * 0.65 + amplitude * np.sin(2 * np.pi * num_periods * x / length)
+    y2 = height * 0.35 - amplitude * np.sin(2 * np.pi * num_periods * x / length)
+    
+    # Convert to coordinate pairs and create the paths
+    path1_points = list(zip(x, y1))
+    path2_points = list(zip(x, y2))
+    
+    # Instantiate Path objects from the point arrays
+    path1 = gf.Path(path1_points)
+    path2 = gf.Path(path2_points)
+    
+    # Define the waveguide cross-section with specified width and layer
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    
+    # Extrude both paths using the cross-section to create the actual waveguide geometries, then add them to the cell
+    wg1 = c << gf.path.extrude(path1, cross_section=xs)
+    wg2 = c << gf.path.extrude(path2, cross_section=xs)
+    
+    return c
+
+# Instantiate the device and export it
+device = wavy_waveguides()
+device.show()
+device.write_gds("wavy_waveguides.gds")
+```
+
+Looking at the image more closely, the two bands display a smooth undulating pattern. I need to adjust the amplitude and period to better match what's shown. The footprint dimensions are 18 x 3 µm, and examining the structure reveals roughly 2-2.5 complete wave cycles with equal-width bands that maintain a consistent gap without overlapping. I'll refine the parameters to capture this behavior more accurately, setting the waveguide width to 0.6 µm and adjusting the number of periods accordingly.
+
+For the implementation, I'm creating sinusoidal paths for both waveguides using 300 points across the 18 µm length. The top waveguide oscillates around the upper portion (0.7 of the height) while the bottom one oscillates around the lower portion (0.3 of the height) with opposite phase, creating the symmetric undulating effect visible in the image. The amplitude of 0.5 µm controls the extent of the oscillation.
+
+```python
+y2 = center2 - amplitude * np.sin(2 * np.pi * num_periods * x / length)
+
+# Create paths
+path1_points = list(zip(x, y1))
+path2_points = list(zip(x, y2))
+```
+
+Once the point arrays are assembled, I'm converting them to gdsfactory Path objects and applying a cross-section with the specified waveguide width. The extrude operation then sweeps this cross-section along each sinusoidal path to generate the actual waveguide geometries, which are added to the component before returning it. wg_width = 0.5
+num_periods = 2.5
+amplitude = 0.45
+
+I'll generate the sinusoidal paths using 300 points along the 18 µm length. The top waveguide oscillates around y=2.25 µm while the bottom one oscillates around y=0.75 µm with opposite phase. Then I'll convert these coordinate lists into Path objects and apply the waveguide width to create the actual geometry. The waveguides maintain a consistent width throughout their length. I should add clear comments to document the script's structure and make it easy to understand the geometry being created.

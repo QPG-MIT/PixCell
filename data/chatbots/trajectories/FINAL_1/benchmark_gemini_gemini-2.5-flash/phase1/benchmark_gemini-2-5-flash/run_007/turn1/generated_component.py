@@ -1,0 +1,146 @@
+import gdsfactory as gf
+import numpy as np
+
+# Footprint constraint as a global constant for reference
+FOOTPRINT_UM = [40.0, 1.7]
+
+@gf.cell
+def create_parametric_splitter():
+    """
+    Recreates the given geometry using GDSFactory parametric functions.
+    The device consists of a central taper and two outer arms that diverge
+    and widen, all within the specified footprint.
+    """
+    c = gf.Component("parametric_splitter")
+
+    # Define common layer for all geometry
+    layer = (1, 0)
+
+    # --- Global Dimensions (derived from FOOTPRINT_UM) ---
+    total_length = FOOTPRINT_UM[0]  # Total length of the device in um
+    total_height = FOOTPRINT_UM[1] # Total height of the device in um
+    
+    # Half-height for symmetric placement relative to y=0
+    half_height = total_height / 2 # 0.85 um
+
+    # --- 1. Central Waveguide (Taper) ---
+    # This segment tapers from a wider input to a narrower output (almost a point).
+    # It stops before the full device length, as seen in the image.
+    w_c_start = 0.35  # Width of the central waveguide at x=0
+    w_c_end = 0.05    # Width of the central waveguide at its end
+    L_c_taper = 30.0  # Length of the central taper (ends at x=30.0, shorter than total_length)
+
+    # Create the central taper component
+    wg_central = gf.components.taper(
+        length=L_c_taper,
+        width1=w_c_start,
+        width2=w_c_end,
+        layer=layer
+    )
+    
+    # Add the central taper to the component and position it.
+    # Its left edge (port "o1") will be at x=0, and it will be centered vertically.
+    ref_central = c << wg_central
+    # Move its start (port "o1") to x=0. The taper component is centered by default.
+    ref_central.movex(-ref_central.ports["o1"].x) 
+    # Move its center y to 0 (port "o1" is at y=0 by default for a centered taper, so no movey needed)
+
+    # --- 2. Outer Waveguides (Top and Bottom) ---
+    # These arms diverge and widen, requiring a custom path with a varying cross-section.
+
+    # 2a. Define initial conditions for the top arm at x=0
+    # The image shows an initial gap between the central waveguide and the inner edge of the top arm.
+    gap_initial = 0.2
+    w_outer_initial = 0.25 # Width of the top arm at x=0
+
+    # Calculate y-coordinates for the centerline of the top arm at x=0
+    # The top edge of the central waveguide at x=0 is at y = w_c_start / 2.
+    y_inner_top_edge_start = w_c_start / 2 + gap_initial # = 0.175 + 0.2 = 0.375
+    y_centerline_top_start = y_inner_top_edge_start + w_outer_initial / 2 # = 0.375 + 0.125 = 0.5
+
+    # 2b. Define final conditions for the top arm at x=total_length (40.0)
+    # The outer edge of the top arm defines the overall device half_height.
+    y_outer_top_edge_end = half_height # This is 1.7 / 2 = 0.85 um
+    w_outer_end = 0.6 # Width of the top arm at x=total_length
+
+    # Calculate y-coordinates for the centerline of the top arm at x=total_length
+    y_inner_top_edge_end = y_outer_top_edge_end - w_outer_end # = 0.85 - 0.6 = 0.25
+    y_centerline_top_end = y_inner_top_edge_end + w_outer_end / 2 # = 0.25 + 0.3 = 0.55
+
+    # 2c. Define the path for the centerline of the top arm
+    # Using `gf.path.smooth` to create a curved path with specified control points.
+    # The middle control point determines the curvature and peak height of the path.
+    x_mid_point = total_length / 2 # A mid-point along the x-axis (x=20.0)
+    
+    # To ensure the outer arm stays within the total_height, we must calculate a safe
+    # y-coordinate for the centerline at the mid-point.
+    # First, estimate the width of the arm at the mid-point (linear interpolation for simplicity).
+    w_mid = w_outer_initial + (w_outer_end - w_outer_initial) * (x_mid_point / total_length)
+    # w_mid = 0.25 + (0.6 - 0.25) * (20/40) = 0.25 + 0.35 * 0.5 = 0.425
+    
+    # The outer edge y-coordinate at the mid-point must be <= `half_height`.
+    # So, `centerline_y + w_mid/2 <= half_height`.
+    # Max allowed centerline y at mid-point = `half_height - w_mid / 2`
+    # = 0.85 - 0.425 / 2 = 0.85 - 0.2125 = 0.6375
+    
+    # We choose a y for the mid-point that is within this maximum and visually
+    # matches the curve in the reference image.
+    y_centerline_mid = 0.63 # A safe value below 0.6375 for the centerline's highest point
+
+    path_top_centerline = gf.path.smooth(
+        points=[
+            (0, y_centerline_top_start),        # Start point (x=0, y=0.5)
+            (x_mid_point, y_centerline_mid),    # Mid control point (x=20, y=0.63)
+            (total_length, y_centerline_top_end) # End point (x=40, y=0.55)
+        ],
+        radius=5.0 # Radius for the automatic bends in the smooth path
+    )
+
+    # 2d. Define cross-sections for the start and end of the top arm to manage width variation
+    xs_outer_start = gf.cross_section.cross_section(width=w_outer_initial, layer=layer)
+    xs_outer_end = gf.cross_section.cross_section(width=w_outer_end, layer=layer)
+
+    # Create a transition object to smoothly change width along the path
+    transition_outer = gf.path.transition(xs_outer_start, xs_outer_end)
+
+    # 2e. Extrude the path with the varying cross-section to create the top waveguide component
+    wg_top = gf.path.extrude_transition(path_top_centerline, transition_outer)
+    ref_top = c << wg_top
+
+    # --- 3. Bottom Waveguide (Mirrored Version of Top) ---
+    # The bottom arm is a mirror image of the top arm across the x-axis (y=0).
+    # We reuse the same path and transition, then apply a mirror transformation.
+    wg_bottom = gf.path.extrude_transition(path_top_centerline, transition_outer)
+    ref_bottom = c << wg_bottom
+    ref_bottom.mirror(p1=(0,0), p2=(1,0)) # Mirror across the x-axis (line through (0,0) and (1,0))
+
+    return c
+
+# Create the device
+device = create_parametric_splitter()
+
+# --- Verify the device footprint against the constraint ---
+# Fix 1: In gdsfactory, `device.bbox` is a property, not a method, so remove the parentheses.
+# Fix 2: `device.bbox` returns a `DBox` object, which has `xmin`, `ymin`, `xmax`, `ymax` attributes,
+#        instead of being subscriptable like a list or numpy array.
+bbox = device.bbox 
+
+actual_min_x = bbox.xmin
+actual_min_y = bbox.ymin
+actual_max_x = bbox.xmax
+actual_max_y = bbox.ymax
+
+actual_length = actual_max_x - actual_min_x
+actual_height = actual_max_y - actual_min_y
+
+print(f"Calculated device bounding box: X=[{actual_min_x:.3f}, {actual_max_x:.3f}], Y=[{actual_min_y:.3f}, {actual_max_y:.3f}]")
+print(f"Calculated device length: {actual_length:.1f} um (Expected: {FOOTPRINT_UM[0]} um)")
+print(f"Calculated device height: {actual_height:.1f} um (Expected: {FOOTPRINT_UM[1]} um)")
+
+# Assert to ensure strict compliance with the footprint constraint
+assert np.isclose(actual_length, FOOTPRINT_UM[0]), f"Length mismatch: {actual_length} um vs {FOOTPRINT_UM[0]} um"
+assert np.isclose(actual_height, FOOTPRINT_UM[1]), f"Height mismatch: {actual_height} um vs {FOOTPRINT_UM[1]} um"
+
+# (Optional) Uncomment the lines below to save the GDS file and visualize the device
+# device.write_gds("parametric_splitter.gds")
+# gf.show(device) # Requires GDS-viewer (e.g., KLayout) to be installed and in PATH

@@ -1,0 +1,70 @@
+Turn 3 Response:
+
+You're encountering a `ValueError` because the Euler bend's radius (8.0μm) is smaller than the minimum bend radius allowed by the cross-section (10.0μm). This is a safety check in GDSFactory to prevent creating bends that are too tight for the waveguide width, which could cause fabrication issues.
+
+To fix this, I need to either:
+1. Increase the bend radius to be at least 10.0μm (the minimum allowed)
+2. Or create a custom cross-section with a smaller minimum bend radius
+
+Since we want to maintain the geometry as close as possible to the target image, I'll increase the bend radius to 10.0μm (the minimum allowed) and adjust other parameters to maintain the overall footprint.
+
+Here's the corrected version:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def curved_waveguide_structure():
+    c = gf.Component()
+    
+    # Define cross-section for input (1.7um wide as per footprint constraint)
+    xs_input = gf.cross_section.cross_section(width=1.7, layer=(1, 0))
+    
+    # Define cross-section for tapered sections (0.85um wide)
+    # Set min_bend_radius to match our bend radius
+    xs_tapered = gf.cross_section.cross_section(width=0.85, layer=(1, 0), radius=10.0)
+    
+    # Create input straight waveguide
+    input_wg = c << gf.components.straight(length=10.0, cross_section=xs_input)
+    input_wg.move((0, 0))
+    
+    # Create taper to split the waveguide
+    taper_length = 5.0
+    taper = c << gf.components.taper(length=taper_length, width1=1.7, width2=0.85)
+    taper.connect("o1", input_wg.ports["o2"])
+    
+    # Create top branch with tapered cross-section
+    top_straight = c << gf.components.straight(length=5.0, cross_section=xs_tapered)
+    top_straight.connect("o1", taper.ports["o2"])
+    top_straight.move((0, 0.85))  # Position above the center line
+    
+    # Create top Euler bend with tapered cross-section (radius increased to 10.0)
+    top_bend = c << gf.components.bend_euler(radius=10.0, angle=45, cross_section=xs_tapered)
+    top_bend.connect("o1", top_straight.ports["o2"])
+    
+    # Create bottom branch with tapered cross-section
+    bottom_straight = c << gf.components.straight(length=5.0, cross_section=xs_tapered)
+    bottom_straight.connect("o1", taper.ports["o2"])
+    bottom_straight.move((0, -0.85))  # Position below the center line
+    
+    # Create bottom Euler bend with tapered cross-section (radius increased to 10.0)
+    bottom_bend = c << gf.components.bend_euler(radius=10.0, angle=-45, cross_section=xs_tapered)
+    bottom_bend.connect("o1", bottom_straight.ports["o2"])
+    
+    # Add ports
+    c.add_port("in", port=input_wg.ports["o1"])
+    c.add_port("top_out", port=top_bend.ports["o2"])
+    c.add_port("bottom_out", port=bottom_bend.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = curved_waveguide_structure()
+device.write_gds("curved_waveguide_structure.gds")
+```
+
+The key changes are:
+1. I've explicitly set the `radius=10.0` parameter in the `xs_tapered` cross-section definition to match the minimum bend radius requirement.
+2. I've increased the bend radius from 8.0μm to 10.0μm in both Euler bends to satisfy the minimum bend radius constraint.
+
+This should resolve the error while maintaining the overall Y-split geometry shown in the target image.

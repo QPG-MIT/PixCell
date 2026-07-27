@@ -1,0 +1,174 @@
+Turn 3 Response:
+
+### Error Analysis
+
+The error `AttributeError: module 'gdsfactory.routing' has no attribute 'bend_s'` is a straightforward indication that the function we tried to call does not exist at that location in the GDSFactory library. My previous correction was based on a faulty assumption about the library's structure.
+
+The core challenge remains: how to create an S-bend with a specific, non-default curvature (in this case, a sine-like curve from `bend_euler` with `p=1.0`). Since neither `gf.components.bend_s` nor a hypothetical `gf.routing.bend_s` allows for direct injection of a custom bend type, we must use a more fundamental and powerful feature of GDSFactory: the routing engine.
+
+### The Fix: Using `gf.routing.get_route`
+
+The correct, robust way to generate a custom S-bend is to define its start and end points as `Ports` and let the router (`gf.routing.get_route`) create the path between them. The router is explicitly designed to be customized. We can tell it exactly what kind of bend component to use for any required turns. When the router connects two ports that are offset but face the same direction, it automatically generates an S-bend geometry using the `bend` component we provide.
+
+This approach is superior because:
+1.  It uses the intended, flexible API for custom path generation.
+2.  It avoids manual geometric calculations for the S-bend's path.
+3.  It correctly composes the final device from a taper and the custom-routed S-bend.
+
+I have refactored the `transition_arm` component to use this routing-based method.
+
+```python
+import gdsfactory as gf
+import pathlib
+from functools import partial
+
+# --- FIX ---
+# The previous attempts failed due to incorrect assumptions about the GDSFactory API.
+# `gf.components.bend_s` is a static component and cannot be customized with a
+# different internal bend type, and `gf.routing.bend_s` does not exist.
+#
+# The correct GDSFactory paradigm is to use the routing engine. We define the
+# start and end ports for the S-bend and then call `gf.routing.get_route`,
+# providing our custom sine-like bend factory (`bend_euler` with `p=1.0`).
+# The router intelligently creates the S-bend geometry using our specified bend.
+
+@gf.cell
+def transition_arm(
+    bend_dx: float,
+    bend_dy: float,
+    taper_length: float,
+    taper_width_end: float,
+    wg_width: float,
+):
+    """Creates a single transition arm consisting of a taper and a sine-like S-bend."""
+    c = gf.Component()
+
+    # Define a cross-section for the narrow part of the waveguide.
+    xs = gf.cross_section.strip(width=wg_width)
+    
+    # Create the taper component for the flared end.
+    taper = gf.components.taper(
+        length=taper_length, width1=taper_width_end, width2=wg_width, cross_section=xs
+    )
+    ref_taper = c << taper
+
+    # Define the start port (narrow end of the taper) and a virtual end port
+    # for the S-bend, displaced by (dx, dy).
+    port_start = ref_taper.ports["o2"]
+    port_end = gf.Port(
+        name="end",
+        center=(port_start.d.center[0] + bend_dx, port_start.d.center[1] + bend_dy),
+        width=wg_width,
+        orientation=0, # End port faces east
+    )
+    
+    # Create a factory for a sine-like Euler bend (p=1.0). This will be
+    # passed to the router.
+    bend_euler_sine = partial(gf.components.bend_euler, p=1.0, cross_section=xs)
+
+    # Use the router to generate the S-bend. The router automatically creates
+    # an S-bend when connecting two offset ports facing the same direction.
+    route = gf.routing.get_route(
+        port1=port_start,
+        port2=port_end,
+        bend=bend_euler_sine,
+        cross_section=xs,
+    )
+    c.add(route.references)
+
+    # Expose the outer ports of the combined arm component for later connection.
+    c.add_port("o1", port=ref_taper.ports["o1"])
+    c.add_port("o2", port=route.ports[1]) # The end port of the route
+
+    return c
+
+
+@gf.cell
+def directional_coupler_with_flares():
+    """
+    Assembles the full directional coupler using the transition_arm helper cell.
+    This component matches the target image's sinusoidal bends and flared ports.
+    """
+    c = gf.Component()
+
+    # --- Parameters derived from footprint and visual inspection ---
+    footprint_x = 120.0
+    footprint_y = 4.0
+    wg_width = 0.5
+    coupling_length = 60.0
+    coupling_gap = 0.2
+    taper_length = 5.0
+    taper_width_end = 0.7
+
+    # --- Derived Geometry ---
+    # The horizontal span (dx) of the bend needs to account for the taper length.
+    bend_dx = (footprint_x - coupling_length - 2 * taper_length) / 2.0
+    center_sep_coupling = wg_width + coupling_gap
+    center_sep_ports = footprint_y - taper_width_end
+    # The vertical span (dy) is for a single arm's deviation from the center.
+    bend_dy = (center_sep_ports - center_sep_coupling) / 2.0
+    
+    # --- Create Sub-components ---
+    xs_straight = gf.cross_section.strip(width=wg_width)
+    straight_coupler = gf.components.straight(length=coupling_length, cross_section=xs_straight)
+    
+    # Instantiate the custom transition arm.
+    arm = transition_arm(
+        bend_dx=bend_dx,
+        bend_dy=bend_dy,
+        taper_length=taper_length,
+        taper_width_end=taper_width_end,
+        wg_width=wg_width,
+    )
+
+    # --- Assembly ---
+    # Place the central straight waveguides first.
+    s_top = c << straight_coupler
+    s_bot = c << straight_coupler
+    s_top.d.y = +center_sep_coupling / 2
+    s_bot.d.y = -center_sep_coupling / 2
+
+    # Place and connect the four arms to the straight sections.
+    arm_tl = c << arm  # Top-Left
+    arm_tr = c << arm  # Top-Right
+    arm_bl = c << arm  # Bottom-Left
+    arm_br = c << arm  # Bottom-Right
+
+    # Connect top arms.
+    arm_tl.connect("o2", s_top.ports["o1"])
+    arm_tr.mirror()
+    arm_tr.connect("o2", s_top.ports["o2"])
+
+    # Connect bottom arms (mirrored vertically to bend downwards).
+    arm_bl.mirror(p1=(0, 0), p2=(1, 0))
+    arm_bl.connect("o2", s_bot.ports["o1"])
+    
+    arm_br.mirror()                 # Horizontal mirror for right side
+    arm_br.mirror(p1=(0, 0), p2=(1, 0)) # Vertical mirror for downward bend
+    arm_br.connect("o2", s_bot.ports["o2"])
+    
+    # --- Add Final Ports to the top-level component ---
+    c.add_port("o1", port=arm_tl.ports["o1"])
+    c.add_port("o2", port=arm_bl.ports["o1"])
+    c.add_port("o3", port=arm_br.ports["o1"])
+    c.add_port("o4", port=arm_tr.ports["o1"])
+
+    return c
+
+
+# Create the final component
+c = directional_coupler_with_flares()
+
+# --- GDS File Output ---
+# Get the directory of the current script to save the GDS file alongside it.
+output_dir = pathlib.Path(__file__).parent.absolute()
+output_path = output_dir / "directional_coupler_final.gds"
+
+# Write the component to a GDSII file.
+c.write_gds(output_path)
+
+print(f"GDS file successfully saved to: {output_path}")
+
+# Optional: To display the component in a viewer like KLayout for verification.
+# c.show(show_ports=True)
+```

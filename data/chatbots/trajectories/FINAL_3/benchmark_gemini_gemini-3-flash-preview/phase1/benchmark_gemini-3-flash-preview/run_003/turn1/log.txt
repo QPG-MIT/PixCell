@@ -1,0 +1,87 @@
+Turn 1 Response:
+
+To ensure a GDS file is generated, I have added the explicit `write_gds` command. I have also used a more robust method to retrieve component dimensions that works across different versions of GDSFactory/KFactory.
+
+The script constructs the directional coupler by dividing the **120µm** length into three 40µm segments and calculates the vertical offset to exactly match the **4µm** height constraint.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def coupler_recreation():
+    """
+    Recreates the directional coupler from the image using parametric primitives.
+    Target footprint: 120um x 4um.
+    """
+    c = gf.Component("directional_coupler")
+    
+    # 1. Define Design Parameters
+    width = 0.5      # Waveguide width
+    gap = 0.2        # Separation gap in the central coupling region
+    length_mid = 40  # Length of the central straight sections
+    dx = 40          # Horizontal span of the S-bends (40+40+40 = 120 total)
+    
+    # To achieve 4um total height:
+    # Outer height H = gap + 2*dy + 2*(width/2)
+    # 4.0 = 0.2 + 2*dy + 1.0  => 2*dy = 2.8 => dy = 1.4
+    dy = 1.4
+    
+    # Define cross-section as per catalog
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    # 2. Create Primitives
+    # gf.components.bend_s(size=(dx, dy)) creates a smooth transition from (0,0) to (dx, dy)
+    s_bend_up = gf.components.bend_s(size=(dx, dy), cross_section=xs)
+    s_bend_down = gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+    straight = gf.components.straight(length=length_mid, cross_section=xs)
+    
+    # 3. Assemble the Central Region (Coupling region)
+    bot_mid = c << straight
+    top_mid = c << straight
+    
+    # Offset them vertically from the center line to create the gap
+    bot_mid.movey(-(gap + width) / 2)
+    top_mid.movey((gap + width) / 2)
+    
+    # 4. Assemble Left Transitions (Input side)
+    # connect() aligns ports and moves/rotates the reference into place
+    bot_left = c << s_bend_up
+    bot_left.connect("o2", bot_mid.ports["o1"])
+    
+    top_left = c << s_bend_down
+    top_left.connect("o2", top_mid.ports["o1"])
+    
+    # 5. Assemble Right Transitions (Output side)
+    bot_right = c << s_bend_down
+    bot_right.connect("o1", bot_mid.ports["o2"])
+    
+    top_right = c << s_bend_up
+    top_right.connect("o1", top_mid.ports["o2"])
+    
+    # 6. Expose external ports
+    c.add_port("o1", port=bot_left.ports["o1"])
+    c.add_port("o2", port=top_left.ports["o1"])
+    c.add_port("o3", port=top_right.ports["o2"])
+    c.add_port("o4", port=bot_right.ports["o2"])
+    
+    # Center the entire component at (0,0) for the final output
+    c.move(c.center, (0, 0))
+    
+    return c
+
+if __name__ == "__main__":
+    # Instantiate the component
+    my_coupler = coupler_recreation()
+    
+    # Write to GDS file - This ensures a file is saved to disk
+    filename = "directional_coupler.gds"
+    my_coupler.write_gds(filename)
+    
+    # Retrieve dimensions for verification
+    # dxsize/dysize (kfactory) or xsize/ysize (older gdsfactory)
+    width = getattr(my_coupler, 'dxsize', getattr(my_coupler, 'xsize', 0))
+    height = getattr(my_coupler, 'dysize', getattr(my_coupler, 'ysize', 0))
+    
+    print(f"GDS file saved as: {filename}")
+    print(f"Verified Footprint: {width:.2f}um x {height:.2f}um")
+```

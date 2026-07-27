@@ -1,0 +1,86 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_final():
+    c = gf.Component()
+    
+    # 1. Constraints and Parameters
+    # Footprint constraint: 18um x 3um
+    length = 18.0
+    height = 3.0
+    
+    # Waveguide specifications
+    # Width is standard 0.5um.
+    wg_width = 0.5
+    
+    # Gap adjustment
+    # 0.2um provides a clear separation consistent with the target image style.
+    gap = 0.2
+    
+    # Coupling Length (lc)
+    # Increased to 6.0um (1/3 of total length) to match the elongated interaction region 
+    # visible in the target image.
+    lc = 6.0
+    
+    # Calculated derived parameters
+    # lb: Length of the S-bend sections
+    lb = (length - lc) / 2
+    
+    # Y-coordinates for Ports (Outer positions)
+    # Constrain outer edges to +/- 1.5um (Total height 3.0um).
+    # Center of waveguide = Edge - Width/2
+    y_top_port = (height / 2) - (wg_width / 2)
+    y_bot_port = -y_top_port
+    
+    # Y-coordinates for Coupling Region (Inner positions)
+    # Center of waveguide = Gap/2 + Width/2
+    y_top_c = (gap / 2) + (wg_width / 2)
+    y_bot_c = -y_top_c
+    
+    # Vertical displacement (dy) calculation for the S-bends
+    dy = y_top_port - y_top_c
+    
+    # Define Cross Section
+    # FIX: Explicitly set radius=5.0 to allow the generated S-bend radius (~7.7um).
+    # The default is often 10.0um, which causes the ValueError.
+    xs = gf.cross_section.cross_section(width=wg_width, radius=5.0)
+
+    # 2. Geometry Construction
+    # -- Top Arm --
+    # Input S-bend (Converging downwards)
+    # size=(length, height_change). dy is positive, so we use -dy to go down.
+    tl = c << gf.components.bend_s(size=(lb, -dy), cross_section=xs)
+    tl.move((0, y_top_port))
+    
+    # Straight coupling section
+    tm = c << gf.components.straight(length=lc, cross_section=xs)
+    tm.connect("o1", tl.ports["o2"])
+    
+    # Output S-bend (Diverging upwards)
+    tr = c << gf.components.bend_s(size=(lb, dy), cross_section=xs)
+    tr.connect("o1", tm.ports["o2"])
+    
+    # -- Bottom Arm --
+    # Input S-bend (Converging upwards)
+    bl = c << gf.components.bend_s(size=(lb, dy), cross_section=xs)
+    bl.move((0, y_bot_port))
+    
+    # Straight coupling section
+    bm = c << gf.components.straight(length=lc, cross_section=xs)
+    bm.connect("o1", bl.ports["o2"])
+    
+    # Output S-bend (Diverging downwards)
+    br = c << gf.components.bend_s(size=(lb, -dy), cross_section=xs)
+    br.connect("o1", bm.ports["o2"])
+    
+    # 3. Port Definitions
+    c.add_port("o1", port=tl.ports["o1"])
+    c.add_port("o2", port=bl.ports["o1"])
+    c.add_port("o3", port=tr.ports["o2"])
+    c.add_port("o4", port=br.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler_final()
+    device.write_gds("directional_coupler_final.gds")

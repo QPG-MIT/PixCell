@@ -1,0 +1,74 @@
+Turn 1 Response:
+
+Looking at the image, I can see a waveguide Y-splitter/coupler device with:
+- Two parallel waveguides on the left side (close together)
+- S-bend curves on the right side where the waveguides diverge (top goes up, bottom goes down)
+
+Given the footprint of 40.0 x 1.7 μm, I'll design this parametrically:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def waveguide_y_splitter():
+    """
+    Y-splitter waveguide device.
+    Two parallel waveguides that diverge via S-bends.
+    Footprint: 40.0 x 1.7 um
+    """
+    c = gf.Component()
+    
+    # Cross-section parameters
+    wg_width = 0.5
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+    
+    # Geometry parameters to fit 40 x 1.7 um footprint
+    straight_length = 18.0  # Parallel coupling section
+    sbend_dx = 22.0  # S-bend horizontal extent
+    sbend_dy = 0.25  # Vertical offset per arm
+    input_gap = 0.2  # Gap between waveguides at input
+    
+    # Calculate y-offset for waveguide centers
+    y_offset = (input_gap + wg_width) / 2  # = 0.35
+    
+    # === TOP WAVEGUIDE ARM ===
+    # Straight section
+    top_straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+    top_straight.move((0, y_offset))
+    
+    # S-bend curving upward
+    top_sbend = c << gf.components.bend_s(size=(sbend_dx, sbend_dy), cross_section=xs)
+    top_sbend.connect("o1", top_straight.ports["o2"])
+    
+    # === BOTTOM WAVEGUIDE ARM ===
+    # Straight section
+    bot_straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+    bot_straight.move((0, -y_offset))
+    
+    # S-bend curving downward
+    bot_sbend = c << gf.components.bend_s(size=(sbend_dx, -sbend_dy), cross_section=xs)
+    bot_sbend.connect("o1", bot_straight.ports["o2"])
+    
+    # Add external ports
+    c.add_port("o1", port=top_straight.ports["o1"])
+    c.add_port("o2", port=bot_straight.ports["o1"])
+    c.add_port("o3", port=top_sbend.ports["o2"])
+    c.add_port("o4", port=bot_sbend.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = waveguide_y_splitter()
+device.write_gds("waveguide_y_splitter.gds")
+```
+
+**Design verification:**
+- **Total length:** 18.0 (straight) + 22.0 (S-bend) = 40.0 μm ✓
+- **Height at input:** 2 × 0.5 (widths) + 0.2 (gap) = 1.2 μm
+- **Height at output:** 1.2 + 2 × 0.25 (bend offsets) = 1.7 μm ✓
+
+The design creates:
+1. Two parallel waveguides with 0.2 μm gap in the coupling region
+2. Smooth S-bends that gradually separate the outputs
+3. Matches the 40.0 × 1.7 μm footprint constraint

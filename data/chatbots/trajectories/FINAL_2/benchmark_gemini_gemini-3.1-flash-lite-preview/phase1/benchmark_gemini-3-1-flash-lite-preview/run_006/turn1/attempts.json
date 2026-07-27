@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.093310",
+      "api_duration_seconds": 26.24814009666443,
+      "usage": {
+        "input_tokens": 3167,
+        "output_tokens": 839,
+        "total_tokens": 6790
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'geometry'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:10:42.909005",
+      "api_duration_seconds": 12.795881271362305,
+      "usage": {
+        "input_tokens": 4035,
+        "output_tokens": 682,
+        "total_tokens": 6819
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:10:57.191335",
+      "api_duration_seconds": 16.42463207244873,
+      "usage": {
+        "input_tokens": 4736,
+        "output_tokens": 810,
+        "total_tokens": 7876
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11938,
+    "output_tokens": 2331,
+    "total_tokens": 21485
+  }
+}

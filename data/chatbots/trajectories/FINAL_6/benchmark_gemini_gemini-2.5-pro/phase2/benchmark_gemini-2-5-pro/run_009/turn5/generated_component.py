@@ -1,0 +1,111 @@
+import gdsfactory as gf
+import os
+import math
+
+@gf.cell
+def create_petal_cross(
+    size: float = 4.7,
+    petal_width: float = 1.6,
+    stem_width: float = 0.4,
+    layer: tuple = (1, 0),
+):
+    """
+    Creates a symmetrical four-lobed shape resembling a flower or a cross
+    with pointed, leaf-shaped arms.
+
+    This shape is constructed using boolean operations on several primitives:
+    1. A vertical "lens" (vesica piscis) is formed by the intersection of two
+       large, vertically offset circles. This creates the top and bottom petals.
+    2. A horizontal "lens" is similarly formed from two horizontally offset
+       circles, creating the left and right petals.
+    3. These two lens shapes are combined with a boolean "or" (union).
+    4. Finally, a standard cross shape is unioned with the result to form the
+       rectangular stems at the four tips.
+
+    Args:
+        size: The total width and height of the component (tip to tip).
+        petal_width: The maximum width of each of the four curved petals. A smaller
+                     value makes the petals more slender and pointed.
+        stem_width: The width of the rectangular stems at the tips.
+        layer: The GDS layer for the component.
+    """
+    c = gf.Component()
+
+    # --- Calculate geometry for the lens shapes ---
+    # A lens is created by the intersection of two circles. We must calculate
+    # the required circle radius (R) and center offset to achieve the desired
+    # petal length (L=size) and width (W=petal_width).
+    L = size
+    W = petal_width
+
+    # Basic validation for the geometry to be valid.
+    if W <= 0:
+        raise ValueError("petal_width must be positive.")
+    if L <= W:
+        raise ValueError("size must be greater than petal_width for a valid lens shape.")
+
+    # Formula derived from the geometry of two intersecting circles (Pythagorean theorem):
+    # R = (L^2 + W^2) / (4W)
+    circle_radius = (L**2 + W**2) / (4 * W)
+
+    # The distance from the origin to the center of each of the two circles.
+    # This can be derived as: offset = sqrt(R^2 - (L/2)^2)
+    circle_offset = math.sqrt(circle_radius**2 - (L / 2) ** 2)
+
+
+    # --- Create the building blocks ---
+
+    # 1. Define a base circle to be used for the boolean operations.
+    base_circle = gf.components.circle(radius=circle_radius, layer=layer)
+
+    # 2. Create the horizontal lens (left/right petals) by intersecting two
+    #    horizontally offset circles.
+    c1_h = base_circle.copy().movex(-circle_offset)
+    c2_h = base_circle.copy().movex(circle_offset)
+    horizontal_petals = gf.boolean(A=c1_h, B=c2_h, operation="and", layer=layer)
+
+    # 3. Create the vertical lens (top/bottom petals) by intersecting two
+    #    vertically offset circles.
+    c1_v = base_circle.copy().movey(-circle_offset)
+    c2_v = base_circle.copy().movey(circle_offset)
+    vertical_petals = gf.boolean(A=c1_v, B=c2_v, operation="and", layer=layer)
+
+    # 4. Union the horizontal and vertical lenses to form the main body.
+    body = gf.boolean(A=horizontal_petals, B=vertical_petals, operation="or", layer=layer)
+
+    # 5. Create the cross shape for the stems.
+    stems = gf.components.cross(length=size, width=stem_width, layer=layer)
+
+    # 6. Union the body with the stems to get the final, complete shape.
+    final_shape = gf.boolean(A=body, B=stems, operation="or", layer=layer)
+
+    # Add the final combined geometry as a single polygon set to the component.
+    _ = c << final_shape
+    c.info['footprint_um'] = (size, size)
+
+    return c
+
+# --- Instantiate and Save the Component ---
+if __name__ == "__main__":
+    # Parameters are estimated from the target image to match its appearance,
+    # adhering to the 4.7x4.7 um footprint constraint.
+    # - `petal_width` is the critical parameter defining the slender, leaf-like
+    #   shape of the arms. A smaller value creates a more pointed shape.
+    # - `stem_width` creates the small rectangular features at the ends.
+    device = create_petal_cross(
+        size=4.7,
+        petal_width=1.6, # Reduced from 2.6 to make lobes more slender.
+        stem_width=0.4
+    )
+
+    # Define the output filename
+    output_filename = "petal_cross.gds"
+    
+    # Write the GDS file
+    device.write_gds(output_filename)
+    
+    # Add a confirmation message for the user
+    print(f"Successfully wrote GDS file to: {os.path.abspath(output_filename)}")
+
+    # To display the component if running interactively
+    # device.show()

@@ -1,0 +1,72 @@
+import gdsfactory as gf
+
+@gf.cell
+def create_diamond_ring_device_v5():
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Define size parameters based on 4.7μm footprint
+    total_size = 4.7  # μm
+    
+    # Create a cross-section for the path
+    xs = gf.cross_section.cross_section(width=0.5, layer=layer)
+    
+    # Create a path that traces the outline of a diamond with rounded corners
+    path_points = [
+        (0, total_size/2),  # Top point
+        (total_size/2, 0),  # Right point
+        (0, -total_size/2),  # Bottom point
+        (-total_size/2, 0),  # Left point
+        (0, total_size/2)  # Back to top (close path)
+    ]
+    
+    # Create the path with smoothing for rounded corners
+    path = gf.path.smooth(points=path_points, radius=total_size/10)
+    
+    # Extrude the path to create the hollow diamond shape
+    diamond_shape = gf.path.extrude(path, cross_section=xs)
+    
+    # Create a small opening at the top by removing a small rectangle
+    opening_width = 0.3  # Width of the opening
+    opening_height = 0.3  # Height of the opening
+    opening = gf.components.rectangle(
+        size=(opening_width, opening_height), 
+        layer=layer, 
+        centered=True
+    )
+    
+    # Create a new component to hold the diamond shape
+    diamond_component = gf.Component()
+    diamond_ref = diamond_component << diamond_shape
+    
+    # Create a new component for the opening
+    opening_component = gf.Component()
+    opening_ref = opening_component << opening
+    opening_ref.move((0, total_size/2 - opening_height/2))
+    
+    # Use boolean operation to create the opening
+    final_shape = gf.boolean(
+        diamond_component, 
+        opening_component, 
+        operation="not", 
+        layer=layer
+    )
+    
+    # Add the final shape to our main component
+    c.add_ref(final_shape)
+    
+    # Add ports at the natural endpoints (top, bottom, left, right)
+    # Top port (at the opening)
+    c.add_port("o1", center=(0, total_size/2), width=0.5, orientation=90, layer=layer)
+    # Bottom port
+    c.add_port("o2", center=(0, -total_size/2), width=0.5, orientation=270, layer=layer)
+    # Right port
+    c.add_port("o3", center=(total_size/2, 0), width=0.5, orientation=0, layer=layer)
+    # Left port
+    c.add_port("o4", center=(-total_size/2, 0), width=0.5, orientation=180, layer=layer)
+    
+    return c
+
+# Create and save the device
+device = create_diamond_ring_device_v5()
+device.write_gds("diamond_ring_device_v5.gds")

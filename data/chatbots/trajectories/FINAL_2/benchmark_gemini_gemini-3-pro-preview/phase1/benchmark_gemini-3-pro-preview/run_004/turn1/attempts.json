@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:55:12.714383",
+      "api_duration_seconds": 118.95975422859192,
+      "usage": {
+        "input_tokens": 3167,
+        "output_tokens": 1169,
+        "total_tokens": 14279
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:57:13.825917",
+      "api_duration_seconds": 39.41867280006409,
+      "usage": {
+        "input_tokens": 4362,
+        "output_tokens": 1239,
+        "total_tokens": 8122
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:57:59.516180",
+      "api_duration_seconds": 44.47176909446716,
+      "usage": {
+        "input_tokens": 5620,
+        "output_tokens": 1129,
+        "total_tokens": 9618
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13149,
+    "output_tokens": 3537,
+    "total_tokens": 32019
+  }
+}

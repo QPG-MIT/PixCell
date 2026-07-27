@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.106299",
+      "api_duration_seconds": 26.556209325790405,
+      "usage": {
+        "input_tokens": 3170,
+        "output_tokens": 920,
+        "total_tokens": 8175
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.0 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:10:43.301823",
+      "api_duration_seconds": 13.524991989135742,
+      "usage": {
+        "input_tokens": 4135,
+        "output_tokens": 782,
+        "total_tokens": 7073
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports bend_euler_gdsfactorypcomponentspbendspbend_euler_RNone_8176770b_0_0[\"o1\"] and Port \"o3\" (\"200\"/\"500\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:10:58.218837",
+      "api_duration_seconds": 20.87265419960022,
+      "usage": {
+        "input_tokens": 4997,
+        "output_tokens": 684,
+        "total_tokens": 8887
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.components' has no attribute 'racetrack'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12302,
+    "output_tokens": 2386,
+    "total_tokens": 24135
+  }
+}

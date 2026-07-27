@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:21:08.431550",
+      "api_duration_seconds": 7.265815019607544,
+      "usage": {
+        "input_tokens": 2776,
+        "output_tokens": 918,
+        "total_tokens": 3694
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: get_layer() missing 1 required positional argument: 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:17.128671",
+      "api_duration_seconds": 5.193225860595703,
+      "usage": {
+        "input_tokens": 3722,
+        "output_tokens": 682,
+        "total_tokens": 4404
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.LockedError: 'my_device_NLT5_NLB5_NLM3_LL120_LS0p5' is locked and likely stored in cache. Modifications are disabled as its associated function is decorated with `cell`. To modify, update the code in the function or create a copy of the Component.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:23.753227",
+      "api_duration_seconds": 6.286930084228516,
+      "usage": {
+        "input_tokens": 4489,
+        "output_tokens": 842,
+        "total_tokens": 5331
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10987,
+    "output_tokens": 2442,
+    "total_tokens": 13429
+  }
+}

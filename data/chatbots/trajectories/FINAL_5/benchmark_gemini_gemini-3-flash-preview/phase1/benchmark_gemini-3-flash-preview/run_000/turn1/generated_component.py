@@ -1,0 +1,88 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreate_device():
+    """
+    Recreates the device geometry from the provided image.
+    Explicitly defines a cross-section with a small radius_min to allow 
+    the sub-micron U-turns required to fit the 0.7 um height constraint.
+    """
+    c = gf.Component("recreated_device")
+    
+    # --- Dimensions ---
+    width = 18.24
+    height = 0.7
+    wg_width = 0.08
+    turn_radius = 0.08
+    lead_in_len = 4.0
+    tooth_w = 0.12
+    tooth_h = 0.05
+    n_teeth = 52
+    
+    # Define a custom cross-section that allows for small radii
+    xs = gf.cross_section.cross_section(width=wg_width, radius_min=0.01)
+    
+    # 1. Central Bus Waveguide
+    bus = c << gf.components.straight(length=width, width=0.04)
+    bus.x = 0
+    bus.y = 0
+
+    def make_arm(stagger_x=0):
+        """Creates one half (arm) of the device."""
+        arm = gf.Component()
+        
+        # Lead-in S-bend: vertical displacement of 0.16um (2 * radius)
+        # to transition between the two horizontal tracks of the arm
+        dy = 0.16 
+        lead_in = arm << gf.components.bend_s(size=(lead_in_len, dy), cross_section=xs)
+        
+        # Main grating section
+        main_len = 13.5
+        main_wg = arm << gf.components.straight(length=main_len, cross_section=xs)
+        main_wg.connect("o1", lead_in.ports["o2"])
+        
+        # Add grating teeth
+        period = main_len / n_teeth
+        for i in range(n_teeth):
+            tooth = arm << gf.components.rectangle(size=(tooth_w, tooth_h))
+            tooth.x = main_wg.xmin + i * period + period/2 + stagger_x
+            tooth.ymax = main_wg.ymin
+            
+        # 180-degree U-turn using two circular bends
+        # Passing our custom cross-section 'xs' prevents the ValueError
+        b1 = arm << gf.components.bend_circular(radius=turn_radius, angle=90, cross_section=xs)
+        b1.connect("o1", main_wg.ports["o2"])
+        b2 = arm << gf.components.bend_circular(radius=turn_radius, angle=90, cross_section=xs)
+        b2.connect("o1", b1.ports["o2"])
+        
+        # Return segment
+        ret_len = 8.5
+        ret_wg = arm << gf.components.straight(length=ret_len, cross_section=xs)
+        ret_wg.connect("o1", b2.ports["o2"])
+        
+        # Tapered tip
+        tip_len = 4.8
+        tip = arm << gf.components.taper(length=tip_len, width1=wg_width, width2=0.001)
+        tip.connect("o1", ret_wg.ports["o2"])
+        
+        return arm
+
+    # --- Assembly ---
+    # Top Arm
+    top_arm = c << make_arm(stagger_x=0)
+    top_arm.xmax = width / 2
+    top_arm.ymax = height / 2
+    
+    # Bottom Arm (mirrored and staggered)
+    period_val = 13.5 / n_teeth
+    bot_arm = c << make_arm(stagger_x=period_val / 2)
+    bot_arm.mirror_y()
+    bot_arm.xmax = width / 2
+    bot_arm.ymin = -height / 2
+    
+    return c
+
+if __name__ == "__main__":
+    component = recreate_device()
+    component.write_gds("recreated_device.gds")
+    # component.show() # Requires KLayout to be installed and open

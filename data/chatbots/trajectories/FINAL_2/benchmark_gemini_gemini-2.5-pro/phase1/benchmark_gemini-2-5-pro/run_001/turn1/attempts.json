@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.457544",
+      "api_duration_seconds": 66.97128176689148,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 1108,
+        "total_tokens": 10800
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:17.848272",
+      "api_duration_seconds": 11.784877061843872,
+      "usage": {
+        "input_tokens": 3472,
+        "output_tokens": 1160,
+        "total_tokens": 4698
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTInstance.connect() got an unexpected keyword argument 'destination'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:31.416207",
+      "api_duration_seconds": 18.51049304008484,
+      "usage": {
+        "input_tokens": 4662,
+        "output_tokens": 1239,
+        "total_tokens": 6866
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o4' is not a valid port name or index. Available ports: ['e1', 'e2', 'e3', 'e4']\"",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10479,
+    "output_tokens": 3507,
+    "total_tokens": 22364
+  }
+}

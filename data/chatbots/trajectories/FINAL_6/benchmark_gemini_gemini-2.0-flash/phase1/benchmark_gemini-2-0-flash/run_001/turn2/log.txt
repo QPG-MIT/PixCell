@@ -1,0 +1,39 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+
+@gf.cell
+def my_simple_cross(length=5.0, width=1.0):
+    """
+    Recreates a simple cross geometry using GDSFactory primitives.
+    """
+    c = gf.Component("my_simple_cross")
+
+    # Create horizontal rectangle
+    horizontal_rect = c << rectangle(size=(length, width), layer=(1, 0), centered=True)
+
+    # Create vertical rectangle
+    vertical_rect = c << rectangle(size=(width, length), layer=(1, 0), centered=True)
+
+    return c
+
+if __name__ == "__main__":
+    c = my_simple_cross()
+    c.show()  # Show in KLayout
+    c.write_gds("my_simple_cross.gds")  # Save as GDS file
+```
+
+**Reasoning for the change:**
+
+The previous attempts produced a shape, but not the intended cross shape. The key issue was in the positioning of the rectangles. The `gf.components.cross` primitive was available, but the prompt specifically stated that only `rectangle` could be used to re-create the cross shape.
+
+The code now works as follows:
+
+1. **Uses `rectangle` for horizontal and vertical bars:** Two rectangles are created.
+2. **Specifies `centered=True`:** This ensures that the origin of each rectangle is at its center. Because both are centered by default, they intersect at the origin
+3. **Returns the Component:**  The final component is returned.
+4. **`write_gds` and `show` are called in `main`** As before, these are called to save the layout as a GDS file and display it.
+
+The resulting GDS will contain a simple cross shape made of two rectangles intersecting at their centers. I've also adjusted the `length` and `width` parameters to be more representative of a typical cross.  I set default values of length of 5 and a width of 1, but these can be customized.

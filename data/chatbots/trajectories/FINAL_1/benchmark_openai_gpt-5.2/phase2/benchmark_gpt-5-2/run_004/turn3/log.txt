@@ -1,0 +1,174 @@
+Turn 3 Response:
+
+```python
+import numpy as np
+import gdsfactory as gf
+
+
+def _cubic_bezier_points(control_points, npoints: int = 101):
+    """Returns Nx2 array of points along a cubic Bezier curve."""
+    (x0, y0), (x1, y1), (x2, y2), (x3, y3) = control_points
+    t = np.linspace(0.0, 1.0, npoints)
+    mt = 1.0 - t
+
+    x = (
+        (mt**3) * x0
+        + 3 * (mt**2) * t * x1
+        + 3 * mt * (t**2) * x2
+        + (t**3) * x3
+    )
+    y = (
+        (mt**3) * y0
+        + 3 * (mt**2) * t * y1
+        + 3 * mt * (t**2) * y2
+        + (t**3) * y3
+    )
+    return np.column_stack([x, y])
+
+
+def _bezier_offset_path(
+    dx: float,
+    dy: float,
+    ctrl1: float = 0.40,
+    ctrl2: float = 0.60,
+    npoints: int = 101,
+) -> gf.Path:
+    """
+    Bezier offset from (0,0) -> (dx,dy) with horizontal tangents at both ends.
+    To keep x monotonic, ensure: 0 < ctrl1 < ctrl2 < 1.
+    """
+    if dx <= 0:
+        raise ValueError("dx must be > 0.")
+    if not (0.0 < ctrl1 < ctrl2 < 1.0):
+        raise ValueError("Require 0 < ctrl1 < ctrl2 < 1 for monotonic x.")
+
+    p0 = (0.0, 0.0)
+    p1 = (ctrl1 * dx, 0.0)  # horizontal tangent at start
+    p2 = (ctrl2 * dx, dy)   # horizontal tangent at end (since p3.y == p2.y)
+    p3 = (dx, dy)
+
+    pts = _cubic_bezier_points([p0, p1, p2, p3], npoints=npoints)
+
+    # Ensure the very last segment is exactly horizontal (helps concatenation angle)
+    if len(pts) >= 2:
+        pts[-2, 1] = pts[-1, 1]
+
+    return gf.Path(pts.tolist())
+
+
+@gf.cell
+def _branch_straight_bezier_straight(
+    length: float,
+    l_in: float,
+    l_offset: float,
+    l_out: float,
+    dy: float,
+    cross_section,
+    ctrl1: float = 0.40,
+    ctrl2: float = 0.60,
+    npoints: int = 101,
+) -> gf.Component:
+    """Straight (l_in) -> Bezier offset (l_offset) -> Straight (l_out)."""
+    if abs((l_in + l_offset + l_out) - length) > 1e-9:
+        raise ValueError("Require l_in + l_offset + l_out == length.")
+
+    p = gf.path.straight(l_in)
+    p += _bezier_offset_path(
+        dx=l_offset, dy=dy, ctrl1=ctrl1, ctrl2=ctrl2, npoints=npoints
+    )
+    p += gf.path.straight(l_out)
+
+    return gf.path.extrude(p, cross_section=cross_section)
+
+
+@gf.cell
+def three_to_two_like_png_v3(
+    length: float = 40.0,
+    height: float = 1.7,
+    wg_width: float = 0.20,
+    layer: tuple[int, int] = (1, 0),
+    y_in: float = 0.32,
+    y_out: float = 0.74,
+    # timing (localized offset like the target)
+    l_in: float = 28.0,
+    l_offset: float = 8.0,
+    l_out: float = 4.0,
+    # middle stub ends before divergence
+    l_center: float = 24.5,
+    # bezier shape controls (must satisfy 0 < ctrl1 < ctrl2 < 1)
+    ctrl1: float = 0.40,
+    ctrl2: float = 0.60,
+    npoints: int = 121,
+) -> gf.Component:
+    """
+    3 inputs (top/mid/bot) -> 2 outputs (top/bot).
+    Uses a localized Bezier offset region to better match the reference PNG.
+    """
+    if abs((l_in + l_offset + l_out) - length) > 1e-9:
+        raise ValueError("l_in + l_offset + l_out must equal `length`.")
+    if l_center >= l_in:
+        raise ValueError("Set l_center < l_in so the middle stub ends before divergence.")
+
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+
+    # Keep within footprint height (centered around y=0)
+    ymax = y_out + wg_width / 2
+    if 2 * ymax > height + 1e-6:
+        raise ValueError(
+            f"Geometry too tall: total height ~ {2*ymax:.3f}um exceeds {height}um. "
+            "Reduce y_out and/or wg_width."
+        )
+
+    dy = y_out - y_in
+
+    top_branch = _branch_straight_bezier_straight(
+        length=length,
+        l_in=l_in,
+        l_offset=l_offset,
+        l_out=l_out,
+        dy=+dy,
+        cross_section=xs,
+        ctrl1=ctrl1,
+        ctrl2=ctrl2,
+        npoints=npoints,
+    )
+    bot_branch = _branch_straight_bezier_straight(
+        length=length,
+        l_in=l_in,
+        l_offset=l_offset,
+        l_out=l_out,
+        dy=-dy,
+        cross_section=xs,
+        ctrl1=ctrl1,
+        ctrl2=ctrl2,
+        npoints=npoints,
+    )
+
+    top = c << top_branch
+    top.move((0, y_in))
+
+    bot = c << bot_branch
+    bot.move((0, -y_in))
+
+    mid = c << gf.components.straight(length=l_center, cross_section=xs)
+
+    c.add_port("o1_top_in", port=top.ports["o1"])
+    c.add_port("o2_mid_in", port=mid.ports["o1"])
+    c.add_port("o3_bot_in", port=bot.ports["o1"])
+    c.add_port("o4_top_out", port=top.ports["o2"])
+    c.add_port("o5_bot_out", port=bot.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    d = three_to_two_like_png_v3()
+    d.show()
+    d.write_gds("recreated_device_v3.gds")
+```
+
+If the divergence in your raster still starts too early/late compared to the target, adjust only these (in this order):
+- `l_in` (where the split begins),
+- `l_offset` (how long the bend region lasts),
+- `ctrl1/ctrl2` (move them toward 0.5/0.5 for a sharper mid-transition; toward 0.2/0.8 for gentler).

@@ -1,0 +1,157 @@
+import gdsfactory as gf
+
+@gf.cell
+def dense_waveguide_coupler_concentric():
+    c = gf.Component()
+
+    # Constraint: Footprint [120.0, 4.0]
+    # To fit within the narrow 4.0um height while maintaining density,
+    # we use tight spacing and minimal gaps.
+    
+    # 1. Dimensions
+    width = 0.2
+    gap = 0.12
+    pitch = width + gap  # 0.32 um
+    n_lines = 4          # Lines per group
+    
+    total_length = 120.0
+    
+    # X coordinate where straight sections end and bends begin
+    # This creates a uniform "rectangular" block for the straight bus
+    bend_start_x = 42.0 
+    
+    # Gap between the Center group and Top/Bottom groups
+    inter_group_spacing = 0.2
+    
+    # Minimum bend radius
+    r_min = 2.0 
+
+    # 2. Cross-Section
+    # Explicitly set radius_min to allow tight bends < 10.0um
+    xs = gf.cross_section.cross_section(
+        width=width, 
+        radius=r_min, 
+        radius_min=0.5, 
+        layer=(1, 0)
+    )
+
+    # --- CENTER GROUP (Straight) ---
+    # Centered at y=0
+    # y offsets for 4 lines centered at 0
+    # y = [-1.5p, -0.5p, 0.5p, 1.5p]
+    y_offsets_center = [(i - (n_lines - 1) / 2) * pitch for i in range(n_lines)]
+    
+    for y in y_offsets_center:
+        wg = c << gf.components.straight(length=total_length, cross_section=xs)
+        wg.center = (0, y)
+
+    # --- TOP GROUP (Bends UP/North) ---
+    # Placed above center group
+    y_max_center = y_offsets_center[-1]
+    y_start_top = y_max_center + inter_group_spacing
+    
+    # Logic for concentric bends turning UP:
+    # To ensure parallel vertical exits without crossing:
+    # The Highest Y line (Top) must be the INNER track (Smallest Radius).
+    # The Lowest Y line (Bottom of group) must be the OUTER track (Largest Radius).
+    
+    for i in range(n_lines):
+        # We index i from 0 (inner/top) to 3 (outer/bottom) relative to the TURN.
+        # However, purely by Y coordinate:
+        # Line 0: Highest Y (Top-most). Radius = r_min.
+        # Line 3: Lowest Y (Bottom-most of Top group). Radius = r_min + 3*pitch.
+        
+        # Invert i for Y calculation so i=0 is top
+        # Let's map explicitly:
+        # track 0 (Inner): radius=r_min, Y = Y_base + (n-1)*p (Top)
+        # track k: radius=r_min + k*p, Y = Y_base + (n-1-k)*p
+        
+        radius = r_min + i * pitch
+        
+        # Calculate Y position:
+        # The Top group spans from y_start_top to y_start_top + 3*pitch
+        # We want the smallest radius at the Top (Max Y).
+        # So as 'radius' increases (i increases), Y should DECREASE.
+        y_top_max = y_start_top + (n_lines - 1) * pitch
+        y = y_top_max - i * pitch
+        
+        # Horizontal Straight Segment
+        l_straight = bend_start_x * 2
+        wg = c << gf.components.straight(length=l_straight, cross_section=xs)
+        wg.center = (0, y)
+        
+        # Right Bend (East -> North)
+        # Base bend_euler: Input (180 deg) -> Output (90 deg) [Left Turn]
+        # Connects to straight WG 'o2' (0 deg).
+        # Base bend accepts 0 deg? No, base o1 is 180.
+        # Connection: straight.o2 (0) <-> bend.o1 (180). Perfect match.
+        # Operation: East -> North.
+        b_r = c << gf.components.bend_euler(radius=radius, angle=90, cross_section=xs)
+        b_r.connect("o1", wg.ports["o2"])
+        
+        # Left Bend (West -> North)
+        # Needs Input (0 deg) -> Output (90 deg) [Right Turn relative to X-]
+        # Mirror X of Base: Input (0 deg) -> Output (90 deg).
+        # Connects to straight WG 'o1' (180 deg).
+        # Connection: straight.o1 (180) <-> bend.o1 (0). Perfect match.
+        b_l = c << gf.components.bend_euler(radius=radius, angle=90, cross_section=xs)
+        b_l.mirror_x()
+        b_l.connect("o1", wg.ports["o1"])
+        
+        # Vertical Extensions
+        v_len = 2.0
+        v_r = c << gf.components.straight(length=v_len, cross_section=xs)
+        v_r.connect("o1", b_r.ports["o2"])
+        v_l = c << gf.components.straight(length=v_len, cross_section=xs)
+        v_l.connect("o1", b_l.ports["o2"])
+
+    # --- BOTTOM GROUP (Bends DOWN/South) ---
+    # Placed below center group
+    y_min_center = y_offsets_center[0]
+    y_start_bot = y_min_center - inter_group_spacing
+    
+    # Logic for concentric bends turning DOWN:
+    # The Lowest Y line (Bottom) must be the INNER track (Smallest Radius).
+    # The Highest Y line (Top of group) must be the OUTER track.
+    
+    for i in range(n_lines):
+        # track 0 (Inner): radius=r_min, Y = Lowest.
+        # track k: radius=r_min + k*p, Y = Lowest + k*p.
+        
+        radius = r_min + i * pitch
+        
+        # Bottom group spans downwards.
+        # The "Lowest" Y is the bottom-most line.
+        y_bot_min = y_start_bot - (n_lines - 1) * pitch
+        y = y_bot_min + i * pitch
+        
+        # Horizontal Straight
+        wg = c << gf.components.straight(length=l_straight, cross_section=xs)
+        wg.center = (0, y)
+        
+        # Right Bend (East -> South)
+        # Needs Input (180) -> Output (270/-90).
+        # Mirror Y of Base: Input (180) -> Output (270).
+        b_r = c << gf.components.bend_euler(radius=radius, angle=90, cross_section=xs)
+        b_r.mirror_y()
+        b_r.connect("o1", wg.ports["o2"])
+        
+        # Left Bend (West -> South)
+        # Needs Input (0) -> Output (270).
+        # Mirror X + Mirror Y (Rotate 180) of Base: Input (0) -> Output (270).
+        b_l = c << gf.components.bend_euler(radius=radius, angle=90, cross_section=xs)
+        b_l.mirror_x()
+        b_l.mirror_y()
+        b_l.connect("o1", wg.ports["o1"])
+        
+        # Vertical Extensions
+        v_r = c << gf.components.straight(length=v_len, cross_section=xs)
+        v_r.connect("o1", b_r.ports["o2"])
+        v_l = c << gf.components.straight(length=v_len, cross_section=xs)
+        v_l.connect("o1", b_l.ports["o2"])
+
+    return c
+
+# Generate and save
+device = dense_waveguide_coupler_concentric()
+device.write_gds("dense_coupler_concentric.gds")

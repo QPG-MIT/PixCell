@@ -1,0 +1,39 @@
+{
+  "turn": 3,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:22:46.218273",
+      "api_duration_seconds": 46.81954288482666,
+      "usage": {
+        "input_tokens": 4997,
+        "output_tokens": 1381,
+        "total_tokens": 11243
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: get_cross_section expects a CrossSectionSpec (CrossSection, CrossSectionFactory, Transition, string or dict), got <class 'gdsfactory.cross_section.Transition'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:23:34.381327",
+      "api_duration_seconds": 29.903513193130493,
+      "usage": {
+        "input_tokens": 6448,
+        "output_tokens": 1259,
+        "total_tokens": 10697
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11445,
+    "output_tokens": 2640,
+    "total_tokens": 21940
+  }
+}

@@ -1,0 +1,96 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def make_detailed_horn(width_bottom=82.0, width_top=114.0, height=1.65, layer=(1, 0)):
+    """
+    Creates one half of the device with double-line side rails.
+    """
+    c = gf.Component()
+    
+    # Define flare function: gradual outward curve
+    def get_width(y):
+        # Using a 1.5 power for a smoother transition than quadratic
+        return width_bottom + (width_top - width_bottom) * (y / height)**1.5
+
+    # 1. Create Double Side Rails
+    # Each side has two parallel thin lines
+    rail_w = 0.15
+    rail_gap = 0.25
+    y_steps = np.linspace(0, height, 50)
+    
+    for side in [-1, 1]: # Left and Right
+        # Inner Rail
+        pts_in = [(side * get_width(y) / 2.0, y) for y in y_steps]
+        c << gf.path.extrude(gf.Path(pts_in), width=rail_w, layer=layer)
+        
+        # Outer Rail (offset slightly)
+        pts_out = [(side * (get_width(y) / 2.0 + rail_gap), y) for y in y_steps]
+        c << gf.path.extrude(gf.Path(pts_out), width=rail_w, layer=layer)
+
+    # 2. Horizontal Elements
+    # Thick base block
+    thick_h = 0.65
+    w_base = get_width(thick_h/2.0)
+    base = c << gf.components.rectangle(size=(w_base, thick_h), layer=layer, centered=True)
+    base.movey(thick_h/2.0)
+    
+    # 4 Thin bars
+    thin_h = 0.08
+    gap = 0.12
+    curr_y = thick_h + gap
+    
+    for _ in range(4):
+        w_curr = get_width(curr_y + thin_h/2.0)
+        bar = c << gf.components.rectangle(size=(w_curr, thin_h), layer=layer, centered=True)
+        bar.movey(curr_y + thin_h/2.0)
+        curr_y += thin_h + gap
+        
+    return c
+
+@gf.cell
+def recreate_device_v5():
+    """
+    Assembles the final device within the 120um x 4um footprint.
+    """
+    c = gf.Component("target_device_match_v5")
+    LAYER = (1, 0)
+    
+    # --- 1. Central Section: 5 Thin Horizontal Bars ---
+    # These define the primary horizontal axis
+    c_width = 118.0 
+    c_bar_h = 0.08
+    c_gap = 0.12
+    for i in range(5):
+        y_pos = (i - 2) * (c_bar_h + c_gap)
+        bar = c << gf.components.rectangle(size=(c_width, c_bar_h), layer=LAYER, centered=True)
+        bar.movey(y_pos)
+        
+    # --- 2. Horn Sections (Top and Bottom) ---
+    # Centered vertically around the 5-bar group
+    HORN_H = 1.6
+    # Vertical offset to create the distinct gap seen in the target
+    Y_OFFSET = 0.4 
+    
+    horn = make_detailed_horn(width_bottom=84.0, width_top=110.0, height=HORN_H, layer=LAYER)
+    
+    # Add Top
+    t_ref = c << horn
+    t_ref.movey(Y_OFFSET)
+    
+    # Add Bottom
+    b_ref = c << horn
+    b_ref.mirror_y()
+    b_ref.movey(-Y_OFFSET)
+    
+    return c
+
+if __name__ == "__main__":
+    device = recreate_device_v5()
+    
+    # Verification
+    print(f"Final Dimensions: {device.xsize:.2f}um x {device.ysize:.2f}um")
+    # This should be ~118um x 4.0um, fitting the 120x4 constraint.
+    
+    device.write_gds("device_v5.gds")
+    device.show()

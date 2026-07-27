@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:27:58.443129",
+      "api_duration_seconds": 50.962279319763184,
+      "usage": {
+        "input_tokens": 5384,
+        "output_tokens": 1223,
+        "total_tokens": 12518
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 's_bend'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:28:50.692442",
+      "api_duration_seconds": 40.28812623023987,
+      "usage": {
+        "input_tokens": 6640,
+        "output_tokens": 1209,
+        "total_tokens": 11914
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: euler() got an unexpected keyword argument 'use_euler'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:29:32.213629",
+      "api_duration_seconds": 23.623255014419556,
+      "usage": {
+        "input_tokens": 7878,
+        "output_tokens": 1017,
+        "total_tokens": 11238
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 19902,
+    "output_tokens": 3449,
+    "total_tokens": 35670
+  }
+}

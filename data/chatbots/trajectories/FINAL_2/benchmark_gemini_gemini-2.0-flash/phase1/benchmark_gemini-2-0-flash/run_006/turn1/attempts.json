@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.942381",
+      "api_duration_seconds": 17.815659046173096,
+      "usage": {
+        "input_tokens": 4666,
+        "output_tokens": 2224,
+        "total_tokens": 6890
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:29.311404",
+      "api_duration_seconds": 15.653540134429932,
+      "usage": {
+        "input_tokens": 6920,
+        "output_tokens": 1972,
+        "total_tokens": 8892
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:51.453658",
+      "api_duration_seconds": 12.423606872558594,
+      "usage": {
+        "input_tokens": 9364,
+        "output_tokens": 2338,
+        "total_tokens": 11702
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'method' object is not subscriptable",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 20950,
+    "output_tokens": 6534,
+    "total_tokens": 27484
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.551413",
+      "api_duration_seconds": 78.36766695976257,
+      "usage": {
+        "input_tokens": 2348,
+        "output_tokens": 1180,
+        "total_tokens": 12266
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:30.066787",
+      "api_duration_seconds": 19.630566835403442,
+      "usage": {
+        "input_tokens": 3559,
+        "output_tokens": 1250,
+        "total_tokens": 5976
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: extrude_transition() got an unexpected keyword argument 'path'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:51.138814",
+      "api_duration_seconds": 14.169281005859375,
+      "usage": {
+        "input_tokens": 4838,
+        "output_tokens": 1183,
+        "total_tokens": 6435
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10745,
+    "output_tokens": 3613,
+    "total_tokens": 24677
+  }
+}

@@ -1,0 +1,94 @@
+Turn 3 Response:
+
+To better match the target image, I have refined the proportions of the directional coupler. 
+
+The primary adjustments in this iteration are:
+1.  **Extended Bends:** Increased the horizontal length of the S-bends (`l_bend`) to $30\,\mu\text{m}$. This creates a much smoother transition between the wide inputs and the narrow coupling region, closely matching the "long and shallow" curves seen in the original image.
+2.  **Balanced Proportions:** The central coupling region is set to $40\,\mu\text{m}$, and the straight end segments are $10\,\mu\text{m}$, ensuring the total device length is exactly $120\,\mu\text{m}$.
+3.  **Strict Footprint Adherence:** The vertical offset is precisely calculated so that the waveguide centers are at $\pm 1.75\,\mu\text{m}$ at the ends. With a $0.5\,\mu\text{m}$ waveguide width, the outer edges align perfectly with the $4\,\mu\text{m}$ height constraint ($1.75 + 0.25 = 2.0$).
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_recreated():
+    """
+    Recreates the directional coupler with smooth transitions.
+    Target Footprint: 120um x 4um
+    """
+    c = gf.Component("directional_coupler")
+    
+    # --- 1. Dimensions & Constraints ---
+    total_length = 120.0
+    total_height = 4.0
+    w = 0.5
+    gap = 0.2
+    
+    # Precise vertical offset calculation:
+    # Outer arm center: +/- (total_height/2 - w/2) = +/- 1.75
+    # Inner arm center: +/- (gap/2 + w/2) = +/- 0.35
+    dy = (total_height / 2 - w / 2) - (gap / 2 + w / 2)  # 1.4 um
+    
+    # Horizontal segment allocation (Total = 120)
+    l_end_straight = 10.0  # Input/Output straight sections
+    l_bend = 30.0          # Gradual S-bend transition
+    l_coupler = 40.0       # Central coupling region
+    # Verification: 10 + 30 + 40 + 30 + 10 = 120
+    
+    xs = gf.cross_section.cross_section(width=w, layer=(1, 0))
+    
+    # --- 2. Create Primitives ---
+    coupler = gf.components.coupler_straight(length=l_coupler, gap=gap, cross_section=xs)
+    # Using bend_s creates a smooth Bezier transition
+    s_bend = gf.components.bend_s(size=(l_bend, dy), cross_section=xs)
+    end_straight = gf.components.straight(length=l_end_straight, cross_section=xs)
+    
+    # --- 3. Assembly (Building from the center outwards) ---
+    mid = c << coupler
+    
+    # LEFT SIDE
+    # Bottom-Left: S-bend UP from outer to inner
+    bl_bend = c << s_bend
+    bl_bend.connect("o2", mid.ports["o1"])
+    bl_ext = c << end_straight
+    bl_ext.connect("o2", bl_bend.ports["o1"])
+    
+    # Top-Left: S-bend DOWN from outer to inner (mirrored vertically)
+    tl_bend = c << s_bend
+    tl_bend.mirror(p1=(0, 0), p2=(1, 0))
+    tl_bend.connect("o2", mid.ports["o2"])
+    tl_ext = c << end_straight
+    tl_ext.connect("o2", tl_bend.ports["o1"])
+    
+    # RIGHT SIDE
+    # Top-Right: S-bend UP from inner to outer
+    tr_bend = c << s_bend
+    tr_bend.connect("o1", mid.ports["o3"])
+    tr_ext = c << end_straight
+    tr_ext.connect("o1", tr_bend.ports["o2"])
+    
+    # Bottom-Right: S-bend DOWN from inner to outer (mirrored vertically)
+    br_bend = c << s_bend
+    br_bend.mirror(p1=(0, 0), p2=(1, 0))
+    br_bend.connect("o1", mid.ports["o4"])
+    br_ext = c << end_straight
+    br_ext.connect("o1", br_bend.ports["o2"])
+    
+    # --- 4. Define External Ports ---
+    c.add_port("o1", port=bl_ext.ports["o1"])
+    c.add_port("o2", port=tl_ext.ports["o1"])
+    c.add_port("o3", port=tr_ext.ports["o2"])
+    c.add_port("o4", port=br_ext.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler_recreated()
+    device.write_gds("directional_coupler_v3.gds")
+    
+    # Print dimensions for verification
+    print(f"Final Footprint: {device.dxsize:.2f} um x {device.dysize:.2f} um")
+    
+    # Show in local viewer
+    device.show()
+```

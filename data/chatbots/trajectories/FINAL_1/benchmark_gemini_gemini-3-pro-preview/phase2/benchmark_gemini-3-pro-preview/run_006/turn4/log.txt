@@ -1,0 +1,136 @@
+Turn 4 Response:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def inverse_taper_coupler():
+    """
+    Inverse taper edge coupler with grid-snapped geometry.
+    
+    Fixes:
+    - AttributeError: Replaces gf.path.bezier with manual path point generation.
+    - ValueError (Off-grid): Rounds path points and explicitly places output components 
+      on the grid to avoid floating point placement errors.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions ---
+    length_total = 40.0
+    
+    # Widths
+    w_center_in = 0.8
+    w_center_tip = 0.05
+    
+    w_arm_in = 0.2
+    w_arm_out = 1.0  # Wide enough to touch/merge at center
+    
+    # Y-coordinates
+    # Input: Center(0.8) + Gap(0.2) + Arm(0.2)
+    # Center of arm = 0.4 + 0.2 + 0.1 = 0.7
+    y_arm_in = 0.7
+    
+    # Output: We want the arms to touch at y=0.
+    # If width is 1.0, half-width is 0.5.
+    # Placing center at y=0.5 puts the inner edge at 0.0.
+    y_arm_out = 0.5
+    
+    # Lengths
+    len_in = 2.0
+    len_trans = 25.0
+    len_out = length_total - len_in - len_trans # 13.0
+    
+    # Central taper extends through the transition region
+    len_taper = len_in + len_trans
+    
+    layer = (1, 0)
+    
+    # --- 1. Central Taper ---
+    # Taper from input width to tip
+    taper = c << gf.components.taper(
+        length=len_taper,
+        width1=w_center_in,
+        width2=w_center_tip,
+        layer=layer
+    )
+    taper.move((0, 0))
+    
+    # --- 2. Top Arm Construction ---
+    xs_in = gf.cross_section.cross_section(width=w_arm_in, layer=layer)
+    xs_out = gf.cross_section.cross_section(width=w_arm_out, layer=layer)
+    
+    # A. Input Straight
+    s_in_top = c << gf.components.straight(length=len_in, cross_section=xs_in)
+    s_in_top.move((0, y_arm_in))
+    
+    # B. Transition Path (S-Bend)
+    # Generate points manually to avoid 'bezier' attribute error
+    num_pts = 201
+    x = np.linspace(0, len_trans, num_pts)
+    
+    # Cosine S-bend formula: y = y_start + (y_end - y_start) * (1 - cos(pi * x / L)) / 2
+    dy = y_arm_out - y_arm_in
+    y = y_arm_in + dy * (1 - np.cos(np.pi * x / len_trans)) / 2
+    
+    # Create Path and Snap to Grid (Fix for off-grid instances)
+    points_top = np.array([x, y]).T
+    points_top = np.round(points_top, 3) # Round to 1nm grid
+    path_top = gf.Path(points_top)
+    
+    # Define Width Transition (Sine profile)
+    trans = gf.path.transition(xs_in, xs_out, width_type='sine')
+    
+    # Extrude Transition
+    bend_top = c << gf.path.extrude_transition(path_top, trans)
+    bend_top.move((len_in, 0))
+    
+    # C. Output Straight
+    # Explicitly calculate position to ensure grid alignment (Avoids 'off-grid instances' error)
+    # Instead of connecting to the port (which might be float), we move to the known grid coordinate.
+    s_out_top = c << gf.components.straight(length=len_out, cross_section=xs_out)
+    s_out_top.move((len_in + len_trans, y_arm_out))
+    
+    # --- 3. Bottom Arm Construction ---
+    # A. Input Straight
+    s_in_bot = c << gf.components.straight(length=len_in, cross_section=xs_in)
+    s_in_bot.move((0, -y_arm_in))
+    
+    # B. Transition Path
+    # Mirror the Y coordinates
+    y_bot = -y_arm_in - dy * (1 - np.cos(np.pi * x / len_trans)) / 2
+    points_bot = np.array([x, y_bot]).T
+    points_bot = np.round(points_bot, 3) # Snap to grid
+    path_bot = gf.Path(points_bot)
+    
+    # Extrude
+    bend_bot = c << gf.path.extrude_transition(path_bot, trans)
+    bend_bot.move((len_in, 0))
+    
+    # C. Output Straight
+    s_out_bot = c << gf.components.straight(length=len_out, cross_section=xs_out)
+    s_out_bot.move((len_in + len_trans, -y_arm_out))
+
+    # --- 4. Ports ---
+    c.add_port("o1", port=taper.ports["o1"])
+    
+    # Add Combined Output Port
+    # Total width = 2 * w_arm_out (since they touch at center)
+    c.add_port(
+        "o2",
+        center=(length_total, 0),
+        width=w_arm_out * 2,
+        orientation=0,
+        layer=layer
+    )
+    
+    # Flatten to merge polygons and fix any remaining grid issues
+    c.flatten()
+
+    return c
+
+if __name__ == "__main__":
+    device = inverse_taper_coupler()
+    device.write_gds("inverse_taper_coupler.gds")
+    device.show()
+```

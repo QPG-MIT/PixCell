@@ -1,0 +1,124 @@
+Turn 4 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_refined():
+    """
+    Directional coupler with thick waveguides and tight coupling gap.
+    Parameters tuned to match the visual weight and aspect ratio of the target image:
+    - Footprint: 120um x 4um
+    - Waveguide width: 1.0um (Thicker to match target)
+    - Gap: 0.2um (Narrower to match target)
+    - Long central coupling region
+    """
+    c = gf.Component()
+
+    # --- Dimensions & Constraints ---
+    length_total = 120.0
+    height_total = 4.0
+    
+    # Visual Tuning Parameters
+    # Target image shows bold/thick waveguides relative to the gap.
+    wg_width = 1.0
+    gap = 0.2       
+    
+    # Longitudinal Partitioning
+    # Central region appears to be roughly 50% of total length
+    l_coupler = 60.0
+    # Straight IO sections are very minimal in the target
+    l_straight_io = 1.0
+    # Remaining length for adiabatic bends
+    l_bend = (length_total - l_coupler - 2 * l_straight_io) / 2
+
+    # Vertical Geometry
+    # 1. Ports constrained to outer edge of 4um height
+    #    Center y = +/- (Height/2 - Width/2)
+    y_port_abs = (height_total - wg_width) / 2  # 1.5 um
+    
+    # 2. Coupler waveguides constrained by gap
+    #    Center y = +/- (Gap/2 + Width/2)
+    y_coupler_abs = (gap + wg_width) / 2        # 0.6 um
+    
+    # 3. Vertical displacement for S-bends
+    dy = y_port_abs - y_coupler_abs             # 0.9 um
+
+    # Define Cross Section
+    xs = gf.cross_section.cross_section(width=wg_width)
+
+    # --- 1. Central Coupling Region ---
+    # Center at (0,0)
+    coupler = c << gf.components.coupler_straight(
+        length=l_coupler,
+        gap=gap,
+        cross_section=xs
+    )
+    coupler.movex(-l_coupler / 2)
+
+    # --- 2. Define Building Blocks ---
+    # S-Bend with specific dy displacement
+    bend_ref = gf.components.bend_s(
+        size=(l_bend, dy),
+        cross_section=xs
+    )
+    # Straight IO stub
+    straight_ref = gf.components.straight(
+        length=l_straight_io,
+        cross_section=xs
+    )
+
+    # --- 3. Assemble Arms ---
+    # Note: coupler_straight ports are typically o1/o4 (bottom) and o2/o3 (top) 
+    # or o1/o2 (left) and o3/o4 (right). 
+    # Based on previous successful topology: o1=Bottom-Left, o2=Top-Left, o3=Top-Right, o4=Bottom-Right.
+
+    # -- Bottom Left (Input) --
+    # Path: Straight -> Bend(Up) -> Coupler(o1)
+    lb_bend = c << bend_ref
+    # Connect bend output (o2) to coupler input (o1). 
+    # Since bend is rising (dy>0), and o2 connects to coupler, the bend is placed to the left.
+    lb_bend.connect("o2", coupler.ports["o1"])
+    
+    lb_straight = c << straight_ref
+    lb_straight.connect("o2", lb_bend.ports["o1"])
+
+    # -- Top Left (Input) --
+    # Path: Straight -> Bend(Down) -> Coupler(o2)
+    lt_bend = c << bend_ref
+    lt_bend.mirror_y() # Flip to bend down
+    lt_bend.connect("o2", coupler.ports["o2"])
+    
+    lt_straight = c << straight_ref
+    lt_straight.connect("o2", lt_bend.ports["o1"])
+
+    # -- Top Right (Output) --
+    # Path: Coupler(o3) -> Bend(Up) -> Straight
+    rt_bend = c << bend_ref
+    rt_bend.connect("o1", coupler.ports["o3"])
+    
+    rt_straight = c << straight_ref
+    rt_straight.connect("o1", rt_bend.ports["o2"])
+
+    # -- Bottom Right (Output) --
+    # Path: Coupler(o4) -> Bend(Down) -> Straight
+    rb_bend = c << bend_ref
+    rb_bend.mirror_y()
+    rb_bend.connect("o1", coupler.ports["o4"])
+    
+    rb_straight = c << straight_ref
+    rb_straight.connect("o1", rb_bend.ports["o2"])
+
+    # --- 4. Expose Ports ---
+    c.add_port("o1", port=lb_straight.ports["o1"])
+    c.add_port("o2", port=lt_straight.ports["o1"])
+    c.add_port("o3", port=rt_straight.ports["o2"])
+    c.add_port("o4", port=rb_straight.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler_refined()
+    device.show()
+    device.write_gds("directional_coupler_refined.gds")
+```

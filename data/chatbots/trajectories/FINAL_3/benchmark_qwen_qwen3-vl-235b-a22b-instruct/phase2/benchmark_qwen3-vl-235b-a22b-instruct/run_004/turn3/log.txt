@@ -1,0 +1,223 @@
+Turn 3 Response:
+
+Looking at the target image versus the current output, I can see the fundamental issue:
+
+The current code creates an S-bend coupler with two waveguides that are symmetric and parallel, but the target image shows a different configuration - it appears to be a single waveguide that splits into two parallel waveguides, then rejoins, forming a "Y" or "tapered coupler" structure rather than an S-bend.
+
+The key differences are:
+1. The target has a single input that splits into two parallel waveguides, then rejoins into a single output
+2. The current code has two separate waveguides from start to finish
+3. The target has smooth, gradual transitions rather than sharp S-bends
+
+To fix this, I need to:
+1. Create a single waveguide that starts wide, then tapers down to split into two parallel waveguides
+2. Use smooth transitions (Euler bends or similar) rather than S-bends
+3. Ensure the two parallel sections are properly spaced
+4. Rejoin the waveguides at the end
+
+Here's the improved version:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def tapered_coupler():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Parameters based on footprint (120um x 4um)
+    total_length = 120.0
+    waveguide_width = 0.5
+    gap = 0.5  # gap between waveguides in parallel section
+    taper_length = 20.0  # length of taper sections
+    
+    # Calculate straight section length
+    straight_length = total_length - 2 * taper_length
+    
+    # Create the tapered coupler structure
+    # Start with a single waveguide
+    input_taper = c << gf.components.taper(length=taper_length, width1=waveguide_width, width2=waveguide_width)
+    input_taper.move((0, 0))
+    
+    # Create the splitting section - this is the key change
+    # We need to create a structure that splits the single waveguide into two
+    # Create two parallel waveguides with appropriate spacing
+    
+    # Create the top waveguide path
+    top_straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+    top_straight.move((taper_length, gap/2 + waveguide_width/2))
+    
+    # Create the bottom waveguide path  
+    bottom_straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+    bottom_straight.move((taper_length, -gap/2 - waveguide_width/2))
+    
+    # Create the output taper section (rejoining)
+    output_taper = c << gf.components.taper(length=taper_length, width1=waveguide_width, width2=waveguide_width)
+    output_taper.move((taper_length + straight_length, 0))
+    
+    # Add smooth bends to connect the sections
+    # Create bend to transition from input to top waveguide
+    top_bend = c << gf.components.bend_euler(radius=10, angle=90, cross_section=xs)
+    top_bend.rotate(180)  # Rotate to point upward
+    top_bend.move((taper_length, 0))
+    top_bend.connect("o1", input_taper.ports["o2"])
+    
+    # Create bend to transition from input to bottom waveguide
+    bottom_bend = c << gf.components.bend_euler(radius=10, angle=-90, cross_section=xs)
+    bottom_bend.rotate(180)  # Rotate to point downward
+    bottom_bend.move((taper_length, 0))
+    bottom_bend.connect("o1", input_taper.ports["o2"])
+    
+    # Connect the top waveguide to the output
+    top_output_bend = c << gf.components.bend_euler(radius=10, angle=-90, cross_section=xs)
+    top_output_bend.move((taper_length + straight_length, gap/2 + waveguide_width/2))
+    top_output_bend.connect("o1", top_straight.ports["o2"])
+    top_output_bend.connect("o2", output_taper.ports["o1"])
+    
+    # Connect the bottom waveguide to the output
+    bottom_output_bend = c << gf.components.bend_euler(radius=10, angle=90, cross_section=xs)
+    bottom_output_bend.move((taper_length + straight_length, -gap/2 - waveguide_width/2))
+    bottom_output_bend.connect("o1", bottom_straight.ports["o2"])
+    bottom_output_bend.connect("o2", output_taper.ports["o1"])
+    
+    # Add ports
+    c.add_port("o1", port=input_taper.ports["o1"])
+    c.add_port("o2", port=output_taper.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = tapered_coupler()
+device.write_gds("tapered_coupler.gds")
+```
+
+Wait, I need to reconsider this. Looking at the target image more carefully, it appears to be a directional coupler with smooth, curved transitions rather than a Y-splitter. Let me revise:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def curved_coupler():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Parameters based on footprint (120um x 4um)
+    total_length = 120.0
+    waveguide_width = 0.5
+    gap = 0.5  # gap between waveguides
+    
+    # Create the curved coupler structure
+    # We'll use a path-based approach for smoother curves
+    
+    # Create top waveguide path
+    top_path = gf.Path()
+    top_path.append(gf.path.straight(length=20))  # Input straight
+    top_path.append(gf.path.euler(radius=10, angle=45))  # Upward curve
+    top_path.append(gf.path.straight(length=80))  # Parallel section
+    top_path.append(gf.path.euler(radius=10, angle=-45))  # Downward curve to align
+    top_path.append(gf.path.straight(length=20))  # Output straight
+    
+    # Create bottom waveguide path
+    bottom_path = gf.Path()
+    bottom_path.append(gf.path.straight(length=20))  # Input straight
+    bottom_path.append(gf.path.euler(radius=10, angle=-45))  # Downward curve
+    bottom_path.append(gf.path.straight(length=80))  # Parallel section
+    bottom_path.append(gf.path.euler(radius=10, angle=45))  # Upward curve to align
+    bottom_path.append(gf.path.straight(length=20))  # Output straight
+    
+    # Extrude the paths
+    top_waveguide = c << gf.path.extrude(top_path, cross_section=xs)
+    bottom_waveguide = c << gf.path.extrude(bottom_path, cross_section=xs)
+    
+    # Position the bottom waveguide
+    # The bottom waveguide should be positioned below the top one with the specified gap
+    bottom_waveguide.move((0, -(waveguide_width + gap)))
+    
+    # Add ports
+    c.add_port("o1_top", port=top_waveguide.ports["o1"])
+    c.add_port("o2_top", port=top_waveguide.ports["o2"])
+    c.add_port("o1_bottom", port=bottom_waveguide.ports["o1"])
+    c.add_port("o2_bottom", port=bottom_waveguide.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = curved_coupler()
+device.write_gds("curved_coupler.gds")
+```
+
+Actually, let me look at this one more time. The target image shows a structure that starts as a single waveguide, then splits into two parallel waveguides with smooth curves, then rejoins. This is more like a Mach-Zehnder interferometer or a directional coupler with adiabatic tapers. Let me create a more accurate version:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Parameters based on footprint (120um x 4um)
+    total_length = 120.0
+    waveguide_width = 0.5
+    gap = 0.5  # gap between waveguides in parallel section
+    taper_length = 20.0  # length of taper sections
+    
+    # Create the directional coupler structure
+    # Start with a single waveguide
+    input_waveguide = c << gf.components.straight(length=taper_length, cross_section=xs)
+    input_waveguide.move((0, 0))
+    
+    # Create the parallel section
+    parallel_length = total_length - 2 * taper_length
+    
+    # Create top waveguide in parallel section
+    top_parallel = c << gf.components.straight(length=parallel_length, cross_section=xs)
+    top_parallel.move((taper_length, gap/2 + waveguide_width/2))
+    
+    # Create bottom waveguide in parallel section
+    bottom_parallel = c << gf.components.straight(length=parallel_length, cross_section=xs)
+    bottom_parallel.move((taper_length, -gap/2 - waveguide_width/2))
+    
+    # Create output waveguide
+    output_waveguide = c << gf.components.straight(length=taper_length, cross_section=xs)
+    output_waveguide.move((taper_length + parallel_length, 0))
+    
+    # Create smooth bends to connect the sections
+    # For the top path
+    top_bend_in = c << gf.components.bend_euler(radius=10, angle=45, cross_section=xs)
+    top_bend_in.move((taper_length, 0))
+    top_bend_in.connect("o1", input_waveguide.ports["o2"])
+    top_bend_in.connect("o2", top_parallel.ports["o1"])
+    
+    top_bend_out = c << gf.components.bend_euler(radius=10, angle=-45, cross_section=xs)
+    top_bend_out.move((taper_length + parallel_length, gap/2 + waveguide_width/2))
+    top_bend_out.connect("o1", top_parallel.ports["o2"])
+    top_bend_out.connect("o2", output_waveguide.ports["o1"])
+    
+    # For the bottom path
+    bottom_bend_in = c << gf.components.bend_euler(radius=10, angle=-45, cross_section=xs)
+    bottom_bend_in.move((taper_length, 0))
+    bottom_bend_in.connect("o1", input_waveguide.ports["o2"])
+    bottom_bend_in.connect("o2", bottom_parallel.ports["o1"])
+    
+    bottom_bend_out = c << gf.components.bend_euler(radius=10, angle=45, cross_section=xs)
+    bottom_bend_out.move((taper_length + parallel_length, -gap/2 - waveguide_width/2))
+    bottom_bend_out.connect("o1", bottom_parallel.ports["o2"])
+    bottom_bend_out.connect("o2", output_waveguide.ports["o1"])
+    
+    # Add ports
+    c.add_port("o1", port=input_waveguide.ports["o1"])
+    c.add_port("o2", port=output_waveguide.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = directional_coupler()
+device.write_gds("directional_coupler.gds")
+```

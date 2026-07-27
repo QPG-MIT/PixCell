@@ -1,0 +1,125 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def wavy_lines() -> gf.Component:
+    """
+    Creates the geometry for two wavy lines with a varying gap,
+    fitting within a 18x3 um footprint.
+    """
+    c = gf.Component("wavy_lines")
+    
+    total_length = 18.0
+    total_height = 3.0
+    
+    # 1. Create the overall bounding box as a solid rectangle.
+    # This rectangle will be centered at (0,0) and represent the area
+    # where the black lines will exist.
+    full_rectangle = gf.components.rectangle(
+        size=(total_length, total_height),
+        layer=(1, 0), # This layer will be used for the final black geometry
+        centered=True
+    )
+    full_rectangle_ref = c << full_rectangle
+    
+    # Define the varying width for the central white channel.
+    # The channel is widest at the ends and narrowest in the middle.
+    # Visual estimation from the image for a total height of 3um:
+    # Max gap (at ends) seems about 1.5um.
+    # Min gap (in middle) seems about 0.5um.
+    max_gap_width = 1.5 # Width of the white channel at the start/end
+    min_gap_width = 0.5 # Width of the white channel in the middle
+    
+    # 2. Define constant cross-sections for the wide and narrow parts of the channel.
+    # These cross-sections will be used as endpoints for the transitions.
+    # Use a dummy layer for the void, as it will be subtracted.
+    xs_wide = gf.cross_section.cross_section(
+        width=max_gap_width,
+        layer=(0, 0)
+    )
+    xs_narrow = gf.cross_section.cross_section(
+        width=min_gap_width,
+        layer=(0, 0)
+    )
+    
+    # 3. Create two straight paths for the channel halves.
+    # The first half will transition from wide to narrow.
+    # The second half will transition from narrow to wide.
+    half_length = total_length / 2
+    path_half1 = gf.path.straight(length=half_length)
+    path_half2 = gf.path.straight(length=half_length)
+    
+    # 4. Create transition objects to define how the width changes along each path.
+    # The 'sine' width_type provides a smooth, visually appealing transition.
+    
+    # Transition for the first half: from wide to narrow.
+    transition_to_narrow = gf.path.transition(
+        cross_section1=xs_wide,
+        cross_section2=xs_narrow,
+        width_type='sine'
+    )
+    
+    # Transition for the second half: from narrow to wide.
+    transition_to_wide = gf.path.transition(
+        cross_section1=xs_narrow,
+        cross_section2=xs_wide,
+        width_type='sine'
+    )
+    
+    # 5. Extrude each path half using its respective transition.
+    # This creates the two tapering segments of the white channel.
+    channel_half1 = gf.path.extrude_transition(path_half1, transition_to_narrow)
+    channel_half2 = gf.path.extrude_transition(path_half2, transition_to_wide)
+    
+    # 6. Assemble the full channel component from the two halves.
+    # We create a temporary component to connect the halves.
+    full_channel_component = gf.Component("full_channel")
+    
+    # Add the first half reference.
+    ref_half1 = full_channel_component << channel_half1
+    
+    # Add the second half reference and connect its input port ('o1')
+    # to the output port of the first half ('o2').
+    ref_half2 = full_channel_component << channel_half2
+    ref_half2.connect("o1", ref_half1.ports["o2"])
+    
+    # Add the assembled full channel to the main component 'c'.
+    # Ensure the entire channel is centered at (0,0) for correct subtraction
+    # relative to the 'full_rectangle_ref', which is also centered.
+    channel_ref = c << full_channel_component
+    channel_ref.center = (0, 0)
+    
+    # 7. Perform the boolean subtraction: full_rectangle NOT full_channel_component.
+    # This will result in the two black wavy bands with the central white channel.
+    final_device_component = gf.boolean(
+        A=full_rectangle_ref,
+        B=channel_ref,
+        operation="not",
+        layer=(1, 0) # The final layer for the black geometry
+    )
+    
+    # Add the resulting component to the main component `c`.
+    c.add_ref(final_device_component)
+    
+    return c
+
+# Create and optionally visualize/save the device
+if __name__ == "__main__":
+    device = wavy_lines()
+    
+    # Verify the footprint against the constraint [18, 3]
+    bbox = device.bbox
+    width = bbox[1][0] - bbox[0][0]
+    height = bbox[1][1] - bbox[0][1]
+    
+    print(f"Device Bounding Box: {bbox}")
+    print(f"Device Dimensions: Width={width:.2f}um, Height={height:.2f}um")
+    
+    # Assertions to check against the footprint constraint
+    assert np.isclose(width, 18.0, atol=1e-3), f"Expected width 18.0, got {width}"
+    assert np.isclose(height, 3.0, atol=1e-3), f"Expected height 3.0, got {height}"
+    print("Footprint matches constraint.")
+
+    # You can uncomment these lines to visualize or save the GDS
+    # device.plot()
+    # device.write_gds("wavy_lines.gds")

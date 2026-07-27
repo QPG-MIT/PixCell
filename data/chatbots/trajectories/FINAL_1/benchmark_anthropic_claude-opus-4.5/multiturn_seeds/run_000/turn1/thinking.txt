@@ -1,0 +1,234 @@
+Looking at this image, I can see what appears to be a photonic device with several components:
+
+1. There are two parallel horizontal waveguides on the left side that start close together
+2. The top waveguide curves upward on the right side
+3. The bottom waveguide curves downward on the right side
+4. There's what looks like a tapered or pointed section in the middle where they cross or interact
+5. The two waveguides diverge and then seem to merge/join on the right side into a single curved section
+
+Looking more carefully at the image:
+- On the left, there are two parallel straight waveguides
+- These converge toward each other in the middle (like an X-crossing pattern)
+- Then they diverge again toward the right
+- On the right side, the top and bottom waveguides curve and merge into what looks like a Y-junction or coupler
+
+The footprint is 40.0 x 1.7 μm, which is quite narrow vertically.
+
+Looking at this pattern, it appears to be some kind of:
+1. Directional coupler
+2. Or an X-crossing/waveguide crosser
+3. Or a mode converter with multiple arms
+
+Let me analyze the shape more carefully:
+- Two horizontal lines on the left that are parallel
+- These lines seem to cross in the middle area
+- On the right, the lines curve - one curves up, one curves down
+- They seem to connect to form a Y or fork shape on the right
+
+Actually, looking at this again, I think I see:
+- A pair of waveguides that start parallel on the left
+- In the middle, they approach each other (like a directional coupler)
+- One waveguide (top) has an S-bend that curves up and then continues to the right
+- The other waveguide (bottom) curves down and then back up in a larger curve
+
+This looks like it could be a directional coupler or mode converter where:
+1. Top left: straight input going right, then curves up
+
+
+2. Bottom left: straight input that crosses over with an S-shaped bend
+3. The waveguides have a coupling region in the middle where they interact
+4. On the right side, they diverge into separate curved arms
+
+Given the compact 40.0 x 1.7 μm dimensions, this appears to be a tightly integrated device. Looking at the silhouette, I notice two tapered shapes on the left that converge toward a central point, then two curved arms diverging on the right. This could be an MMI coupler or similar interference-based device.
+
+The structure seems to involve two waveguides that cross each other—one routing upward, one downward—with curved sections on the right that separate them. With the device being roughly 40 μm wide and only 1.7 μm tall, the individual waveguides are likely around 0.5 μm wide, making this a very compact integrated photonic component.
+
+I'm picturing a waveguide crosser or X-coupler where two tapered inputs on the left intersect in the middle region, then diverge through curved paths on the right side. The key is getting the crossing geometry right while maintaining the proper spacing between the waveguides.
+
+Given the 40 × 1.7 μm footprint, I need to account for waveguide widths around 0.3-0.5 μm with gaps between them. The horizontal span of 40 μm gives me room for the straight input sections, the crossing point, and the curved output region. The vertical constraint of 1.7 μm means the top and bottom waveguides can't spread too far apart—maybe one curves upward while the other curves downward to form a coupling loop on the right side.
+
+This looks like it could be an asymmetric directional coupler or mode converter. I'll model it with two waveguides: the top one starting straight then bending upward with an S-curve, and the bottom one crossing through the middle before curving downward and back up to create the looped interference region on the right.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def waveguide_coupler():
+    c = gf.Component()
+    
+    # Define cross section
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Parameters based on footprint
+    total_length = 40.0
+    total_height = 1.7
+    wg_width = 0.3
+    
+    # Create the paths for each waveguide arm
+    
+    # Top waveguide path - starts at left, goes straight, then curves up on right
+    path1 = gf.path.straight(length=20) + gf.path.euler(radius=5, angle=20)
+    
+    # Bottom waveguide path - similar but curves down
+    path2 = gf.path.straight(length=20) + gf.path.euler(radius=5, angle=-
+
+20)
+    
+    # Extrude the paths into waveguides
+    wg1 = c << gf.path.extrude(path1, cross_section=xs)
+    wg2 = c << gf.path.extrude(path2, cross_section=xs)
+    
+    # Offset them vertically to create separation
+    wg1.move((0, 0.4))
+    wg2.move((0, -0.4))
+    
+    return c
+```
+
+The current approach creates two separate waveguides with simple curves, but it's missing the crossing interaction in the middle and the looped structure on the right side. I need to reconsider the geometry—the diagonal crossing suggests the waveguides should actually intersect or interact, and the curved shape on the right indicates a more complex path than just a simple euler bend.
+
+Looking more closely at the structure, I see two horizontal waveguide bands with diagonal crossing lines in the center and what appears to be a curved junction region on the right. This suggests two input waveguides on the left that cross over each other in the middle, then curve into a Y-junction or coupling section on the right. Given the 40 × 1.7 μm footprint and typical waveguide dimensions (0.4 μm width with 0.2-0.4 μm gaps), the geometry needs to account for the crossing overlap and the curved merge region. I should define the paths more carefully to include the crossing geometry and the right-side curves. -0.2), (40, -0.4)],
+        radius=2
+    )
+    
+    wg_top = c << gf.path.extrude(path_top, cross_section=xs)
+    wg_bottom = c << gf.path.extrude(path_bottom, cross_section=xs)
+    
+    return c
+
+I need to reconsider the geometry based on the actual image. Looking more carefully, I see two tapered elements on the left that converge toward a crossing point, then diverge on the right with curved sections. The footprint is 40 x 1.7 μm, which constrains the vertical spacing. The top and bottom waveguides appear to have pointed or tapered ends on the left side before they cross.
+
+This could be a waveguide crossing, directional coupler, or mode converter. Let me build it from individual segments instead, starting with the cross section definition and then constructing the path geometry piece by piece.
+
+The structure has two angled inputs on the left that intersect in the middle, then diverge on the right with curved sections. I'll create two separate paths: one from the top-left that curves downward, and another from the bottom-left that curves upward, using straight segments followed by Euler bends to achieve the required angles.
+
+After defining both paths, I extrude them with the cross-section profile and position them vertically offset from each other to create the crossing geometry. Looking more carefully at the image, the left side shows two roughly parallel waveguides that angle inward toward a crossing point in the middle, then separate again on the right with curved bends that potentially form a coupling or loop structure. _width, layer=layer)
+    
+    # Total footprint: 40 x 1.7 um
+    
+    # The shape looks like two waveguides that:
+    # 1. Start parallel on the left
+    # 2. Converge and cross in the middle
+    # 3. Diverge on the right and curve back to form a lens/eye shape
+    
+    # Top waveguide: starts top-left, angles down to cross, then curves up-right
+    # Bottom waveguide: starts bottom-left, angles up to cross, then curves down-right
+    
+    # Path 1: top-left to middle, then up and around on right
+    points1 = [
+        (0, 0.5),     # Start top left
+        (10, 0.3),    # Angle down slightly
+        (20, 0),
+
+The structure appears to be two waveguides that begin separated on the left, meet and intersect near the center, then spread apart again while curving outward on the right to create an eye or lens-like profile. I'm setting up the first path starting from the upper left, moving diagonally inward toward the crossing point, then sweeping upward and around the right side. side curves suggest the paths loop back, possibly forming a symmetric structure where both waveguides exit on the right after crossing in the middle. The overall geometry looks like it could be a directional coupler or a crossed waveguide configuration with curved sections on the right that separate the paths again.
+
+Given the 40×1.7 μm footprint and typical waveguide widths around 0.35 μm, I should construct this with two input waveguides positioned symmetrically, angled to cross near the center, then curving outward on the right side. The waveguide centers would sit roughly ±0.5 μm from the vertical centerline to fit within the height constraint.
+
+For the first path, I'd route from the top-left input down through the crossing region and back up toward the top-right output. The second path mirrors this, starting from the bottom-left, crossing through the center, and curving up to the bottom-right. Both paths would meet at the crossing point around x=20 μm, then separate as they approach the right edge.
+
+I'm applying smooth curves with a 3 μm radius to both paths, then extruding each with the cross-section to create the waveguides. But looking at this more carefully, the pattern creates more of a figure-8 or infinity loop rather than the actual crossing geometry shown. Let me examine the image again to verify the exact structure—specifically checking the left side where the two inputs appear to be arranged horizontally.
+
+The geometry seems to show two tapered waveguides entering from the left that are initially close together, converging through a middle coupling region, then diverging into curved arms on the right that eventually meet at a single point. This could represent either a directional coupler with mode conversion or a Y-branch splitter depending on the direction of propagation. I should construct this by starting with two parallel tapered inputs on the left, allowing them to converge toward the center, then curving them apart asymmetrically on the right side. ```python
+import gdsfactory as gf
+
+@gf.cell
+def crossing_y_branch():
+    c = gf.Component()
+    
+    layer = (1, 0)
+    wg_width = 0.3
+    
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+    
+    # Component dimensions: 40 x 1.7 um
+    # Two waveguides cross through the middle section, then curve toward each other on the right side
+    
+    # Top waveguide enters from the left, bends upward as it approaches the right
+    # Bottom waveguide enters from the left, bends downward toward the right
+    # They come closest together in the center, possibly forming a coupling region
+```
+
+Two parallel waveguides that separate via S-bends on the right side. The top path goes straight for 25 units then curves upward with an 8-unit radius bend at 20 degrees, while the bottom path mirrors this with a downward curve at -20 degrees. Both are extruded using the same cross-section and placed in the component with a 0.4 unit separation at the input. diagonal lines that seem to cross in the center. On the right side, the top band curves upward while the bottom curves downward, and there's an additional curved element connecting them—possibly a lens or ring segment for coupling.
+
+The structure appears to be two parallel waveguides on the left that taper toward each other through angled sections in the middle, then diverge again via curves on the right. The curved coupling element on the right likely facilitates interaction between the two channels.
+
+Now I'm attempting to construct this using gdsfactory. I'll start with two main bus waveguides—the top one following a smooth path from (0, 0.4) through (20, 0.2) to (30, 0.4) and ending at (40, 0.6), and the bottom one will mirror this behavior.
+
+Then I'll add a curved coupling element on the right side that connects the two buses, tracing from the top bus down to the bottom bus through a smooth arc centered around (35, 0). Actually, I should reconsider and try to match the exact shape more carefully.
+
+Looking at the image more closely, the left side has two parallel waveguide inputs that converge toward the center where they cross or nearly touch. On the right side, the geometry diverges again—the top waveguide extends mostly straight with a slight upward curve at the end, while the bottom waveguide dips down significantly before curving back up, creating an open scissor-like or chopstick-like configuration where the bottom arm forms a more pronounced loop.
+
+I'll model this using gdsfactory with a smooth path approach. The footprint should be roughly 40 × 1.7 micrometers. For the top waveguide, I'm starting at (0, 0.35) and routing it with gentle curves that angle slightly downward initially, then curve back up toward the right end. The bottom waveguide will follow a more dramatic path, dipping down and then returning upward to create that characteristic hook shape. _section=xs)
+    
+    return c
+
+Looking at the image more carefully, I can see two separate waveguides on the left with tapered ends that cross each other in the middle, then diverge on the right side where one curves upward and the other forms a U-shape curving back up. This is more of a crossing with a fork pattern rather than the intertwined structure I was attempting. Let me rebuild this using a proper crossing geometry with the curved fork on the right side.
+
+```python
+import gdsfactory as gf
+
+@gf.cell  
+def crossing_fork():
+    c = gf.Component()
+    
+    layer = (1, 0)
+    wg_width = 0.3
+    total_length = 40.0
+    
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+    
+    # First waveguide path: top-left input crossing through center and curving up-right
+    p1 = gf.path.smooth(
+        points=[
+            (0, 0.4),       # Top left input
+            (15, 0.2),      # Transition toward crossing
+            (20, 0.0),      # Center crossing point
+            (28, 0.25),     # Curve upward after crossing
+            (35, 0.4),      # Continue upward trajectory
+            (40, 0.
+
+5)       # Top right output
+        ],
+        radius=3
+    )
+    
+    # Second waveguide path: bottom-left input crossing through center with U-shaped return
+    p2 = gf.path.smooth(
+        points=[
+            (0, -0.4),      # Bottom left input
+            (15, -0.2),     # Transition toward crossing
+            (20, 0.0),      # Center crossing point (shared with p1)
+            (28, -0.25),    # Curve downward after crossing
+            (35, -0.5),     # Continue downward
+            (38, -0.3),     # Begin U-shaped curve
+            (40, 0.2)       # Curve back upward at output
+        ],
+        radius=3
+    )
+    
+    # Create waveguide components from paths
+    wg1 = c << gf.path.extrude(p1, cross_section=xs)
+    wg2 = c << gf.path.extrude(p2, cross_section=xs)
+    
+    return c
+```
+
+The approach needs refinement. I'll focus on the core structural elements: one waveguide running horizontally across the top with gentle curvature, and another entering from the bottom-left that crosses through the center before curving back up on the right side. The 40 × 1.7 footprint constrains vertical movement, so the design should emphasize the crossing interaction and smooth transitions.
+
+Starting with basic component setup and layer definitions, then defining two distinct paths. The first path travels roughly left-to-right along the top with a subtle dip using Euler bends for smooth curvature. The second path enters from the lower left, angles upward through the crossing region, then curves back down and up again on the right side to create the characteristic crossing waveguide pattern. .euler(radius=10, angle=40)   # Curve back up strongly
+    
+    wg2 = c << gf.path.extrude(p2, cross_section=xs)
+    wg2.move((0, -0.4))
+    
+    return c
+```
+
+I'm overcomplicating this. A simpler approach using smooth path functions would handle the geometry more elegantly. I'll define the basic structure: two waveguides with a 0.35 µm width on layer (1, 0), where they start offset from each other, interact through crossing paths, and then separate again.
+
+The first waveguide traces a gentle arc from the top-left, dips inward at the midpoint, then rises back to the top-right. The second waveguide begins at the bottom-left, rises to intersect the first path, then curves downward before rising again on the right side with a tighter radius to create the divergence.
+
+Both paths are then extruded using the cross-section to form the actual waveguide structures, which are added to the component before returning it. The implementation uses gdsfactory's path and extrusion functions to construct the crossing geometry with the specified dimensions and layer assignment. the bottom waveguide mirrors this approach but with additional curvature—it starts at the opposite corner, angles toward the crossing point, then dips down before curving back up to end below the top path. I define the bottom points with this trajectory, apply the same smoothing technique with a slightly tighter radius, and extrude it using the cross-section. Finally, I return the component and write it to a GDS file.
+
+Looking at the geometry more carefully, I notice the device has a distinct structure: two waveguides enter from the left, cross each other in the middle, then diverge on the right side with one curving upward and one curving downward—essentially forming a tuning fork or Y-branch configuration. The crossing itself requires precise path planning so each waveguide follows a smooth trajectory through the intersection point without sharp angles. Let me refactor this with clearer control points that explicitly map out the crossing behavior and the diverging paths on the output side. -middle, then curves down and loops back up. I'm defining the second waveguide's path with points that mirror the first one's crossing at (18, 0.0), then diverge downward before curving back up toward the end. After setting up both point arrays, I'll create smooth paths using a 4 micrometer radius for the first waveguide and 3 micrometers for the second, then extrude each path with the cross-section to generate the actual waveguide components.
+
+Finally, I need to close out the extrusion for the second waveguide and return the completed cell, then instantiate the device and write it to a GDS file.

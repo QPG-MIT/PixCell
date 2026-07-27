@@ -1,0 +1,71 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def sinusoidal_crossover(
+    length: float = 60.0,
+    amplitude: float = 10.0,
+    waveguide_width: float = 2.0,
+    npoints: int = 201,
+) -> gf.Component:
+    """
+    Creates a smooth sinusoidal waveguide crossover.
+
+    This component generates two waveguides that cross in the center. The paths
+    are defined by cosine functions to ensure that the input and output ports
+    have a zero-degree angle (are perfectly horizontal), matching the target
+    image's smooth curves.
+
+    Args:
+        length: The horizontal length of the crossover region.
+        amplitude: The half-amplitude of the sinusoidal curve. The total
+                   vertical separation of the ports will be 2 * amplitude.
+        waveguide_width: The width of the waveguides.
+        npoints: The number of points used to approximate the curve. A higher
+                 number results in a smoother curve.
+    """
+    c = gf.Component("sinusoidal_crossover_device")
+
+    # --- 1. Define the Waveguide Cross-Section ---
+    xs = gf.cross_section.cross_section(width=waveguide_width)
+
+    # --- 2. Generate Points for the First Waveguide Path ---
+    # This path goes from the top-left to the bottom-right port.
+    # We use a cosine function: y(x) = amplitude * cos(pi * x / length)
+    # This ensures the slope is zero at x=0 and x=length.
+    x_coords = np.linspace(0, length, npoints)
+    y_coords_top_to_bottom = amplitude * np.cos(np.pi * x_coords / length)
+    points1 = np.array([x_coords, y_coords_top_to_bottom]).T
+
+    # --- 3. Create the First Waveguide from the Path ---
+    path1 = gf.Path(points1)
+    waveguide1 = c << gf.path.extrude(path1, cross_section=xs)
+
+    # --- 4. Create the Second Waveguide (Bottom-Left to Top-Right) ---
+    # The path for the second waveguide is the mirror image of the first
+    # across the x-axis.
+    points2 = np.array([x_coords, -y_coords_top_to_bottom]).T
+    path2 = gf.Path(points2)
+    waveguide2 = c << gf.path.extrude(path2, cross_section=xs)
+
+    # --- 5. Add Ports to the Top-Level Component ---
+    # The port naming convention is o1/o2 for left ports, o3/o4 for right ports.
+    c.add_port("o1", port=waveguide1.ports["o1"])  # Top-left
+    c.add_port("o2", port=waveguide2.ports["o1"])  # Bottom-left
+    c.add_port("o3", port=waveguide2.ports["o2"])  # Top-right
+    c.add_port("o4", port=waveguide1.ports["o2"])  # Bottom-right
+
+    return c
+
+
+# --- Main execution block for testing ---
+if __name__ == "__main__":
+    # Create an instance of the component with parameters chosen to
+    # visually match the aspect ratio of the target image.
+    device = sinusoidal_crossover()
+
+    # Write the component to a GDSII file.
+    device.write_gds("sinusoidal_crossover.gds")
+
+    # Optional: Show the component in the KLayout viewer for verification.
+    device.show()

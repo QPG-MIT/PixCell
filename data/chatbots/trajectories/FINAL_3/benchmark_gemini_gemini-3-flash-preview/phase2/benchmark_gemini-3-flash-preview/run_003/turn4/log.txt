@@ -1,0 +1,103 @@
+Turn 4 Response:
+
+Looking at the comparison between the target image and your current raster output, there are a few key adjustments needed to improve the fidelity:
+
+1.  **Smoothness of Transitions**: The bends in the original image are much more gradual and "lazy" compared to the current code. Increasing the horizontal length (`dx_bend`) of the S-bends while reducing the input/output straight lengths will make the transitions much smoother.
+2.  **Proportions**: The central coupling region in the target image is relatively long. We'll adjust the segment lengths to favor a longer central section and smoother bends, while keeping the total length at exactly 120µm.
+3.  **Visual Weight**: The current waveguides look a bit thick. Reducing the width slightly (e.g., to 0.45µm) and increasing the gap slightly (to 0.2µm) will better match the "airy" feel of the original drawing.
+4.  **Height Calibration**: We will recalculate the vertical offset (`dy`) precisely to ensure the total footprint remains exactly 4µm tall.
+
+Here is the updated code:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def coupler_refined():
+    """
+    Refined directional coupler to match the visual style and footprint.
+    Total length: 120um, Total height: 4um.
+    
+    Adjustments:
+    - Increased S-bend length for smoother, more 'fluid' transitions.
+    - Adjusted gap and width for better visual balance.
+    - Precise dy calculation for 4.0um total footprint height.
+    """
+    c = gf.Component("refined_directional_coupler")
+    
+    # 1. Design Parameters
+    width = 0.45     # Slightly thinner for visual match
+    gap = 0.2        # Slightly wider gap
+    
+    # Length budget: 120um total
+    length_end = 10  # Shorter ends to allow for smoother bends
+    dx_bend = 25     # Longer bends for smoothness
+    length_mid = 50  # 120 - (2*10) - (2*25) = 50
+    
+    # 2. Precise Vertical Calculation
+    # Total Height (H) = gap + 2*width + 2*dy
+    # 4.0 = 0.2 + 2*0.45 + 2*dy
+    # 4.0 = 0.2 + 0.9 + 2*dy
+    # 2.9 = 2*dy => dy = 1.45
+    dy = 1.45
+    
+    # Define cross-section
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    # 3. Create Components
+    # We use a longer dx_bend to make the sine-wave transition appear flatter
+    s_bend_up = gf.components.bend_s(size=(dx_bend, dy), cross_section=xs)
+    s_bend_down = gf.components.bend_s(size=(dx_bend, -dy), cross_section=xs)
+    straight_mid = gf.components.straight(length=length_mid, cross_section=xs)
+    straight_end = gf.components.straight(length=length_end, cross_section=xs)
+    
+    # 4. Assemble Central Region
+    bot_mid = c << straight_mid
+    top_mid = c << straight_mid
+    # Place relative to center line (y=0)
+    # The gap is the space between the inner edges of the waveguides
+    offset_y = (gap + width) / 2
+    bot_mid.movey(-offset_y)
+    top_mid.movey(offset_y)
+    
+    # 5. Assemble Left Side (Input)
+    bot_bend_l = c << s_bend_up
+    bot_bend_l.connect("o2", bot_mid.ports["o1"])
+    bot_in = c << straight_end
+    bot_in.connect("o2", bot_bend_l.ports["o1"])
+    
+    top_bend_l = c << s_bend_down
+    top_bend_l.connect("o2", top_mid.ports["o1"])
+    top_in = c << straight_end
+    top_in.connect("o2", top_bend_l.ports["o1"])
+    
+    # 6. Assemble Right Side (Output)
+    bot_bend_r = c << s_bend_down
+    bot_bend_r.connect("o1", bot_mid.ports["o2"])
+    bot_out = c << straight_end
+    bot_out.connect("o1", bot_bend_r.ports["o2"])
+    
+    top_bend_r = c << s_bend_up
+    top_bend_r.connect("o1", top_mid.ports["o2"])
+    top_out = c << straight_end
+    top_out.connect("o1", top_bend_r.ports["o2"])
+    
+    # 7. Port definition and Centering
+    c.add_port("o1", port=bot_in.ports["o1"])
+    c.add_port("o2", port=top_in.ports["o1"])
+    c.add_port("o3", port=top_out.ports["o2"])
+    c.add_port("o4", port=bot_out.ports["o2"])
+    
+    c.move(c.center, (0, 0))
+    
+    return c
+
+if __name__ == "__main__":
+    component = coupler_refined()
+    
+    # Verification of constraints
+    print(f"Footprint: {component.dxsize:.2f}um x {component.dysize:.2f}um")
+    
+    component.write_gds("directional_coupler_refined.gds")
+    component.show()
+```

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.497198",
+      "api_duration_seconds": 69.48743295669556,
+      "usage": {
+        "input_tokens": 2344,
+        "output_tokens": 3304,
+        "total_tokens": 18201
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.cross_section' has no attribute 'get_cross_section'. Did you mean: 'get_cross_sections'?",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:21.304494",
+      "api_duration_seconds": 13.899119853973389,
+      "usage": {
+        "input_tokens": 5696,
+        "output_tokens": 2109,
+        "total_tokens": 8861
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:42.053673",
+      "api_duration_seconds": 11.963844060897827,
+      "usage": {
+        "input_tokens": 8269,
+        "output_tokens": 1972,
+        "total_tokens": 11051
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'function' object has no attribute 'width'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16309,
+    "output_tokens": 7385,
+    "total_tokens": 38113
+  }
+}

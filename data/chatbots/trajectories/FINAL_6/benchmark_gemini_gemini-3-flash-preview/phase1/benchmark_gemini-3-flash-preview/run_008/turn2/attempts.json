@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:26.674685",
+      "api_duration_seconds": 106.107754945755,
+      "usage": {
+        "input_tokens": 6498,
+        "output_tokens": 1090,
+        "total_tokens": 20239
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'geometry'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:14.139051",
+      "api_duration_seconds": 26.399738311767578,
+      "usage": {
+        "input_tokens": 7617,
+        "output_tokens": 1000,
+        "total_tokens": 11006
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ModuleNotFoundError: No module named 'gdsfactory.geometry'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:41.770307",
+      "api_duration_seconds": 53.00315594673157,
+      "usage": {
+        "input_tokens": 8644,
+        "output_tokens": 1213,
+        "total_tokens": 16784
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 22759,
+    "output_tokens": 3303,
+    "total_tokens": 48029
+  }
+}

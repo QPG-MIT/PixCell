@@ -1,0 +1,74 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def splitter():
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=1, layer=(1, 0), radius=5, snap_to_grid=True)  # Added radius and snap_to_grid
+    xs_wide = gf.cross_section.cross_section(width=2, layer=(1, 0), radius=5, snap_to_grid=True)  # Added radius and snap_to_grid
+
+    # Input waveguide
+    input_wg = c << gf.components.straight(length=10, cross_section=xs)
+    c.add_port("o1", port=input_wg.ports["o1"])
+
+    # Taper to wider section
+    taper1 = c << gf.components.taper(length=10, width1=1, width2=2)
+    taper1.connect("o1", input_wg.ports["o2"])
+
+    # Expanded section
+    expanded_wg = c << gf.components.straight(length=10, cross_section=xs_wide)
+    expanded_wg.connect("o1", taper1.ports["o2"])
+
+    # Y splitter
+    bend1 = c << gf.components.bend_euler(radius=5, angle=45, cross_section=xs_wide)
+    bend1.connect("o1", expanded_wg.ports["o2"])
+    bend1.move((0, 0.7))  # Adjust the vertical position
+
+    bend2 = c << gf.components.bend_euler(radius=5, angle=-45, cross_section=xs_wide)
+    bend2.connect("o1", expanded_wg.ports["o2"])
+    bend2.move((0, -0.7))  # Adjust the vertical position
+
+    # Output waveguides
+    output_wg1 = c << gf.components.straight(length=10, cross_section=xs_wide)
+    output_wg1.connect("o1", bend1.ports["o2"])
+
+    output_wg2 = c << gf.components.straight(length=10, cross_section=xs_wide)
+    output_wg2.connect("o1", bend2.ports["o2"])
+
+    # Taper to smaller output waveguides
+    taper2 = c << gf.components.taper(length=10, width1=2, width2=1)
+    taper2.connect("o1", output_wg1.ports["o2"])
+
+    taper3 = c << gf.components.taper(length=10, width1=2, width2=1)
+    taper3.connect("o1", output_wg2.ports["o2"])
+
+    # Output waveguides
+    output_wg3 = c << gf.components.straight(length=10, cross_section=xs)
+    output_wg3.connect("o1", taper2.ports["o2"])
+    c.add_port("o2", port=output_wg3.ports["o2"])
+
+    output_wg4 = c << gf.components.straight(length=10, cross_section=xs)
+    output_wg4.connect("o1", taper3.ports["o2"])
+    c.add_port("o3", port=output_wg4.ports["o2"])
+
+    return c
+
+# Create and save
+device = splitter()
+device.write_gds("splitter.gds")
+```
+
+**Reasoning for the fix:**
+
+The error "ValueError: Found off-grid instances, which is not allowed in most foundries" means that some component instances are not aligned to the manufacturing grid (typically 1nm). This happens due to floating-point inaccuracies when calculating positions during connections and moves.  To fix this, we need to ensure that all components are placed on the grid.
+
+The fix is to add `snap_to_grid=True` when creating the `cross_section` objects:
+
+```python
+xs = gf.cross_section.cross_section(width=1, layer=(1, 0), radius=5, snap_to_grid=True)
+xs_wide = gf.cross_section.cross_section(width=2, layer=(1, 0), radius=5, snap_to_grid=True)
+```
+
+By setting `snap_to_grid=True`, GDSFactory will automatically round the coordinates of the component instances to the nearest grid point during placement.  This guarantees that all components are placed on the grid, preventing the "off-grid instances" error.

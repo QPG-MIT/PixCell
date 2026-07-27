@@ -1,0 +1,119 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+from gdsfactory.geometry.boolean import boolean
+
+@gf.cell
+def create_device():
+    c = gf.Component("my_device")
+
+    # Define cross section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    # 1. Outer Oval (using ellipse)
+    outer_ellipse = c << gf.components.ellipse(radii=(15, 7.5), layer=(1, 0))
+    outer_ellipse.move((0,0))
+
+    # 2. Inner structure
+    straight_length = 3
+    straight_wg_top = c << gf.components.straight(length=straight_length, cross_section=xs)
+    straight_wg_bottom = c << gf.components.straight(length=straight_length, cross_section=xs)
+
+    # position relative to center
+    straight_wg_top.movex(-straight_length/2)
+    straight_wg_bottom.movex(-straight_length/2)
+
+    straight_wg_top.movey(2)
+    straight_wg_bottom.movey(-2)
+
+    # angled parts
+    angle_length = 2
+    angle_width = 0.5
+    angle_points_top = [(0,0), (angle_length, angle_width), (angle_length, 0)]  # Removed redundant point
+    angle_points_bottom = [(0,0), (angle_length, -angle_width), (angle_length, 0)]  # Removed redundant point
+
+    # Create Polygon components
+    angle_top = gf.Component("angle_top")
+    angle_top.add_polygon(angle_points_top, layer=(1, 0))
+    angle_top_ref = c << angle_top
+
+    angle_bottom = gf.Component("angle_bottom")
+    angle_bottom.add_polygon(angle_points_bottom, layer=(1, 0))
+    angle_bottom_ref = c << angle_bottom
+    
+
+    angle_top_ref.move((straight_length/2,2))
+    angle_bottom_ref.move((straight_length/2,-2))
+
+    # Rectangle elements
+    rect_size = (2,2)
+    rect_left = c << gf.components.rectangle(size=rect_size, layer=(1, 0))
+    rect_right = c << gf.components.rectangle(size=rect_size, layer=(1, 0))
+
+    rect_left.move((straight_length/2 + angle_length, 2))
+    rect_right.move((straight_length/2 + angle_length + 2.5, 2))
+
+    rect_left_bot = c << gf.components.rectangle(size=rect_size, layer=(1, 0))
+    rect_right_bot = c << gf.components.rectangle(size=rect_size, layer=(1, 0))
+
+    rect_left_bot.move((straight_length/2 + angle_length, -2))
+    rect_right_bot.move((straight_length/2 + angle_length + 2.5, -2))
+
+    # connect from right side
+    straight_length_right = 3
+    straight_wg_top_right = c << gf.components.straight(length=straight_length_right, cross_section=xs)
+    straight_wg_bottom_right = c << gf.components.straight(length=straight_length_right, cross_section=xs)
+
+    # position relative to center
+    straight_wg_top_right.movex(straight_length/2)
+    straight_wg_bottom_right.movex(straight_length/2)
+
+    straight_wg_top_right.movey(2)
+    straight_wg_bottom_right.movey(-2)
+
+    straight_wg_top_right.movex(straight_wg_top_right.x + straight_length + angle_length + rect_size[0] + 0.5)
+    straight_wg_bottom_right.movex(straight_wg_bottom_right.x + straight_length + angle_length + rect_size[0] + 0.5)
+
+    angle_top_right_component = gf.Component("angle_top_right")
+    angle_top_right_component.add_polygon(angle_points_top, layer=(1, 0))
+    angle_top_right = c << angle_top_right_component
+
+    angle_bottom_right_component = gf.Component("angle_bottom_right")
+    angle_bottom_right_component.add_polygon(angle_points_bottom, layer=(1, 0))
+    angle_bottom_right = c << angle_bottom_right_component
+
+    angle_top_right.move(((-straight_length/2 - angle_length),2))
+    angle_bottom_right.move(((-straight_length/2 - angle_length),-2))
+
+    angle_top_right.movex(outer_ellipse.x + 14.5)
+    angle_bottom_right.movex(outer_ellipse.x + 14.5)
+
+    # Remove the polygons that are touching
+    inner_ellipse = c << gf.components.ellipse(radii=(12.5, 5.5), layer=(1,0))
+    inner_ellipse.move((0,0))
+
+    # Boolean subtraction to create the inner shape
+    #final_device = boolean(c, inner_ellipse, operation="not", layer=(1, 0))
+
+    return c
+
+device = create_device()
+device.show()
+# gf.config.set_notebook_mode(connected=True)
+# device
+```
+
+**Reasoning for the fix:**
+
+The error `AttributeError: module 'gdsfactory.components' has no attribute 'polygon'` indicates that the `gf.components.polygon` function does not exist within the `gdsfactory.components` module. As identified in the previous correction, the correct approach to add arbitrary polygons is to use the `add_polygon` method of a `Component` instance.
+
+Therefore, the fix involves the following steps:
+
+1.  **Create a Component for each polygon:** Instead of attempting to call a non-existent `gf.components.polygon` function, we create a new `gf.Component` instance (e.g., `angle_top`) specifically to hold the polygon.
+
+2.  **Add the polygon to the Component:** The `add_polygon` method is then called on this component to add the polygon defined by the `angle_points_top` list.
+
+3.  **Add the Component to the main cell:** Finally, an instance (reference) of the newly created component (e.g., `angle_top`) is added to the main `gf.Component` called `c` using the `c << angle_top` operation. This ensures that the polygon becomes part of the final device layout.
+
+This process is repeated for each of the angled polygons, addressing the error and aligning with the correct GDSFactory usage for arbitrary polygon creation.

@@ -1,0 +1,11 @@
+The error suggests that one of the boolean operations is returning None. This often happens when the boolean operation fails or when the components being used in the boolean operation have issues. Let me rewrite the script to be more careful with how I construct the geometry.
+
+The issue is likely with how I'm creating the stadium shapes and using them in boolean operations. Let me use a different approach - I'll use gf.Component() more carefully and ensure all the geometry is properly flattened before boolean operations.
+
+Let me rewrite this more carefully:
+
+1. Create the stadium shape using a path approach or by using raw polygon data
+2. Make sure boolean operations receive proper components
+3. Flatten components before boolean operations where needed
+
+Let me try a cleaner approach using polygons directly or using offset operations.

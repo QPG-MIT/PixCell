@@ -1,0 +1,65 @@
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler_continuous() -> gf.Component:
+    """
+    Creates a symmetric directional coupler matching the 18x3 footprint.
+    Uses back-to-back S-bends to eliminate the flat middle section, 
+    matching the continuous curve of the reference image.
+    """
+    c = gf.Component("symmetric_coupler")
+
+    # --- Design Parameters ---
+    total_length = 18.0
+    width = 1.0
+    gap = 0.15  # Tighter gap to match the "kissing" point in the image
+    
+    # Calculate dimensions
+    # With 0 coupling length, the two S-bends take up exactly half the length each
+    dx = total_length / 2.0  
+    
+    # Centers to fit perfectly within +/- 1.5 bounds (Total height = 3.0)
+    y_port = 1.0                             
+    y_center = (gap / 2.0) + (width / 2.0)   
+    
+    # Calculate the vertical shift for the first half of the curves
+    dy_top = y_center - y_port               
+    dy_bot = -y_center - (-y_port)           
+
+    # --- Create Primitives ---
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+
+    # Top arm segments (goes down, then immediately back up)
+    bend_down_top = gf.components.bend_s(size=(dx, dy_top), cross_section=xs)  
+    bend_up_top = gf.components.bend_s(size=(dx, -dy_top), cross_section=xs)    
+
+    # Bottom arm segments (goes up, then immediately back down)
+    bend_up_bot = gf.components.bend_s(size=(dx, dy_bot), cross_section=xs)    
+    bend_down_bot = gf.components.bend_s(size=(dx, -dy_bot), cross_section=xs)  
+
+    # --- Top Arm Assembly ---
+    t1 = c << bend_down_top
+    t2 = c << bend_up_top
+
+    t1.movey(y_port)
+    t2.connect("o1", t1.ports["o2"])
+
+    # --- Bottom Arm Assembly ---
+    b1 = c << bend_up_bot
+    b2 = c << bend_down_bot
+
+    b1.movey(-y_port)
+    b2.connect("o1", b1.ports["o2"])
+
+    # --- Expose External Ports ---
+    c.add_port("o1", port=t1.ports["o1"])   # Top-Left
+    c.add_port("o2", port=b1.ports["o1"])   # Bottom-Left
+    c.add_port("o3", port=t2.ports["o2"])   # Top-Right
+    c.add_port("o4", port=b2.ports["o2"])   # Bottom-Right
+
+    return c
+
+if __name__ == "__main__":
+    # Generate and explicitly save the layout
+    device = symmetric_coupler_continuous()
+    device.write_gds("symmetric_coupler.gds")

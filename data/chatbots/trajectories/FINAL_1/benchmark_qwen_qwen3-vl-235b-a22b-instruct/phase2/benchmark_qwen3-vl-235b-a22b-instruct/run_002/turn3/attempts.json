@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:28:41.562551",
+      "api_duration_seconds": 26.731858015060425,
+      "usage": {
+        "input_tokens": 4461,
+        "output_tokens": 810,
+        "total_tokens": 5271
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports straight_gdsfactorypcomponentspwaveguidespstraight_L5_N_8775436c_0_0[\"o1\"] and Port \"o2\" (\"1700\"/\"850\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:29:09.622905",
+      "api_duration_seconds": 24.986265182495117,
+      "usage": {
+        "input_tokens": 5351,
+        "output_tokens": 761,
+        "total_tokens": 6112
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 8.0 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:29:35.943744",
+      "api_duration_seconds": 30.387988805770874,
+      "usage": {
+        "input_tokens": 6158,
+        "output_tokens": 883,
+        "total_tokens": 7041
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15970,
+    "output_tokens": 2454,
+    "total_tokens": 18424
+  }
+}

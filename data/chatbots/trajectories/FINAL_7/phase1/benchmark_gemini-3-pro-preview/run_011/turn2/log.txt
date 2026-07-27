@@ -1,0 +1,191 @@
+Turn 2 Response:
+
+The error `AttributeError: 'super' object has no attribute '__getattr__'` suggests an internal issue with how the GDSFactory/KFactory wrapper is handling object attributes, likely triggered by passing complex objects (like Ports) directly into transformation functions or due to interactions within the routing function.
+
+To resolve this, I have rewritten the script to:
+1.  **Use explicit coordinate arithmetic** for all moves (`ref.move((dx, dy))`). This avoids passing Port objects to the `move` method, bypassing the internal attribute lookup failure.
+2.  **Explicitly rotate** the right-hand MMI instead of mirroring, which simplifies port orientation logic.
+3.  Ensure robust port retrieval for the routing steps.
+
+Here is the corrected and robust script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_chain_link_mzi():
+    """
+    Recreation of the 'Chain Link' MZI device.
+    Footprint constraint: 3um x 5.5um
+    
+    Fixes:
+    - Replaced 'move(origin=port)' with manual coordinate arithmetic to avoid AttributeError.
+    - Used rotation instead of mirroring for the right hub to ensure predictable port mapping.
+    - Preserved visual style: Wide MMI hubs and boxy pads.
+    """
+    c = gf.Component("chain_link_mzi")
+
+    # =======================================================================
+    # 1. Parameter Definition
+    # =======================================================================
+    # Dimensions
+    total_width = 5.5
+    total_height = 3.0
+    
+    # Ring Geometry
+    ring_width = 0.8
+    r_outer = total_height / 2          # 1.5
+    r_center = r_outer - ring_width/2   # 1.1
+    l_straight = total_width - 2*r_outer # 2.5
+    
+    # Inner Arm Geometry
+    arm_y_offset = 0.45
+    arm_width = 0.25
+    
+    # Pad Block Geometry (Heaters)
+    pad_width = 0.7
+    pad_len_straight = 0.55
+    pad_len_taper = 0.05    # Short taper for boxy look
+    gap_len = 0.25          # Gap between pads
+    
+    # MMI Hub Geometry
+    mmi_width_body = 0.9
+    mmi_len_body = 0.35
+    mmi_len_taper = 0.15
+    mmi_gap_out = 0.25
+    
+    # Layers & Cross Sections
+    lay = (1, 0)
+    # radius_min=0.1 allows tight bends
+    xs_ring = gf.cross_section.cross_section(width=ring_width, layer=lay, radius_min=0.1)
+    xs_arm = gf.cross_section.cross_section(width=arm_width, layer=lay, radius_min=0.1)
+    xs_pad = gf.cross_section.cross_section(width=pad_width, layer=lay, radius_min=0.1)
+
+    # =======================================================================
+    # 2. Build Outer Racetrack Ring
+    # =======================================================================
+    path = gf.Path()
+    path.append(gf.path.straight(length=l_straight))
+    path.append(gf.path.arc(radius=r_center, angle=-180)) 
+    path.append(gf.path.straight(length=l_straight))
+    path.append(gf.path.arc(radius=r_center, angle=-180)) 
+    
+    ring = c << gf.path.extrude(path, cross_section=xs_ring)
+    # Center the ring
+    ring.move((-l_straight/2, r_center))
+
+    # =======================================================================
+    # 3. Build Inner Arms (Daisy Chain)
+    # =======================================================================
+    def create_arm_row():
+        cmp = gf.Component()
+        
+        # --- Pad Block 1 ---
+        t1 = cmp << gf.components.taper(length=pad_len_taper, width1=arm_width, width2=pad_width, layer=lay)
+        p1 = cmp << gf.components.straight(length=pad_len_straight, cross_section=xs_pad)
+        t2 = cmp << gf.components.taper(length=pad_len_taper, width1=pad_width, width2=arm_width, layer=lay)
+        
+        # --- Center Gap ---
+        g = cmp << gf.components.straight(length=gap_len, cross_section=xs_arm)
+        
+        # --- Pad Block 2 ---
+        t3 = cmp << gf.components.taper(length=pad_len_taper, width1=arm_width, width2=pad_width, layer=lay)
+        p2 = cmp << gf.components.straight(length=pad_len_straight, cross_section=xs_pad)
+        t4 = cmp << gf.components.taper(length=pad_len_taper, width1=pad_width, width2=arm_width, layer=lay)
+        
+        # Connections
+        p1.connect("o1", t1.ports["o2"])
+        t2.connect("o1", p1.ports["o2"])
+        g.connect("o1", t2.ports["o2"])
+        t3.connect("o1", g.ports["o2"])
+        p2.connect("o1", t3.ports["o2"])
+        t4.connect("o1", p2.ports["o2"])
+        
+        cmp.add_port("o1", port=t1.ports["o1"])
+        cmp.add_port("o2", port=t4.ports["o2"])
+        return cmp
+
+    arm_top = c << create_arm_row()
+    arm_bot = c << create_arm_row()
+    
+    # Position Arms: Center X, Offset Y
+    # Arm length calculation isn't needed if we center by bounding box, 
+    # but exact math is cleaner.
+    arm_x_offset = -arm_top.xsize / 2
+    arm_top.move((arm_x_offset, arm_y_offset))
+    arm_bot.move((arm_x_offset, -arm_y_offset))
+
+    # =======================================================================
+    # 4. Create and Place MMI Hubs
+    # =======================================================================
+    mmi = gf.components.mmi1x2(
+        width=arm_width,
+        width_mmi=mmi_width_body,
+        length_mmi=mmi_len_body,
+        width_taper=arm_width,
+        length_taper=mmi_len_taper,
+        gap_mmi=mmi_gap_out,
+        cross_section=xs_arm
+    )
+
+    # --- Left Hub ---
+    hub_l = c << mmi
+    # Target X: Inner wall is roughly -1.95. Place at -2.0.
+    x_target_l = -2.0
+    
+    # Manual Move: Calculate delta
+    curr_x, curr_y = hub_l.ports["o1"].center
+    dx = x_target_l - curr_x
+    dy = 0 - curr_y
+    hub_l.move((dx, dy))
+
+    # --- Right Hub ---
+    hub_r = c << mmi
+    # Rotate 180 so o1 faces East (default is West)
+    hub_r.rotate(180)
+    
+    # Target X: Positive 2.0
+    x_target_r = 2.0
+    
+    # Manual Move
+    curr_x_r, curr_y_r = hub_r.ports["o1"].center
+    dx_r = x_target_r - curr_x_r
+    dy_r = 0 - curr_y_r
+    hub_r.move((dx_r, dy_r))
+
+    # =======================================================================
+    # 5. Routing
+    # =======================================================================
+    # Note: For MMI1x2, ports are o1(in), o2(top_out), o3(bot_out) 
+    # BUT GDSFactory port numbering can depend on specific component version.
+    # We will sort output ports by Y coordinate to be safe.
+    
+    def get_sorted_outputs(ref, input_name="o1"):
+        ports = ref.get_ports_list()
+        outputs = [p for p in ports if p.name != input_name]
+        # Sort by Y: Bottom first, Top second
+        outputs.sort(key=lambda p: p.center[1])
+        return outputs # [bot, top]
+
+    # Left Hub Outputs
+    l_outs = get_sorted_outputs(hub_l) # [bot, top]
+    # Route Left Hub Top -> Top Arm Input
+    gf.routing.route_single(c, port1=l_outs[1], port2=arm_top.ports["o1"], cross_section=xs_arm)
+    # Route Left Hub Bot -> Bot Arm Input
+    gf.routing.route_single(c, port1=l_outs[0], port2=arm_bot.ports["o1"], cross_section=xs_arm)
+    
+    # Right Hub Outputs (Rotated 180, so top/bot logic flips relative to component local coords)
+    # But get_sorted_outputs sorts by absolute world Y, so it's safe.
+    r_outs = get_sorted_outputs(hub_r) # [bot, top] in world coordinates
+    
+    # Route Top Arm Output -> Right Hub Top
+    gf.routing.route_single(c, port1=arm_top.ports["o2"], port2=r_outs[1], cross_section=xs_arm)
+    # Route Bot Arm Output -> Right Hub Bot
+    gf.routing.route_single(c, port1=arm_bot.ports["o2"], port2=r_outs[0], cross_section=xs_arm)
+
+    return c
+
+if __name__ == "__main__":
+    device = device_chain_link_mzi()
+    device.write_gds("chain_link_mzi.gds")
+```

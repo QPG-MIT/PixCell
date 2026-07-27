@@ -1,0 +1,150 @@
+Turn 1 Response:
+
+To fix the `AttributeError: 'TKCell' object has no attribute 'add_array'` and the previous `width=0` validation error, I have updated the script.
+
+Changes made:
+1.  **Replaced `add_array` with a loop**: The `add_array` method appears to be missing or deprecated in the specific backend configuration (KFactory) you are using. I have replaced it with a robust `for` loop that places references manually. This achieves the same geometry and is compatible with all backends.
+2.  **Maintained Non-Zero Widths**: Kept the `0.01` µm tip width to satisfy Pydantic validation.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_footprint_18x0p7():
+    """
+    Generates a device matching the visual topology: a central bus waveguide
+    coupled to two grating-assisted contra-directional loop reflectors.
+    
+    Fixes:
+    1. Uses 0.01um tip width to pass Pydantic validation.
+    2. Uses manual reference loop instead of add_array to avoid AttributeError on TKCell.
+    """
+    c = gf.Component()
+
+    # Dimensions
+    L_total = 18.24
+    wg_width = 0.08
+    gap = 0.05
+    bend_radius = 0.15
+    tip_width = 0.01  # NON-ZERO width
+    
+    # Derived parameters
+    y_grating = (wg_width / 2) + gap + (wg_width / 2)
+    
+    # Grating parameters
+    grating_period = 0.2
+    grating_fill = 0.1
+    grating_len = 8.0
+    
+    # Layer definition
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+    
+    # =======================================================================
+    # 1. Central Bus
+    # =======================================================================
+    taper_len = 1.5
+    straight_len = L_total - 2 * taper_len
+    
+    bus = c << gf.components.straight(length=straight_len, cross_section=xs)
+    bus.center = (0, 0)
+    
+    # Add tapers to the bus ends
+    bus_taper_l = c << gf.components.taper(length=taper_len, width1=tip_width, width2=wg_width, layer=layer)
+    bus_taper_l.connect("o2", bus.ports["o1"])
+    
+    bus_taper_r = c << gf.components.taper(length=taper_len, width1=wg_width, width2=tip_width, layer=layer)
+    bus_taper_r.connect("o1", bus.ports["o2"])
+    
+    # =======================================================================
+    # 2. Grating Component Definition
+    # =======================================================================
+    grating_c = gf.Component()
+    n_periods = int(grating_len / grating_period)
+    
+    rect = gf.components.rectangle(size=(grating_fill, wg_width), layer=layer, centered=True)
+    
+    # Manual array creation to avoid 'TKCell has no attribute add_array'
+    array_width = n_periods * grating_period
+    start_x = -array_width/2 + grating_period/2
+    
+    for i in range(n_periods):
+        ref = grating_c << rect
+        ref.move((start_x + i * grating_period, 0))
+    
+    # Add ports to the grating component
+    grating_c.add_port("o1", center=(-array_width/2, 0), width=wg_width, orientation=180, layer=layer)
+    grating_c.add_port("o2", center=(array_width/2, 0), width=wg_width, orientation=0, layer=layer)
+    
+    # =======================================================================
+    # 3. Top Structure
+    # =======================================================================
+    
+    # Place the grating section
+    top_grating = c << grating_c
+    top_grating.y = y_grating
+    top_grating.x = 0
+    
+    # Right Bend (180 deg, Upwards loop)
+    bend_top = c << gf.components.bend_euler(radius=bend_radius, angle=180, cross_section=xs)
+    bend_top.connect("o1", top_grating.ports["o2"])
+    
+    # Top Return Arm
+    return_len = grating_len + 2.0
+    top_return = c << gf.components.straight(length=return_len, cross_section=xs)
+    top_return.connect("o1", bend_top.ports["o2"])
+    
+    # Top Return Tip
+    top_tip = c << gf.components.taper(length=1.0, width1=wg_width, width2=tip_width, layer=layer)
+    top_tip.connect("o1", top_return.ports["o2"])
+    
+    # Top Input S-bend (Curves Up and Left)
+    s_bend_h = 0.3
+    s_bend_l = 2.0
+    input_top = c << gf.components.bend_s(size=(s_bend_l, s_bend_h), cross_section=xs)
+    # Mirror to match curvature: connect to Left port, curve away up/left
+    input_top.mirror_x() 
+    input_top.connect("o1", top_grating.ports["o1"])
+    
+    # Top Input Tip
+    input_top_tip = c << gf.components.taper(length=1.0, width1=wg_width, width2=tip_width, layer=layer)
+    input_top_tip.connect("o1", input_top.ports["o2"])
+    
+    # =======================================================================
+    # 4. Bottom Structure (Mirrored)
+    # =======================================================================
+    
+    # Place the grating section (Mirrored Y position)
+    bot_grating = c << grating_c
+    bot_grating.y = -y_grating
+    bot_grating.x = 0
+    
+    # Left Bend (180 deg, Downwards loop)
+    # Connect to o1 (Left) -> Bend turns "left" relative to input -> Downwards loop
+    bend_bot = c << gf.components.bend_euler(radius=bend_radius, angle=180, cross_section=xs)
+    bend_bot.connect("o1", bot_grating.ports["o1"])
+    
+    # Bottom Return Arm
+    bot_return = c << gf.components.straight(length=return_len, cross_section=xs)
+    bot_return.connect("o1", bend_bot.ports["o2"])
+    
+    # Bottom Return Tip
+    bot_tip = c << gf.components.taper(length=1.0, width1=wg_width, width2=tip_width, layer=layer)
+    bot_tip.connect("o1", bot_return.ports["o2"])
+    
+    # Bottom Input S-bend (Curves Down and Right)
+    # Connect to o2 (Right)
+    input_bot = c << gf.components.bend_s(size=(s_bend_l, s_bend_h), cross_section=xs)
+    input_bot.mirror_y() # Curve down
+    input_bot.connect("o1", bot_grating.ports["o2"])
+    
+    # Bottom Input Tip
+    input_bot_tip = c << gf.components.taper(length=1.0, width1=wg_width, width2=tip_width, layer=layer)
+    input_bot_tip.connect("o1", input_bot.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    device = device_footprint_18x0p7()
+    device.write_gds("complex_grating_device.gds")
+```

@@ -1,0 +1,133 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_cross_shape(
+    x_radius: float = 0.6,
+    y_radius: float = 2.1,
+    tip_width: float = 0.2,
+    tip_length: float = 0.5,
+    layer: tuple = (1, 0)
+) -> gf.Component:
+    """
+    Creates a cross shape composed of four rounded arms with rectangular tips.
+
+    The shape is constructed by:
+    1. Defining an elliptical body.
+    2. Defining a rectangular tip.
+    3. Creating a temporary component to hold and position the rectangular tip.
+    4. Performing a boolean union of the elliptical body and the positioned tip component
+       to create a single 'arm' component (uncentered).
+    5. Centering this 'arm' component (by adding it as a reference to a new component and moving the reference)
+       so its rotation point is at (0,0).
+    6. Add four instances of this centered 'arm' to the main component,
+       rotating each by 90-degree increments to form a cross.
+
+    Args:
+        x_radius: Half-width of the elliptical body of the arm.
+                  (e.g., if x_radius=0.6, the body's max width is 1.2).
+        y_radius: Half-height of the elliptical body of the arm.
+                  (e.g., if y_radius=2.1, the body's max height is 4.2).
+        tip_width: Width of the rectangular tip.
+        tip_length: Length of the rectangular tip.
+        layer: GDS layer for the component (e.g., (1, 0)).
+
+    Returns:
+        A gdsfactory Component representing the complete cross shape.
+
+    The total footprint will be (2 * (y_radius + tip_length / 2)) x (2 * (y_radius + tip_length / 2))
+    This is based on the selected parameters which align with the provided footprint constraint.
+    For the given parameters:
+    - Max extent from center to tip = y_radius + tip_length / 2 = 2.1 + 0.5 / 2 = 2.1 + 0.25 = 2.35 um.
+    - Total footprint width/height = 2 * 2.35 = 4.7 um.
+    """
+    c = gf.Component("cross_shape")
+
+    # 1. Create the elliptical body for a single arm.
+    # This component is centered at (0,0).
+    body_comp = gf.components.ellipse(radii=(x_radius, y_radius), layer=layer)
+    
+    # 2. Create the rectangular tip component.
+    # This component is also centered at (0,0).
+    tip_comp_original = gf.components.rectangle(size=(tip_width, tip_length), layer=layer, centered=True)
+    
+    # 3. Create a temporary component to hold and position the rectangular tip.
+    # This is crucial to avoid modifying the 'tip_comp_original' directly,
+    # which can lead to the "Cell ... cannot be modified as it is locked" error
+    # if the primitive component is cached or considered immutable by GDSFactory.
+    moved_tip_container = gf.Component("moved_tip_container")
+    moved_tip_ref = moved_tip_container << tip_comp_original # Add a reference to the tip component
+    
+    # Position the tip reference so its bottom edge aligns with the top of the ellipse.
+    # The top of the ellipse is at y = y_radius.
+    # The bottom of the centered rectangle is at y = -tip_length/2.
+    # So, we move the rectangle's center up by (y_radius + tip_length/2).
+    moved_tip_ref.movey(y_radius + tip_length / 2)
+
+    # 4. Perform a boolean union to combine the ellipse body and the positioned rectangular tip.
+    # We union `body_comp` (the ellipse) and `moved_tip_container` (the component containing the moved rectangle).
+    # The result `up_arm_uncentered` is a new component representing a single arm,
+    # whose geometric center is effectively shifted upwards if the body was centered at (0,0) and
+    # the tip moved purely along Y. Its y-extent will be from -y_radius to (y_radius + tip_length).
+    up_arm_uncentered = gf.boolean(body_comp, moved_tip_container, operation="or", layer=layer)
+
+    # 5. Create a new Component to represent the single arm, and center it for rotation.
+    # We want the central point of the final cross to be at (0,0).
+    # The current 'up_arm_uncentered' component's geometry is effectively shifted upwards
+    # relative to its intended rotation center for the full cross.
+    # To bring its desired rotation point (which is the effective center of the whole cross)
+    # to (0,0), we need to translate it downwards by `tip_length / 2`.
+    up_arm = gf.Component("centered_arm_primitive")
+    # Add the uncentered arm as a reference to the new 'up_arm' component.
+    arm_ref_in_up_arm = up_arm << up_arm_uncentered
+    # Move this reference to center it within its parent 'up_arm' component,
+    # so its intended rotation pivot is at (0,0) of `up_arm`.
+    arm_ref_in_up_arm.movey(-tip_length / 2)
+
+    # 6. Add four instances of this 'centered_arm_primitive' component to the main component 'c',
+    # rotating each instance by 90-degree increments around (0,0) to form the cross.
+    c.add_ref(up_arm) # First arm (0 degrees, pointing up)
+
+    arm_right = c.add_ref(up_arm)
+    arm_right.rotate(angle=90) # Second arm (90 degrees, pointing right)
+
+    arm_down = c.add_ref(up_arm)
+    arm_down.rotate(angle=180) # Third arm (180 degrees, pointing down)
+
+    arm_left = c.add_ref(up_arm)
+    arm_left.rotate(angle=270) # Fourth arm (270 degrees, pointing left)
+
+    return c
+
+# Create the component with the specified parameters to match the image and footprint.
+component = create_cross_shape(
+    x_radius=0.6,      # Half-width of elliptical body
+    y_radius=2.1,      # Half-height of elliptical body
+    tip_width=0.2,     # Width of the rectangular tip
+    tip_length=0.5     # Length of the rectangular tip
+)
+
+# Optional: Verify the footprint
+# The maximum extent from the center to the tip of one arm is y_radius + tip_length / 2
+# = 2.1 + 0.5 / 2 = 2.35 um.
+# Therefore, the total X and Y dimensions of the bounding box will be 2 * 2.35 = 4.7 um.
+expected_footprint_x = 4.7
+expected_footprint_y = 4.7
+actual_footprint_x = component.xsize
+actual_footprint_y = component.ysize
+
+print(f"Calculated Footprint X: {actual_footprint_x:.3f} um")
+print(f"Calculated Footprint Y: {actual_footprint_y:.3f} um")
+print(f"Expected Footprint X: {expected_footprint_x:.3f} um")
+print(f"Expected Footprint Y: {expected_footprint_y:.3f} um")
+
+# Assert that the footprint matches the constraint
+assert abs(actual_footprint_x - expected_footprint_x) < 1e-9, f"Footprint X mismatch: {actual_footprint_x} vs {expected_footprint_x}"
+assert abs(actual_footprint_y - expected_footprint_y) < 1e-9, f"Footprint Y mismatch: {actual_footprint_y} vs {expected_footprint_y}"
+
+# FIX: Uncommented the lines to save the GDS file and visualize it.
+component.write_gds("cross_shape.gds")
+gf.show(component) # This will typically open a KLayout viewer or display in a notebook.
+```

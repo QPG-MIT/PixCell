@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.126346",
+      "api_duration_seconds": 45.147326946258545,
+      "usage": {
+        "input_tokens": 3171,
+        "output_tokens": 1063,
+        "total_tokens": 8276
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 2.0 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:11:01.855141",
+      "api_duration_seconds": 12.883150815963745,
+      "usage": {
+        "input_tokens": 4279,
+        "output_tokens": 993,
+        "total_tokens": 6449
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o1' is not a valid port name or index. Available ports: []\"",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:11:16.206143",
+      "api_duration_seconds": 18.401430130004883,
+      "usage": {
+        "input_tokens": 5327,
+        "output_tokens": 1121,
+        "total_tokens": 8854
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12777,
+    "output_tokens": 3177,
+    "total_tokens": 23579
+  }
+}

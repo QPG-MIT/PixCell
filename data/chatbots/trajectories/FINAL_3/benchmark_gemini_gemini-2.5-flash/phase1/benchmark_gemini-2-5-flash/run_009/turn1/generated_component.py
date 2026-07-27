@@ -1,0 +1,127 @@
+import gdsfactory as gf
+from gdsfactory.typings import CrossSectionSpec, LayerSpec
+
+@gf.cell
+def custom_coupler_from_image(
+    wg_width: float = 0.5,
+    port_spacing_y: float = 3.5, # Center-to-center spacing of ports at input/output
+    mid_gap: float = 0.2,       # Gap between waveguides in the central straight section
+    s_bend_length: float = 20.0, # Horizontal length of each S-bend
+    mid_straight_length: float = 80.0, # Length of the central parallel straight section
+    layer: LayerSpec = (1, 0),
+    cross_section_factory: CrossSectionSpec = "strip",
+) -> gf.Component:
+    """
+    Recreates the geometry from the provided image, mimicking a directional coupler
+    or an MMI input/output section.
+
+    Args:
+        wg_width: The width of the waveguides.
+        port_spacing_y: Center-to-center vertical spacing of the input/output ports.
+                        Determines the overall vertical extent of the device.
+        mid_gap: The gap between the two waveguides in the central straight section.
+        s_bend_length: The horizontal length occupied by each S-bend component.
+        mid_straight_length: The length of the straight section between the two S-bends.
+        layer: GDS layer for the waveguide.
+        cross_section_factory: The cross-section specification for the waveguides.
+    """
+    c = gf.Component("custom_coupler_from_image")
+
+    # Define the cross-section for the waveguides
+    xs = gf.get_cross_section(cross_section_factory, width=wg_width, layer=layer)
+
+    # Calculate y-coordinates for waveguide centers based on port spacing
+    y_start_top = port_spacing_y / 2      # e.g., 3.5 / 2 = 1.75
+    y_start_bottom = -port_spacing_y / 2 # e.g., -3.5 / 2 = -1.75
+
+    # Calculate y-coordinates for waveguide centers in the middle straight section
+    mid_spacing = wg_width + mid_gap     # e.g., 0.5 + 0.2 = 0.7
+    y_mid_top = mid_spacing / 2          # e.g., 0.7 / 2 = 0.35
+    y_mid_bottom = -mid_spacing / 2      # e.g., -0.7 / 2 = -0.35
+
+    # Calculate the vertical displacement magnitude for each S-bend
+    s_bend_dy_magnitude = y_start_top - y_mid_top # e.g., 1.75 - 0.35 = 1.4
+
+    # --- Top Path Construction ---
+    # First S-bend (left side): Bends from y_start_top down to y_mid_top
+    s_bend_top_left = gf.components.bend_s(
+        size=(s_bend_length, -s_bend_dy_magnitude), # Negative dy for downward bend
+        cross_section=xs
+    )
+    # Middle straight section for the top path
+    straight_top = gf.components.straight(length=mid_straight_length, cross_section=xs)
+    # Second S-bend (right side): Bends from y_mid_top up to y_start_top
+    s_bend_top_right = gf.components.bend_s(
+        size=(s_bend_length, s_bend_dy_magnitude), # Positive dy for upward bend
+        cross_section=xs
+    )
+
+    # Add and connect components for the top path
+    ref_bstl = c << s_bend_top_left
+    ref_bstl.movey(y_start_top) # Place the input port of the first S-bend at y_start_top
+    
+    ref_st = c << straight_top
+    ref_st.connect("o1", ref_bstl.ports["o2"]) # Connect straight to the output of the first S-bend
+    
+    ref_bstr = c << s_bend_top_right
+    ref_bstr.connect("o1", ref_st.ports["o2"]) # Connect second S-bend to the output of the straight
+
+    # --- Bottom Path Construction ---
+    # First S-bend (left side): Bends from y_start_bottom up to y_mid_bottom
+    s_bend_bottom_left = gf.components.bend_s(
+        size=(s_bend_length, s_bend_dy_magnitude), # Positive dy for upward bend (from a negative start)
+        cross_section=xs
+    )
+    # Middle straight section for the bottom path
+    straight_bottom = gf.components.straight(length=mid_straight_length, cross_section=xs)
+    # Second S-bend (right side): Bends from y_mid_bottom down to y_start_bottom
+    s_bend_bottom_right = gf.components.bend_s(
+        size=(s_bend_length, -s_bend_dy_magnitude), # Negative dy for downward bend (from a negative start)
+        cross_section=xs
+    )
+
+    # Add and connect components for the bottom path
+    ref_bsbl = c << s_bend_bottom_left
+    ref_bsbl.movey(y_start_bottom) # Place the input port of the first S-bend at y_start_bottom
+    
+    ref_sb = c << straight_bottom
+    ref_sb.connect("o1", ref_bsbl.ports["o2"]) # Connect straight to the output of the first S-bend
+    
+    ref_bsbr = c << s_bend_bottom_right
+    ref_bsbr.connect("o1", ref_sb.ports["o2"]) # Connect second S-bend to the output of the straight
+
+    # --- Add Ports to the Top-Level Component ---
+    # Expose the input/output ports of the complete device
+    c.add_port("o1", port=ref_bstl.ports["o1"]) # Top Left input
+    c.add_port("o2", port=ref_bsbl.ports["o1"]) # Bottom Left input
+    c.add_port("o3", port=ref_bstr.ports["o2"]) # Top Right output
+    c.add_port("o4", port=ref_bsbr.ports["o2"]) # Bottom Right output
+
+    return c
+
+# --- Instantiate the component with the determined parameters ---
+# These parameters are chosen to match the given footprint of [120, 4] um
+# Total length = s_bend_length + mid_straight_length + s_bend_length = 20 + 80 + 20 = 120 um.
+# Total height = port_spacing_y + wg_width = 3.5 + 0.5 = 4 um.
+coupler_device = custom_coupler_from_image(
+    wg_width=0.5,
+    port_spacing_y=3.5,
+    mid_gap=0.2,
+    s_bend_length=20.0,
+    mid_straight_length=80.0,
+    layer=(1, 0), # Example layer
+    cross_section_factory="strip" # Use a default strip waveguide cross-section
+)
+
+# Print footprint and ports to verify
+print(f"Device footprint: X={coupler_device.xsize} um, Y={coupler_device.ysize} um")
+print(f"Port o1 center: {coupler_device.ports['o1'].center}")
+print(f"Port o2 center: {coupler_device.ports['o2'].center}")
+print(f"Port o3 center: {coupler_device.ports['o3'].center}")
+print(f"Port o4 center: {coupler_device.ports['o4'].center}")
+
+# View the component (this will open a GDS viewer if configured, or save a GDS and png)
+gf.show(coupler_device)
+
+# Write to GDS
+coupler_device.write_gds("coupler_from_image.gds")

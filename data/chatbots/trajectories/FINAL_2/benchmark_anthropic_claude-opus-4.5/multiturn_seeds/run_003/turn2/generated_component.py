@@ -1,0 +1,76 @@
+import gdsfactory as gf
+
+@gf.cell
+def bottle_carrier():
+    """
+    Creates a bottle carrier icon with 4 bottle necks protruding from a crate,
+    with V-shaped gaps between bottles that come to sharp points.
+    """
+    c = gf.Component()
+    layer = (1, 0)
+    
+    width = 25
+    
+    # Adjusted vertical proportions - taller bottles, shorter box
+    y_tip = 0           # bottom tip of triangle pointer
+    y_base = 0.5        # bottom of main box
+    y_box_top = 3.5     # top of main box / base of bottle necks  
+    y_top = 10.0        # top of bottle necks
+    
+    # Bottle parameters - 4 bottles
+    n_bottles = 4
+    section_width = width / n_bottles  # 6.25 per section
+    
+    # Key fix: neck_base_width equals section_width so adjacent bottles 
+    # meet at sharp V-points
+    neck_base_width = section_width    # Full width at base creates V-points
+    neck_top_width = 1.5               # Narrow at top
+    
+    # Triangle pointer at bottom - smaller
+    tri_half_width = 0.6
+    
+    # Build polygon outline
+    points = []
+    
+    # Start at bottom-left of box
+    points.append((0, y_base))
+    
+    # Up to top-left of box  
+    points.append((0, y_box_top))
+    
+    # Trace each bottle neck from left to right
+    for i in range(n_bottles):
+        cx = section_width * (i + 0.5)  # center x of bottle
+        
+        lb = cx - neck_base_width / 2   # left x at base
+        rb = cx + neck_base_width / 2   # right x at base
+        lt = cx - neck_top_width / 2    # left x at top
+        rt = cx + neck_top_width / 2    # right x at top
+        
+        # Go to left base of bottle (creates V-point with previous bottle)
+        points.append((lb, y_box_top))
+        # Up the left side of neck (tapers inward)
+        points.append((lt, y_top))
+        # Across the top of bottle
+        points.append((rt, y_top))
+        # Down the right side of neck
+        points.append((rb, y_box_top))
+    
+    # Continue to right edge of box
+    points.append((width, y_box_top))
+    
+    # Down right side of box
+    points.append((width, y_base))
+    
+    # Along bottom edge with triangle protrusion pointing down
+    points.append((width / 2 + tri_half_width, y_base))
+    points.append((width / 2, y_tip))  # triangle tip pointing down
+    points.append((width / 2 - tri_half_width, y_base))
+    
+    c.add_polygon(points, layer=layer)
+    
+    return c
+
+# Create and save the device
+device = bottle_carrier()
+device.write_gds("bottle_carrier.gds")

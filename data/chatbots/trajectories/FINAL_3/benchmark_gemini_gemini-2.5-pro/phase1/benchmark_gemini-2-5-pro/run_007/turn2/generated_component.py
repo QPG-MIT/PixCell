@@ -1,0 +1,90 @@
+import gdsfactory as gf
+
+@gf.cell
+def adiabatic_coupler():
+    """
+    Creates a coupler with continuously curving waveguides by composing
+    four S-bend sections. This geometry matches the target image, which lacks
+    a straight parallel coupling section.
+
+    The device is built by creating two complete wavy waveguides (one top,
+    one bottom) and positioning them to achieve the specified separation
+    and central gap.
+    """
+    # --- 1. Define Device Parameters ---
+    # These parameters can be adjusted to change the device geometry.
+    # Values are chosen to be reasonable for a photonic device.
+    length = 100.0              # Total length of the coupling region
+    max_separation = 5.0        # Center-to-center separation at the ports
+    min_gap = 0.2               # Minimum gap between waveguides at the center
+    waveguide_width = 0.5       # Width of the waveguides
+
+    # --- 2. Calculate Derived Geometric Parameters ---
+    # Center-to-center separation at the narrowest point
+    min_separation = waveguide_width + min_gap
+
+    # Horizontal length of a single S-bend (half the total device length)
+    dx = length / 2.0
+
+    # Vertical displacement of a single S-bend for one waveguide.
+    # This is the change in 'y' from the port to the device center.
+    dy = (max_separation - min_separation) / 2.0
+
+    # --- 3. Define Building Blocks ---
+    # Create a standard cross-section for the waveguide
+    xs = gf.cross_section.cross_section(width=waveguide_width)
+
+    # An S-bend that curves "inward" (downward for the top waveguide)
+    bend_inward = gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+
+    # An S-bend that curves "outward" (upward for the top waveguide)
+    bend_outward = gf.components.bend_s(size=(dx, dy), cross_section=xs)
+
+    # --- 4. Assemble the Device ---
+    c = gf.Component("adiabatic_coupler_device")
+
+    # --- Assemble Top Waveguide ---
+    # It consists of an inward bend followed by an outward bend.
+    top_wg_left = c << bend_inward
+    top_wg_right = c << bend_outward
+    top_wg_right.connect("o1", top_wg_left.ports["o2"])
+
+    # --- Assemble Bottom Waveguide ---
+    # It's the mirror image: an outward bend followed by an inward bend.
+    bottom_wg_left = c << bend_outward
+    bottom_wg_right = c << bend_inward
+    bottom_wg_right.connect("o1", bottom_wg_left.ports["o2"])
+
+    # --- Position the Waveguides Vertically ---
+    # The components are initially created at y=0. Move them apart.
+    # Group the references for easier manipulation.
+    top_waveguide_refs = [top_wg_left, top_wg_right]
+    bottom_waveguide_refs = [bottom_wg_left, bottom_wg_right]
+
+    # Move the top waveguide up to its final starting position.
+    for ref in top_waveguide_refs:
+        ref.movey(max_separation / 2)
+
+    # Move the bottom waveguide down to its final starting position.
+    for ref in bottom_waveguide_refs:
+        ref.movey(-max_separation / 2)
+
+    # --- 5. Add Ports to the Top-Level Component ---
+    c.add_port("o1", port=top_wg_left.ports["o1"])
+    c.add_port("o2", port=bottom_wg_left.ports["o1"])
+    c.add_port("o3", port=bottom_wg_right.ports["o2"])
+    c.add_port("o4", port=top_wg_right.ports["o2"])
+
+    return c
+
+# --- Main execution block ---
+# This part of the script runs when the file is executed.
+if __name__ == "__main__":
+    # Create an instance of the component.
+    device = adiabatic_coupler()
+
+    # Write the component to a GDSII file.
+    device.write_gds("adiabatic_coupler.gds")
+
+    # Optional: Show the component in the KLayout viewer for verification.
+    device.show()

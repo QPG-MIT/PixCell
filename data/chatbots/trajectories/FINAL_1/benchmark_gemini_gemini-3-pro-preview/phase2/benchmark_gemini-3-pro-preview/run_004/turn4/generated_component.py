@@ -1,0 +1,124 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def inverse_taper_ssc():
+    """
+    Inverse taper spot size converter.
+    Features a central protruding taper for mode delocalization, 
+    flanked by delayed cladding arms that run parallel before 
+    merging into the output waveguide.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions & Parameters ---
+    # Global constraints
+    L_total = 40.0
+    height_out = 1.7
+    layer = (1, 0)
+    
+    # Central Taper Parameters
+    L_taper = 20.0        # Length of the central tip
+    w_taper_in = 0.6      # Base width of the central taper
+    w_taper_tip = 0.05    # Tip width (sharp point)
+    
+    # Cladding Arm Parameters
+    w_arm_in = 0.2        # Width of the side arms at start
+    gap_in = 0.2          # Gap between central taper and arms at arm start
+    x_arm_start = 2.0     # Offset: Arms start 2um after the central taper starts
+    L_arm_straight = 10.0 # Length of the parallel/straight section of arms
+    L_trans = 18.0        # Length of the merging transition section
+    
+    # --- 1. Central Taper ---
+    # Centered at y=0, starts at x=0
+    taper = c << gf.components.taper(
+        length=L_taper,
+        width1=w_taper_in,
+        width2=w_taper_tip,
+        layer=layer
+    )
+    taper.xmin = 0
+    taper.y = 0
+
+    # --- 2. Side Arms: Straight Section ---
+    
+    # Calculate taper width at x = x_arm_start
+    # w(x) = w_in + (w_tip - w_in) * (x / L)
+    w_taper_at_start = w_taper_in + (w_taper_tip - w_taper_in) * (x_arm_start / L_taper)
+    
+    # Inner edge of arm = (Taper Half Width) + Gap
+    y_inner = (w_taper_at_start / 2.0) + gap_in
+    # Center of arm = Inner edge + Half Width
+    y_center = y_inner + (w_arm_in / 2.0)
+    
+    # Helper CrossSection for straight arms
+    xs_arm = gf.cross_section.cross_section(width=w_arm_in, layer=layer)
+    
+    # Top Straight Arm
+    arm_top = c << gf.components.straight(
+        length=L_arm_straight,
+        cross_section=xs_arm
+    )
+    arm_top.move((x_arm_start, y_center))
+    
+    # Bottom Straight Arm
+    arm_bot = c << gf.components.straight(
+        length=L_arm_straight,
+        cross_section=xs_arm
+    )
+    arm_bot.move((x_arm_start, -y_center))
+    
+    # --- 3. Side Arms: Transition/Merge Section ---
+    # Creates the smooth S-bend curve where arms expand and merge.
+    
+    path_trans = gf.path.straight(length=L_trans)
+    
+    # Start CrossSection: Two separated arms matching the straight section
+    # IMPORTANT: We assign 'name' to sections so transition() can link them
+    s_top_in = gf.Section(width=w_arm_in, offset=y_center, layer=layer, name="top_arm")
+    s_bot_in = gf.Section(width=w_arm_in, offset=-y_center, layer=layer, name="bot_arm")
+    xs_trans_in = gf.CrossSection(sections=[s_top_in, s_bot_in])
+    
+    # End CrossSection: Merged block
+    # Modeled as two touching sections that fill the total height_out
+    w_merged = height_out / 2.0
+    offset_merged = height_out / 4.0
+    
+    s_top_out = gf.Section(width=w_merged, offset=offset_merged, layer=layer, name="top_arm")
+    s_bot_out = gf.Section(width=w_merged, offset=-offset_merged, layer=layer, name="bot_arm")
+    xs_trans_out = gf.CrossSection(sections=[s_top_out, s_bot_out])
+    
+    # Create the transition component
+    # width_type='sine' interpolates both width and offset sinusoidally
+    trans = gf.path.transition(xs_trans_in, xs_trans_out, width_type='sine')
+    merger = c << gf.path.extrude_transition(path_trans, trans)
+    
+    # Position: Starts where the straight arms end
+    merger.xmin = x_arm_start + L_arm_straight
+    
+    # --- 4. Output Flat Section ---
+    # Fill the remaining length to reach L_total
+    x_current = x_arm_start + L_arm_straight + L_trans
+    L_flat = L_total - x_current
+    
+    xs_out = gf.cross_section.cross_section(width=height_out, layer=layer)
+    
+    if L_flat > 0:
+        out_wg = c << gf.components.straight(
+            length=L_flat,
+            cross_section=xs_out
+        )
+        out_wg.connect("o1", merger.ports["o2"])
+        output_port = out_wg.ports["o2"]
+    else:
+        output_port = merger.ports["o2"]
+
+    # --- Ports ---
+    c.add_port("o1", port=taper.ports["o1"])
+    c.add_port("o2", port=output_port)
+    
+    return c
+
+# Create and save
+device = inverse_taper_ssc()
+device.write_gds("inverse_taper_ssc.gds")

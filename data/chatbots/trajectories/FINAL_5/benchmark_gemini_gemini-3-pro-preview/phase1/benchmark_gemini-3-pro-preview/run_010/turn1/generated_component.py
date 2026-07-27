@@ -1,0 +1,125 @@
+import gdsfactory as gf
+
+@gf.cell
+def grating_assisted_coupler_compact():
+    """
+    Creates a compact grating-assisted contra-directional coupler.
+    
+    Features:
+    - Central bus waveguide.
+    - Two 'ladder' loops with grating rungs.
+    - 180-degree rotational symmetry.
+    - Explicit cross-section definition to allow sub-micron bend radii (fixing the ValueError).
+    
+    Target Footprint: ~18.24um x 0.7um
+    """
+    c = gf.Component()
+
+    # --- 1. Dimensions (Tuned for ~0.7um total height) ---
+    
+    wg_width = 0.08         # Waveguide width
+    
+    # Vertical gaps derived from 0.7um total height constraint
+    # Height = wg_mid + 2*gap_coup + 2*(2*wg + gap_int)
+    # 0.7 ~= 0.08 + 0.12 + 2*(0.16 + 0.09)
+    gap_internal = 0.09     # Gap inside the ladder loop
+    gap_coupling = 0.06     # Gap between ladder and bus
+    
+    # Lengths
+    length_grating = 14.5   # Length of the parallel interaction region
+    period = 0.22           # Grating period
+    rung_width = 0.10       # Width of grating teeth
+    
+    # Bends
+    # The bend radius must bridge the internal gap + one waveguide width
+    # Center-to-center distance = wg_width/2 + gap_internal + wg_width/2
+    bend_radius = (wg_width + gap_internal) / 2
+    tail_radius = 1.5       # Radius for the input flares
+
+    # --- 2. Custom Cross Section ---
+    # CRITICAL: radius_min=0.0 allows the very tight bends (R ~ 0.09um) required here.
+    xs = gf.cross_section.cross_section(
+        width=wg_width,
+        radius_min=0.0,     # Disable minimum radius check
+        layer=(1, 0)
+    )
+
+    # --- 3. Construct the "Ladder" Sub-Component ---
+    # We build the top half first.
+    ladder = gf.Component()
+    
+    # Define vertical positions (local y=0 is the center of the inner arm)
+    y_inner = 0
+    y_outer = gap_internal + wg_width
+    
+    # Inner Arm (Straight)
+    arm_inner = ladder << gf.components.straight(length=length_grating, cross_section=xs)
+    arm_inner.movey(y_inner)
+    
+    # Outer Arm (Straight)
+    arm_outer = ladder << gf.components.straight(length=length_grating, cross_section=xs)
+    arm_outer.movey(y_outer)
+    
+    # U-Bend (Right Side)
+    # Connects the end of Outer arm to the end of Inner arm.
+    # bend_euler(180) typically goes from (0,0) to (0, 2R).
+    # We mirror it to go "Down" and attach to the Outer arm.
+    bend = ladder << gf.components.bend_euler(radius=bend_radius, angle=180, cross_section=xs)
+    bend.mirror() # Flips vertically so it curves downwards (assuming input faces East)
+    # Note: After mirror, ports might need re-orientation check.
+    # Connect bend.o1 (input) to arm_outer.o2 (output)
+    bend.connect("o1", arm_outer.ports["o2"])
+    
+    # Input Flare / Tail (Left Side of Outer Arm)
+    # Connects to arm_outer.o1 and curves away
+    tail = ladder << gf.components.bend_euler(radius=tail_radius, angle=45, cross_section=xs)
+    tail.mirror() # Flip to curve 'Up' relative to the port
+    tail.connect("o1", arm_outer.ports["o1"])
+    
+    # Grating Rungs
+    # Rectangles centered between the two arms
+    rung_shape = gf.components.rectangle(size=(rung_width, gap_internal), layer=(1, 0), centered=True)
+    n_rungs = int(length_grating / period)
+    y_rung = y_inner + (gap_internal + wg_width) / 2
+    
+    for i in range(n_rungs):
+        r = ladder << rung_shape
+        x_pos = (i * period) + (period / 2)
+        r.move((x_pos, y_rung))
+
+    # --- 4. Assembly of Full Device ---
+    
+    # Calculate offset for Top Ladder placement
+    # Bus is at y=0. Ladder inner arm needs to be at y = wg_mid/2 + gap + wg_width/2
+    # But our ladder local y_inner is 0 (center of inner WG).
+    # So we move it by:
+    y_offset = (wg_width / 2) + gap_coupling + (wg_width / 2)
+    
+    # Place Top Ladder
+    top_ref = c << ladder
+    # Center horizontally: straight part spans [0, length]. Move to [-length/2, length/2]
+    top_ref.move((-length_grating/2, y_offset))
+    
+    # Place Bottom Ladder (Rotated 180 degrees)
+    bot_ref = c << ladder
+    bot_ref.rotate(180)
+    # After 180 rotation around (0,0), a component at (x,y) moves to (-x,-y).
+    # We want it to be symmetric. 
+    # If top_ref is at (-L/2, y_off), its center is roughly (0, y_off).
+    # Rotating a fresh instance 180 puts it "upside down" and "backwards".
+    # We need to position it at (length_grating/2, -y_offset) because the rotation flips the coordinate system.
+    bot_ref.move((length_grating/2, -y_offset))
+    
+    # Central Bus Waveguide
+    # Make it slightly longer than the grating section for aesthetic parity with the image
+    bus_len = length_grating + 3.0
+    bus = c << gf.components.straight(length=bus_len, cross_section=xs)
+    bus.move((-bus_len/2, 0)) # Center at origin
+    
+    return c
+
+if __name__ == "__main__":
+    # Generate and show
+    device = grating_assisted_coupler_compact()
+    device.write_gds("grating_coupler_compact.gds")
+    device.show()

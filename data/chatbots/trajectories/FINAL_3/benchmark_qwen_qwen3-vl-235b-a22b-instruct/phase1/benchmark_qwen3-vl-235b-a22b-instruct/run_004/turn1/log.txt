@@ -1,0 +1,178 @@
+Turn 1 Response:
+
+Looking at the image, I can see a symmetric structure with two parallel waveguides that have S-bend transitions at both ends. The device appears to be a symmetric S-bend coupler or waveguide structure with two parallel straight sections connected by S-bends.
+
+Given the footprint constraint of [120, 4] micrometers, I'll design this using GDSFactory parametric primitives. The structure can be built by creating two parallel waveguides with S-bends at each end, connected by straight sections.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def s_bend_coupler():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Parameters based on footprint (120um x 4um)
+    total_length = 120.0
+    waveguide_width = 0.5
+    gap = 0.5  # gap between waveguides
+    s_bend_size = (20, 2)  # S-bend size (dx, dy)
+    
+    # Calculate straight section length
+    straight_length = total_length - 2 * s_bend_size[0]
+    
+    # Create top waveguide
+    top_wg = c << gf.components.straight(length=straight_length, cross_section=xs)
+    top_s bend1 = c << gf.components.bend_s(size=s_bend_size, cross_section=xs)
+    top_s bend2 = c << gf.components.bend_s(size=s_bend_size, cross_section=xs)
+    
+    # Create bottom waveguide
+    bottom_wg = c << gf.components.straight(length=straight_length, cross_section=xs)
+    bottom_s bend1 = c << gf.components.bend_s(size=s_bend_size, cross_section=xs)
+    bottom_s bend2 = c << gf.components.bend_s(size=s_bend_size, cross_section=xs)
+    
+    # Position components
+    # Top waveguide
+    top_s bend1.move((0, 0))
+    top_wg.connect("o1", top_s bend1.ports["o2"])
+    top_s bend2.connect("o1", top_wg.ports["o2"])
+    
+    # Bottom waveguide
+    bottom_s bend1.move((0, -(waveguide_width + gap)))
+    bottom_wg.connect("o1", bottom_s bend1.ports["o2"])
+    bottom_s bend2.connect("o1", bottom_wg.ports["o2"])
+    
+    # Add ports
+    c.add_port("o1_top", port=top_s bend1.ports["o1"])
+    c.add_port("o2_top", port=top_s bend2.ports["o2"])
+    c.add_port("o1_bottom", port=bottom_s bend1.ports["o1"])
+    c.add_port("o2_bottom", port=bottom_s bend2.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = s_bend_coupler()
+device.write_gds("s_bend_coupler.gds")
+```
+
+Wait, I need to reconsider the structure. Looking more carefully at the image, it appears to be a single continuous structure that looks like two parallel waveguides with S-bends at both ends, but they're not separate waveguides - it's one continuous shape. Let me recreate this more accurately:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def s_bend_coupler():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Parameters based on footprint (120um x 4um)
+    total_length = 120.0
+    waveguide_width = 0.5
+    gap = 0.5  # gap between waveguides
+    s_bend_size = (20, 2)  # S-bend size (dx, dy)
+    
+    # Calculate straight section length
+    straight_length = total_length - 2 * s_bend_size[0]
+    
+    # Create the top S-bend
+    top_s_bend = c << gf.components.bend_s(size=s_bend_size, cross_section=xs)
+    
+    # Create the bottom S-bend (mirrored)
+    bottom_s_bend = c << gf.components.bend_s(size=s_bend_size, cross_section=xs)
+    bottom_s_bend.mirror()
+    
+    # Create the top straight section
+    top_straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+    
+    # Create the bottom straight section
+    bottom_straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+    
+    # Position components
+    # Top path: top_s_bend -> top_straight -> top_s_bend (mirrored)
+    top_s_bend.move((0, 0))
+    top_straight.connect("o1", top_s_bend.ports["o2"])
+    
+    # Create a mirrored version of the top S-bend for the right side
+    right_top_s_bend = c << gf.components.bend_s(size=s_bend_size, cross_section=xs)
+    right_top_s_bend.mirror()
+    right_top_s_bend.connect("o1", top_straight.ports["o2"])
+    
+    # Bottom path: bottom_s_bend -> bottom_straight -> bottom_s_bend (mirrored)
+    bottom_s_bend.move((0, -(waveguide_width + gap)))
+    bottom_straight.connect("o1", bottom_s_bend.ports["o2"])
+    
+    # Create a mirrored version of the bottom S-bend for the right side
+    right_bottom_s_bend = c << gf.components.bend_s(size=s_bend_size, cross_section=xs)
+    right_bottom_s_bend.mirror()
+    right_bottom_s_bend.connect("o1", bottom_straight.ports["o2"])
+    
+    # Add ports
+    c.add_port("o1_top", port=top_s_bend.ports["o1"])
+    c.add_port("o2_top", port=right_top_s_bend.ports["o2"])
+    c.add_port("o1_bottom", port=bottom_s_bend.ports["o1"])
+    c.add_port("o2_bottom", port=right_bottom_s_bend.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = s_bend_coupler()
+device.write_gds("s_bend_coupler.gds")
+```
+
+Actually, looking at the image again, I think I'm overcomplicating this. The structure appears to be two parallel waveguides, each with S-bends at both ends, connected by straight sections. Let me create a simpler, more accurate version:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def s_bend_coupler():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Parameters based on footprint (120um x 4um)
+    total_length = 120.0
+    waveguide_width = 0.5
+    gap = 0.5  # gap between waveguides
+    s_bend_size = (20, 2)  # S-bend size (dx, dy)
+    
+    # Calculate straight section length
+    straight_length = total_length - 2 * s_bend_size[0]
+    
+    # Create top waveguide path
+    top_s_bend_left = c << gf.components.bend_s(size=s_bend_size, cross_section=xs)
+    top_straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+    top_s_bend_right = c << gf.components.bend_s(size=s_bend_size, cross_section=xs)
+    
+    # Connect top waveguide components
+    top_s_bend_left.move((0, 0))
+    top_straight.connect("o1", top_s_bend_left.ports["o2"])
+    top_s_bend_right.connect("o1", top_straight.ports["o2"])
+    
+    # Create bottom waveguide path
+    bottom_s_bend_left = c << gf.components.bend_s(size=s_bend_size, cross_section=xs)
+    bottom_straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+    bottom_s_bend_right = c << gf.components.bend_s(size=s_bend_size, cross_section=xs)
+    
+    # Position bottom waveguide (offset by gap + width)
+    bottom_s_bend_left.move((0, -(waveguide_width + gap)))
+    bottom_straight.connect("o1", bottom_s_bend_left.ports["o2"])
+    bottom_s_bend_right.connect("o1", bottom_straight.ports["o2"])
+    
+    # Add ports
+    c.add_port("o1_top", port=top_s_bend_left.ports["o1"])
+    c.add_port("o2_top", port=top_s_bend_right.ports["o2"])
+    c.add_port("o1_bottom", port=bottom_s_bend_left.ports["o1"])
+    c.add_port("o2_bottom", port=bottom_s_bend_right.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = s_bend_coupler()
+device.write_gds("s_bend_coupler.gds")
+```

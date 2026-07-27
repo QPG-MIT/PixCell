@@ -1,0 +1,58 @@
+import gdsfactory as gf
+
+@gf.cell
+def waveguide_crossing():
+    """
+    2x2 waveguide crossing structure.
+    Two waveguides cross in the center, connected via S-bends.
+    Footprint: 120 um x 4 um
+    """
+    c = gf.Component()
+    
+    # Parameters based on footprint constraint
+    width = 0.5
+    total_length = 120
+    port_offset = 1.75  # Vertical offset of ports from center (gives ~4um total height)
+    bend_radius = 12
+    
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    # Define transition points for S-bends
+    x1 = 30   # End of first S-bend region
+    x2 = 90   # Start of second S-bend region
+    
+    # Upper waveguide path: starts high, dips to center, returns high
+    path_upper = gf.path.smooth(
+        points=[
+            (0, port_offset),
+            (x1, 0),
+            (x2, 0),
+            (total_length, port_offset)
+        ],
+        radius=bend_radius
+    )
+    wg_upper = c << gf.path.extrude(path_upper, cross_section=xs)
+    
+    # Lower waveguide path: starts low, rises to center, returns low
+    path_lower = gf.path.smooth(
+        points=[
+            (0, -port_offset),
+            (x1, 0),
+            (x2, 0),
+            (total_length, -port_offset)
+        ],
+        radius=bend_radius
+    )
+    wg_lower = c << gf.path.extrude(path_lower, cross_section=xs)
+    
+    # Add ports for external connections
+    c.add_port("o1", port=wg_upper.ports["o1"])
+    c.add_port("o2", port=wg_upper.ports["o2"])
+    c.add_port("o3", port=wg_lower.ports["o1"])
+    c.add_port("o4", port=wg_lower.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = waveguide_crossing()
+device.write_gds("waveguide_crossing.gds")

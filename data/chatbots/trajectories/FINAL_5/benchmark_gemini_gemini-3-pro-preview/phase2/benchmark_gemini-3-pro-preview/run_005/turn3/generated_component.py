@@ -1,0 +1,165 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def grating_arm(
+    length=10.0,
+    width=0.25,
+    tooth_depth=0.1,
+    pitch=0.25,
+    fill_factor=0.5,
+    layer=(1, 0)
+):
+    """
+    Creates a straight waveguide section with rectangular grating teeth 
+    protruding from the bottom side (y < 0).
+    """
+    c = gf.Component()
+    
+    # 1. Waveguide Core
+    # Centered at y=0 relative to ports for easier connection
+    wg = c << gf.components.rectangle(size=(length, width), layer=layer, centered=False)
+    wg.movey(-width/2)
+    
+    # 2. Teeth
+    tooth_w = pitch * fill_factor
+    tooth_h = tooth_depth
+    # Small overlap to ensure valid GDS boolean union
+    overlap = 0.005
+    
+    # Create the tooth shape once
+    tooth_shape = gf.components.rectangle(size=(tooth_w, tooth_h + overlap), layer=layer, centered=False)
+    
+    n_teeth = int(length // pitch)
+    
+    for i in range(n_teeth):
+        # Center the tooth within the pitch period
+        x = i * pitch + (pitch - tooth_w) / 2
+        # Position at the bottom edge of the waveguide
+        y = -width/2 - tooth_h
+        
+        t = c << tooth_shape
+        t.move((x, y))
+        
+    c.add_port("o1", center=(0, 0), width=width, orientation=180, layer=layer)
+    c.add_port("o2", center=(length, 0), width=width, orientation=0, layer=layer)
+    return c
+
+@gf.cell
+def loop_structure(
+    length_grating=10.0,
+    width=0.25,
+    tooth_depth=0.1,
+    pitch=0.25,
+    radius=1.0,
+    layer=(1, 0)
+):
+    """
+    One half of the device: Grating Arm + Return Loop + Flared inputs/outputs.
+    """
+    c = gf.Component()
+    
+    # CRITICAL FIX: Define cross_section with radius_min < radius to avoid ValueError
+    xs = gf.cross_section.cross_section(width=width, layer=layer, radius_min=radius * 0.5)
+    
+    # 1. Grating Section (Interaction Region)
+    grating = c << grating_arm(
+        length=length_grating,
+        width=width,
+        tooth_depth=tooth_depth,
+        pitch=pitch,
+        layer=layer
+    )
+    
+    # 2. U-Bend (Right side)
+    # Connects to the end of the grating and loops UP (Left/CCW turn)
+    bend = c << gf.components.bend_euler(radius=radius, angle=180, cross_section=xs)
+    bend.connect("o1", grating.ports["o2"])
+    
+    # 3. Return Arm (Top straight section)
+    return_arm = c << gf.components.straight(length=length_grating, cross_section=xs)
+    return_arm.connect("o1", bend.ports["o2"])
+    
+    # 4. Input Tail (Left of Grating)
+    # Curves "Up" and "Left" away from the central bus axis
+    # Connects to grating o1 (facing West). A "Right" turn (negative angle) goes North/Up relative to West.
+    tail_in = c << gf.components.bend_euler(radius=radius*2, angle=-45, cross_section=xs)
+    tail_in.connect("o1", grating.ports["o1"])
+    
+    # 5. Output Tail (Left of Return Arm)
+    # Connects to return_arm o2 (facing West).
+    # Curves "Up" and "Left" as well.
+    tail_out = c << gf.components.bend_euler(radius=radius*2, angle=-45, cross_section=xs)
+    tail_out.connect("o1", return_arm.ports["o2"])
+
+    # Expose ports if needed, though this is a sub-assembly
+    return c
+
+@gf.cell
+def contra_dc_device():
+    """
+    Full assembly of the Contra-Directional Coupler.
+    Two loop structures placed symmetrically around a central bus.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions ---
+    L_grating = 11.5
+    W_bus = 0.15
+    W_arm = 0.22
+    Tooth_depth = 0.12
+    Pitch = 0.26
+    Radius = 1.0  # Must be larger than radius_min defined in loop_structure
+    Gap = 0.10
+    
+    layer = (1, 0)
+    xs_bus = gf.cross_section.cross_section(width=W_bus, layer=layer)
+    
+    # 1. Central Bus
+    bus_len = L_grating + 3 * Radius
+    bus = c << gf.components.straight(length=bus_len, cross_section=xs_bus)
+    bus.center = (0, 0)
+    
+    # 2. Top Structure
+    top = c << loop_structure(
+        length_grating=L_grating,
+        width=W_arm,
+        tooth_depth=Tooth_depth,
+        pitch=Pitch,
+        radius=Radius,
+        layer=layer
+    )
+    
+    # Calculate Y offset
+    # The grating teeth extend down by (W_arm/2 + Tooth_depth) from the grating center.
+    # The grating center is at top.y.
+    # We want the teeth tip to be at y = W_bus/2 + Gap.
+    # So: top.y - (W_arm/2 + Tooth_depth) = W_bus/2 + Gap
+    y_offset = (W_bus / 2 + Gap) + (W_arm / 2 + Tooth_depth)
+    
+    # Center lengthwise over the bus
+    top.movex(-L_grating / 2)
+    top.movey(y_offset)
+    
+    # 3. Bottom Structure (Point Symmetric / Rotated 180)
+    bot = c << loop_structure(
+        length_grating=L_grating,
+        width=W_arm,
+        tooth_depth=Tooth_depth,
+        pitch=Pitch,
+        radius=Radius,
+        layer=layer
+    )
+    bot.rotate(180)
+    
+    # Align bottom structure
+    # After rotation, its center is at (0,0). Move to symmetric position.
+    bot.movex(L_grating / 2)
+    bot.movey(-y_offset)
+    
+    return c
+
+if __name__ == "__main__":
+    device = contra_dc_device()
+    device.write_gds("contra_dc.gds")
+    device.show()

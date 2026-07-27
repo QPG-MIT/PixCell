@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:20:55.171614",
+      "api_duration_seconds": 118.21991395950317,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 1874,
+        "total_tokens": 18001
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:22:54.638228",
+      "api_duration_seconds": 23.20221209526062,
+      "usage": {
+        "input_tokens": 4242,
+        "output_tokens": 1659,
+        "total_tokens": 6747
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.075 < CrossSection.radius_min 5.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:23:19.157189",
+      "api_duration_seconds": 28.26954698562622,
+      "usage": {
+        "input_tokens": 5947,
+        "output_tokens": 1614,
+        "total_tokens": 9277
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports straight_gdsfactorypcomponentspwaveguidespstraight_L10__2233875a_0_0[\"o1\"] and Port \"o2\" (\"80\"/\"100\")",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12538,
+    "output_tokens": 5147,
+    "total_tokens": 34025
+  }
+}

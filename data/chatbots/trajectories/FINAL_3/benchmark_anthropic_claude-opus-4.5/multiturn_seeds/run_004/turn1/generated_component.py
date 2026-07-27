@@ -1,0 +1,69 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_2x2() -> gf.Component:
+    """
+    Symmetric 2x2 directional coupler.
+    
+    Two waveguides enter from the left at different vertical positions,
+    come together in a coupling region in the middle, then separate
+    again at the outputs on the right.
+    
+    Footprint: 120 µm x 4 µm
+    """
+    c = gf.Component()
+    
+    # Design parameters
+    wg_width = 0.5  # Waveguide width in µm
+    coupling_gap = 0.2  # Gap between waveguides in coupling region
+    coupling_length = 50.0  # Length of parallel coupling section
+    port_separation = 3.5  # Vertical separation between input/output ports
+    sbend_length = 35.0  # Horizontal length of S-bend sections
+    bend_radius = 12.0  # Radius for smooth S-bend curves
+    
+    # Cross-section definition
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    
+    # Calculate y-positions
+    y_port = port_separation / 2  # Port centers at ±1.75 µm
+    y_couple = (wg_width + coupling_gap) / 2  # Coupling centers at ±0.35 µm
+    
+    # Define waypoints for top waveguide path
+    # Starts at upper left, dips down to coupling region, rises back up
+    points_top = [
+        (0, y_port),
+        (sbend_length, y_couple),
+        (sbend_length + coupling_length, y_couple),
+        (2 * sbend_length + coupling_length, y_port)
+    ]
+    
+    # Define waypoints for bottom waveguide path
+    # Starts at lower left, rises up to coupling region, dips back down
+    points_bottom = [
+        (0, -y_port),
+        (sbend_length, -y_couple),
+        (sbend_length + coupling_length, -y_couple),
+        (2 * sbend_length + coupling_length, -y_port)
+    ]
+    
+    # Create smooth paths connecting the waypoints
+    path_top = gf.path.smooth(points=points_top, radius=bend_radius)
+    path_bottom = gf.path.smooth(points=points_bottom, radius=bend_radius)
+    
+    # Extrude paths to create waveguide components
+    wg_top = c << gf.path.extrude(path_top, cross_section=xs)
+    wg_bottom = c << gf.path.extrude(path_bottom, cross_section=xs)
+    
+    # Add external ports
+    c.add_port("o1", port=wg_top.ports["o1"])  # Top left input
+    c.add_port("o2", port=wg_bottom.ports["o1"])  # Bottom left input
+    c.add_port("o3", port=wg_top.ports["o2"])  # Top right output
+    c.add_port("o4", port=wg_bottom.ports["o2"])  # Bottom right output
+    
+    return c
+
+
+# Generate the device and save to GDS file
+if __name__ == "__main__":
+    device = directional_coupler_2x2()
+    device.write_gds("directional_coupler_2x2.gds")

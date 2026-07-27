@@ -1,0 +1,103 @@
+Turn 2 Response:
+
+To achieve the correct geometry shown in your original image and resolve the "crossing" issue seen in the rendered output, we need to invert the vertical offsets of the S-bends on the left side. 
+
+In the previous render, the top-left port was being pulled "down" toward the bottom rail of the coupler because of the S-bend's orientation. By swapping the signs of the vertical offsets for the left S-bends, the waveguides will correctly move outward from the center without crossing.
+
+Here is the corrected script, adjusted to ensure perfect symmetry and a strict **120 $\mu$m x 4 $\mu$m** footprint.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_directional_coupler():
+    """
+    Recreates the symmetric directional coupler.
+    Corrects the crossing error by adjusting S-bend vertical offsets.
+    Footprint: 120um x 4um
+    """
+    c = gf.Component("directional_coupler")
+    
+    # 1. Define Parameters
+    layer = (1, 0)
+    width = 0.5
+    gap = 0.2
+    # Define a cross section for consistency
+    xs = gf.cross_section.strip(width=width, layer=layer)
+    
+    # Dimension Budget (Total length: 120um)
+    # [15um Ext] + [15um S-bend] + [60um Coupler] + [15um S-bend] + [15um Ext]
+    l_coupler = 60
+    l_sbend = 15
+    l_ext = 15
+    
+    # Height Budget (Total height: 4um)
+    # Centers at ends: +/- 1.75 (so edges are at +/- 2.0)
+    # Centers at coupler: +/- (gap/2 + width/2) = +/- 0.35
+    dy = 1.4  # Vertical distance to bridge: 1.75 - 0.35
+    
+    # 2. Central Coupler Region
+    # Ports: o1 (bot-left), o2 (top-left), o3 (top-right), o4 (bot-right)
+    coupler = c << gf.components.coupler_straight(
+        length=l_coupler, 
+        gap=gap, 
+        cross_section=xs
+    )
+    
+    # 3. S-Bend Transitions (Corrected Orientations)
+    # Left Side:
+    # To move UP from the coupler to the external port, 
+    # the S-bend's end (o2) must be LOWER than its start (o1) in its local frame.
+    sb_tl = c << gf.components.bend_s(size=(l_sbend, -dy), cross_section=xs)
+    sb_tl.connect("o2", coupler.ports["o2"])
+    
+    sb_bl = c << gf.components.bend_s(size=(l_sbend, dy), cross_section=xs)
+    sb_bl.connect("o2", coupler.ports["o1"])
+    
+    # Right Side:
+    # To move UP from the coupler to the external port, 
+    # the S-bend's end (o2) must be HIGHER than its start (o1).
+    sb_tr = c << gf.components.bend_s(size=(l_sbend, dy), cross_section=xs)
+    sb_tr.connect("o1", coupler.ports["o3"])
+    
+    sb_br = c << gf.components.bend_s(size=(l_sbend, -dy), cross_section=xs)
+    sb_br.connect("o1", coupler.ports["o4"])
+    
+    # 4. Straight Terminal Extensions
+    ext = gf.components.straight(length=l_ext, cross_section=xs)
+    
+    e_tl = c << ext
+    e_tl.connect("o2", sb_tl.ports["o1"])
+    
+    e_bl = c << ext
+    e_bl.connect("o2", sb_bl.ports["o1"])
+    
+    e_tr = c << ext
+    e_tr.connect("o1", sb_tr.ports["o2"])
+    
+    e_br = c << ext
+    e_br.connect("o1", sb_br.ports["o2"])
+    
+    # 5. Define external ports
+    c.add_port("o1", port=e_bl.ports["o1"])
+    c.add_port("o2", port=e_tl.ports["o1"])
+    c.add_port("o3", port=e_tr.ports["o2"])
+    c.add_port("o4", port=e_br.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    dc = symmetric_directional_coupler()
+    
+    # Save GDS file
+    dc.write_gds("symmetric_directional_coupler.gds")
+    
+    # Verify footprint dimensions
+    bbox = dc.dbbox()
+    print(f"GDS saved: symmetric_directional_coupler.gds")
+    print(f"Footprint: {bbox.width():.2f} um x {bbox.height():.2f} um")
+    
+    # Show in layout viewer if available
+    dc.show()
+```

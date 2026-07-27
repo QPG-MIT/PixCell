@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:49.388941",
+      "api_duration_seconds": 24.656248092651367,
+      "usage": {
+        "input_tokens": 5330,
+        "output_tokens": 1113,
+        "total_tokens": 10105
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.5 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:11:15.446883",
+      "api_duration_seconds": 14.472896099090576,
+      "usage": {
+        "input_tokens": 6488,
+        "output_tokens": 948,
+        "total_tokens": 9313
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.components' has no attribute 'racetrack'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:11:31.261926",
+      "api_duration_seconds": 17.099590063095093,
+      "usage": {
+        "input_tokens": 7469,
+        "output_tokens": 997,
+        "total_tokens": 10702
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 19287,
+    "output_tokens": 3058,
+    "total_tokens": 30120
+  }
+}

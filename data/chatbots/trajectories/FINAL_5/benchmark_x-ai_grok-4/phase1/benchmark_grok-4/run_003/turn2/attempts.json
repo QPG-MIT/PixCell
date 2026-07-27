@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:49:05.412121",
+      "api_duration_seconds": 406.7869191169739,
+      "usage": {
+        "input_tokens": 6833,
+        "output_tokens": 16553,
+        "total_tokens": 23386
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.86 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:55:53.422717",
+      "api_duration_seconds": 368.5066759586334,
+      "usage": {
+        "input_tokens": 7851,
+        "output_tokens": 14625,
+        "total_tokens": 22476
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'geometry'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T21:02:03.174821",
+      "api_duration_seconds": 54.64349699020386,
+      "usage": {
+        "input_tokens": 8889,
+        "output_tokens": 2456,
+        "total_tokens": 11345
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 23573,
+    "output_tokens": 33634,
+    "total_tokens": 57207
+  }
+}

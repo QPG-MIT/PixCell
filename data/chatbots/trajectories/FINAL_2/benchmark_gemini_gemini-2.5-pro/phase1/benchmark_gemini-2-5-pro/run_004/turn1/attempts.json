@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.447218",
+      "api_duration_seconds": 110.91702389717102,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 1731,
+        "total_tokens": 17297
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:03.013237",
+      "api_duration_seconds": 23.79414129257202,
+      "usage": {
+        "input_tokens": 4095,
+        "output_tokens": 1453,
+        "total_tokens": 7218
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_2/benchmark_gemini_gemini-2.5-pro/phase1/benchmark_gemini-2-5-pro/run_004/turn1/generated_component.py\", line 125, in <module>\n    device = create_device()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfact",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:28.107290",
+      "api_duration_seconds": 37.94136071205139,
+      "usage": {
+        "input_tokens": 6100,
+        "output_tokens": 1539,
+        "total_tokens": 11286
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o1' is not a valid port name or index. Available ports: ['e1', 'e2', 'e3', 'e4']\"",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12540,
+    "output_tokens": 4723,
+    "total_tokens": 35801
+  }
+}

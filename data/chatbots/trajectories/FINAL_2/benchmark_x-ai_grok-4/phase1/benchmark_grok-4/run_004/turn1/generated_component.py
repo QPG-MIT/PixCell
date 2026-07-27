@@ -1,0 +1,53 @@
+import gdsfactory as gf
+
+@gf.cell
+def device():
+    c = gf.Component()
+    layer = (1, 0)
+
+    # Dimensions
+    rect_width = 25.0
+    rect_height = 4.0
+    bottom_taper_length = 2.0
+    upper_taper_length = 2.0
+    upper_straight_length = 2.0
+    narrow_width = 0.5
+    upper_wide_width = 3.0
+    bottom_wide_width = 5.0
+    rect_y_start = bottom_taper_length
+    upper_y_start = rect_y_start + rect_height
+
+    # Cross sections
+    xs_narrow = gf.cross_section.cross_section(width=narrow_width, layer=layer)
+
+    # Central rectangle
+    rect = gf.components.rectangle(size=(rect_width, rect_height), layer=layer, centered=False)
+    rref = c << rect
+    rref.move((0, rect_y_start))
+
+    # Bottom taper (using taper component to allow width=0)
+    bottom_taper = gf.components.taper(length=bottom_taper_length, width1=0.001, width2=bottom_wide_width)
+    btref = c << bottom_taper
+    btref.rotate(90)
+    btref.move((rect_width / 2, 0))
+
+    # Upper structures
+    centers = [4.0, 9.0, 14.0, 19.0]
+    for x_c in centers:
+        # Upper taper (using taper component)
+        upper_taper = gf.components.taper(length=upper_taper_length, width1=narrow_width, width2=upper_wide_width)
+        utref = c << upper_taper
+        utref.rotate(-90)
+        utref.move((x_c, upper_y_start + upper_taper_length))
+
+        # Upper straight
+        upper_straight = gf.components.straight(length=upper_straight_length, cross_section=xs_narrow)
+        usref = c << upper_straight
+        usref.rotate(90)
+        usref.move((x_c, upper_y_start + upper_taper_length))
+
+    return c
+
+# Create and save
+dev = device()
+dev.write_gds("device.gds")

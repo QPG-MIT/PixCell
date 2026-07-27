@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:25:41.602120",
+      "api_duration_seconds": 405.9927990436554,
+      "usage": {
+        "input_tokens": 2765,
+        "output_tokens": 13088,
+        "total_tokens": 15853
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Cross section with width 0 is not allowed. [type=value_error, input_value={'width': 0, 'enclosure':...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:32:28.921192",
+      "api_duration_seconds": 193.4599301815033,
+      "usage": {
+        "input_tokens": 3782,
+        "output_tokens": 8253,
+        "total_tokens": 12035
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Cross section with width 0 is not allowed. [type=value_error, input_value={'width': 0, 'enclosure':...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:35:43.769659",
+      "api_duration_seconds": 321.84013509750366,
+      "usage": {
+        "input_tokens": 4685,
+        "output_tokens": 10844,
+        "total_tokens": 15529
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Width of symmetrical cross sections must have be a multiple of 2 dbu. This could cause cross sections and extrusions to become unsymmetrical otherwise. [type=value_error, input_value={'width': 1, 'enclosure':...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the followin",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11232,
+    "output_tokens": 32185,
+    "total_tokens": 43417
+  }
+}

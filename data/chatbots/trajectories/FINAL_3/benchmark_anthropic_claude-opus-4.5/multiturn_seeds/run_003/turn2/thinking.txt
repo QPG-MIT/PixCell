@@ -1,0 +1,160 @@
+Looking at the two images:
+
+1. **Target image (original)**: Shows a waveguide structure with smooth S-bends. The two waveguides start separated on the left, come together in the middle (with a straight coupling section), then separate again on the right. The bends are smooth/curved.
+
+2. **My rendered output**: Shows sharp angular bends instead of smooth curves. The waveguides meet at a point rather than having a smooth transition with a coupling region in the middle.
+
+The key differences:
+1. My output has sharp angular transitions, while the target has smooth curved S-bends
+2. The target appears to have the waveguides running parallel in the center (a coupling region), not just crossing at a single point
+3. The smooth radius parameter might not be working as expected, or I need to use a different approach
+
+Let me re-analyze the target:
+- Left side: Two ports separated vertically
+- The upper port curves down with a smooth S-bend
+- The lower port curves up with a smooth S-bend
+- In the middle, there's a straight section where they run close together (or merge)
+- Then on the right, they split again with smooth S-bends
+- Upper goes up, lower goes down
+
+This looks like a 2x2 combiner/splitter structure - essentially a Y-branch on each side connected by a central waveguide.
+
+Actually, looking more carefully at the original target image, I see:
+- Two inputs on left (upper and lower)
+- They smoothly come together
+- A straight section in the middle
+- They smoothly split apart on the right
+
+The smooth curves in the target have a larger radius and more gradual transition. My code produced sharp corners because the smooth function wasn't smoothing properly or the radius was too small.
+
+Let me try a different approach using bend_s components or manually creating the paths with proper arc segments.
+
+Looking at the footprint: 120 um x 4 um
+
+Let me try using explicit S-bends with proper parameters:
+
+
+- Set up a component with the correct total length and port separation
+- Use S-bend segments with horizontal distance of 30 um and vertical displacement matching the port separation
+- Create the center straight section where the waveguides run parallel
+- Assemble the upper waveguide path by chaining S-bend down, straight middle section, and S-bend up components together
+
+, positioning the first S-bend at the top port separation and connecting subsequent elements port-to-port.
+- Create the lower waveguide with mirrored S-bends (up then down) and another straight section of the same middle length.
+- Position the lower S-bend at the negative port separation, then chain the connections through the straight segment to the final downward S-bend.
+- Expose the input and output ports from the upper path's first and last S-bends, then add the lower path ports to complete the component interface. section in the middle, then they diverge again to upper-right and lower-right. The smooth curves appear to have a reasonable radius. Let me reconsider the approach using `gf.components.bend_s` for proper S-bends instead of the `gf.path.smooth` function.
+
+I'll set up the component with a 0.5 um waveguide width and dimensions matching the 120 um × 4 um footprint. The S-bend regions should each span about 35 um horizontally with a vertical offset of 1.75 um to position the waveguides correctly at the ports.
+
+For the upper path, I'll create an S-bend that curves downward first, connect a straight section through the middle, then add another S-bend curving back upward. The lower path follows the same pattern but inverted. 2"])
+    
+    c.add_port("o1", port=sbend_in_upper.ports["o1"])
+    c.add_port("o2", port=sbend_out_upper.ports["o2"])
+    c.add_port("o3", port=sbend_in_lower.ports["o1"])
+    c.add_port("o4", port=sbend_out_lower.ports["o2"])
+    
+    return c
+
+device = waveguide_crossing()
+device.write_gds("waveguide_crossing.gds")
+
+The `bend_s` component should already provide smooth Euler bends, so that might not be the issue. I'm wondering if the problem lies elsewhere in how the paths are being constructed or connected.
+
+Looking at the target more carefully, I see two waveguides that start separated on the left, curve inward with smooth S-bends toward the center, potentially run parallel or merge briefly, then curve outward symmetrically on the right. The critical part is ensuring those S-bends are truly smooth. Let me try using `bend_s` with proper parameters:
+
+```python
+import gdsfactory as gf
+
+@gf.cell  
+def waveguide_crossing():
+    c = gf.Component()
+    
+    width = 0.5
+    xs = gf.cross_section.cross_section(width=width, layer=(
+
+1, 0))
+    
+    # Footprint: 120 um x 4 um
+    total_length = 120
+    port_separation = 3.5  # vertical distance between input/output ports
+    
+    # S-bend parameters
+    sbend_dx = 30  # horizontal span of S-bend
+    sbend_dy = port_separation / 2  # vertical offset for each S-bend
+    
+    # Middle straight section
+    middle_length = total_length - 2 * sbend_dx
+    
+    # Upper waveguide path
+    # Input S-bend (going down toward center)
+    sbend1_up = c << gf.components.bend_s(size=(sbend_dx, -sbend_dy), cross_section=xs)
+    sbend1_up.move((0, sbend_dy))
+```
+
+I'm setting up the S-bend dimensions with a 30 um horizontal span and calculating the vertical offset based on half the port separation. The upper waveguide's first S-bend moves downward toward the center while the lower one will mirror this behavior.
+
+Now I need to connect the straight section between the S-bends. The upper path gets a straight waveguide that spans the middle region, connecting from the first S-bend's output to the second S-bend's input. The second S-bend curves back upward to return to the original height. For the lower waveguide, I'm creating a matching S-bend that curves upward toward center, positioned below the centerline.
+
+The lower path mirrors the upper one: a straight section connects the input S-bend to an output S-bend that curves downward. Finally, I expose the key ports—the input from the upper S-bend, the outputs from both upper and lower S-bends—making them accessible as the component's external ports. 0.5
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    # Use larger bend radius for smoother curves
+    port_offset = 1.75
+    bend_section_length = 35
+    middle_length = 50
+    total_length = 120
+    
+    # Create paths using smooth with larger radius
+    upper_path = gf.path.smooth(
+        points=[
+            (0, port_offset),
+            (bend_section_length, 0),
+            (bend_section_length + middle_length, 0),
+            (total_length, port_offset)
+        ],
+        radius=20  # Larger radius for smoother curves
+    )
+    
+    lower_path = gf.path.smooth(
+        points=[
+            (0, -port_offset),
+
+I'm reconsidering the approach—the smooth function should generate curved paths between waypoints, but my output showed straight segments instead. The problem could be that the radius was insufficient or the waypoint geometry prevented proper curve fitting. I'll increase the bend radius to 20 and adjust the layout parameters to give the curves more room to develop properly. The port offset of 1.75 μm needs to curve back to 0 over just 35 μm horizontally. With a radius of 20 μm, the curvature becomes very subtle—the radius is too large relative to the vertical displacement, making the bends appear nearly straight even though they're technically curved.
+
+Comparing to the target design, the curves should be much more pronounced. The S-bends in the original occupy roughly 25-30% of the total 120 μm length on each side, and the vertical separation at the ports is more significant relative to the horizontal span. I need to reconsider the proportions—the 4 μm total height constraint means the curves need to be tighter and more aggressive to match the visual appearance of the reference. , -port_offset))
+    
+    straight_l = c << gf.components.straight(length=middle_length, cross_section=xs)
+    straight_l.connect("o1", sbend1_l.ports["o2"])
+    
+    sbend2_l = c << gf.components.bend_s(size=(sbend_length, -port_offset), cross_section=xs)
+    sbend2_l.connect("o1", straight_l.ports["o2"])
+    
+    c.add_ports(sbend1_u.get_ports_list(), prefix="u1_")
+    c.add_ports(sbend2_u.get_ports_list(), prefix="u2_")
+    c.add_ports(sbend1_l.get_ports_list(), prefix="l1_")
+    c.add_ports(sbend2_l.get_ports_list(), prefix="l2_")
+    
+    return c
+
+waveguide_crossing()
+```
+
+I'm building the crossing by creating two parallel waveguides with S-bends at each end to offset them vertically. The upper path uses negative then positive offsets while the lower path mirrors this with opposite signs, creating the crossing geometry. Each segment connects sequentially through ports to form continuous paths. kinks at the waypoints. Let me reconsider using `bend_s` components instead, which are specifically designed for S-bend transitions with smooth Euler curves.
+
+Looking at the target image, the S-bends are clearly visible with smooth curved transitions rather than sharp angles, and the middle section remains straight and horizontal. The `bend_s` component takes a `size=(dx, dy)` parameter to define the horizontal and vertical displacement, which should handle the geometry properly. I'll restructure the code to use these components for cleaner, more reliable results.
+
+Setting up the parameters: width of 0.5 um, a vertical offset of 1.5 um from the centerline, and S-bends with 30 um horizontal length, leaving 60 um for the straight middle section. The upper waveguide starts with an S-bend transitioning downward from the offset position to the center, followed by a straight section that connects the two bends.
+
+Now I need to complete the lower waveguide path. The output S-bend for the upper path curves back upward to the right, then the lower waveguide mirrors this with its own S-bend coming up from below, a straight middle section, and another S-bend exiting to the lower-right.
+
+Finally, I'm adding four ports to expose the input and output points of both waveguides, then returning the completed component and writing it to a GDS file.
+
+I should double-check the API for movement functions—`dmove` might be preferred over `move` in newer gdsfactory versions for delta movements. Looking at the actual output compared to the target, I notice the curves appear almost straight with small kinks rather than smooth S-bends with visible curvature. The `gf.path.smooth` function should be generating proper curves, so either the smoothing isn't working as expected or the path parameters need adjustment.
+
+Let me try using `bend_s` directly since it's built specifically for S-bend waveguides. I'll set up the component with proper dimensions for the 120 × 4 μm footprint, calculating the S-bend lengths and middle section accordingly, then construct the upper waveguide path starting with the left S-bend. ("o1", mid_straight_up.ports["o2"])
+
+Then I set up the lower waveguide path with a similar structure: an S-bend transitioning from lower to center, a straight section in the middle, and another S-bend going from center back down. Each component connects sequentially using port connections.
+
+Finally, I export all four ports from the device—the input and output of the upper path, plus the input and output of the lower path—and return the completed cell before writing it to a GDS file.
+
+The `bend_s` component creates S-shaped bends with smooth Euler curvature transitions, which should handle the geometry properly. The key issue with the earlier approach was likely that the waypoints weren't positioned to allow proper curve fitting at the specified radius. Using `bend_s` directly ensures the curves are calculated correctly.

@@ -1,0 +1,23 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+    footprint = 4.7
+    r_max = footprint / 2
+    min_r = 0.1
+    aa = (r_max + min_r) / 2
+    bb = (r_max - min_r) / 2
+    npoints = 200
+    theta = np.linspace(0, 2 * np.pi, npoints)
+    r = aa + bb * np.cos(4 * theta)
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+    points = list(zip(x, y))
+    c.add_polygon(points, layer=layer)
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")

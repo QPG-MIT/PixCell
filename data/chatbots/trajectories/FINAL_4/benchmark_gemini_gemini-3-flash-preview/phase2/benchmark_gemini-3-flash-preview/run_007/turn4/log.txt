@@ -1,0 +1,91 @@
+Turn 4 Response:
+
+To achieve a better match with the target image, I have made three key improvements in this iteration:
+
+1.  **Removed the Central Straight Segment**: The previous version had a short straight section in the middle, which created a "flat" appearance at the waist. By connecting two `bend_s` components directly, we create a single, continuous point of closest approach, resulting in the smooth, organic "pinch" seen in the original image.
+2.  **Eliminated Alignment Gaps**: The previous raster showed small white vertical artifacts. These occurred because segments were manually moved into position. In this version, I use the `ref.connect()` method, which ensures mathematical perfection in port alignment and eliminates any rendering gaps.
+3.  **Refined Visual Proportions**: I adjusted the waveguide width to **0.85μm** and the coupling gap to **0.06μm**. This better replicates the visual "weight" and the extremely tight proximity of the waveguides at the center of the 18x3μm footprint.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_curved_coupler():
+    """
+    Recreates the curved directional coupler from the image.
+    Footprint: 18um x 3um.
+    
+    Improvements:
+    - Uses two S-bends per arm joined at the center for a perfectly smooth waist.
+    - Utilizes .connect() for seamless waveguide transitions without artifacts.
+    - Adjusted widths to match the visual proportions of the target.
+    """
+    # 1. Define physical constraints for the 18x3um footprint
+    total_width = 18.0
+    total_height = 3.0
+    wg_width = 0.85         # Balanced width for visual accuracy
+    coupling_gap = 0.06     # Very narrow gap to match the 'waist' appearance
+    
+    # 2. Calculate dimensions for a symmetric two-part S-bend arm
+    dx = total_width / 2.0
+    
+    # Calculate vertical target positions for the centers
+    # To touch the top/bottom 3um boundaries: center = +/- (1.5 - width/2)
+    y_edge_center = (total_height / 2.0) - (wg_width / 2.0)
+    # To maintain the central gap: center = +/- (gap/2 + width/2)
+    y_waist_center = (coupling_gap / 2.0) + (wg_width / 2.0)
+    
+    # The vertical 'drop' for each half-arm
+    dy = y_waist_center - y_edge_center
+    
+    # 3. Define Cross Section
+    xs = gf.cross_section.strip(width=wg_width, layer=(1, 0))
+    
+    # 4. Create Component
+    c = gf.Component("curved_directional_coupler_v3")
+    
+    # 5. Build the Top Arm
+    # We use two S-bends connected at the center. 
+    # bend_s uses a smooth sine-based curve by default.
+    tl = c << gf.components.bend_s(size=(dx, dy), cross_section=xs)
+    tr = c << gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+    tr.connect("o1", tl.ports["o2"])
+    
+    # 6. Build the Bottom Arm (Mirror of top)
+    bl = c << gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+    br = c << gf.components.bend_s(size=(dx, dy), cross_section=xs)
+    br.connect("o1", bl.ports["o2"])
+    
+    # 7. Center the entire assembly
+    # Currently, tl.ports["o1"] is at (0,0). We want it at (-9, 1.5-w/2).
+    # Move top arm
+    top_offset_y = y_edge_center
+    tl.movey(top_offset_y)
+    tr.movey(top_offset_y)
+    tl.movex(-dx)
+    tr.movex(-dx)
+    
+    # Move bottom arm
+    bot_offset_y = -y_edge_center
+    bl.movey(bot_offset_y)
+    br.movey(bot_offset_y)
+    bl.movex(-dx)
+    br.movex(-dx)
+    
+    # 8. Add external ports for routing
+    c.add_port("o1", port=tl.ports["o1"])
+    c.add_port("o2", port=bl.ports["o1"])
+    c.add_port("o3", port=tr.ports["o2"])
+    c.add_port("o4", port=br.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    # Instantiate and save the component
+    component = create_curved_coupler()
+    component.write_gds("curved_coupler_v3.gds")
+    
+    # Footprint Verification
+    bbox = component.dbbox()
+    print(f"Final Footprint: {bbox.width():.2f}um (Width) x {bbox.height():.2f}um (Height)")
+```

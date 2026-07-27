@@ -1,0 +1,139 @@
+Turn 4 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_generator():
+    """
+    Racetrack Resonator with "Dogbone" Internal Heaters.
+    
+    Reconstructs the target geometry using a robust Boolean "sculpting" method:
+    1. Creates a solid "Pill" (Stadium) shape for the heater base.
+    2. Cuts a central horizontal slot to separate Top and Bottom heaters.
+    3. Cuts trapezoidal "notches" into the outer edges to create the narrow "neck" 
+       sections and the characteristic "dogbone" profile (Wide Pad - Narrow Neck - Wide Ear).
+    """
+    c = gf.Component("Racetrack_Heater_Dogbone")
+    layer = (1, 0)
+
+    # --- Parameters ---
+    # Overall Geometry
+    straight_len = 2.5
+    r_outer = 1.5
+    width_ring = 0.6
+    
+    # Internal Heater Geometry
+    gap_ring_heater = 0.2
+    gap_center_vertical = 0.2
+    
+    # Calculated dimensions
+    # Heater base fits inside the ring with a gap
+    r_heater_base = (r_outer - width_ring) - gap_ring_heater  # 1.5 - 0.6 - 0.2 = 0.7
+    
+    # Neck dimensions (The narrow part of the dogbone)
+    neck_width = 0.25
+    # The cut needs to reduce the width from r_heater_base (0.7) down to neck_top (0.35)
+    # relative to the central gap edge (0.1).
+    # Gap edge is at y = gap_center_vertical/2 = 0.1
+    # Neck top edge = 0.1 + neck_width = 0.35
+    cut_depth_y = 0.35 
+    
+    # Longitudinal positions for the neck cut
+    # Central pad half-length
+    x_pad = 0.4
+    # Taper length
+    x_taper = 0.2
+    # Neck length
+    x_neck = 0.5
+    
+    # x coordinates for the trapezoidal cut
+    x1 = x_pad
+    x2 = x_pad + x_taper
+    x3 = x_pad + x_taper + x_neck
+    x4 = x_pad + x_taper + x_neck + x_taper
+    
+    # --- 1. Construct Outer Ring (Path Extrusion) ---
+    p = gf.Path()
+    p.append(gf.path.straight(length=straight_len))
+    p.append(gf.path.arc(radius=r_outer - width_ring/2, angle=180))
+    p.append(gf.path.straight(length=straight_len))
+    p.append(gf.path.arc(radius=r_outer - width_ring/2, angle=180))
+    
+    ring = c << gf.path.extrude(p, cross_section=gf.cross_section.cross_section(width=width_ring, layer=layer))
+    # Center the ring
+    ring.move(ring.center, (0, 0))
+
+    # --- 2. Construct Solid Heater Base (Pill Shape) ---
+    # Union of a central rectangle and two circles
+    base_pill = gf.Component("Base_Pill")
+    
+    # Central block
+    base_pill.add_polygon(
+        [(-straight_len/2, -r_heater_base), (straight_len/2, -r_heater_base), 
+         (straight_len/2, r_heater_base), (-straight_len/2, r_heater_base)], 
+        layer=layer
+    )
+    # End circles
+    c_left = base_pill << gf.components.circle(radius=r_heater_base, layer=layer)
+    c_left.move((-straight_len/2, 0))
+    c_right = base_pill << gf.components.circle(radius=r_heater_base, layer=layer)
+    c_right.move((straight_len/2, 0))
+
+    # --- 3. Construct Cutting Mask ---
+    mask = gf.Component("Mask")
+    
+    # A. Central Split (Horizontal Gap)
+    # Wide enough to cut through the whole shape
+    mask << gf.components.rectangle(
+        size=(straight_len + 2*r_outer + 1.0, gap_center_vertical), 
+        layer=layer, 
+        centered=True
+    )
+    
+    # B. Neck Cuts (Trapezoidal Notches)
+    # Define a single notch polygon
+    # Points define a trapezoid that cuts from the top edge downwards
+    y_high = r_heater_base + 0.5 # Well above the shape
+    y_low = cut_depth_y
+    
+    notch_points = [
+        (x1, y_high),
+        (x2, y_low),
+        (x3, y_low),
+        (x4, y_high)
+    ]
+    
+    notch = gf.Component("Notch")
+    notch.add_polygon(notch_points, layer=layer)
+    
+    # Place 4 notches (Top-Right, Top-Left, Bot-Right, Bot-Left)
+    # Top Right
+    nr = mask << notch
+    
+    # Top Left (Mirror X)
+    nl = mask << notch
+    nl.mirror_x()
+    
+    # Bottom Right (Mirror Y)
+    # Note: Mirroring Y flips the trapezoid up-side down, so it cuts from bottom up. Perfect.
+    nbr = mask << notch
+    nbr.mirror_y()
+    
+    # Bottom Left
+    nbl = mask << notch
+    nbl.mirror_x()
+    nbl.mirror_y()
+
+    # --- 4. Boolean Operation ---
+    # Final Heaters = Base Pill MINUS Mask
+    heaters = gf.boolean(base_pill, mask, operation="not", layer=layer)
+    c << heaters
+
+    return c
+
+if __name__ == "__main__":
+    device = device_generator()
+    device.write_gds("racetrack_heater_dogbone.gds")
+    device.show()
+```

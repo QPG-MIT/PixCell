@@ -1,0 +1,113 @@
+Turn 4 Response:
+
+Based on the comparison between the target image and the output from the previous iteration, the primary discrepancy is the geometry of the tapered waveguides.
+
+1.  **Top Fingers:** In the target image, the tapered section of the top fingers is **significantly longer** than in the previous code output. The previous code used a 4µm taper, resulting in short "flared" bases. The target shows a gradual taper that extends for a distance roughly equal to the height of the central body (~10µm). I will increase the taper length to 9.0µm.
+2.  **Bottom Finger:** The bottom finger in the target image appears more substantial (wider at the base) and clearly triangular. I will increase the base width to 6.0µm and ensure the length is sufficient (6.0µm) to match the visual proportion (roughly half the body height).
+
+Here is the refined code:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_mmi_1x4_refined():
+    """
+    Refined 1x4 MMI device geometry - Iteration 4.
+    
+    Adjustments:
+    - Increased top finger taper length from 4.0um to 9.0um to match the 
+      elongated transition seen in the target image.
+    - Adjusted top straight length to 7.0um to maintain reasonable proportions.
+    - Increased bottom finger base width (6.0um) and tip width (2.0um) to 
+      match the prominent triangular shape in the target.
+    """
+    c = gf.Component("MMI_1x4_Refined")
+
+    # 1. Define Dimensions
+    body_width = 25.0
+    body_height = 10.0
+    
+    # Top Finger Geometry
+    # Taper length increased significantly to match the target's visual profile
+    tf_taper_len = 9.0
+    tf_straight_len = 7.0
+    tf_width_base = 4.2
+    tf_width_tip = 2.0
+    
+    # Bottom Finger Geometry
+    # Base widened to create the clearer triangular shape seen in target
+    bf_length = 6.0
+    bf_width_base = 6.0
+    bf_width_tip = 2.0
+
+    # 2. Define Cross Sections
+    # Used for ensuring layer consistency and port continuity
+    xs_top = gf.cross_section.cross_section(width=tf_width_tip, layer=(1, 0))
+    xs_bot = gf.cross_section.cross_section(width=bf_width_tip, layer=(1, 0))
+
+    # 3. Create the Central Body
+    body = c << gf.components.rectangle(
+        size=(body_width, body_height), 
+        layer=(1, 0), 
+        centered=True
+    )
+
+    # 4. Create Custom Composite Top Finger
+    def create_finger():
+        cmp = gf.Component()
+        
+        # Taper section (Base to Tip)
+        # width1/width2 override the cross_section width for the polygon
+        taper = cmp << gf.components.taper(
+            length=tf_taper_len,
+            width1=tf_width_base,
+            width2=tf_width_tip,
+            cross_section=xs_top
+        )
+        
+        # Straight section (Tip width)
+        straight = cmp << gf.components.straight(
+            length=tf_straight_len,
+            cross_section=xs_top
+        )
+        
+        # Connect straight section to end of taper (o2)
+        straight.connect("o1", taper.ports["o2"])
+        
+        # Expose base port for connection to body
+        cmp.add_port("o1", port=taper.ports["o1"])
+        return cmp
+
+    finger_cmp = create_finger()
+
+    # 5. Place Top Fingers
+    # Symmetrically spaced with pitch ~6.25um
+    offsets = [3.125, 9.375]
+    x_positions = [-x for x in reversed(offsets)] + offsets
+
+    for x in x_positions:
+        ref = c << finger_cmp
+        ref.rotate(90) # Rotate to point up
+        ref.move((x, body_height / 2)) # Move to top edge of body
+
+    # 6. Create and Place Bottom Finger
+    # Taper from base (wide) to tip (narrow)
+    taper_bot = gf.components.taper(
+        length=bf_length,
+        width1=bf_width_base,
+        width2=bf_width_tip,
+        cross_section=xs_bot
+    )
+
+    ref_bot = c << taper_bot
+    ref_bot.rotate(-90) # Rotate to point down
+    ref_bot.move((0, -body_height / 2)) # Move to bottom edge of body
+
+    return c
+
+if __name__ == "__main__":
+    device = device_mmi_1x4_refined()
+    device.write_gds("mmi_1x4_refined.gds")
+    print("GDS file generated successfully.")
+```

@@ -1,0 +1,60 @@
+Turn 4 Response:
+
+Okay, I understand. The current output is not correct, and the tappers are too long. I need to adjust the position of lines, tapers, and the widths of the tapers to match the target image.
+
+Here's a revised version of the code.
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import rectangle, taper
+
+
+@gf.cell
+def waveguide_structure():
+    c = gf.Component("waveguide_structure")
+    line_width = 3  # Reduced line width
+    line_spacing = 3
+    num_lines = 7  # Increased number of lines
+    length = 90
+    taper_length = 10  # Reduced taper length
+    taper_width1 = 3  # Starting taper width (same as line_width)
+    taper_width2 = 0.4   # Final taper width
+
+    total_structure_height = (num_lines - 1) * (line_width + line_spacing)
+
+    for i in range(num_lines):
+        # Calculate the Y position for each line, centering the structure
+        y = i * (line_width + line_spacing) - total_structure_height / 2
+
+        # Taper before the line
+        taper_left = c << taper(length=taper_length, width1=taper_width1, width2=taper_width2)
+        taper_left.movex(0).movey(y)
+
+        # The line
+        rect = c << rectangle(size=(length, line_width), layer=(1, 0), centered=False)
+        rect.movex(taper_length).movey(y)
+
+        # Taper after the line
+        taper_right = c << taper(length=taper_length, width1=taper_width2, width2=taper_width1)
+        taper_right.movex(taper_length + length).movey(y)
+
+    return c
+
+
+structure = waveguide_structure()
+structure.show()
+structure.write_gds("waveguide_structure.gds")
+```
+
+Key changes and explanations:
+
+*   **Number of lines (num\_lines):** Increased to 7 to better match the target image.
+*   **Line width (line\_width):** reduced to 3 to match the target image.
+*   **Line spacing (line\_spacing):** reduced to 3 to match the target image.
+*   **Taper Length (taper\_length):** Significantly reduced to 10, since the initial design taper length was far too long.
+*   **Taper widths:** set taper_width1 to be equal to the line_width
+*   **Taper Width 2**: set it to 0.4 so tapers become thin
+*   **Centering:**  I added logic to center the structure vertically around y=0. This is crucial for predictable placement.  The total height of the lines is computed, and then each line is positioned relative to the center of that overall height.
+*   **Removed Length Variation:** The code now produces equally sized lines. The differences in length comes from tapers only.
+
+This revised version should produce an output much closer to the target image, with the lines centered, the tapers much shorter, and a similar overall look and feel. I have made sure to adhere to the given constraint as well.

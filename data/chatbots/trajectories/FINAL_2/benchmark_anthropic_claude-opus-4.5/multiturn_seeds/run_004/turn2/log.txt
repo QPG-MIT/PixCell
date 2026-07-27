@@ -1,0 +1,82 @@
+Turn 2 Response:
+
+Looking at the comparison, I need to:
+1. Make the body significantly taller (more elongated vertically)
+2. Make the bottles taller and thinner at the base
+3. Adjust the overall proportions to match the target's aspect ratio
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def bottle_crate():
+    """
+    Creates a stylized bottle crate icon with 4 bottles and a V-notch pointer.
+    Adjusted proportions to match target image.
+    """
+    c = gf.Component()
+    
+    # Main crate body dimensions - much taller than wide to match target
+    body_width = 8.0
+    body_height = 14.0  # Significantly taller body
+    body_x = 0.0
+    body_y = 0.8  # Leave room for V-notch below
+    
+    # Bottle parameters - taller with more taper
+    num_bottles = 4
+    bottle_height = 10.0  # Taller bottles
+    bottle_top_width = 1.3    # Wider at top
+    bottle_bottom_width = 0.2  # Very narrow at bottom for sharp taper
+    
+    # Calculate bottle positions (evenly spaced within body)
+    edge_offset = 0.65
+    available_width = body_width - 2 * edge_offset
+    bottle_spacing = available_width / (num_bottles - 1)
+    first_bottle_x = body_x + edge_offset
+    
+    # V-notch parameters - smaller and sharper
+    notch_width = 0.7
+    notch_depth = 0.8
+    
+    # Create main crate body rectangle
+    c.add_polygon([
+        (body_x, body_y),
+        (body_x + body_width, body_y),
+        (body_x + body_width, body_y + body_height),
+        (body_x, body_y + body_height)
+    ], layer=(1, 0))
+    
+    # Create bottle necks (trapezoids - very narrow at base, wider at top)
+    bottle_base_y = body_y + body_height
+    for i in range(num_bottles):
+        cx = first_bottle_x + i * bottle_spacing
+        c.add_polygon([
+            (cx - bottle_bottom_width/2, bottle_base_y),
+            (cx + bottle_bottom_width/2, bottle_base_y),
+            (cx + bottle_top_width/2, bottle_base_y + bottle_height),
+            (cx - bottle_top_width/2, bottle_base_y + bottle_height)
+        ], layer=(1, 0))
+    
+    # Create V-notch pointing downward at bottom center
+    center_x = body_x + body_width / 2
+    c.add_polygon([
+        (center_x - notch_width/2, body_y),
+        (center_x + notch_width/2, body_y),
+        (center_x, body_y - notch_depth)
+    ], layer=(1, 0))
+    
+    return c
+
+# Create and save the device
+device = bottle_crate()
+device.write_gds("bottle_crate.gds")
+```
+
+Key changes made:
+- **Body height increased** from 5.0 to 14.0 μm (much taller rectangular body)
+- **Bottle height increased** from 4.0 to 10.0 μm (longer tapered prongs)
+- **Bottle bottom width reduced** from 0.5 to 0.2 μm (sharper taper at base)
+- **V-notch adjusted** to be smaller and sharper (0.7 × 0.8 μm)
+- **Bottle spacing recalculated** for even distribution across the body width
+
+Final dimensions: ~8 μm wide × 25 μm tall, fitting within the 25×10 footprint (if rotated) or matching the vertical aspect ratio of the target.

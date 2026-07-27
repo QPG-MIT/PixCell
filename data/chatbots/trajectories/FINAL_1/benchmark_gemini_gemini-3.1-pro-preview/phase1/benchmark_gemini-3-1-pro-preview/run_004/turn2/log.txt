@@ -1,0 +1,99 @@
+Turn 2 Response:
+
+The error occurred because I mistakenly used `gf.geometry.boolean` instead of the correct catalog function `gf.boolean`. 
+
+Below is the fully corrected script. It strictly uses exact mathematical coordinates and the proper `gf.boolean` function. By placing everything mathematically rather than relying on port-snapping, we avoid GDS alignment type errors and ensure absolute perfection in the seamless connections between the boolean sections and S-bends.
+
+### Corrected Python Script
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def mode_converter_parametric() -> gf.Component:
+    """
+    Recreates the 3-to-2 waveguide transition/coupler geometry.
+    Strictly uses parametric primitives and boolean operations.
+    Footprint constraint: [40.0, 1.7]
+    """
+    c = gf.Component()
+    layer = (1, 0)
+
+    # --- 1. Key Dimensions & Parametric Constraints ---
+    L_total = 40.0
+    L_taper = 25.0
+    L_offset = 5.0                  # Outer arms start 5um after the central taper
+    L_coupled = L_taper - L_offset  # 20.0 length for the coupled boolean section
+    L_sbend = L_total - L_taper     # 15.0 length for diverging curves
+
+    W_center_in = 0.6
+    W_center_out = 0.0
+    gap = 0.1
+    Y_outer = 0.6                   # Max outer boundary of the straight coupling arms
+    Y_max_footprint = 1.7 / 2.0     # 0.85 (half of the total 1.7 footprint height)
+
+    # --- 2. Central Tapering Arm ---
+    # Central waveguide starting wide and tapering to a sharp point
+    taper_center = gf.components.taper(
+        length=L_taper, 
+        width1=W_center_in, 
+        width2=W_center_out,
+        layer=layer
+    )
+    c << taper_center
+
+    # --- 3. Outer Coupled Arms (Boolean Subtraction Method) ---
+    # Taper equation: W(x) = W_in - (W_in - W_out) * (x / L_taper)
+    W_center_at_offset = W_center_in - (W_center_in - W_center_out) * (L_offset / L_taper)
+    
+    # Calculate cutout space needed (central arm width + top & bottom gaps)
+    W_cutout_in = W_center_at_offset + 2 * gap
+    W_cutout_out = W_center_out + 2 * gap
+
+    # A. Solid block covering the maximum extents of the coupling section
+    xs_block = gf.cross_section.cross_section(width=2 * Y_outer, layer=layer)
+    block = gf.components.straight(length=L_coupled, cross_section=xs_block)
+    
+    # B. The negative space (cutout) representing the central arm + the two constant gaps
+    cutout = gf.components.taper(
+        length=L_coupled,
+        width1=W_cutout_in,
+        width2=W_cutout_out,
+        layer=layer
+    )
+
+    # Execute boolean subtraction to create the perfect angled inner edges & flat outer edges
+    outer_arms = gf.boolean(A=block, B=cutout, operation="not", layer=layer)
+    
+    # Place outer arms in main component offset by 5um
+    ref_outer = c << outer_arms
+    ref_outer.movex(L_offset)
+
+    # --- 4. Diverging S-Bends ---
+    # The outer arms at X=25 start at y=gap (0.1) and end at y=Y_outer (0.6)
+    W_sbend = Y_outer - gap  # Width = 0.5
+    
+    Y_start_center = (Y_outer + gap) / 2.0  # Center Y = (0.6 + 0.1)/2 = 0.35
+    
+    # Target final total footprint height is 1.7 -> Final max Y is 0.85
+    Y_end_center = Y_max_footprint - (W_sbend / 2.0) # Final Center Y = 0.85 - 0.25 = 0.60
+    dy = Y_end_center - Y_start_center # Required shift = 0.60 - 0.35 = 0.25
+
+    xs_sbend = gf.cross_section.cross_section(width=W_sbend, layer=layer)
+
+    # Top S-Bend exactly aligned
+    sbend_top = gf.components.bend_s(size=(L_sbend, dy), cross_section=xs_sbend)
+    ref_sbend_top = c << sbend_top
+    ref_sbend_top.move((L_taper, Y_start_center))
+
+    # Bottom S-Bend (mirrored symmetry)
+    sbend_bot = gf.components.bend_s(size=(L_sbend, -dy), cross_section=xs_sbend)
+    ref_sbend_bot = c << sbend_bot
+    ref_sbend_bot.move((L_taper, -Y_start_center))
+
+    return c
+
+if __name__ == "__main__":
+    device = mode_converter_parametric()
+    device.write_gds("mode_converter.gds")
+```

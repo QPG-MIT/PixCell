@@ -1,0 +1,73 @@
+Turn 1 Response:
+
+The error "No GDS file produced" typically occurs because the script finishes executing without explicitly writing to the disk, or the `device.show()` command fails in environments without a graphical user interface (like a remote server or Jupyter environment).
+
+Additionally, the `ValueError` regarding `radius_min` occurs because the `bend_euler` function performs a safety check against the `CrossSection` property. We must ensure the `CrossSection` is defined **globally** and that both the `radius` and `radius_min` parameters are consistent.
+
+Here is the corrected, robust script. I have defined a custom cross-section to allow the tighter bends shown in your reference image and included explicit commands to write the file to your working directory.
+
+```python
+import gdsfactory as gf
+import os
+
+@gf.cell
+def directional_coupler_fixed():
+    """
+    Recreation of the directional coupler using a custom cross_section
+    to support tighter bend radii.
+    """
+    c = gf.Component("my_directional_coupler")
+    
+    # 1. Define custom cross_section with radius constraints
+    # Setting radius and radius_min to 5 to allow the compact 5um bends
+    xs = gf.cross_section.cross_section(
+        width=0.5, 
+        layer=(1, 0), 
+        radius=5, 
+        radius_min=5
+    )
+    
+    # 2. Central coupling region
+    # gap=0.2 is the distance between waveguides
+    coupler = c << gf.components.coupler_straight(length=10, gap=0.2, cross_section=xs)
+    
+    # 3. Create bend and taper templates
+    bend = gf.components.bend_euler(radius=5, angle=90, cross_section=xs)
+    taper = gf.components.taper(length=10, width1=0.5, width2=1.0)
+    
+    # 4. Attach Bends and Tapers to the 4 ports of the coupler
+    # Coupler ports: o1, o2 (left), o3, o4 (right)
+    port_map = ["o1", "o2", "o3", "o4"]
+    
+    for port_name in port_map:
+        # Create references
+        b = c << bend
+        t = c << taper
+        
+        # Connect: Coupler -> Bend -> Taper
+        b.connect("o1", coupler.ports[port_name])
+        t.connect("o1", b.ports["o2"])
+        
+        # Expose the final port
+        c.add_port(f"port_{port_name}", port=t.ports["o2"])
+        
+    return c
+
+# Generate the component
+device = directional_coupler_fixed()
+
+# Explicitly save the GDS file
+save_path = "directional_coupler.gds"
+device.write_gds(save_path)
+
+# Confirmation
+print(f"Success! GDS file generated at: {os.path.abspath(save_path)}")
+
+# Optional: Visualize if a GUI environment is available
+# device.show() 
+```
+
+### Key fixes applied:
+1.  **Cross-Section Consistency:** By explicitly setting `radius=5` and `radius_min=5` in `gf.cross_section.cross_section`, we satisfy both the `bend_euler` function's internal check and the design requirements of the image.
+2.  **File Saving:** Added `device.write_gds(save_path)` and a print confirmation. This ensures that even if you are running this in a CLI or a notebook environment, the file is definitely written to your current folder.
+3.  **Path Consistency:** Used `radius=5` in `bend_euler` to match the `CrossSection` definition exactly, eliminating the previous `ValueError`.

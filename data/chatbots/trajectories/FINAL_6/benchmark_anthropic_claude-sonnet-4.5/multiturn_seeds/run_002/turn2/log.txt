@@ -1,0 +1,79 @@
+Turn 2 Response:
+
+Looking at the comparison, I can see the key difference: the target has **two different petal shapes** - the horizontal petals are much wider and flatter than the vertical petals, creating an asymmetric cross. My previous version had all four petals the same size.
+
+Here's the improved script:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def cross_resonator(
+    horizontal_width: float = 4.6,
+    horizontal_height: float = 0.7,
+    vertical_width: float = 0.7,
+    vertical_height: float = 4.6,
+    layer: tuple = (1, 0)
+) -> gf.Component:
+    """
+    Create a four-petal cross-shaped resonator with asymmetric petals.
+    
+    Args:
+        horizontal_width: Width of horizontal ellipse (left-right extent)
+        horizontal_height: Height of horizontal ellipse
+        vertical_width: Width of vertical ellipse
+        vertical_height: Height of vertical ellipse (up-down extent)
+        layer: GDS layer tuple
+    
+    Returns:
+        Component with cross-shaped geometry
+    """
+    c = gf.Component()
+    
+    # Create horizontal ellipse (wide and flat)
+    horizontal_ellipse = gf.components.ellipse(
+        radii=(horizontal_width / 2, horizontal_height / 2),
+        layer=layer
+    )
+    h_ref = c << horizontal_ellipse
+    
+    # Create vertical ellipse (tall and narrow)
+    vertical_ellipse = gf.components.ellipse(
+        radii=(vertical_width / 2, vertical_height / 2),
+        layer=layer
+    )
+    v_ref = c << vertical_ellipse
+    
+    return c
+
+# Create the device with dimensions to match the target
+device = cross_resonator(
+    horizontal_width=4.6,
+    horizontal_height=0.7,
+    vertical_width=0.7,
+    vertical_height=4.6
+)
+
+# Save to GDS
+device.write_gds("cross_resonator.gds")
+
+# Optional: display the device
+device.show()
+
+print(f"Device created with footprint: {device.dxsize:.2f} x {device.dysize:.2f} um")
+```
+
+Key improvements:
+
+1. **Two different ellipses** instead of four identical ones:
+   - **Horizontal ellipse**: Very wide (4.6 μm) and flat (0.7 μm height)
+   - **Vertical ellipse**: Tall (4.6 μm) and narrow (0.7 μm width)
+
+2. **Simpler approach**: Just overlay two perpendicular ellipses at the center, which naturally creates the four-pointed cross shape
+
+3. **Better proportions**: The horizontal petal is much wider/flatter and the vertical petal is taller/narrower, matching the target asymmetry
+
+4. **Fits footprint**: Total size is approximately 4.6 x 4.6 μm, within the 4.7 x 4.7 μm constraint
+
+The overlapping ellipses automatically create the solid central region and the four distinct petal shapes visible in the target image.

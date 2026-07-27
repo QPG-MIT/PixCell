@@ -1,0 +1,107 @@
+import gdsfactory as gf
+
+@gf.cell
+def coupler_bundle():
+    """
+    Parametric generator for a 3-bundle directional coupler.
+    Each bundle consists of 4 parallel waveguides.
+    Constraint: 120um x 4um footprint.
+    """
+    c = gf.Component()
+
+    # =======================================================================
+    # 1. Define Parameters
+    # =======================================================================
+    total_length = 120.0
+    
+    # Waveguide Bundle Parameters (Tight pitch to fit in 4um)
+    wg_width = 0.1
+    wg_gap = 0.05
+    n_lines = 4
+    
+    # Calculate offsets for the 4 lines to center the bundle
+    pitch = wg_width + wg_gap
+    total_bundle_width = n_lines * wg_width + (n_lines - 1) * wg_gap # 0.55um
+    
+    # Offsets relative to bundle center
+    start_offset = -total_bundle_width / 2 + wg_width / 2
+    offsets = [start_offset + i * pitch for i in range(n_lines)]
+    
+    # Vertical placement
+    # Spacing bundles so they fit within +/- 2.0um (4um total)
+    # Center bundle at 0. Extent ~ +/- 0.275
+    # Outer bundles at +/- 0.75. Extent 0.475 to 1.025.
+    # Radius = 1.0. Max Y extent = 0.75 + 1.0 + 0.275 = 2.025 (Approx fits 4um)
+    dy = 0.75
+    bend_radius = 1.0 
+    
+    straight_len_outer = total_length - 2 * bend_radius
+
+    # =======================================================================
+    # 2. Define Custom Cross-Section
+    # =======================================================================
+    # Define the 4 actual waveguides as sections
+    sections = []
+    for off in offsets:
+        sections.append(gf.Section(width=wg_width, offset=off, layer=(1, 0)))
+    
+    # Create the parametric cross_section
+    # Fix for validation error: width must be a multiple of 2 DBU (usually 2nm).
+    # We use 0.01um (10nm) which is safe.
+    # This main width is on a dummy layer so it won't affect the physical mask.
+    xs_bundle = gf.cross_section.cross_section(
+        width=0.01,       
+        layer=(999, 0),    # Dummy layer
+        sections=sections
+    )
+
+    # =======================================================================
+    # 3. Build Geometry
+    # =======================================================================
+    
+    # --- Middle Bundle (Straight) ---
+    mid_wg = c << gf.components.straight(length=total_length, cross_section=xs_bundle)
+    mid_wg.x = 0
+    mid_wg.y = 0
+
+    # --- Top Bundle ---
+    # Straight section
+    top_straight = c << gf.components.straight(length=straight_len_outer, cross_section=xs_bundle)
+    top_straight.x = 0
+    top_straight.y = dy
+
+    # Left Bend (West -> North / Up)
+    # We use mirror_x on a standard Euler bend to go from West to North
+    bend_top_left = c << gf.components.bend_euler(radius=bend_radius, angle=90, cross_section=xs_bundle)
+    bend_top_left.mirror_x()
+    bend_top_left.connect("o1", top_straight.ports["o1"])
+
+    # Right Bend (East -> North / Up)
+    # Standard Euler bend goes East -> North.
+    bend_top_right = c << gf.components.bend_euler(radius=bend_radius, angle=90, cross_section=xs_bundle)
+    bend_top_right.connect("o1", top_straight.ports["o2"])
+
+    # --- Bottom Bundle ---
+    # Straight section
+    bot_straight = c << gf.components.straight(length=straight_len_outer, cross_section=xs_bundle)
+    bot_straight.x = 0
+    bot_straight.y = -dy
+
+    # Left Bend (West -> South / Down)
+    # Rotate standard bend 180 degrees
+    bend_bot_left = c << gf.components.bend_euler(radius=bend_radius, angle=90, cross_section=xs_bundle)
+    bend_bot_left.rotate(180)
+    bend_bot_left.connect("o1", bot_straight.ports["o1"])
+
+    # Right Bend (East -> South / Down)
+    # Mirror Y of standard bend
+    bend_bot_right = c << gf.components.bend_euler(radius=bend_radius, angle=90, cross_section=xs_bundle)
+    bend_bot_right.mirror_y()
+    bend_bot_right.connect("o1", bot_straight.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = coupler_bundle()
+    device.show()
+    device.write_gds("coupler_bundle.gds")

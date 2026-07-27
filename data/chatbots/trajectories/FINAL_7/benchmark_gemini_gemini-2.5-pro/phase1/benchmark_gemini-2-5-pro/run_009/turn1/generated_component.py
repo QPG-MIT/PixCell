@@ -1,0 +1,117 @@
+import gdsfactory as gf
+
+def create_racetrack_shape(length: float, radius: float, layer: tuple) -> gf.Component:
+    """
+    Creates a solid, filled racetrack shape by combining a rectangle and two circles.
+
+    This helper function uses the component's `flatten()` method to merge the
+    constituent shapes into a single polygon. This is a robust way to perform
+    a union operation that is stable across gdsfactory versions.
+
+    Args:
+        length: The length of the straight section of the racetrack.
+        radius: The radius of the semicircular ends.
+        layer: The GDS layer to place the geometry on.
+
+    Returns:
+        A Component containing the final merged racetrack shape.
+    """
+    # Create a temporary component to hold the unmerged shapes
+    c_unmerged = gf.Component()
+    
+    # Define the primitive shapes
+    center_rect = gf.components.rectangle(size=(length, 2 * radius), layer=layer)
+    end_circle = gf.components.circle(radius=radius, layer=layer)
+
+    # Add references to the shapes and position them
+    r = c_unmerged.add_ref(center_rect)
+    c1 = c_unmerged.add_ref(end_circle)
+    c2 = c_unmerged.add_ref(end_circle)
+
+    # Align the shapes to form the racetrack outline
+    r.center = (0, 0)
+    c1.center = (-length / 2, 0)
+    c2.center = (length / 2, 0)
+
+    # Flatten the component. This operation merges all overlapping polygons
+    # on the same layer, effectively performing a union.
+    c_merged = c_unmerged.flatten()
+    return c_merged
+
+
+@gf.cell
+def create_device():
+    """
+    Recreates the provided device geometry using GDSFactory.
+
+    The construction uses a boolean subtraction approach. A solid outer
+    racetrack shape has an inner racetrack and four rectangular holes
+    subtracted from it to create the final geometry.
+    """
+    c = gf.Component()
+    layer = (1, 0)
+
+    # --- 1. Define device overall dimensions based on footprint ---
+    # Footprint: [3.0, 5.5] -> Height=3.0, Width=5.5
+    device_width = 5.5
+    device_height = 3.0
+
+    # --- 2. Create the solid outer boundary using the robust helper function ---
+    outer_radius = device_height / 2
+    outer_length = device_width - 2 * outer_radius
+    
+    outer_shape = create_racetrack_shape(
+        length=outer_length, radius=outer_radius, layer=layer
+    )
+
+    # --- 3. Define the shapes to be subtracted (the white areas) ---
+
+    # a) The main inner cutout, also a racetrack.
+    ring_thickness = 0.4
+    inner_radius = outer_radius - ring_thickness
+    inner_length = outer_length - 2 * ring_thickness
+    
+    inner_cutout = create_racetrack_shape(
+        length=inner_length, radius=inner_radius, layer=layer
+    )
+
+    # b) The four small rectangular holes.
+    bar_center_y = 0.7
+    hole_width = 0.5
+    hole_height = 0.5
+    hole_spacing_x = 0.8
+    
+    hole = gf.components.rectangle(size=(hole_width, hole_height), layer=layer)
+    
+    # Create a component to hold all four holes for the boolean operation
+    all_holes = gf.Component()
+    
+    # Top holes
+    h1 = all_holes.add_ref(hole)
+    h1.center = (hole_spacing_x / 2, bar_center_y)
+    h2 = all_holes.add_ref(hole)
+    h2.center = (-hole_spacing_x / 2, bar_center_y)
+    
+    # Bottom holes
+    h3 = all_holes.add_ref(hole)
+    h3.center = (hole_spacing_x / 2, -bar_center_y)
+    h4 = all_holes.add_ref(hole)
+    h4.center = (-hole_spacing_x / 2, -bar_center_y)
+
+    # --- 4. Perform the final boolean subtraction ---
+    # The `gf.boolean` function is part of the core API and works reliably.
+    final_device = gf.boolean(
+        A=outer_shape, B=[inner_cutout, all_holes], operation="not", layer=layer
+    )
+
+    c.add_ref(final_device)
+    return c
+
+# Create an instance of the component for saving or viewing
+device = create_device()
+
+# To save the GDS file:
+# device.write_gds("recreated_device.gds")
+
+# To view the component (requires a KLayout viewer installation):
+# device.show()

@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:59.769461",
+      "api_duration_seconds": 34.791627168655396,
+      "usage": {
+        "input_tokens": 5415,
+        "output_tokens": 1251,
+        "total_tokens": 9830
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:41.630277",
+      "api_duration_seconds": 53.90193486213684,
+      "usage": {
+        "input_tokens": 6685,
+        "output_tokens": 1298,
+        "total_tokens": 13671
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:36.882346",
+      "api_duration_seconds": 28.66121220588684,
+      "usage": {
+        "input_tokens": 8014,
+        "output_tokens": 1292,
+        "total_tokens": 12033
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 20114,
+    "output_tokens": 3841,
+    "total_tokens": 35534
+  }
+}

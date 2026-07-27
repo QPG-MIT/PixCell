@@ -1,0 +1,114 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def custom_device_from_image():
+    """
+    Recreates the geometry from the provided image using GDSFactory parametric functions.
+
+    The device consists of a central straight waveguide and two symmetric top/bottom
+    arms that start narrow, curve outwards while widening, and then curve inwards
+    to finish as wider straight segments.
+    """
+    c = gf.Component("device_from_image")
+
+    # Define a common layer for all structures
+    LAYER = (1, 0)
+
+    # --- Device Footprint Constraints ---
+    # The total expected dimensions of the device
+    L_TOTAL = 40.0 # micrometers
+    H_TOTAL = 1.7  # micrometers
+
+    # --- Parameters for the Central Waveguide ---
+    w_center = 0.1 # Width of the central straight waveguide
+    l_center = 20.0 # Length of the central straight waveguide (visually shorter than arms)
+
+    # Create the cross-section for the central waveguide
+    xs_center = gf.cross_section.cross_section(width=w_center, layer=LAYER)
+
+    # Create the central straight waveguide component
+    center_wg = c << gf.components.straight(length=l_center, cross_section=xs_center)
+    # Position the central waveguide: horizontally centered, and at y=0
+    center_wg.center = (l_center / 2, 0)
+
+    # --- Parameters for the Top and Bottom Arms ---
+    w_arm_in = 0.2  # Initial (narrow) width of the arms
+    w_arm_out = 0.4 # Final (wider) width of the arms
+    gap_to_center = 0.1 # Vertical gap between the central waveguide and the adjacent arms
+
+    # Define cross-sections for the start and end of the arms
+    xs_arm_in = gf.cross_section.cross_section(width=w_arm_in, layer=LAYER)
+    xs_arm_out = gf.cross_section.cross_section(width=w_arm_out, layer=LAYER)
+
+    # Define the width transition profile along the path.
+    # 'sine' provides a smooth, non-linear width change.
+    transition_arm = gf.path.transition(xs_arm_in, xs_arm_out, width_type='sine')
+
+    # --- Top Arm Construction ---
+    # Calculate the initial Y-offset for the centerline of the top arm.
+    # This places the bottom edge of the top arm at `(w_center/2 + gap_to_center)`
+    y_offset_top_cl = w_center / 2 + gap_to_center + w_arm_in / 2
+
+    # Define the centerline path for the top arm using a series of waypoints.
+    # `gf.path.smooth` will create smooth bends (arcs/Euler spirals) between these points.
+    # The X-coordinates are chosen to span the full device length (L_TOTAL).
+    # The Y-coordinates (relative to the path's internal origin) are chosen to ensure
+    # the entire device fits within the H_TOTAL=1.7um height constraint.
+    #
+    # Verification of Y-coordinates:
+    # Max y-coordinate of device = H_TOTAL / 2 = 1.7 / 2 = 0.85 um.
+    # Top arm's top edge at its highest point should be 0.85 um.
+    # Its centerline will be at `0.85 - w_arm_out/2 = 0.85 - 0.4/2 = 0.65` um.
+    # Since the path starts at `y_offset_top_cl = 0.25` (when moved),
+    # the path's relative Y-peak needs to be `0.65 - 0.25 = 0.4` um.
+    path_y_peak = 0.4   # Relative Y-coordinate for the highest point of the path's centerline
+    path_y_end = 0.2    # Relative Y-coordinate for the end of the path's centerline
+
+    path_points_top_cl = [
+        (0, 0),                 # Start point (relative to path's internal origin)
+        (8, 0),                 # End of initial narrow straight segment
+        (20, path_y_peak),      # Peak of the outward curve (x, y)
+        (30, path_y_end),       # End of the inward curve, before the final straight
+        (L_TOTAL, path_y_end)   # End of the final wider straight segment (total X-span = L_TOTAL)
+    ]
+    
+    smooth_radius = 3.0 # Radius used by `gf.path.smooth` for generating bends at waypoints
+
+    # Create the path object from the defined points
+    path_top = gf.path.smooth(points=path_points_top_cl, radius=smooth_radius)
+
+    # Extrude the path, applying the defined width transition from `xs_arm_in` to `xs_arm_out`
+    arm_top = c << gf.path.extrude_transition(path_top, transition_arm)
+    # Move the created arm component to its correct absolute Y-position
+    arm_top.movey(y_offset_top_cl)
+
+    # --- Bottom Arm Construction (Mirrored from Top Arm) ---
+    # The bottom arm is a symmetric mirror image of the top arm.
+    # We generate its path by negating the Y-coordinates of the top arm's centerline points.
+    path_points_bottom_cl = [(p[0], -p[1]) for p in path_points_top_cl]
+    path_bottom = gf.path.smooth(points=path_points_bottom_cl, radius=smooth_radius)
+
+    # Extrude and position the bottom arm similarly
+    arm_bottom = c << gf.path.extrude_transition(path_bottom, transition_arm)
+    y_offset_bottom_cl = -y_offset_top_cl # Symmetric Y-offset
+    arm_bottom.movey(y_offset_bottom_cl)
+
+    # Optional: Print actual footprint for verification
+    # bounding_box = c.bbox()
+    # actual_width = bounding_box[1][0] - bounding_box[0][0]
+    # actual_height = bounding_box[1][1] - bounding_box[0][1]
+    # print(f"Actual device footprint: [{actual_width:.1f}, {actual_height:.1f}] um")
+    # print(f"Expected device footprint: [{L_TOTAL:.1f}, {H_TOTAL:.1f}] um")
+
+    return c
+
+if __name__ == "__main__":
+    # Create the device
+    device = custom_device_from_image()
+
+    # Write the GDSII file
+    device.write_gds("device_from_image.gds")
+
+    # To visualize the device, you can uncomment the following line:
+    # device.show()

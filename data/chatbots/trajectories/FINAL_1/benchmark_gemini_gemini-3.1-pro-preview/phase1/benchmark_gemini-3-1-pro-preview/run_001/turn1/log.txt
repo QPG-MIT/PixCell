@@ -1,0 +1,88 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def mode_converter():
+    """
+    Creates an adiabatic mode converter/coupler structure.
+    Constructed using boolean subtractions for the complex taper geometry 
+    and parametric S-bends for smooth, consistent routing.
+    """
+    c = gf.Component("mode_converter")
+    layer = (1, 0)
+    
+    # ---------------------------------------------------------
+    # 1. Left Section: Tapered Coupler Region (Length = 24 um)
+    # ---------------------------------------------------------
+    # We create a solid rectangular base block and subtract constant-width 
+    # slanted paths to form the central tapered core and outer cladding arms.
+    
+    p_base = gf.path.straight(length=24)
+    xs_base = gf.cross_section.cross_section(width=1.2, layer=layer)
+    base_comp = gf.path.extrude(p_base, cross_section=xs_base)
+    
+    # Define the gap geometries to be cut out.
+    # Paths are extended slightly past x=0 and x=24 (from x=-1 to 25) 
+    # to ensure clean boolean cuts entirely through the block faces.
+    xs_gap = gf.cross_section.cross_section(width=0.1, layer=layer)
+    
+    # Top gap path: Slopes inwards.
+    # Centers at y=0.35 at x=0, and y=0.05 at x=24.
+    p_gap_top = gf.Path([(-1, 0.3625), (25, 0.0375)])
+    gap_top = gf.path.extrude(p_gap_top, cross_section=xs_gap)
+    
+    # Bottom gap path: Slopes inwards symmetrically.
+    # Centers at y=-0.35 at x=0, and y=-0.05 at x=24.
+    p_gap_bot = gf.Path([(-1, -0.3625), (25, -0.0375)])
+    gap_bot = gf.path.extrude(p_gap_bot, cross_section=xs_gap)
+    
+    # Perform boolean subtractions
+    left_part_step1 = gf.boolean(base_comp, gap_top, operation='not', layer=layer)
+    left_part = gf.boolean(left_part_step1, gap_bot, operation='not', layer=layer)
+    c << left_part
+    
+    # ---------------------------------------------------------
+    # 2. Middle Section: S-Bend Routing (Length = 10 um)
+    # ---------------------------------------------------------
+    # Route the outer arms to their final wider separation.
+    
+    xs_arm = gf.cross_section.cross_section(width=0.5, layer=layer)
+    
+    # Top S-bend: transitions from y=0.35 to y=0.6 (dy = 0.25)
+    bend_top = gf.components.bend_s(size=(10, 0.25), cross_section=xs_arm)
+    b_t = c << bend_top
+    b_t.move((24, 0.35)) # Align specifically to the face of the top arm at x=24
+    
+    # Bottom S-bend: transitions from y=-0.35 to y=-0.6 (dy = -0.25)
+    bend_bot = gf.components.bend_s(size=(10, -0.25), cross_section=xs_arm)
+    b_b = c << bend_bot
+    b_b.move((24, -0.35)) # Align specifically to the face of the bottom arm at x=24
+    
+    # ---------------------------------------------------------
+    # 3. Right Section: Straight Extensions (Length = 6 um)
+    # ---------------------------------------------------------
+    # Extend the separated arms to complete the 40 um footprint.
+    
+    straight_ext = gf.components.straight(length=6, cross_section=xs_arm)
+    
+    s_t = c << straight_ext
+    s_t.connect("o1", b_t.ports["o2"])
+    
+    s_b = c << straight_ext
+    s_b.connect("o1", b_b.ports["o2"])
+    
+    # Expose external ports
+    c.add_port("o1_top", port=s_t.ports["o2"])
+    c.add_port("o1_bot", port=s_b.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    c = mode_converter()
+    
+    # Produce the required GDS output file
+    c.write_gds("mode_converter.gds")
+```

@@ -1,0 +1,39 @@
+{
+  "turn": 1,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:38:43.337957",
+      "api_duration_seconds": 41.12763714790344,
+      "usage": {
+        "input_tokens": 3544,
+        "output_tokens": 2907,
+        "total_tokens": 6451
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.PortWidthMismatchError: Width mismatch between the ports taper_gdsfactorypcomponentsptapersptaper_L14_W0p25_W0p7_a8ba9e07_0_0[\"o1\"] and Port \"o2\" (\"500\"/\"250\")",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:39:25.727939",
+      "api_duration_seconds": 27.77123212814331,
+      "usage": {
+        "input_tokens": 4483,
+        "output_tokens": 2159,
+        "total_tokens": 6642
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 8027,
+    "output_tokens": 5066,
+    "total_tokens": 13093
+  }
+}

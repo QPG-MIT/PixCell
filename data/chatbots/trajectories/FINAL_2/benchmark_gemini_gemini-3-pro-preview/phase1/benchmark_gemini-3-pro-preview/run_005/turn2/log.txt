@@ -1,0 +1,100 @@
+Turn 2 Response:
+
+Based on the feedback, the previous device geometry had an incorrect aspect ratio (too tall/blocky) and the individual waveguide fingers were not distinct enough or were disproportionate to the main body. The "footprint" constraint of `[25, 10]` is interpreted as **25 µm Height** and **10 µm Width** (vertical orientation).
+
+The revised script adjusts the proportions:
+1.  **Reduced MMI Body Height:** To ensure the top fingers are long and distinct, the main body height is reduced to 10 µm.
+2.  **Explicit Port Pitch:** Instead of spreading ports across the entire width, a fixed pitch of 2.0 µm is used to create realistic spacing with visible margins, matching the target image.
+3.  **Tuned Widths:** The taper base widths are set to 1.6 µm (with a 2.0 µm pitch), leaving a clear 0.4 µm gap between fingers to prevent them from merging into a solid block in the rasterization.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_mmi_1x4_corrected():
+    """
+    Recreates the 1x4 MMI geometry with corrected aspect ratios.
+    Footprint constraint [25, 10] is interpreted as Height=25um, Width=10um.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions ---
+    # Total Device: 10um Wide x 25um High
+    
+    # Sub-component Heights (Must sum to 25.0)
+    mmi_height = 10.0       # Reduced from 12 to allow longer fingers
+    top_taper_len = 5.0     # Transition length for outputs
+    top_straight_len = 6.0  # Straight length for outputs
+    bot_taper_len = 4.0     # Input taper length
+    
+    # Widths & Spacing
+    mmi_width = 10.0
+    
+    # Output Port Configuration
+    num_ports = 4
+    pitch = 2.0             # 2.0um pitch creates clear separation between fingers
+    
+    # Feature Widths
+    wg_width = 0.6          # Width of the straight waveguides
+    taper_width_top = 1.6   # Base width of output tapers (leaves 0.4um gap at pitch=2.0)
+    taper_width_bot = 2.0   # Base width of input taper
+    
+    layer = (1, 0)
+    
+    # Define Cross Section for straight waveguides
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+
+    # --- 1. Main MMI Body ---
+    # Central interference region
+    mmi = c << gf.components.rectangle(size=(mmi_width, mmi_height), layer=layer)
+    mmi.center = (0, 0)
+    
+    # --- 2. Top Output Fingers (4x) ---
+    # Define primitives
+    taper_top = gf.components.taper(
+        length=top_taper_len,
+        width1=taper_width_top, # Base (wide)
+        width2=wg_width,        # Tip (narrow)
+        layer=layer
+    )
+    straight_top = gf.components.straight(
+        length=top_straight_len,
+        cross_section=xs
+    )
+    
+    # Calculate x-offsets centered on the device
+    # Formula: pitch * (i - (N-1)/2) -> Offsets: -3.0, -1.0, 1.0, 3.0
+    x_offsets = [pitch * (i - (num_ports - 1) / 2) for i in range(num_ports)]
+    y_top_edge = mmi_height / 2
+    
+    for x in x_offsets:
+        # Place Taper
+        t = c << taper_top
+        t.rotate(90) # Point Up
+        t.move((x, y_top_edge))
+        
+        # Place Straight Extension
+        s = c << straight_top
+        # Connect start of straight (o1) to end of taper (o2)
+        s.connect("o1", t.ports["o2"])
+        
+    # --- 3. Bottom Input Finger (1x) ---
+    taper_bot = gf.components.taper(
+        length=bot_taper_len,
+        width1=taper_width_bot,
+        width2=wg_width,
+        layer=layer
+    )
+    
+    b = c << taper_bot
+    b.rotate(-90) # Point Down
+    b.move((0, -mmi_height / 2))
+
+    return c
+
+if __name__ == "__main__":
+    device = device_mmi_1x4_corrected()
+    device.show()
+    device.write_gds("mmi_1x4_corrected.gds")
+```

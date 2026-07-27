@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.773979",
+      "api_duration_seconds": 147.82914996147156,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 2531,
+        "total_tokens": 28356
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'triangle_gdsfactorypcomponentspshapesptriangles_X0p5_X0_c70608a0' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:39.039519",
+      "api_duration_seconds": 99.72183418273926,
+      "usage": {
+        "input_tokens": 4941,
+        "output_tokens": 3294,
+        "total_tokens": 27877
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.2 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:22:20.103330",
+      "api_duration_seconds": 18.74901819229126,
+      "usage": {
+        "input_tokens": 8280,
+        "output_tokens": 3084,
+        "total_tokens": 12090
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'NoneType' object has no attribute 'is_regular_array'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15570,
+    "output_tokens": 8909,
+    "total_tokens": 68323
+  }
+}

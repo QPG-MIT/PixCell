@@ -1,0 +1,152 @@
+Turn 3 Response:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_iter3():
+    """
+    Racetrack resonator with internal suspended perforated beams.
+    Refined based on target image:
+    - Replaces thin connection arms with solid polygonal fills that merge 
+      the beam ends into the ring arc.
+    - Adjusts beam dimensions and positioning to create correct void proportions.
+    """
+    c = gf.Component()
+    
+    # ==========================================
+    # 1. Dimensions & Parameters
+    # ==========================================
+    layer = (1, 0)
+    
+    # Device Constraints
+    # Target Footprint: ~5.5um x 3.0um
+    w_device = 5.5
+    h_device = 3.0
+    
+    # Ring Geometry
+    ring_width = 0.75
+    r_outer = h_device / 2.0                 # 1.5
+    r_inner = r_outer - ring_width           # 0.75
+    l_straight = w_device - 2 * r_outer      # 2.5
+    
+    # Center x-coordinates of the semicircles
+    xc_right = l_straight / 2.0              # 1.25
+    xc_left = -l_straight / 2.0              # -1.25
+    
+    # Internal Beam Geometry
+    beam_h = 0.4
+    beam_gap = 0.4                           # Vertical gap between top and bottom beams
+    y_beam_off = (beam_gap + beam_h) / 2.0   # Y-center of top beam
+    
+    # Y limits of the top beam (for polygon generation)
+    y_beam_bot = beam_gap / 2.0              # 0.2
+    y_beam_top = y_beam_bot + beam_h         # 0.6
+    
+    # X limits
+    x_beam_end = 1.0                         # X-coord where the rectangular beam ends
+    
+    # Hole Parameters
+    hole_w = 0.5
+    hole_h = 0.2
+    hole_spacing = 0.7                       # Center-to-center spacing
+    
+    # ==========================================
+    # 2. Build Ring (Path Method)
+    # ==========================================
+    # Constructing the racetrack path along its center line
+    # Radius of path = r_outer - ring_width/2
+    r_path = r_outer - ring_width / 2.0
+    
+    p = gf.Path()
+    p.append(gf.path.straight(length=l_straight/2))
+    p.append(gf.path.arc(radius=r_path, angle=180))
+    p.append(gf.path.straight(length=l_straight))
+    p.append(gf.path.arc(radius=r_path, angle=180))
+    p.append(gf.path.straight(length=l_straight/2))
+    
+    xs_ring = gf.cross_section.cross_section(width=ring_width, layer=layer)
+    ring = c << gf.path.extrude(p, cross_section=xs_ring)
+    
+    # The path construction starts at (0,0) and curves up. 
+    # We need to center the ring vertically.
+    ring.movey(-r_path)
+    
+    # ==========================================
+    # 3. Build Beams (Rectangles with Holes)
+    # ==========================================
+    def create_beam():
+        temp = gf.Component()
+        # Main solid body
+        body = temp << gf.components.rectangle(size=(2*x_beam_end, beam_h), centered=True, layer=layer)
+        
+        # Holes
+        h1 = temp << gf.components.rectangle(size=(hole_w, hole_h), centered=True, layer=layer)
+        h1.movex(-hole_spacing/2)
+        h2 = temp << gf.components.rectangle(size=(hole_w, hole_h), centered=True, layer=layer)
+        h2.movex(hole_spacing/2)
+        
+        # Combine holes
+        holes = gf.boolean(h1, h2, operation="or", layer=layer)
+        # Subtract holes from body
+        final = gf.boolean(body, holes, operation="not", layer=layer)
+        return final
+
+    beam_shape = create_beam()
+    
+    # Place Top Beam
+    b1 = c << beam_shape
+    b1.movey(y_beam_off)
+    
+    # Place Bottom Beam
+    b2 = c << beam_shape
+    b2.movey(-y_beam_off)
+    
+    # ==========================================
+    # 4. Build Arms (Polygons)
+    # ==========================================
+    # We create polygons that bridge the gap between the beam ends and the curved inner wall.
+    
+    # Helper to find x on the right arc inner wall given y
+    # Equation: (x - xc)^2 + y^2 = r_inner^2
+    def get_arc_right_x(y):
+        val = r_inner**2 - y**2
+        if val < 0: return xc_right 
+        return xc_right + np.sqrt(val)
+        
+    # Generate points for Top-Right Arm polygon
+    # 1. Start at top-right corner of beam
+    # 2. Trace along the inner arc boundary downwards
+    # 3. End at bottom-right corner of beam
+    
+    # Sample the arc edge for smoothness
+    ys_arc = np.linspace(y_beam_top, y_beam_bot, 15)
+    arc_points = [(get_arc_right_x(y), y) for y in ys_arc]
+    
+    # Construct polygon points list
+    poly_pts_tr = [(x_beam_end, y_beam_top)] + arc_points + [(x_beam_end, y_beam_bot)]
+    
+    # Add Top-Right Arm
+    c.add_polygon(poly_pts_tr, layer=layer)
+    
+    # Add Bottom-Right Arm (Mirror Y of Top-Right)
+    poly_pts_br = [(x, -y) for x, y in poly_pts_tr]
+    c.add_polygon(poly_pts_br, layer=layer)
+    
+    # Add Top-Left Arm (Mirror X of Top-Right)
+    # Left arc symmetry -> x becomes -x
+    poly_pts_tl = [(-x, y) for x, y in poly_pts_tr]
+    c.add_polygon(poly_pts_tl, layer=layer)
+    
+    # Add Bottom-Left Arm (Mirror X of Bottom-Right)
+    poly_pts_bl = [(-x, y) for x, y in poly_pts_br]
+    c.add_polygon(poly_pts_bl, layer=layer)
+
+    return c
+
+if __name__ == "__main__":
+    device = device_iter3()
+    device.show()
+    device.write_gds("device_iter3.gds")
+```

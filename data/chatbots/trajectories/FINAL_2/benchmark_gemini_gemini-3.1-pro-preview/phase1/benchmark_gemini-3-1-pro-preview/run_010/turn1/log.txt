@@ -1,0 +1,97 @@
+Turn 1 Response:
+
+The issue was that the previous script only displayed the geometry in the viewer (`device.show()`) but did not explicitly save a GDSII file to disk, which is required. 
+
+Here is the corrected script that constructs the 1x4 optical splitter parametrically and actively generates the `optical_splitter.gds` file.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def optical_splitter():
+    """
+    Parametric reconstruction of a 1x4 optical splitter (MMI).
+    Constructed using standard GDSFactory primitives (rectangles, tapers, straights).
+    """
+    c = gf.Component("optical_splitter")
+    
+    # Define layer and dimensional parameters
+    layer = (1, 0)
+    
+    # Footprint constraints for the central MMI body
+    body_width = 25.0
+    body_height = 10.0
+    
+    # Arm dimensions
+    base_width = 3.0   # Width of the tapers attaching to the main body
+    tip_width = 1.0    # Width of the narrow ends and straight sections
+    
+    top_taper_len = 12.0
+    top_straight_len = 8.0
+    bot_taper_len = 5.0
+
+    # Cross section for the narrow waveguide extensions
+    xs_narrow = gf.cross_section.cross_section(width=tip_width, layer=layer)
+
+    # --- 1. Main Central Body ---
+    # Centered at (0, 0). The top edge is at y = 5.0, bottom edge at y = -5.0
+    c << gf.components.rectangle(
+        size=(body_width, body_height), 
+        layer=layer, 
+        centered=True
+    )
+
+    # --- 2. Top Output Ports (4 Arms) ---
+    # Divide the body width equally to locate the centers of the 4 arms
+    pitch = body_width / 4.0
+    x_centers = [-1.5 * pitch, -0.5 * pitch, 0.5 * pitch, 1.5 * pitch]
+
+    for x in x_centers:
+        # Create taper pointing upwards
+        taper = gf.components.taper(
+            length=top_taper_len, 
+            width1=base_width, 
+            width2=tip_width
+        )
+        t_ref = c << taper
+        
+        # Rotate 90 degrees so 'o1' (wide base) is at (0,0) and points down conceptually 
+        # (to mate with a flush horizontal edge). 'o2' points up.
+        t_ref.rotate(90)
+        
+        # Move the wide base to sit flush against the top edge of the main body
+        t_ref.move((x, body_height / 2.0))
+        
+        # Create and connect straight waveguide section to the tip of the taper
+        straight = gf.components.straight(
+            length=top_straight_len, 
+            cross_section=xs_narrow
+        )
+        s_ref = c << straight
+        s_ref.connect("o1", t_ref.ports["o2"])
+
+    # --- 3. Bottom Input Port (1 Arm) ---
+    # Create taper pointing downwards
+    bot_taper = gf.components.taper(
+        length=bot_taper_len, 
+        width1=base_width, 
+        width2=tip_width
+    )
+    b_ref = c << bot_taper
+    
+    # Rotate -90 degrees so 'o1' is at (0,0) and 'o2' points down
+    b_ref.rotate(-90)
+    
+    # Move the wide base to sit flush against the bottom edge of the main body
+    b_ref.move((0, -body_height / 2.0))
+
+    return c
+
+if __name__ == "__main__":
+    # Instantiate the component
+    device = optical_splitter()
+    
+    # Safely generate and write the output GDS file
+    device.write_gds("optical_splitter.gds")
+    print("Successfully generated 'optical_splitter.gds'")
+```

@@ -1,0 +1,121 @@
+Turn 1 Response:
+
+The error "No GDS file produced" isn't a code error, but a logical one. The provided script is syntactically correct, but the line that actually saves the GDS file is commented out by default.
+
+To fix this, you simply need to uncomment the `device.write_gds(...)` line within the `if __name__ == "__main__":` block. This block ensures the code only runs when the script is executed directly (not when imported as a module).
+
+Here is the corrected script with the file-saving line enabled. The rest of the GDSFactory logic remains the same as it was correct.
+
+```python
+import gdsfactory as gf
+import pathlib
+
+@gf.cell
+def create_directional_coupler():
+    """
+    Creates a directional coupler based on the provided image and footprint.
+
+    The device is assembled from a central straight coupler section and four
+    S-bends for the inputs and outputs.
+    """
+
+    # --- 1. Define Parameters ---
+    # Parameters are derived from the footprint constraint and visual analysis.
+    
+    # Footprint constraints
+    footprint_length = 120.0  # Total length of the device in um
+    port_separation_y = 4.0   # Total vertical separation between outer ports in um
+
+    # Design choices for unspecified parameters, based on typical designs
+    waveguide_width = 0.5  # Assumed standard waveguide width in um
+    gap = 0.5              # Assumed gap between waveguides, looks similar to width in image
+    
+    # Calculate dimensions for subcomponents
+    # We'll dedicate 1/3 of the length to bends (1/6 on each side)
+    bend_length_x = 20.0
+    coupling_length = footprint_length - 2 * bend_length_x # = 80.0
+
+    # Calculate the vertical travel distance for each S-bend
+    # The ports are at +/- port_separation_y/2 from the center
+    # The coupled waveguides are at +/- (waveguide_width + gap)/2 from the center
+    port_y_offset = port_separation_y / 2.0  # = 2.0
+    coupler_y_offset = (waveguide_width + gap) / 2.0  # = 0.5
+    bend_length_y = port_y_offset - coupler_y_offset # = 1.5
+
+    # --- 2. Create Component and Subcomponents ---
+
+    # Create a new component to hold the final device
+    c = gf.Component("directional_coupler")
+
+    # Define a common cross-section for all waveguide parts
+    xs = gf.cross_section.cross_section(width=waveguide_width)
+
+    # Create the primitive building blocks. These are the "blueprints".
+    coupler_section = gf.components.coupler_straight(
+        length=coupling_length, gap=gap, cross_section=xs
+    )
+    
+    s_bend_base = gf.components.bend_s(
+        size=(bend_length_x, bend_length_y), cross_section=xs
+    )
+
+    # --- 3. Assemble the Device ---
+
+    # Place the central coupling section at the origin first
+    coupler_ref = c << coupler_section
+
+    # Create and connect the four S-bends.
+    # We create a reference to the s_bend_base component first,
+    # and then apply transformations to the reference, not the component itself.
+    
+    # Input bends (left side)
+    bend_in_top = c << s_bend_base
+    bend_in_bot = c << s_bend_base
+    
+    # Transform the references
+    bend_in_top.mirror()  # Mirror across Y-axis to point from left-to-right
+    bend_in_bot.mirror()  # Mirror across Y-axis
+    bend_in_bot.mirror_y()# Then mirror across X-axis for the bottom bend
+
+    # Connect the transformed references
+    bend_in_top.connect("o2", coupler_ref.ports["o1"])
+    bend_in_bot.connect("o2", coupler_ref.ports["o2"])
+
+    # Output bends (right side)
+    bend_out_top = c << s_bend_base
+    bend_out_bot = c << s_bend_base
+    
+    # Transform the bottom reference
+    bend_out_bot.mirror_y() # Mirror across X-axis
+    
+    # Connect the references
+    bend_out_top.connect("o1", coupler_ref.ports["o3"])
+    bend_out_bot.connect("o1", coupler_ref.ports["o4"])
+
+    # --- 4. Add External Ports ---
+
+    # Expose the unconnected ports of the S-bend references as the device's main ports
+    c.add_port("o1", port=bend_in_top.ports["o1"])
+    c.add_port("o2", port=bend_in_bot.ports["o1"])
+    c.add_port("o3", port=bend_out_top.ports["o2"])
+    c.add_port("o4", port=bend_out_bot.ports["o2"])
+
+    return c
+
+# --- Main execution block to generate and display the GDS ---
+if __name__ == "__main__":
+    # Instantiate the component
+    device = create_directional_coupler()
+    
+    # Optional: Display the component in the KLayout viewer (useful for debugging)
+    # device.show()
+    
+    # FIX: The following line is uncommented to ensure a GDS file is produced.
+    # The script will save the file in the same directory where it is run.
+    output_filename = "directional_coupler.gds"
+    device.write_gds(output_filename)
+    
+    # Add a print statement to confirm completion
+    print(f"Successfully generated GDS file: {pathlib.Path(output_filename).resolve()}")
+
+```

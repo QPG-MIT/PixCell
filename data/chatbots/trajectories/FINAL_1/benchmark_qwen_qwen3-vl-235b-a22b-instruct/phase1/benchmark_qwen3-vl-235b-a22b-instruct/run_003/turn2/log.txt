@@ -1,0 +1,57 @@
+Turn 2 Response:
+
+You're right — I made an error. The `gf.path.bezier` function doesn't exist in the standard GDSFactory API as listed in your catalog. The path system supports `straight`, `arc`, `euler`, `smooth`, `spiral_archimedean`, and `bezier` is not included in the documented functions.
+
+Let me correct this and use only the functions available in your provided catalog. I’ll stick with Euler bends or S-bends, which are supported, and adjust the parameters to better match the smooth, gradual separation shown in the target image.
+
+Here’s the corrected script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def y_junction():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create two straight waveguides on the left
+    wg1 = c << gf.components.straight(length=10, cross_section=xs)
+    wg2 = c << gf.components.straight(length=10, cross_section=xs)
+    
+    # Position wg2 below wg1 with 0.7μm center-to-center spacing (0.2μm gap if width=0.5μm)
+    wg2.movey(-0.7)
+    
+    # Create smooth, gradual separation using S-bends (which are parametric and supported)
+    # Upper S-bend: dx=20μm (horizontal), dy=3μm (vertical offset)
+    s_bend_upper = c << gf.components.bend_s(size=(20, 3), cross_section=xs)
+    s_bend_upper.connect("o1", wg1.ports["o2"])
+    
+    # Lower S-bend: mirror to go downward
+    s_bend_lower = c << gf.components.bend_s(size=(20, 3), cross_section=xs)
+    s_bend_lower.connect("o1", wg2.ports["o2"])
+    s_bend_lower.mirror()
+    
+    # Add ports for external connections
+    c.add_port("o1", port=s_bend_upper.ports["o2"])
+    c.add_port("o2", port=s_bend_lower.ports["o2"])
+    c.add_port("o3", port=wg1.ports["o1"])
+    c.add_port("o4", port=wg2.ports["o1"])
+    
+    return c
+
+# Create the device
+device = y_junction()
+
+# Write to GDS file
+device.write_gds("y_junction.gds")
+```
+
+### Why this works:
+- **No use of `bezier`** — Only functions from your catalog are used: `straight`, `bend_s`, `mirror`, `add_port`, etc.
+- **S-bends** provide smooth, gradual curvature that matches the visual style of the target image.
+- **Mirror operation** on the lower bend ensures symmetric separation.
+- **Parameters adjusted** (`size=(20, 3)`) to create a gentle, wide curve that visually matches the target image’s smooth transition.
+
+This should render a structure much closer to the original image — two parallel waveguides that gradually separate into a Y-shape with smooth, adiabatic bends.

@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:59:11.726091",
+      "api_duration_seconds": 144.84537529945374,
+      "usage": {
+        "input_tokens": 9856,
+        "output_tokens": 1865,
+        "total_tokens": 23166
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:01:37.832195",
+      "api_duration_seconds": 40.251182079315186,
+      "usage": {
+        "input_tokens": 12224,
+        "output_tokens": 1567,
+        "total_tokens": 16274
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: Value cannot be converted to an integer for argument #1 ('index') in Layout.get_info",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:02:19.453885",
+      "api_duration_seconds": 52.19312000274658,
+      "usage": {
+        "input_tokens": 13827,
+        "output_tokens": 2220,
+        "total_tokens": 18435
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 35907,
+    "output_tokens": 5652,
+    "total_tokens": 57875
+  }
+}

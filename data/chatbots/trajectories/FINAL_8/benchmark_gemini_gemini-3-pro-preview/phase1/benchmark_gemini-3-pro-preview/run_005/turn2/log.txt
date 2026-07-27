@@ -1,0 +1,148 @@
+Turn 2 Response:
+
+To fix the `ValueError` regarding the minimum bend radius and correct the geometry to match the target image, we must explicitly define a custom cross-section with a smaller allowed radius. The default cross-section in GDSFactory often enforces a 10µm minimum radius, which is too large for this 4µm tall device.
+
+I have also refined the geometry logic to ensure the "fanned out" waveguides are properly nested (concentric) and do not intersect, using the "vertical port" calculation derived in the analysis.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def dense_waveguide_coupler_fixed():
+    c = gf.Component()
+
+    # Constraint: Footprint [120.0, 4.0]
+    # The device is extremely narrow (4um height). 
+    # We need tight pitches and very small bend radii (approx 1.0um).
+
+    # 1. Define Dimensions
+    width = 0.2
+    gap = 0.12
+    pitch = width + gap  # 0.32 um
+    
+    # 2. Define Custom Cross-Section
+    # Setting `radius` here sets the default and allows smaller radii without validation errors.
+    # We set it to 1.0um to match our tightest bend.
+    xs = gf.cross_section.cross_section(
+        width=width, 
+        radius=1.0,  
+        layer=(1, 0)
+    )
+
+    # 3. Geometry Parameters
+    n_center = 4   # Straight center lines
+    n_side = 4     # Top/Bottom looping lines
+    
+    total_length = 120.0
+    
+    # We define a "vertical port x" where the curved waveguides become vertical.
+    # This creates the "concentric" look where outer loops start curving earlier.
+    x_vertical_port = 55.0 
+    
+    # Gap between the center bundle and the side bundles
+    group_gap = 0.3 
+
+    # --- CENTER BUS (Straight) ---
+    # Centered at y=0
+    # Offsets centered around 0
+    y0_center = -((n_center - 1) * pitch) / 2
+    
+    for i in range(n_center):
+        y = y0_center + i * pitch
+        wg = c << gf.components.straight(length=total_length, cross_section=xs)
+        wg.center = (0, y)
+
+    # --- TOP BUS (Bends UP) ---
+    # Starts above center bus
+    y_start_top = y0_center + (n_center - 1) * pitch + pitch + group_gap
+    r_min = 1.0
+    
+    for i in range(n_side):
+        # i=0 is the innermost line
+        y = y_start_top + i * pitch
+        radius = r_min + i * pitch
+        
+        # Calculate the length of the straight horizontal section
+        # For concentric bends, the straight section ends at (x_vertical_port - radius)
+        # Total straight length = 2 * x_end
+        l_straight = 2 * (x_vertical_port - radius)
+        
+        if l_straight < 0:
+            print(f"Warning: Radius {radius} too large for x_vertical_port {x_vertical_port}")
+            l_straight = 0.1
+
+        # Horizontal Straight
+        wg = c << gf.components.straight(length=l_straight, cross_section=xs)
+        wg.center = (0, y)
+        
+        # Left Bend (West -> North)
+        # Connects to straight o1 (West).
+        # We start with a standard bend (West->North if we mirror correctly).
+        # Standard Euler: o1 (West) -> o2 (North).
+        # We Mirror X to flip the o1 port to face East? No.
+        # Standard bend often has o1 facing West (180).
+        # Let's align explicitly.
+        
+        # Create standard bend
+        b_l = c << gf.components.bend_euler(radius=radius, angle=90, cross_section=xs)
+        # Mirror X to make it compatible with the Left side (going UP)
+        b_l.mirror_x() 
+        b_l.connect("o1", wg.ports["o1"])
+        
+        # Right Bend (East -> North)
+        # Connects to straight o2 (East).
+        b_r = c << gf.components.bend_euler(radius=radius, angle=90, cross_section=xs)
+        b_r.connect("o1", wg.ports["o2"])
+        
+        # Vertical Extensions (Legs)
+        # Extend the lines vertically to complete the look
+        ext_len = 5.0
+        ext_l = c << gf.components.straight(length=ext_len, cross_section=xs)
+        ext_l.connect("o1", b_l.ports["o2"])
+        
+        ext_r = c << gf.components.straight(length=ext_len, cross_section=xs)
+        ext_r.connect("o1", b_r.ports["o2"])
+
+    # --- BOTTOM BUS (Bends DOWN) ---
+    # Mirror of Top structure
+    y_start_bot = y0_center - pitch - group_gap
+    
+    for i in range(n_side):
+        # i=0 is innermost
+        y = y_start_bot - i * pitch
+        radius = r_min + i * pitch
+        
+        l_straight = 2 * (x_vertical_port - radius)
+        
+        wg = c << gf.components.straight(length=l_straight, cross_section=xs)
+        wg.center = (0, y)
+        
+        # Left Bend (West -> South)
+        # Standard: West->North. Mirror Y -> West->South. Mirror X -> East->South?
+        # Connection to West port (o1). Needs bend o1 facing East.
+        # Standard o1 faces West. Mirror X -> o1 faces East. Mirror Y -> Direction South.
+        b_l = c << gf.components.bend_euler(radius=radius, angle=90, cross_section=xs)
+        b_l.mirror_x()
+        b_l.mirror_y()
+        b_l.connect("o1", wg.ports["o1"])
+        
+        # Right Bend (East -> South)
+        # Connection to East port (o2). Needs bend o1 facing West.
+        # Standard o1 faces West. Mirror Y -> Direction South.
+        b_r = c << gf.components.bend_euler(radius=radius, angle=90, cross_section=xs)
+        b_r.mirror_y()
+        b_r.connect("o1", wg.ports["o2"])
+        
+        # Vertical Extensions
+        ext_l = c << gf.components.straight(length=5.0, cross_section=xs)
+        ext_l.connect("o1", b_l.ports["o2"])
+        
+        ext_r = c << gf.components.straight(length=5.0, cross_section=xs)
+        ext_r.connect("o1", b_r.ports["o2"])
+
+    return c
+
+# Generate and save
+device = dense_waveguide_coupler_fixed()
+device.write_gds("dense_coupler_fixed.gds")
+```

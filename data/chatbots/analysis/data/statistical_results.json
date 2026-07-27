@@ -1,0 +1,43 @@
+{
+  "hypothesis": "Capability Emergence: Newer Gemini models learned to use GDSFactory primitives, correlating with better device generation quality.",
+  "tests": {
+    "spearman_version_primitive": {
+      "test": "Spearman Correlation (Version vs Primitive Usage)",
+      "rho": 0.642857142857143,
+      "p_value": 0.11939237342741099,
+      "significant": "False",
+      "interpretation": "Moderate positive correlation"
+    },
+    "mannwhitney_primitive": {
+      "test": "Mann-Whitney U (2.x vs 3.x on primitive_percentage)",
+      "p_value": 0.05714285714285714,
+      "significant": "False"
+    },
+    "mannwhitney_iou": {
+      "test": "Mann-Whitney U (2.x vs 3.x on best_iou)",
+      "p_value": 0.00012225407173478939,
+      "significant": "True"
+    },
+    "linear_regression": {
+      "test": "Linear Regression (Primitives -> IoU)",
+      "p_value": 0.01518952317966601,
+      "significant": "True",
+      "r_squared": 0.07145686029317751,
+      "interpretation": "Each 10% increase in primitives -> 0.046 IoU increase"
+    },
+    "anova_families": {
+      "test": "One-way ANOVA (best_iou across families)",
+      "p_value": 0.005913789932646921,
+      "significant": "True"
+    },
+    "kruskal_families": {
+      "test": "Kruskal-Wallis H-test (best_iou across families)",
+      "p_value": 0.0032861575322012775,
+      "significant": "True"
+    }
+  },
+  "summary": {
+    "key_findings": [],
+    "hypothesis_supported": true
+  }
+}

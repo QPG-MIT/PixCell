@@ -1,0 +1,132 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def trident_coupler():
+    """
+    Creates a Trident Spot Size Converter (SSC) matching the reference geometry.
+    Footprint: 40.0um x 1.7um
+    
+    Key geometric features matched:
+    - Central taper vanishes to a point.
+    - Outer arms start narrow, expand adiabatically using a sine profile.
+    - Long interaction length (bend region).
+    - Precise input/output gaps.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions & Constraints ---
+    length = 40.0
+    height_constraint = 1.7
+    layer = (1, 0)
+    
+    # Length Partitioning
+    # Short straight input, long adiabatic bend, distinct straight output
+    len_straight_in = 2.0
+    len_straight_out = 8.0
+    len_bend = length - len_straight_in - len_straight_out # 30.0
+    
+    # Widths (um)
+    # Tuned to match the slender visual profile and gap ratios
+    w_center_in = 0.35   # Slightly narrower than previous to match proportions
+    w_center_tip = 0.03  # Tapers effectively to a point
+    w_arm_in = 0.15      # Very narrow start for the arms
+    w_arm_out = 0.5      # Wide output arm
+    gap_in = 0.1         # Tight coupling gap at input
+    
+    # --- Y-Coordinate Calculations ---
+    
+    # Input Positions
+    # Center waveguide is at y=0.
+    y_center_half = w_center_in / 2.0
+    y_arm_in_center = y_center_half + gap_in + (w_arm_in / 2.0)
+    
+    # Output Positions
+    # Constrain outer edge of output arm to height boundary (1.7/2 = 0.85)
+    y_max = height_constraint / 2.0
+    y_arm_out_center = y_max - (w_arm_out / 2.0)
+    
+    # Bend vertical shift
+    dy = y_arm_out_center - y_arm_in_center
+    
+    # --- Cross Sections ---
+    xs_center = gf.cross_section.cross_section(width=w_center_in, layer=layer)
+    xs_arm_in = gf.cross_section.cross_section(width=w_arm_in, layer=layer)
+    xs_arm_out = gf.cross_section.cross_section(width=w_arm_out, layer=layer)
+    
+    # --- 1. Central Waveguide ---
+    
+    # A. Straight Input Section
+    center_straight = c << gf.components.straight(
+        length=len_straight_in,
+        cross_section=xs_center
+    )
+    center_straight.move((0, 0))
+    
+    # B. Central Taper
+    # Uses xs_center for layer info, but overrides widths for the taper shape
+    center_taper = c << gf.components.taper(
+        length=len_bend,
+        width1=w_center_in,
+        width2=w_center_tip,
+        cross_section=xs_center
+    )
+    center_taper.connect("o1", center_straight.ports["o2"])
+    
+    # --- 2. Outer Arm Construction ---
+    # We construct one arm as a component and reference it twice
+    
+    arm = gf.Component()
+    
+    # Segment A: Straight Input
+    s_in = arm << gf.components.straight(
+        length=len_straight_in,
+        cross_section=xs_arm_in
+    )
+    
+    # Segment B: Expanding S-Bend
+    # Cosine path for smooth adiabatic bend
+    n_points = 200
+    t = np.linspace(0, 1, n_points)
+    x_pts = len_bend * t
+    y_pts = dy * 0.5 * (1 - np.cos(np.pi * t))
+    
+    path_bend = gf.Path(np.column_stack((x_pts, y_pts)))
+    
+    # Transition: use 'sine' width type. 
+    # This keeps the arm thinner for the first part of the bend, matching the target.
+    transition = gf.path.transition(
+        xs_arm_in, 
+        xs_arm_out, 
+        width_type="sine"
+    )
+    
+    bend = arm << gf.path.extrude_transition(path_bend, transition)
+    bend.connect("o1", s_in.ports["o2"])
+    
+    # Segment C: Straight Output
+    s_out = arm << gf.components.straight(
+        length=len_straight_out,
+        cross_section=xs_arm_out
+    )
+    s_out.connect("o1", bend.ports["o2"])
+    
+    # Expose the input port for placement
+    arm.add_port("o1", port=s_in.ports["o1"])
+    
+    # --- 3. Final Assembly ---
+    
+    # Top Arm
+    top_arm = c << arm
+    top_arm.move((0, y_arm_in_center))
+    
+    # Bottom Arm (Mirrored)
+    bot_arm = c << arm
+    bot_arm.mirror(p1=(0,0), p2=(1,0))
+    bot_arm.move((0, -y_arm_in_center))
+    
+    return c
+
+if __name__ == "__main__":
+    device = trident_coupler()
+    device.write_gds("trident_coupler.gds")

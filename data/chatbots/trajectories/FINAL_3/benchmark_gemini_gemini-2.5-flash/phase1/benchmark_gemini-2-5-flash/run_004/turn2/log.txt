@@ -1,0 +1,112 @@
+Turn 2 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def straight_coupler_like_device():
+    """
+    Creates a symmetric waveguide device with straight diagonal segments
+    resembling an X-coupler or a straight-tapered coupler.
+
+    The device's dimensions are constrained by the footprint [120, 4] um.
+    """
+    c = gf.Component("straight_coupler_like_device")
+
+    # Define the default cross-section for the waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    waveguide_width = xs.width
+
+    # Device footprint dimensions
+    full_length = 120.0
+    full_height = 4.0
+
+    # Calculated center-to-center separations
+    # Outer (input/output) waveguides separation
+    # The image shows the waveguides spanning the full height, so the
+    # centerlines are at full_height - width/2 and width/2
+    gap_outer_cc = full_height - waveguide_width # 3.5 um center-to-center
+
+    # Inner (middle) waveguides separation
+    # Based on visual, assuming a physical gap of 0.2um in the middle
+    physical_gap_inner = 0.2
+    gap_inner_cc = physical_gap_inner + waveguide_width # 0.7 um center-to-center
+
+    # Horizontal lengths for different sections
+    L_straight_io = 10.0      # Length of the straight input/output sections
+    L_straight_middle = 10.0  # Length of the parallel straight section in the middle
+    
+    # Calculate horizontal length of diagonal sections
+    # Remaining length after input/output and middle straight sections
+    remaining_length = full_length - (2 * L_straight_io) - L_straight_middle
+    L_diagonal_h = remaining_length / 2.0 # Horizontal projection for ONE diagonal segment
+
+    if L_diagonal_h <= 0:
+        raise ValueError("Calculated diagonal length is zero or negative. Adjust L_straight_io or L_straight_middle.")
+
+    # Calculate Y-coordinates for the centerlines of the waveguides
+    # Top waveguide:
+    y_center_outer_top = full_height - waveguide_width / 2 # 3.75 um
+    y_center_inner_top = full_height / 2 + gap_inner_cc / 2 # 2.35 um
+
+    # Bottom waveguide:
+    y_center_outer_bottom = waveguide_width / 2 # 0.25 um
+    y_center_inner_bottom = full_height / 2 - gap_inner_cc / 2 # 1.65 um
+
+    # Define horizontal X-coordinates for waypoints
+    x0 = 0.0
+    x1 = L_straight_io                                                  # Start of diagonal segment
+    x2 = L_straight_io + L_diagonal_h                                   # End of diagonal segment / Start of middle straight
+    x3 = L_straight_io + L_diagonal_h + L_straight_middle               # End of middle straight / Start of second diagonal
+    x4 = L_straight_io + L_diagonal_h + L_straight_middle + L_diagonal_h # End of second diagonal / Start of final straight
+    x5 = full_length                                                    # End of device
+
+    # Verify total horizontal length calculation (accounting for floating point precision)
+    # Using a small epsilon for float comparison
+    if abs(x5 - (x4 + L_straight_io)) > 1e-9:
+         raise ValueError(f"Calculated full_length ({x4 + L_straight_io}) does not match expected full_length ({x5}).")
+
+    # Define waypoints for the top waveguide path (straight segments)
+    path_top_points = [
+        (x0, y_center_outer_top),
+        (x1, y_center_outer_top),
+        (x2, y_center_inner_top),
+        (x3, y_center_inner_top),
+        (x4, y_center_outer_top),
+        (x5, y_center_outer_top)
+    ]
+
+    # Define waypoints for the bottom waveguide path (straight segments)
+    path_bottom_points = [
+        (x0, y_center_outer_bottom),
+        (x1, y_center_outer_bottom),
+        (x2, y_center_inner_bottom),
+        (x3, y_center_inner_bottom),
+        (x4, y_center_outer_bottom),
+        (x5, y_center_outer_bottom)
+    ]
+
+    # Create gf.Path objects directly from points for straight segments
+    # FIX: gf.Path expects 'points' as a positional argument, not a keyword argument.
+    p_top = gf.Path(path_top_points)
+    p_bottom = gf.Path(path_bottom_points)
+
+    # Extrude the paths to create the waveguide geometry
+    wg_top_ref = c << p_top.extrude(xs)
+    wg_bottom_ref = c << p_bottom.extrude(xs)
+
+    # Add ports for external connectivity
+    # Ports are added at the start (index 0) and end (index -1) of the extruded path component.
+    c.add_port("o1_top", port=wg_top_ref.ports[0])
+    c.add_port("o2_top", port=wg_top_ref.ports[-1])
+    c.add_port("o1_bottom", port=wg_bottom_ref.ports[0])
+    c.add_port("o2_bottom", port=wg_bottom_ref.ports[-1])
+
+    return c
+
+# Example usage and visualization
+if __name__ == "__main__":
+    device = straight_coupler_like_device()
+    device.show() # Renders the device for visualization in a GDS viewer
+    device.write_gds("straight_coupler_like_device.gds") # Saves the GDS file
+```

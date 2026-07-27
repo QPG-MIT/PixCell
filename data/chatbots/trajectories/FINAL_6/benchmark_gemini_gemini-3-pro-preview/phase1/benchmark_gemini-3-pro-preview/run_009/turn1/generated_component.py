@@ -1,0 +1,92 @@
+import gdsfactory as gf
+
+@gf.cell
+def star_cross_device():
+    """
+    Generates a 4-lobed cross device based on intersecting ellipses 
+    with rectangular port extensions.
+    
+    Footprint: 4.7 um x 4.7 um
+    """
+    c = gf.Component()
+    
+    # Dimensions derived from image and footprint constraint
+    total_size = 4.7
+    half_size = total_size / 2.0  # 2.35 um
+    
+    # Ellipse dimensions (The lobes)
+    # The ellipse needs to be slightly shorter than the full extent 
+    # to allow the rectangular stubs to form the tips.
+    lobe_major_radius = 1.9
+    lobe_minor_radius = 0.75
+    
+    # Stub dimensions (The straight tips)
+    stub_width = 0.35
+    # Stub length is calculated to ensure it reaches the boundary (2.35)
+    # and overlaps the ellipse sufficiently to avoid gaps.
+    # Lobe tip is at 1.9. Overlap starts around 1.8. 
+    # Length needed = (2.35 - 1.8) approx 0.55. Let's use 0.6 for safety.
+    stub_length = 0.6
+    
+    # 1. Create Primitives
+    # Main lobe body
+    ellipse_h = gf.components.ellipse(
+        radii=(lobe_major_radius, lobe_minor_radius), 
+        layer=(1, 0)
+    )
+    # Note: We can reuse the horizontal ellipse and rotate it for the vertical one
+    
+    # Port stub (horizontal definition)
+    stub = gf.components.rectangle(
+        size=(stub_length, stub_width), 
+        layer=(1, 0), 
+        centered=True
+    )
+
+    # 2. Assembly
+    
+    # Add horizontal and vertical lobes (Ellipses)
+    # Horizontal
+    c << ellipse_h
+    # Vertical (rotated 90 degrees)
+    ref_v = c << ellipse_h
+    ref_v.rotate(90)
+    
+    # Add Stubs
+    # Calculate the center position for the stubs so their outer edge hits exactly half_size (2.35)
+    # Center = Limit - (Length / 2)
+    stub_center_offset = half_size - (stub_length / 2.0)
+    
+    # Right Stub
+    s_right = c << stub
+    s_right.movex(stub_center_offset)
+    
+    # Left Stub
+    s_left = c << stub
+    s_left.movex(-stub_center_offset)
+    
+    # Top Stub
+    s_top = c << stub
+    s_top.rotate(90) # Rotate first (around origin)
+    s_top.movey(stub_center_offset) # Then move
+    
+    # Bottom Stub
+    s_bot = c << stub
+    s_bot.rotate(90)
+    s_bot.movey(-stub_center_offset)
+    
+    # Flatten the hierarchy to merge shapes into a single polygon (optional but cleaner for this geometry)
+    # c = c.flatten() 
+    
+    return c
+
+if __name__ == "__main__":
+    # Generate and display the component
+    device = star_cross_device()
+    device.show()
+    
+    # Verify footprint
+    print(f"Device size: {device.size_info.width:.2f} x {device.size_info.height:.2f} um")
+    
+    # Save to GDS
+    device.write_gds("star_cross.gds")

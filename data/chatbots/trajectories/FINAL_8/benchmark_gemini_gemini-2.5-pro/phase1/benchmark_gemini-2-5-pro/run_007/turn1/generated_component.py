@@ -1,0 +1,119 @@
+import gdsfactory as gf
+from gdsfactory.cross_section import Section
+
+@gf.cell
+def create_device():
+    """Creates the device geometry from the image."""
+    c = gf.Component("main_device") # Giving the component a name is good practice
+
+    # --- Define Device Parameters ---
+    n_lines = 4
+    # Note: total_height is not explicitly used, but derived from components
+    # total_height = 4.0 
+    total_width = 120.0
+    
+    # Divide the total height into 3 grating sections and 2 solid bars
+    h_grating = 1.0
+    h_bar = 0.5
+    
+    # Based on a 0.5 fill factor for lines and gaps within each grating section
+    line_width = h_grating / (n_lines * 2 - 1)
+    gap = line_width
+    pitch = line_width + gap
+    
+    # Define horizontal lengths based on total width
+    center_grating_len = 40.0
+    bend_radius = 15.0
+    # The remaining length is for the straight part of the arm before the bend
+    arm_straight_len = (total_width/2 - center_grating_len/2) - bend_radius
+
+    # --- 1. Create the Central Grating ---
+    # An array of parallel straight rectangles
+    center_grating = gf.Component("center_grating")
+    start_y = - (n_lines - 1) * pitch / 2
+    for i in range(n_lines):
+        y_pos = start_y + i * pitch
+        rect = center_grating.add_ref(
+            gf.components.rectangle(
+                size=(center_grating_len, line_width),
+                layer=(1, 0)
+            )
+        )
+        rect.movey(y_pos)
+    
+    # Add central grating to the main component
+    c.add_ref(center_grating)
+
+    # --- 2. Create the Solid Connecting Bars ---
+    # Width should connect the central grating and the straight part of the arms
+    bar_width = center_grating_len + 2 * arm_straight_len
+    bar_y_pos = h_grating / 2 + h_bar / 2
+
+    bar_top = c.add_ref(
+        gf.components.rectangle(size=(bar_width, h_bar), layer=(1, 0))
+    )
+    bar_top.movey(bar_y_pos)
+
+    bar_bottom = c.add_ref(
+        gf.components.rectangle(size=(bar_width, h_bar), layer=(1, 0))
+    )
+    bar_bottom.movey(-bar_y_pos)
+
+    # --- 3. Create the Flaring Arm Gratings ---
+    # Define a path for the arm (straight segment followed by a bend)
+    arm_path = gf.Path()
+    arm_path.append(gf.path.straight(length=arm_straight_len))
+    arm_path.append(gf.path.euler(radius=bend_radius, angle=90))
+
+    # Define a custom cross-section with 4 parallel lines
+    sections = []
+    for i in range(n_lines):
+        sec_y_pos = start_y + i * pitch
+        sections.append(Section(width=line_width, offset=sec_y_pos, layer=(1, 0)))
+    
+    xs_multi_line = gf.cross_section.CrossSection(sections=sections)
+
+    # Extrude the path with the custom cross-section to create one arm
+    arm = gf.path.extrude(arm_path, cross_section=xs_multi_line)
+
+    # --- 4. Assemble the Arms ---
+    # Position for the top-right arm
+    top_arm_y_pos = bar_y_pos + h_bar / 2 + h_grating / 2
+    arm_start_x = center_grating_len / 2
+
+    # Top right
+    tr_arm = c.add_ref(arm)
+    tr_arm.move((arm_start_x, top_arm_y_pos))
+
+    # Top left (mirrored)
+    tl_arm = c.add_ref(arm)
+    tl_arm.mirror()
+    tl_arm.move((-arm_start_x, top_arm_y_pos))
+    
+    # Bottom right (mirrored)
+    br_arm = c.add_ref(arm)
+    br_arm.mirror_y()
+    br_arm.move((arm_start_x, -top_arm_y_pos))
+
+    # Bottom left (mirrored from bottom-right)
+    bl_arm = c.add_ref(arm)
+    bl_arm.mirror_y()  # Mirror vertically to point down
+    bl_arm.mirror()    # Mirror horizontally to point left
+    bl_arm.move((-arm_start_x, -top_arm_y_pos))
+
+    return c
+
+# This block ensures the code runs only when the script is executed directly
+if __name__ == "__main__":
+    # Generate the component by calling the function
+    device_to_save = create_device()
+
+    # FIX: Uncomment this line to write the GDS file.
+    # The file will be saved in the same directory where you run the script.
+    device_to_save.write_gds("recreated_device.gds")
+
+    # Add a print statement for confirmation
+    print("Successfully wrote GDS file to 'recreated_device.gds'")
+
+    # You can also uncomment the following line to open the GDS in KLayout for viewing
+    # device_to_save.show()

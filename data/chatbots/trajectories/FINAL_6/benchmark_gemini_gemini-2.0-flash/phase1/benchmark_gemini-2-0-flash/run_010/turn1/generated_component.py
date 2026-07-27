@@ -1,0 +1,81 @@
+import gdsfactory as gf
+from gdsfactory.typings import LayerSpec
+from typing import Tuple
+
+@gf.cell
+def my_cross(
+    length: float = 4.0,
+    width: float = 0.5,
+    leaf_width: float = 1.0,
+    leaf_length: float = 2.0,
+    layer: LayerSpec = (1, 0),
+) -> gf.Component:
+    """
+    Create a leaf-shaped cross using GDSFactory parametric functions.
+
+    Args:
+        length: length of each arm of the cross.
+        width: width of each arm of the cross.
+        leaf_width: width of the leaf at the base.
+        leaf_length: length of each leaf.
+        layer: GDS layer for the cross.
+
+    Returns:
+        A GDSFactory component representing the leaf-shaped cross.
+    """
+    c = gf.Component("leaf_cross")
+
+    # Create the central cross
+    cross = c << gf.components.cross(length=length, width=width, layer=layer)
+
+    # Create the four leaves
+    for angle in [0, 90, 180, 270]:
+        leaf = c << gf.components.rectangle(size=(leaf_length, leaf_width), layer=layer, centered=True)
+        leaf.rotate(angle)
+        if angle == 0:
+            leaf.movex(length/2 + leaf_length/2 -0.25)
+            leaf.movey(0)
+        elif angle == 90:
+            leaf.movey(length/2 + leaf_length/2-0.25)
+            leaf.movex(0)
+        elif angle == 180:
+            leaf.movex(-(length/2 + leaf_length/2-0.25))
+            leaf.movey(0)
+        else:
+            leaf.movey(-(length/2 + leaf_length/2-0.25))
+            leaf.movex(0)
+
+    # Use boolean_union to merge the cross and the leaves
+    c = gf.boolean(cross, leaf, operation="or", layer=layer)
+
+    # Use boolean_union to merge the cross and the leaves
+    leaf2 = c << gf.components.rectangle(size=(leaf_length, leaf_width), layer=layer, centered=True)
+    leaf2.rotate(90)
+    if angle == 90:
+        leaf2.movey(length/2 + leaf_length/2-0.25)
+        leaf2.movex(0)
+        c = gf.boolean(cross, leaf2, operation="or", layer=layer)
+
+    leaf3 = c << gf.components.rectangle(size=(leaf_length, leaf_width), layer=layer, centered=True)
+    leaf3.rotate(180)
+    if angle == 180:
+        leaf3.movex(-(length/2 + leaf_length/2-0.25))
+        leaf3.movey(0)
+        c = gf.boolean(cross, leaf3, operation="or", layer=layer)
+
+
+    leaf4 = c << gf.components.rectangle(size=(leaf_length, leaf_width), layer=layer, centered=True)
+    leaf4.rotate(270)
+    if angle == 270:
+        leaf4.movey(-(length/2 + leaf_length/2-0.25))
+        leaf4.movex(0)
+        c = gf.boolean(cross, leaf4, operation="or", layer=layer)
+
+    c.add_ports(cross.ports)
+    return c
+
+if __name__ == "__main__":
+    c = my_cross()
+    c.show()
+    c.write_gds("my_cross.gds")  # Save the component to a GDS file
+    print(f"Device footprint: {c.bbox}")

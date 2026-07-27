@@ -1,0 +1,76 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreate_device():
+    """
+    Recreates the device geometry from the image.
+    Footprint: 40.0 um (length) x 1.7 um (height)
+    
+    Construction:
+    - Middle arm starts at x=0, straight for 20um, then tapers to a point.
+    - Side arms start at x=4.0, run parallel, then S-bend outwards.
+    - Total height of 1.7um is achieved by calculating the S-bend offset.
+    """
+    c = gf.Component("device_recreation")
+    
+    # Geometric Parameters
+    L_total = 40.0
+    H_total = 1.7
+    w = 0.4  # Waveguide width
+    layer = (1, 0)
+    xs = gf.get_cross_section("strip", width=w, layer=layer)
+    
+    # 1. Middle Arm
+    # Starts at x=0. Ends with a taper.
+    l_mid_straight = 20.0
+    l_mid_taper = 6.0
+    
+    mid_s = c << gf.components.straight(length=l_mid_straight, cross_section=xs)
+    mid_t = c << gf.components.taper(length=l_mid_taper, width1=w, width2=0.01, layer=layer)
+    mid_t.connect("o1", mid_s.ports["o2"])
+    
+    # 2. Side Arms
+    # To reach H_total (1.7), the outer edge must be at +/- 0.85
+    # Center position = 0.85 - (w/2) = 0.65
+    # Initial center position (with gap ~0.15) = (w/2) + gap + (w/2) = 0.2 + 0.15 + 0.2 = 0.55
+    y_init = 0.55
+    y_final = (H_total / 2.0) - (w / 2.0) # 0.65
+    dy = y_final - y_init
+    
+    x_offset = 4.0
+    l_side_s1 = 15.0
+    l_side_sb = 16.0
+    l_side_s2 = 5.0 # Total x = 4 + 15 + 16 + 5 = 40.0
+    
+    # Top Arm
+    ts1 = c << gf.components.straight(length=l_side_s1, cross_section=xs)
+    ts1.move((x_offset, y_init))
+    tsb = c << gf.components.bend_s(size=(l_side_sb, dy), cross_section=xs)
+    tsb.connect("o1", ts1.ports["o2"])
+    ts2 = c << gf.components.straight(length=l_side_s2, cross_section=xs)
+    ts2.connect("o1", tsb.ports["o2"])
+    
+    # Bottom Arm (Mirrored)
+    bs1 = c << gf.components.straight(length=l_side_s1, cross_section=xs)
+    bs1.move((x_offset, -y_init))
+    bsb = c << gf.components.bend_s(size=(l_side_sb, -dy), cross_section=xs)
+    bsb.connect("o1", bs1.ports["o2"])
+    bs2 = c << gf.components.straight(length=l_side_s2, cross_section=xs)
+    bs2.connect("o1", bsb.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    # Create component
+    device = recreate_device()
+    
+    # Verify Footprint
+    # dxsize and dysize are the correct attributes for kfactory-based gdsfactory
+    print(f"Verified Width: {device.dxsize:.2f} um")  # Target: 40.0
+    print(f"Verified Height: {device.dysize:.2f} um") # Target: 1.7
+    
+    # Save GDS file
+    device.write_gds("device_reproduction.gds")
+    
+    # Optional: Visual check if environment supports it
+    # device.show()

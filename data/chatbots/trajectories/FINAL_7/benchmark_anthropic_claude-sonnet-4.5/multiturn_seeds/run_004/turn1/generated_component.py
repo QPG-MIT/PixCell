@@ -1,0 +1,132 @@
+import gdsfactory as gf
+
+@gf.cell
+def chain_link_device(
+    width: float = 3.0,
+    height: float = 5.5,
+    ring_thickness: float = 0.38,
+    bridge_height: float = 0.45,
+    bridge_gap: float = 0.35,
+    window_width: float = 0.5,
+    window_height: float = 0.28,
+    window_spacing: float = 1.2,
+    layer = (1, 0)
+):
+    """
+    Creates a chain-link device with elliptical ring and horizontal bridges with windows.
+    
+    Args:
+        width: Device width in um
+        height: Device height in um
+        ring_thickness: Thickness of outer elliptical ring
+        bridge_height: Height (thickness) of horizontal bridges
+        bridge_gap: Gap between the two bridges
+        window_width: Width of rectangular windows in bridges
+        window_height: Height of rectangular windows
+        window_spacing: Center-to-center spacing of windows
+        layer: GDS layer
+    """
+    c = gf.Component()
+    
+    # Create outer ellipse
+    outer_ellipse = gf.components.ellipse(
+        radii=(width/2, height/2),
+        layer=layer
+    )
+    
+    # Create inner ellipse for ring
+    inner_ellipse = gf.components.ellipse(
+        radii=(width/2 - ring_thickness, height/2 - ring_thickness),
+        layer=layer
+    )
+    
+    # Create ring by boolean subtraction
+    ring = gf.boolean(outer_ellipse, inner_ellipse, operation="not", layer=layer)
+    
+    # Bridge dimensions
+    bridge_length = width * 0.82
+    bridge_y_top = bridge_gap/2 + bridge_height/2
+    bridge_y_bottom = -(bridge_gap/2 + bridge_height/2)
+    
+    # Create top bridge with windows
+    top_bridge = gf.components.rectangle(
+        size=(bridge_length, bridge_height),
+        layer=layer,
+        centered=True
+    )
+    top_bridge_comp = gf.Component()
+    ref = top_bridge_comp << top_bridge
+    ref.movey(bridge_y_top)
+    
+    # Create windows for top bridge
+    window_left_top = gf.components.rectangle(
+        size=(window_width, window_height),
+        layer=layer,
+        centered=True
+    )
+    win_left_top_comp = gf.Component()
+    ref = win_left_top_comp << window_left_top
+    ref.move((-window_spacing/2, bridge_y_top))
+    
+    window_right_top = gf.components.rectangle(
+        size=(window_width, window_height),
+        layer=layer,
+        centered=True
+    )
+    win_right_top_comp = gf.Component()
+    ref = win_right_top_comp << window_right_top
+    ref.move((window_spacing/2, bridge_y_top))
+    
+    # Subtract windows from top bridge
+    top_bridge_cut1 = gf.boolean(top_bridge_comp, win_left_top_comp, operation="not", layer=layer)
+    top_bridge_final = gf.boolean(top_bridge_cut1, win_right_top_comp, operation="not", layer=layer)
+    
+    # Create bottom bridge with windows
+    bottom_bridge = gf.components.rectangle(
+        size=(bridge_length, bridge_height),
+        layer=layer,
+        centered=True
+    )
+    bottom_bridge_comp = gf.Component()
+    ref = bottom_bridge_comp << bottom_bridge
+    ref.movey(bridge_y_bottom)
+    
+    # Create windows for bottom bridge
+    window_left_bottom = gf.components.rectangle(
+        size=(window_width, window_height),
+        layer=layer,
+        centered=True
+    )
+    win_left_bot_comp = gf.Component()
+    ref = win_left_bot_comp << window_left_bottom
+    ref.move((-window_spacing/2, bridge_y_bottom))
+    
+    window_right_bottom = gf.components.rectangle(
+        size=(window_width, window_height),
+        layer=layer,
+        centered=True
+    )
+    win_right_bot_comp = gf.Component()
+    ref = win_right_bot_comp << window_right_bottom
+    ref.move((window_spacing/2, bridge_y_bottom))
+    
+    # Subtract windows from bottom bridge
+    bottom_bridge_cut1 = gf.boolean(bottom_bridge_comp, win_left_bot_comp, operation="not", layer=layer)
+    bottom_bridge_final = gf.boolean(bottom_bridge_cut1, win_right_bot_comp, operation="not", layer=layer)
+    
+    # Combine all elements
+    combined_bridges = gf.boolean(top_bridge_final, bottom_bridge_final, operation="or", layer=layer)
+    final_device = gf.boolean(ring, combined_bridges, operation="or", layer=layer)
+    
+    # Add to component
+    c << final_device
+    
+    return c
+
+
+# Create the device and save
+if __name__ == "__main__":
+    device = chain_link_device()
+    device.show()  # Optional: display in viewer
+    device.write_gds("chain_link_device.gds")
+    print("GDS file 'chain_link_device.gds' created successfully!")

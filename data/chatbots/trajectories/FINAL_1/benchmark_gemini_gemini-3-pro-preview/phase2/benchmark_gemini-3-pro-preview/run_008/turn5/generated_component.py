@@ -1,0 +1,123 @@
+import gdsfactory as gf
+import numpy as np
+
+def bezier_path(p0, p1, p2, p3, n=100):
+    """
+    Generates a gdsfactory Path for a cubic Bezier curve.
+    
+    Args:
+        p0: Start point (x, y)
+        p1: Control point 1
+        p2: Control point 2
+        p3: End point (x, y)
+        n: Number of points
+    """
+    t = np.linspace(0, 1, n)
+    # Cubic Bezier formula
+    xs = (1-t)**3 * p0[0] + 3*(1-t)**2 * t * p1[0] + 3*(1-t) * t**2 * p2[0] + t**3 * p3[0]
+    ys = (1-t)**3 * p0[1] + 3*(1-t)**2 * t * p1[1] + 3*(1-t) * t**2 * p2[1] + t**3 * p3[1]
+    
+    # Combine into an Nx2 array
+    points = np.column_stack([xs, ys])
+    return gf.Path(points)
+
+@gf.cell
+def device_inverse_taper_coupler():
+    """
+    Creates an inverse taper coupler geometry matched to the reference image.
+    Refined parameter set for better aspect ratio matching.
+    """
+    c = gf.Component()
+
+    # --- Dimensions ---
+    length = 40.0
+    footprint_height = 1.7
+    layer = (1, 0)
+
+    # --- Geometry Definition ---
+    # Based on visual analysis:
+    # The parallel section is quite long (approx 60% of total length).
+    l_parallel = 24.0
+    
+    # The central taper ends roughly where the side arms start to diverge.
+    l_taper = 24.0
+    
+    # Waveguide Widths
+    # Center: Thicker input to match the visual weight in the target
+    w_center_in = 0.60
+    w_center_tip = 0.05
+    
+    # Sides: Thin input -> Thick output
+    w_side_in = 0.15
+    w_side_out = 0.55
+    
+    # Gaps
+    gap_in = 0.15
+    
+    # Vertical Positions
+    # Center is at y=0.
+    # Side Input y-offset:
+    y_in_center = (w_center_in / 2) + gap_in + (w_side_in / 2)
+    
+    # Side Output y-offset:
+    # Outer edge aligns with footprint_height/2
+    y_out_center = (footprint_height / 2) - (w_side_out / 2)
+
+    # --- 1. Central Taper ---
+    taper = c << gf.components.taper(
+        length=l_taper,
+        width1=w_center_in,
+        width2=w_center_tip,
+        layer=layer
+    )
+    taper.xmin = 0
+    taper.y = 0
+
+    # --- 2. Side Arms (Path based) ---
+    
+    # Create Cross Sections
+    xs_in = gf.cross_section.cross_section(width=w_side_in, layer=layer)
+    xs_out = gf.cross_section.cross_section(width=w_side_out, layer=layer)
+    
+    # Define width transition (sine for smoothness)
+    trans = gf.path.transition(xs_in, xs_out, width_type='sine')
+
+    # -- Top Arm --
+    # Part A: Straight Section
+    path_straight_top = gf.Path([(0, y_in_center), (l_parallel, y_in_center)])
+    c << gf.path.extrude(path_straight_top, xs_in)
+    
+    # Part B: S-Bend Flare with Width Expansion
+    p0 = (l_parallel, y_in_center)
+    p3 = (length, y_out_center)
+    dx = p3[0] - p0[0]
+    
+    # Control points for S-bend. 
+    # Using 0.6 factor creates a "softer" start to the bend, keeping it straighter longer.
+    p1 = (p0[0] + dx * 0.6, p0[1]) 
+    p2 = (p3[0] - dx * 0.6, p3[1]) 
+    
+    path_bend_top = bezier_path(p0, p1, p2, p3)
+    c << gf.path.extrude_transition(path_bend_top, trans)
+
+    # -- Bottom Arm (Mirrored) --
+    # Part A: Straight Section
+    path_straight_bot = gf.Path([(0, -y_in_center), (l_parallel, -y_in_center)])
+    c << gf.path.extrude(path_straight_bot, xs_in)
+    
+    # Part B: S-Bend Flare
+    p0_b = (l_parallel, -y_in_center)
+    p3_b = (length, -y_out_center)
+    
+    p1_b = (p0_b[0] + dx * 0.6, p0_b[1])
+    p2_b = (p3_b[0] - dx * 0.6, p3_b[1])
+    
+    path_bend_bot = bezier_path(p0_b, p1_b, p2_b, p3_b)
+    c << gf.path.extrude_transition(path_bend_bot, trans)
+
+    return c
+
+# Generate and save
+device = device_inverse_taper_coupler()
+device.write_gds("inverse_taper_coupler.gds")
+device.show()

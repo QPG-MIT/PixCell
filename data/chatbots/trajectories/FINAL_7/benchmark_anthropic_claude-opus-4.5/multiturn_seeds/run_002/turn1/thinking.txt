@@ -1,0 +1,365 @@
+Looking at the image, I can see what appears to be a chain link or two interlocked oval/stadium shapes. Let me analyze this more carefully:
+
+1. There's an outer rounded rectangle/stadium shape (like a pill shape or racetrack)
+2. Inside it, there appear to be two horizontal bars with rectangular segments/cuts in them
+3. The overall shape is like an oval chain link with internal structure
+
+The footprint constraint is [3.0, 5.5] micrometers, which is quite small. Let me re-examine:
+
+Actually, looking more carefully at the image:
+- It's a stadium/pill shape (rounded rectangle) as the outer boundary
+- Inside, there's a smaller concentric stadium shape creating a ring/frame
+- In the middle section, there are two horizontal bars with rectangular cutouts
+- The bars have what looks like 3 segments each (2 cuts creating 3 pieces)
+
+Wait, looking again:
+- Outer rounded rectangle (stadium shape)
+- Inner concentric rounded rectangle creating a thick ring/border
+- Two horizontal connector bars in the middle
+- Each bar has rectangular segments/blocks on them
+
+This looks like a chain link icon - specifically two interlocked chain links shown from top view. Or it could be a resistor-like pattern inside an oval.
+
+Let me think about how to create this:
+
+1. Create outer stadium shape
+2. Create inner stadium shape (smaller)
+3. Boolean subtract to get the ring
+4. Add two horizontal bars connecting left and right sides
+5. Add rectangular blocks/segments on each bar
+
+Actually, looking more carefully at the structure:
+- The outer oval/stadium shape
+- A ring (thick border around the edge)
+- Two horizontal lines going through the middle with rectangular bumps/thickenings
+
+The internal structure looks like:
+- Two parallel horizontal lines
+- Each line has 3 rectangular thickened sections (resistor-like pattern)
+
+Let me reconsider the footprint: 3.0 x 5.5 µm. So it's taller than it is wide. 
+
+The image aspect ratio suggests the shape is wider than tall, which doesn't align with a [3.0, 5.5] footprint. I should interpret this as [5.5, 3.0] instead, or the design needs to fit within those dimensions with the width being 5.5 micrometers.
+
+Now I'm planning the structure: an outer stadium shape (rectangle with semicircular ends) forms the perimeter, with an inner stadium creating the ring gap between them. Two horizontal bars with thickened sections will connect the structure. I'll implement this using gdsfactory, setting the outer dimensions to 5.5 µm width and 3.0 µm height, then define the ring thickness parameter. I'm switching to a simpler approach using basic shapes. I'll create the outer stadium by combining two circles positioned at the ends with a rectangle in the middle, then use boolean operations to combine them. The left and right circles have radius equal to half the outer height, and the center rectangle spans the remaining width. a stadium shape with width 5.5 and height 3.0. The outer boundary will be a rounded rectangle, and I'll subtract an inner rounded rectangle to create the ring. For the crossing bars, I need to add horizontal elements with rectangular blocks spaced along them—these blocks appear to be thicker segments interrupting the bar structure. float = 5.5,
+    total_height: float = 3.0,
+    ring_width: float = 0.3,
+    bar_height: float = 0.15,
+    block_size: tuple = (0.4, 0.35),
+    bar_spacing: float = 0.5,
+    n_blocks: int = 3,
+    layer: tuple = (1, 0)
+):
+    c = gf.Component()
+    
+    # Outer stadium dimensions
+    # Stadium = rectangle with semicircular ends
+    radius_outer = total_height / 2
+    rect_len = total_width - total_height  # Length of straight section
+    
+    # Create outer stadium shape using path extrusion won't work directly
+    # Let's use boolean operations
+    
+    # Build outer stadium: center rectangle + two semicircles at ends to form the stadium profile. I'll construct the outer boundary first, then subtract the inner ring to create the hollow chain link appearance.
+    
+    import numpy as np
+    
+    n_arc_points = 50
+    
+    # Generate right semicircle arc points
+    angles_right = np.linspace(-np.pi/2, np.pi/2, n_arc_points)
+    right_arc_x = rect_len/2 + radius_outer * np.cos(angles_right)
+    right_arc_y = radius_outer * np.sin(angles_right)
+    
+    # Generate left semicircle arc points
+    angles_left = np.linspace(np.pi/2, 3*np.pi/2, n_arc_points)
+    left_arc_x = -rect_len/2 + radius_outer * np.cos(angles_left)
+    left_arc_y = radius_outer * np.sin(angles_left)
+    
+    # Merge the arcs into a complete outer boundary
+    outer_x = np.concatenate([right_arc_x, left_arc_x])
+    outer_y = np.concatenate([right_arc_y, left_arc_y])
+    outer_points = list(zip(outer_x, outer_y))
+    
+    # Build the inner stadium with reduced radius
+    radius_inner = radius_outer - ring_width
+    right_arc_x_in = rect_len/2 + radius_inner * np.cos(angles_right)
+    right_arc_y_in = radius_inner * np.sin(angles_right)
+    
+    # Create inner left semicircle using the same angle range left_arc_x_in = -rect_len/2 + radius_inner * np.cos(angles_left)
+    left_arc_y_in = radius_inner * np.sin(angles_left)
+    
+    # Combine inner arc segments and convert to point list
+    inner_x = np.concatenate([right_arc_x_in, left_arc_x_in])
+    inner_y = np.concatenate([right_arc_y_in, left_arc_y_in])
+    inner_points = list(zip(inner_x, inner_y))
+    
+    # Instantiate polygon components for both boundaries
+    outer_poly = gf.Component()
+    outer_poly.add_polygon(outer_points, layer=layer)
+    
+    inner_poly = gf.Component()
+    inner_poly.add_polygon(inner_points, layer=layer)
+    
+    # Use boolean subtraction to form the ring structure
+    ring = gf.boolean(outer_poly, inner_poly, operation="not", layer=layer)
+    c << ring
+    
+    # Add horizontal bars positioned symmetrically
+    y_positions = [bar_spacing/2, -bar_spacing/2]
+    
+    for y_pos in y_positions:
+        # Determine how far each bar extends horizontally based on the ring geometry
+        if abs(y_pos) < radius_inner:
+            # Calculate the arc boundary position at this height
+            x_at_arc = np.sqrt(radius_inner**2 - y_pos**2)
+            x_extent = rect_len/2 + x_at_arc
+        else:
+            continue
+            
+        # Create and position the bar
+        bar_length = 2 * x_extent * 0.9
+        bar = gf.components.rectangle(size=(bar_length, bar_height), layer=layer, centered=True)
+        bar_ref = c << bar
+        bar_ref.move((0, y_pos))
+        
+        # Distribute blocks evenly across the bar length
+        block_spacing = bar_length / (n_blocks + 1)
+        for i in range(n_blocks):
+            block_x = -bar_length/2 + (i + 1) * block_spacing
+            block = gf.components.rectangle(size=block_size, layer=layer, centered=True)
+            block_ref = c << block
+            block_ref.move((block_x, y_pos))
+    
+    return c
+
+device = chain_link_device()
+device.write_gds("chain_link.gds")
+
+The blocks positioned on the bar will naturally overlap with it, creating the bulged appearance seen in the reference image. This layering approach produces the desired visual effect without needing separate geometry calculations.
+
+Examining the structure more carefully, the bars appear to span horizontally across the ring, connecting the curved left and right portions. The bars themselves seem to be composed of discrete rectangular segments rather than a continuous line—essentially a dashed pattern with thick rectangular dashes separated by gaps. This segmented approach matches the white spaces visible between the blocks in the reference image. the cell decorator and function definition for creating the chain link device. The component is initialized with a layer specification, and overall dimensions are set to 5.5 units wide by 3.0 units tall to match the footprint proportions. A stadium shape (rectangle with semicircular ends) forms the basis, with ring_width of 0.35 defining the thickness of the outer perimeter. The inner radius is calculated by subtracting the ring width from the outer radius, and the straight section length is derived from the difference between total width and height. The stadium polygon is being constructed by generating arc points for the curved sections.
+
+The outer and inner stadium polygons are created by concatenating the right and left arc coordinates, then converting them to point lists. Two polygon components are added to the main component—one for the outer boundary and one for the inner boundary, which together form the ring structure.
+
+A boolean "not" operation subtracts the inner polygon from the outer polygon to create the ring shape. Next, the internal bar structure is defined with parameters for bar height (0.55), vertical spacing between bars (1.0), and rectangular holes (0.5 width, 0.25 height) distributed across each bar with 3 holes per bar and 0.15 spacing between them.
+
+For each bar positioned at the calculated y-coordinates, the code determines the bar's horizontal extent by checking if the position falls within the inner stadium's curved boundary—if so, it extends to the arc; otherwise it uses the rectangular length. The bar is created as a centered rectangle, and then holes are prepared to be subtracted from it.
+
+To create the perforated pattern, the total width needed for all holes and their spacing is calculated, then individual rectangular holes are positioned across the bar's width and collected into a component. A boolean "not" operation removes these holes from the solid bar, and the resulting perforated bar is added to the main component.
+
+Looking more carefully at the image, the top bar appears to have 3 white rectangular sections separated by 2 black dividers, while the bottom bar has 2 white sections with 1 divider between them. This suggests the two bars might have different numbers of holes, or I'm miscounting the pattern.
+
+Let me examine each bar individually. The top horizontal element contains 3 white rectangular holes with 2 black vertical dividers creating the separation, all framed by a black border. The bottom horizontal element has 2 white rectangular holes with 1 black vertical divider, also with a black frame. I'll implement this asymmetrical structure in code, scaling the device to approximately fit the [3.0, 5.5] footprint.
+
+For the geometry, I'm treating the dimensions as height × width, so width=5.5 and height=3.0. The ring thickness is set to 0.35, which gives me an outer radius equal to half the total height and an inner radius reduced by that thickness. The rectangular length is calculated as the total width minus the height. I'm constructing the stadium shape using arc segments—60 points for the right semicircle from -π/2 to π/2, and 60 points for the left semicircle from π/2 to 3π/2—then concatenating the outer x-coordinates with the rectangular section. add_polygon(list(zip(inner_x, inner_y)), layer=layer)
+    
+    # Create ring via boolean
+    ring = gf.boolean(outer_comp, inner_comp, operation="not", layer=layer)
+    c << ring
+    
+    # Bar parameters
+    bar_frame = 0.1  # Frame thickness around holes
+    
+    # Top bar configuration (3 holes)
+    top_bar_y = 0.5
+    top_n_holes = 3
+    top_hole_width = 0.45
+    top_hole_height = 0.35
+    top_hole_gap = 0.1  # Gap between holes (pillar width)
+    top_bar_height = top_hole_height + 2 * bar_frame
+    
+    # Calculate top bar length
+    top_bar_length = top
+
+_n_holes * top_hole_width + (top_n_holes - 1) * top_hole_gap + 2 * bar_frame
+    
+    # Determine how far the bar can extend across the inner cavity
+    if abs(top_bar_y) < radius_inner:
+        x_extent_top = rect_len/2 + np.sqrt(radius_inner**2 - top_bar_y**2)
+    else:
+        x_extent_top = rect_len/2
+    
+    actual_top_bar_length = 2 * x_extent_top * 0.92
+    
+    # Create top bar solid rectangle
+    top_bar = gf.components.rectangle(size=(actual_top_bar_length, top_bar_height), layer=layer)
+    
+    # Build the holes component by positioning them evenly across the bar width
+    top_holes = gf.Component()
+    holes_total_width = top_n_holes * top_hole_width + (top_n_holes - 1) * top_hole_gap
+    for i in range(top_n_holes):
+        hx = -holes_total_width/2 + top_hole_width/2 + i * (top_hole_width + top_hole_gap)
+        h = gf.components.rectangle(size=(top_hole_width, top_hole_height), layer=layer, centered=True)
+        href = top_holes << h
+        href.move((hx, 0))
+    
+    # Subtract the holes from the bar using boolean operation
+    top_bar_with_holes = gf.boolean(top_bar, top_holes,
+ operation="not", layer=layer)
+    top_ref = c << top_bar_with_holes
+    top_ref.move((0, top_bar_y))
+    
+    # Set up the bottom bar with 2 holes and define its dimensions
+    bottom_bar_y = -0.5
+    bottom_n_holes = 2
+    bottom_hole_width = 0.55
+    bottom_hole_height = 0.35
+    bottom_hole_gap = 0.1
+    bottom_bar_height = bottom_hole_height + 2 * bar_frame
+    
+    # Calculate the horizontal extent based on whether the bar intersects the inner radius
+    if abs(bottom_bar_y) < radius_inner:
+        x_extent_bottom = rect_len/2 + np.sqrt(radius_inner**2 - bottom_bar_y**2)
+    else:
+        x_extent_bottom = rect_len/2
+
+    # Scale the bottom bar length and create the bar component
+    actual_bottom_bar_length = 2 * x_extent_bottom * 0.92
+    bottom_bar = gf.components.rectangle(size=(actual_bottom_bar_length, bottom_bar_height), layer=layer, centered=True)
+    
+    # Create holes for the bottom bar by calculating their positions across the width
+    bottom_holes = gf.Component()
+    holes_total_width_b = bottom_n_holes * bottom_hole_width + (bottom_n_holes - 1) * bottom_hole_gap
+    for i in range(bottom_n_holes):
+        hx = -holes_total_width_b/2 + bottom_hole_width/2 + i * (bottom_hole_width + bottom_hole_gap)
+        h = gf.components.rectangle(size=(bottom_hole_width, bottom_hole_height), layer=layer, centered=True)
+        href =
+
+bottom_holes << h
+        href.move((hx, 0))
+    
+    # Subtract the holes from the bar and position it
+    bottom_bar_with_holes = gf.boolean(bottom_bar, bottom_holes, operation="not", layer=layer)
+    bottom_ref = c << bottom_bar_with_holes
+    bottom_ref.move((0, bottom_bar_y))
+    
+    return c
+
+device = chain_link_device()
+device.write_gds("chain_link.gds")
+```
+
+Looking at the image again to verify the structure—I see an outer oval ring with two horizontal ladder-like structures inside. Each appears to be a bar with evenly-spaced rectangular holes cut through it, creating the rungs of a ladder pattern.
+
+The top bar contains 3 holes with black material forming the edges and dividers between them. The bottom bar has 2 holes with similar black framing. Both bars extend across most of the inner width, connecting to the curved portions of the ring on either side. My current approach of creating solid rectangles and subtracting holes from them should produce this effect correctly.
+
+Looking more closely at the image, the bar ends appear to curve or taper to match the ring's inner edge rather than having sharp corners. The bars seem to touch the ring boundary. I'll extend them to meet the ring without trying to perfectly match the curvature—the visual result should be close enough.
+
+Reconsidering the footprint dimensions of [3.0, 5.5] µm: if this represents [width, height], the device would be taller than wide, which contradicts the image. Interpreting it as [height, width] gives a wider-than-tall device, matching what I see. I'll proceed with this orientation.
+
+For the implementation, I'm setting the width to 5.5 µm and height to 3.0 µm. The ring thickness is 0.4 µm, with the outer radius at 1.5 µm and inner radius at 1.1 µm to create the stadium shape.
+
+The straight section between the two rounded ends spans 2.5 µm. I'm using 64 points to discretize the circular arcs—splitting them into right and left halves to form the complete stadium geometry. The outer boundary traces the full perimeter, while the inner boundary creates the hollow ring structure. layer)
+    c << ring
+    
+    # Internal bars with holes
+    # Parameters
+    bar_frame_thick = 0.08  # Thickness of bar frame edges
+    pillar_width = 0.12  # Width of pillars between holes
+    
+    # Top bar: y=0.45, 3 holes
+    top_y = 0.45
+    top_bar_height = 0.5
+    top_hole_h = top_bar_height - 2 * bar_frame_thick
+    top_n_holes = 3
+    top_hole_w = 0.5
+    
+    # Calculate bar length - it should span across the inner region
+    # At y=top_y, the inner boundary x-extent is:
+    if abs(top_y) < radius_inner:
+        x_extent = straight_section/2 + np.sqrt(radius_inner**2 - top_y**2)
+        top_bar_len = 2 * x_extent - 0.05  # Small gap from ring
+    else:
+        top_bar_len = straight_section
+    
+    # Create top bar (solid)
+    top_bar = gf.Component()
+    top_bar.add_polygon([
+        (-top_bar_len/2, -top_bar_height/2),
+        (top_bar_len/2, -top_bar_height/2),
+        (top_bar_len/2, top_bar_height/2),
+        (-top_bar_len/2, top_bar_height/2)
+    ], layer=layer)
+    
+    # Create holes for top bar
+    top_holes = gf.Component()
+    total_hole_width = top_n_holes * top_hole_w + (top_n_holes - 1) * pillar_width
+    hole_spacing = total_hole_width / top_n_holes
+    for i in range(top_n_holes):
+        hole_x = -total_hole_width/2 + i * hole_spacing + top_hole_w/2
+        top_holes.add_polygon([
+            (hole_x - top_hole_w/2, -top_hole_h/2),
+            (hole_x + top_hole_w/2, -top_hole_h/2),
+            (hole_x + top_hole_w/2, top_hole_h/2),
+            (hole_x - top_hole_w/2, top_hole_h/2)
+        ], layer=layer)
+    
+    top_bar_final = gf.boolean(top_bar, top_holes, operation="
+
+not", layer=layer)
+    top_ref = c << top_bar_final
+    top_ref.move((0, top_y))
+    
+    For the bottom bar positioned at y=-0.45 with 2 holes, I set up the dimensions: bar height of 0.5, hole height accounting for frame thickness, hole width of 0.65. The bar length depends on whether the y-position falls within the inner radius—if it does, I calculate the x-extent using the circle equation to determine how far the bar extends, otherwise it uses the straight section length.
+
+    Now I'm constructing the bottom bar component as a rectangle and adding holes spaced evenly across its width. The holes are positioned by calculating the total width needed for all holes plus the spacing between them, then distributing them symmetrically from the center.
+
+    After creating the holes, I subtract them from the bottom bar using a boolean operation to get the final shape. The completed bottom bar is then placed at the specified y-coordinate and added to the main component before returning it.
+
+The main execution block instantiates the device, writes it to a GDS file, and then examines the image more carefully to verify the hole counts—confirming 3 holes in the top bar and 2 in the bottom bar, with the bottom holes being proportionally wider to maintain similar spacing patterns. layer = (1, 0)
+    
+    # Main dimensions (fitting footprint ~5.5 x 3.0 µm)
+    total_width = 5.5
+    total_height = 3.0
+    
+    # Ring parameters
+    ring_thickness = 0.45
+    
+    # Stadium parameters
+    radius_outer = total_height / 2
+    radius_inner = radius_outer - ring_thickness
+    straight_len = total_width - total_height
+    
+    # Create stadium shapes using numpy
+    n_points = 80
+    theta_right = np.linspace(-np.pi/2, np.pi/2, n_points//2)
+    theta_left = np.linspace(np.pi/2, 3*np.pi/2, n_points//2)
+    
+    # Building the outer stadium boundary by combining semicircular arcs on both ends with straight segments connecting them. The right semicircle spans from bottom to top, while the left semicircle completes the loop, with the straight sections forming the elongated middle portion.
+    outer_x = np.concatenate([
+        straight_len/2 + radius_outer * np.cos(theta_right),
+        -straight_len/2 + radius_outer * np.cos(theta_left)
+    ])
+    outer_y = np.concatenate([
+        radius_outer * np.sin(theta_right),
+        radius_outer * np.sin(theta_left)
+    ])
+    outer_vertices = list(zip(outer_x, outer_y))
+    
+    # Inner stadium vertices follow the same arc pattern but with the reduced radius to create the ring thickness.
+    inner_x = np.concatenate([
+        straight_len/2 + radius_inner * np.cos(theta_right),
+        -straight_len/2 + radius_inner * np.cos(theta_left)
+    ])
+    inner_y = np.concatenate([
+        radius_inner * np.sin(theta_right),
+        radius_inner * np.sin(theta_left)
+    ])
+    inner_vertices = list(zip(inner_x, inner_y))
+
+I'll use boolean subtraction to carve out the inner polygon from the outer one, creating the ring shape. The outer and inner shapes are added as polygons to separate components, then combined with a "not" operation to form the final ring. After that, I need to define the bar structure with specific dimensions: a bar height of 0.5, frame thickness of 0.07, and pillar width of 0.1. The top bar will have 3 holes positioned at y=0.42 with a hole width of 0.48.
+
+Now I'm calculating the extent of the top bar by finding the maximum x-coordinate where it intersects the inner radius at the given y-position. The bar length is computed as twice this extent minus a small offset of 0.08. I create a solid rectangular bar component and begin defining the holes that will be subtracted from it.
+
+For the holes, I calculate their height as the bar height minus twice the frame thickness to leave material on top and bottom. The total width needed for all holes and pillars between them is computed, then I iterate through each hole position, spacing them evenly with pillar widths between them, and add rectangular polygons for each hole to the component.
+
+Now I perform a boolean subtraction to cut the holes from the solid bar, place the resulting top bar at the calculated y-position, then move on to the bottom bar which has 2 holes. I determine the bottom bar's y-coordinate and hole width, then calculate its length based on the straight section and inner radius to ensure proper geometry. I start building the bottom bar solid component by defining its polygon vertices. ], layer=layer)
+    
+    bot_bar = gf.boolean(bot_bar_solid, bot_bar_holes, operation="not", layer=layer)
+    bot_ref = c << bot_bar
+    bot_ref.move((0, bot_y))
+    
+    return c
+
+Now I'm completing the boolean operation to subtract the holes from the solid bar, positioning it vertically, and returning the final component. I should verify the footprint interpretation since [3.0, 5.5] would make the device taller than wide, but the reference image shows it's wider than tall—so the footprint might actually be [height, width] instead.

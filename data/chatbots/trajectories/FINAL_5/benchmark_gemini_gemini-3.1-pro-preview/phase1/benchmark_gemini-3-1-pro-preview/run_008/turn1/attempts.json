@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.196139",
+      "api_duration_seconds": 264.46261620521545,
+      "usage": {
+        "input_tokens": 3171,
+        "output_tokens": 1244,
+        "total_tokens": 30150
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.06 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:14:41.028432",
+      "api_duration_seconds": 147.08545565605164,
+      "usage": {
+        "input_tokens": 4461,
+        "output_tokens": 1228,
+        "total_tokens": 21161
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:17:09.303692",
+      "api_duration_seconds": 157.40497398376465,
+      "usage": {
+        "input_tokens": 5720,
+        "output_tokens": 1284,
+        "total_tokens": 23575
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Width of symmetrical cross sections must have be a multiple of 2 dbu. This could cause cross sections and extrusions to become unsymmetrical otherwise. [type=value_error, input_value={'width': 5, 'enclosure':...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the followin",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13352,
+    "output_tokens": 3756,
+    "total_tokens": 74886
+  }
+}

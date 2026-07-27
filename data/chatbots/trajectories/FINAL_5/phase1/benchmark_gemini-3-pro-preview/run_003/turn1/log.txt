@@ -1,0 +1,354 @@
+Seed: 1500
+Attempts: 2
+Success: True
+
+GDS Files: ['/Users/aadarwal/Desktop/diffusionphotonics/gemini_device_2/test4_exploration/seed_1500/contra_directional_coupler.gds']
+
+Full Log:
+
+==================================================
+Attempt 1
+==================================================
+Based on the provided image and the GDSFactory function catalog, I have analyzed the device. It is a **Grating-Assisted Contra-Directional Coupler** (or an add-drop filter).
+
+### Analysis of the Geometry
+1.  **Central Bus:** A continuous straight waveguide running horizontally through the center.
+2.  **Top Structure:** A "folded" waveguide loop.
+    *   The arm closest to the center has periodic **grating teeth** pointing downwards (towards the bus).
+    *   The arm furthest from the center is smooth.
+    *   They are connected by a 180° Euler bend on the right.
+    *   The smooth arm curves away (input port) on the left.
+    *   The grating arm terminates with a taper on the left.
+3.  **Bottom Structure:** A mirrored version of the top structure.
+    *   The arm closest to the center has **grating teeth** pointing upwards.
+    *   Connected by a 180° Euler bend on the left.
+    *   The smooth arm curves away on the right.
+
+### Python Script (`device.py`)
+
+Here is the complete script using the parametric primitives from your catalog to recreate this device.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+# 1. Define the basic Cross Section
+xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+# 2. Create a parametric component for the Grating Waveguide
+# This builds a straight waveguide and adds rectangular teeth along one side
+@gf.cell
+def straight_grating(
+    length=100.0, 
+    width=0.5, 
+    period=0.6, 
+    duty_cycle=0.5, 
+    tooth_depth=0.2, 
+    teeth_direction=-1 # -1 for down (bottom), 1 for up (top)
+):
+    c = gf.Component()
+    
+    # Base straight waveguide
+    wg = c << gf.components.straight(length=length, width=width, layer=(1,0))
+    c.add_ports(wg.ports)
+    
+    # Calculate teeth parameters
+    tooth_width = period * duty_cycle
+    num_teeth = int(length // period)
+    
+    # Create the tooth shape once
+    tooth_shape = gf.components.rectangle(
+        size=(tooth_width, tooth_depth), 
+        layer=(1,0), 
+        centered=True
+    )
+    
+    # Add teeth in a loop
+    for i in range(num_teeth):
+        t = c << tooth_shape
+        x_pos = (i * period) + (period / 2)
+        # Calculate y position: edge of waveguide + half tooth height
+        y_offset = (width/2 + tooth_depth/2) * teeth_direction
+        t.move((x_pos, y_offset))
+        
+    return c
+
+# 3. Create the Main Device Assembly
+@gf.cell
+def contra_directional_coupler():
+    c = gf.Component()
+    
+    # --- Parameters ---
+    coupling_length = 80.0
+    bend_radius = 10.0
+    gap = 0.2
+    wg_width = 0.5
+    
+    # --- Central Bus ---
+    # The bus needs to be longer than the coupling region to stick out
+    bus_length = coupling_length + 2 * bend_radius + 40
+    bus = c << gf.components.straight(length=bus_length, cross_section=xs)
+    # Center the bus
+    bus.movex(-bus_length/2)
+    
+    # --- Top Loop Construction ---
+    # 1. Grating Arm (Teeth pointing DOWN towards bus)
+    top_grating = c << straight_grating(
+        length=coupling_length, 
+        teeth_direction=-1
+    )
+    # Position: shift up by (width + gap) relative to bus center
+    y_top = (wg_width + gap + wg_width)/2
+    top_grating.movey(y_top)
+    top_grating.movex(-coupling_length/2) # Center horizontally
+
+    # 2. Right Bend (180 degrees)
+    bend_top = c << gf.components.bend_euler(
+        radius=bend_radius, 
+        angle=180, 
+        cross_section=xs
+    )
+    bend_top.connect("o1", top_grating.ports["o2"])
+    
+    # 3. Top Return Arm (Plain Straight)
+    # Length matches coupling length
+    top_return = c << gf.components.straight(length=coupling_length, cross_section=xs)
+    top_return.connect("o1", bend_top.ports["o2"])
+    
+    # 4. Input Curve (S-Bend/Arc away)
+    input_curve_top = c << gf.components.bend_euler(
+        radius=bend_radius, 
+        angle=45, 
+        cross_section=xs
+    )
+    input_curve_top.connect("o1", top_return.ports["o2"])
+    
+    # 5. Termination Taper for the Grating Arm (Left side)
+    taper_top = c << gf.components.taper(
+        length=10, 
+        width1=wg_width, 
+        width2=0.05, 
+        layer=(1,0)
+    )
+    taper_top.connect("o1", top_grating.ports["o1"])
+
+    # --- Bottom Loop Construction (Mirrored logic) ---
+    # 1. Grating Arm (Teeth pointing UP towards bus)
+    bot_grating = c << straight_grating(
+        length=coupling_length, 
+        teeth_direction=1
+    )
+    y_bot = -(wg_width + gap + wg_width)/2
+    bot_grating.movey(y_bot)
+    bot_grating.movex(-coupling_length/2)
+
+    # 2. Left Bend (180 degrees)
+    # We need to mirror/rotate standard bends to fit the left side
+    bend_bot = c << gf.components.bend_euler(
+        radius=bend_radius, 
+        angle=180, 
+        cross_section=xs
+    )
+    # Connect to the LEFT port of the grating (o1)
+    bend_bot.connect("o2", bot_grating.ports["o1"])
+    
+    # 3. Bottom Return Arm
+    bot_return = c << gf.components.straight(length=coupling_length, cross_section=xs)
+    bot_return.connect("o2", bend_bot.ports["o1"])
+    
+    # 4. Output Curve (S-Bend/Arc away)
+    output_curve_bot = c << gf.components.bend_euler(
+        radius=bend_radius, 
+        angle=45, 
+        cross_section=xs
+    )
+    # Mirror the bend to curve downwards
+    output_curve_bot.mirror() 
+    output_curve_bot.connect("o1", bot_return.ports["o1"])
+    
+    # 5. Termination Taper for the Grating Arm (Right side)
+    taper_bot = c << gf.components.taper(
+        length=10, 
+        width1=wg_width, 
+        width2=0.05, 
+        layer=(1,0)
+    )
+    taper_bot.connect("o1", bot_grating.ports["o2"])
+
+    return c
+
+# 4. Generate and Save
+device = contra_directional_coupler()
+device.write_gds("contra_directional_coupler.gds")
+device.show() # Optional: view in KLayout immediately if installed
+```
+
+### Key Techniques Used from Catalog:
+1.  **Primitives:** Used `straight`, `bend_euler`, and `taper` for the main geometry.
+2.  **Custom Grating:** Since a specific "Bragg Waveguide" wasn't in the short primitive list, I constructed one parametrically using `rectangle` and `straight` inside a loop, which is the standard GDSFactory way to build periodic structures.
+3.  **Assembly Pattern:** Created a component `c`, added references `c << ...`, and used `.connect()` to snap ports together (e.g., connecting the bend to the straight sections).
+4.  **Mirroring & Logic:** Used negative coordinates and `mirror()` to create the bottom structure which is symmetrical to the top.
+
+==================================================
+Attempt 2
+==================================================
+The error occurred because `gf.components.straight` does not accept `layer` or `width` directly as arguments. In GDSFactory, you must define these properties via a `cross_section` object and pass that instead.
+
+Here is the corrected script. I have updated `straight_grating` to create a local cross-section for the waveguide, and I also updated the `taper` calls to use the global cross-section instead of passing a layer directly.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+# 1. Define the basic Cross Section
+# The catalog emphasizes using cross_sections for layer control.
+xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+@gf.cell
+def straight_grating(
+    length=100.0, 
+    width=0.5, 
+    period=0.6, 
+    duty_cycle=0.5, 
+    tooth_depth=0.2, 
+    teeth_direction=-1 # -1 for down (bottom), 1 for up (top)
+):
+    c = gf.Component()
+    
+    # FIX: Create a cross-section to pass width and layer to straight()
+    xs_grating = gf.cross_section.cross_section(width=width, layer=(1,0))
+    
+    # Base straight waveguide using cross_section
+    wg = c << gf.components.straight(length=length, cross_section=xs_grating)
+    c.add_ports(wg.ports)
+    
+    # Calculate teeth parameters
+    tooth_width = period * duty_cycle
+    num_teeth = int(length // period)
+    
+    # Create the tooth shape
+    # gf.components.rectangle explicitly allows 'layer' per the catalog
+    tooth_shape = gf.components.rectangle(
+        size=(tooth_width, tooth_depth), 
+        layer=(1,0), 
+        centered=True
+    )
+    
+    # Add teeth in a loop
+    for i in range(num_teeth):
+        t = c << tooth_shape
+        x_pos = (i * period) + (period / 2)
+        # Calculate y position: edge of waveguide + half tooth height
+        y_offset = (width/2 + tooth_depth/2) * teeth_direction
+        t.move((x_pos, y_offset))
+        
+    return c
+
+@gf.cell
+def contra_directional_coupler():
+    c = gf.Component()
+    
+    # --- Parameters ---
+    coupling_length = 80.0
+    bend_radius = 10.0
+    gap = 0.2
+    wg_width = 0.5
+    
+    # --- Central Bus ---
+    bus_length = coupling_length + 2 * bend_radius + 40
+    bus = c << gf.components.straight(length=bus_length, cross_section=xs)
+    bus.movex(-bus_length/2)
+    
+    # --- Top Loop Construction ---
+    # 1. Grating Arm (Teeth pointing DOWN towards bus)
+    top_grating = c << straight_grating(
+        length=coupling_length, 
+        width=wg_width,
+        teeth_direction=-1
+    )
+    # Position: shift up by (width + gap + width)/2 relative to bus center
+    y_top = (wg_width + gap + wg_width)/2
+    top_grating.movey(y_top)
+    top_grating.movex(-coupling_length/2) # Center horizontally
+
+    # 2. Right Bend (180 degrees)
+    bend_top = c << gf.components.bend_euler(
+        radius=bend_radius, 
+        angle=180, 
+        cross_section=xs
+    )
+    bend_top.connect("o1", top_grating.ports["o2"])
+    
+    # 3. Top Return Arm (Plain Straight)
+    top_return = c << gf.components.straight(length=coupling_length, cross_section=xs)
+    top_return.connect("o1", bend_top.ports["o2"])
+    
+    # 4. Input Curve (S-Bend/Arc away)
+    input_curve_top = c << gf.components.bend_euler(
+        radius=bend_radius, 
+        angle=45, 
+        cross_section=xs
+    )
+    input_curve_top.connect("o1", top_return.ports["o2"])
+    
+    # 5. Termination Taper for the Grating Arm (Left side)
+    # FIX: Use cross_section instead of layer
+    taper_top = c << gf.components.taper(
+        length=10, 
+        width1=wg_width, 
+        width2=0.05, 
+        cross_section=xs
+    )
+    taper_top.connect("o1", top_grating.ports["o1"])
+
+    # --- Bottom Loop Construction (Mirrored logic) ---
+    # 1. Grating Arm (Teeth pointing UP towards bus)
+    bot_grating = c << straight_grating(
+        length=coupling_length, 
+        width=wg_width,
+        teeth_direction=1
+    )
+    y_bot = -(wg_width + gap + wg_width)/2
+    bot_grating.movey(y_bot)
+    bot_grating.movex(-coupling_length/2)
+
+    # 2. Left Bend (180 degrees)
+    bend_bot = c << gf.components.bend_euler(
+        radius=bend_radius, 
+        angle=180, 
+        cross_section=xs
+    )
+    # Connect to the LEFT port of the grating (o1)
+    bend_bot.connect("o2", bot_grating.ports["o1"])
+    
+    # 3. Bottom Return Arm
+    bot_return = c << gf.components.straight(length=coupling_length, cross_section=xs)
+    bot_return.connect("o2", bend_bot.ports["o1"])
+    
+    # 4. Output Curve (S-Bend/Arc away)
+    output_curve_bot = c << gf.components.bend_euler(
+        radius=bend_radius, 
+        angle=45, 
+        cross_section=xs
+    )
+    # Mirror the bend to curve downwards
+    output_curve_bot.mirror() 
+    output_curve_bot.connect("o1", bot_return.ports["o1"])
+    
+    # 5. Termination Taper for the Grating Arm (Right side)
+    # FIX: Use cross_section instead of layer
+    taper_bot = c << gf.components.taper(
+        length=10, 
+        width1=wg_width, 
+        width2=0.05, 
+        cross_section=xs
+    )
+    taper_bot.connect("o1", bot_grating.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = contra_directional_coupler()
+    device.write_gds("contra_directional_coupler.gds")
+    device.show()
+```

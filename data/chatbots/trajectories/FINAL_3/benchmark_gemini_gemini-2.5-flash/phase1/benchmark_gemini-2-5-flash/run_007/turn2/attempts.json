@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:02.048133",
+      "api_duration_seconds": 30.66508388519287,
+      "usage": {
+        "input_tokens": 5049,
+        "output_tokens": 1933,
+        "total_tokens": 11262
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'DBox' object is not subscriptable",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:34.497884",
+      "api_duration_seconds": 7.750375032424927,
+      "usage": {
+        "input_tokens": 7007,
+        "output_tokens": 1191,
+        "total_tokens": 8521
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')\nAttributeError: 'KCellSettings' object has no attribute 'total_length'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:43.696625",
+      "api_duration_seconds": 13.88095998764038,
+      "usage": {
+        "input_tokens": 8254,
+        "output_tokens": 1371,
+        "total_tokens": 11211
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 20310,
+    "output_tokens": 4495,
+    "total_tokens": 30994
+  }
+}

@@ -1,0 +1,80 @@
+import gdsfactory as gf
+
+@gf.cell
+def shifted_circle(radius: float, dx: float) -> gf.Component:
+    """Helper component to create and offset a circle safely."""
+    c = gf.Component()
+    ref = c << gf.components.circle(radius=radius, layer=(1, 0))
+    ref.movex(dx)
+    return c
+
+@gf.cell
+def racetrack_mzi_device() -> gf.Component:
+    """
+    Creates the symmetric racetrack MZI device matching the 5.5 x 3.0 footprint.
+    """
+    c = gf.Component("racetrack_mzi_device")
+
+    # ----------------------------------------------------
+    # 1. Outer Racetrack Frame
+    # Built by subtracting an inner capsule from an outer capsule.
+    # ----------------------------------------------------
+    # Outer capsule (5.5 wide, 3.0 high -> straight length = 2.5, R = 1.5)
+    out_rect = gf.components.rectangle(size=(2.5, 3.0), centered=True, layer=(1, 0))
+    c_out_l = shifted_circle(1.5, -1.25)
+    c_out_r = shifted_circle(1.5, 1.25)
+    
+    out_1 = gf.boolean(out_rect, c_out_l, operation="or", layer=(1, 0))
+    outer_capsule = gf.boolean(out_1, c_out_r, operation="or", layer=(1, 0))
+    
+    # Inner capsule (ring thickness = 0.4 -> straight length = 2.5, R = 1.1)
+    in_rect = gf.components.rectangle(size=(2.5, 2.2), centered=True, layer=(1, 0))
+    c_in_l = shifted_circle(1.1, -1.25)
+    c_in_r = shifted_circle(1.1, 1.25)
+    
+    in_1 = gf.boolean(in_rect, c_in_l, operation="or", layer=(1, 0))
+    inner_capsule = gf.boolean(in_1, c_in_r, operation="or", layer=(1, 0))
+    
+    # Frame boolean subtraction
+    racetrack = gf.boolean(outer_capsule, inner_capsule, operation="not", layer=(1, 0))
+    
+    # ----------------------------------------------------
+    # 2. Inner MZI Structure Components
+    # ----------------------------------------------------
+    inner_c = gf.Component("inner_mzi_shapes")
+    
+    # Stems connecting inner ring wall to the Y-junctions
+    stem_l = inner_c << gf.components.rectangle(size=(0.7, 0.3), centered=True, layer=(1, 0))
+    stem_l.move((-2.05, 0))
+    
+    stem_r = inner_c << gf.components.rectangle(size=(0.7, 0.3), centered=True, layer=(1, 0))
+    stem_r.move((2.05, 0))
+    
+    # Split paths for upper and lower arms
+    # Coordinates gracefully overlap the stems for clean boolean uniting
+    p_up = gf.Path([(-1.75, 0), (-1.0, 0.35), (1.0, 0.35), (1.75, 0)])
+    p_dn = gf.Path([(-1.75, 0), (-1.0, -0.35), (1.0, -0.35), (1.75, 0)])
+    
+    xs = gf.cross_section.cross_section(width=0.15, layer=(1, 0))
+    inner_c << gf.path.extrude(p_up, cross_section=xs)
+    inner_c << gf.path.extrude(p_dn, cross_section=xs)
+    
+    # 4 Wide Rectangular Blocks on the straight segments
+    for x in [-0.5, 0.5]:
+        for y in [0.35, -0.35]:
+            blk = inner_c << gf.components.rectangle(size=(0.8, 0.4), centered=True, layer=(1, 0))
+            blk.move((x, y))
+            
+    # ----------------------------------------------------
+    # 3. Final Boolean Composition
+    # ----------------------------------------------------
+    # Union the frame with the assembled interior geometry to yield a single flat layer
+    final_device = gf.boolean(racetrack, inner_c, operation="or", layer=(1, 0))
+    
+    c << final_device
+    return c
+
+if __name__ == "__main__":
+    # Generate the component and write directly to GDS file
+    c = racetrack_mzi_device()
+    c.write_gds("racetrack_mzi_device.gds")

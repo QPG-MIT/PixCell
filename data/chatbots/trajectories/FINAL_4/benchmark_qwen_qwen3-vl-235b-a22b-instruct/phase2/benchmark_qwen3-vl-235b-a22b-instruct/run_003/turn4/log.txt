@@ -1,0 +1,143 @@
+Turn 4 Response:
+
+Looking at the comparison between the target image and the current output, I can see that the current code is producing wavy, non-straight waveguides, while the target shows perfectly straight, parallel waveguides.
+
+The issue is that the current code is using `gf.components.straight()` which should produce straight waveguides, but the output is wavy. This suggests there might be an issue with how the waveguides are being rendered or with the cross-section definition.
+
+However, looking more carefully at the GDSFactory documentation and the typical behavior, the wavy appearance might be due to a rendering artifact or an issue with the cross-section definition. Let me create a cleaner implementation that ensures perfectly straight waveguides:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def straight_waveguide_pair():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides with explicit parameters
+    xs = gf.cross_section.cross_section(
+        width=0.5, 
+        layer=(1, 0),
+        # Ensure we're using a simple rectangular cross-section
+        sections=None
+    )
+    
+    # Create first straight waveguide
+    wg1 = c << gf.components.straight(length=18, cross_section=xs)
+    
+    # Create second straight waveguide below the first one
+    # Position it exactly 1.0um below to maintain the 3um total height constraint
+    # (0.5um waveguide + 1.0um gap + 0.5um waveguide = 2.0um total, which fits in 3um)
+    wg2 = c << gf.components.straight(length=18, cross_section=xs)
+    wg2.movey(-1.0)  # Move down by 1.0um
+    
+    # Add ports for the device
+    c.add_port("o1_top", port=wg1.ports["o1"])
+    c.add_port("o2_top", port=wg1.ports["o2"])
+    c.add_port("o1_bottom", port=wg2.ports["o1"])
+    c.add_port("o2_bottom", port=wg2.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = straight_waveguide_pair()
+device.write_gds("straight_waveguide_pair.gds")
+```
+
+Wait, let me reconsider. The wavy appearance might be due to the way the waveguides are being rendered in the raster output, not necessarily an issue with the code. Let me try a different approach using the path system, which gives more direct control over the geometry:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def straight_waveguide_pair():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create first straight waveguide using path system for more precise control
+    path1 = gf.path.straight(length=18)
+    wg1 = c << gf.path.extrude(path1, cross_section=xs)
+    
+    # Create second straight waveguide below the first one
+    path2 = gf.path.straight(length=18)
+    wg2 = c << gf.path.extrude(path2, cross_section=xs)
+    wg2.movey(-1.0)  # Move down by 1.0um
+    
+    # Add ports for the device
+    c.add_port("o1_top", port=wg1.ports["o1"])
+    c.add_port("o2_top", port=wg1.ports["o2"])
+    c.add_port("o1_bottom", port=wg2.ports["o1"])
+    c.add_port("o2_bottom", port=wg2.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = straight_waveguide_pair()
+device.write_gds("straight_waveguide_pair.gds")
+```
+
+Actually, let me simplify this further and make sure we're using the most basic approach to ensure straight lines:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def straight_waveguide_pair():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create first straight waveguide
+    wg1 = c << gf.components.straight(length=18, cross_section=xs)
+    
+    # Create second straight waveguide below the first one
+    wg2 = c << gf.components.straight(length=18, cross_section=xs)
+    wg2.movey(-1.0)  # Move down by 1.0um
+    
+    # Add ports for the device
+    c.add_port("o1_top", port=wg1.ports["o1"])
+    c.add_port("o2_top", port=wg1.ports["o2"])
+    c.add_port("o1_bottom", port=wg2.ports["o1"])
+    c.add_port("o2_bottom", port=wg2.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = straight_waveguide_pair()
+device.write_gds("straight_waveguide_pair.gds")
+```
+
+The issue might be with the rendering or the specific GDSFactory version. Let me try one more approach using explicit coordinates:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def straight_waveguide_pair():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create first straight waveguide using path with explicit coordinates
+    path1 = gf.Path([(0, 0), (18, 0)])
+    wg1 = c << gf.path.extrude(path1, cross_section=xs)
+    
+    # Create second straight waveguide below the first one
+    path2 = gf.Path([(0, -1.0), (18, -1.0)])
+    wg2 = c << gf.path.extrude(path2, cross_section=xs)
+    
+    # Add ports for the device
+    c.add_port("o1_top", port=wg1.ports["o1"])
+    c.add_port("o2_top", port=wg1.ports["o2"])
+    c.add_port("o1_bottom", port=wg2.ports["o1"])
+    c.add_port("o2_bottom", port=wg2.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = straight_waveguide_pair()
+device.write_gds("straight_waveguide_pair.gds")
+```

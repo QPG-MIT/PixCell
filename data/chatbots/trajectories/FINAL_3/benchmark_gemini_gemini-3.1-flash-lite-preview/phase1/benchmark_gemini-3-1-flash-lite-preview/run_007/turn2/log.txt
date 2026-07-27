@@ -1,0 +1,72 @@
+Turn 2 Response:
+
+The issue with the previous code was that it generated two separate, non-connecting waveguides. The image you provided is a **Mach-Zehnder Interferometer (MZI)** structure, which requires a single input that splits into two arms and then rejoins into a single output.
+
+To achieve this using the provided catalog, we need to create a single component and use the `connect()` method to link the S-bends to the straights, ensuring the geometry converges back to the centerline.
+
+Here is the corrected script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def mach_zehnder_interferometer():
+    """
+    Creates an MZI-like structure by composing S-bends and straight waveguides.
+    """
+    c = gf.Component()
+    
+    # Define cross section
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Parameters for the split
+    split_length = 20
+    vertical_offset = 3  # The arms will be offset by 3um (6um total separation)
+    arm_length = 40
+    
+    # 1. Input waveguide
+    input_wg = c << gf.components.straight(length=10, cross_section=xs)
+    
+    # 2. Splitter (Two S-bends)
+    # Top goes up, bottom goes down
+    top_split = c << gf.components.bend_s(size=(split_length, vertical_offset), cross_section=xs)
+    bot_split = c << gf.components.bend_s(size=(split_length, -vertical_offset), cross_section=xs)
+    
+    top_split.connect("o1", input_wg.ports["o2"])
+    bot_split.connect("o1", input_wg.ports["o2"])
+    
+    # 3. Arm sections
+    top_arm = c << gf.components.straight(length=arm_length, cross_section=xs)
+    bot_arm = c << gf.components.straight(length=arm_length, cross_section=xs)
+    
+    top_arm.connect("o1", top_split.ports["o2"])
+    bot_arm.connect("o1", bot_split.ports["o2"])
+    
+    # 4. Combiner (Two S-bends to rejoin)
+    # Top comes back down, bottom comes back up
+    top_combine = c << gf.components.bend_s(size=(split_length, -vertical_offset), cross_section=xs)
+    bot_combine = c << gf.components.bend_s(size=(split_length, vertical_offset), cross_section=xs)
+    
+    top_combine.connect("o1", top_arm.ports["o2"])
+    bot_combine.connect("o1", bot_arm.ports["o2"])
+    
+    # 5. Output waveguide
+    # Since the S-bends are perfectly symmetric, top_combine and bot_combine 
+    # output ports will align at the center (y=0).
+    # We can connect the output to either port.
+    output_wg = c << gf.components.straight(length=10, cross_section=xs)
+    output_wg.connect("o1", top_combine.ports["o2"])
+    
+    return c
+
+# Generate and save
+if __name__ == "__main__":
+    device = mach_zehnder_interferometer()
+    device.write_gds("mzi_device.gds")
+    device.show()
+```
+
+### Key Logic Changes:
+1.  **Single Component:** Instead of creating two separate arms and mirroring them, we create one unified `Component` and link all ports together.
+2.  **Splitter Logic:** We use two `bend_s` components connected to the *same* `input_wg` port to create the split.
+3.  **Combiner Logic:** We use two inverse `bend_s` components connected to the *end* of the arms. Because the vertical offsets (+offset and -offset) are calculated symmetrically, the output ports of the combiner S-bends meet perfectly at the center, allowing you to connect a single output straight waveguide.

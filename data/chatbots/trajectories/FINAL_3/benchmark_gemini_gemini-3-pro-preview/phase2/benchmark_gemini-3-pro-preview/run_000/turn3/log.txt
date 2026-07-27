@@ -1,0 +1,115 @@
+Turn 3 Response:
+
+Here is the refined code. I have adjusted the parameters to match the visual weight of the target image more closely. Specifically, I **increased the waveguide width** to make the lines "bolder" and **decreased the coupling gap** to match the narrow slit seen in the target. I also elongated the central coupling section relative to the bends.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_refined_v2():
+    """
+    Refined directional coupler matching visual characteristics:
+    - Thicker waveguides relative to the gap.
+    - Narrower coupling gap.
+    - Longer coupling region.
+    - Fixed footprint: 120um x 4um.
+    """
+    c = gf.Component()
+
+    # --- Geometric Constraints ---
+    total_length = 120.0
+    total_height = 4.0
+    
+    # --- Tuned Parameters for Visual Match ---
+    # Target visual: Lines are thick, gap is a very thin slit.
+    wg_width = 0.8         # Increased from 0.6 to match line thickness
+    coupling_gap = 0.2     # Decreased from 0.3 to match tight coupling
+    
+    # Target visual: Coupling region is dominant, bends are compact.
+    l_io = 10.0            # Straight lead-ins
+    l_coup = 60.0          # Central coupling region (50% of total length)
+    l_bend = 20.0          # S-bend length (shorter for steeper transition)
+    
+    # Validation check: 10 + 20 + 60 + 20 + 10 = 120.0
+    
+    # --- Vertical Coordinate Calculations ---
+    # 1. Input/Output Region: Maximize vertical separation within 4um height
+    # Top WG Center: +2.0 (edge) - 0.4 (half width) = +1.6
+    y_io_top = (total_height / 2) - (wg_width / 2)
+    y_io_bot = -y_io_top
+    
+    # 2. Coupling Region: Minimized gap
+    # Top WG Center: 0.1 (half gap) + 0.4 (half width) = +0.5
+    y_coup_top = (coupling_gap / 2) + (wg_width / 2)
+    y_coup_bot = -y_coup_top
+    
+    # 3. Bend Offset (vertical shift calculation)
+    # The vertical distance the s-bend must traverse
+    dy = y_io_top - y_coup_top  # 1.6 - 0.5 = 1.1
+
+    # --- Cross Section ---
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Primitives ---
+    # Straight sections
+    s_io = gf.components.straight(length=l_io, cross_section=xs)
+    s_coup = gf.components.straight(length=l_coup, cross_section=xs)
+    
+    # S-Bends
+    # Bend going DOWN (converging towards center)
+    # size is (length, y_offset). Negative y_offset for downward shift.
+    bend_down = gf.components.bend_s(size=(l_bend, -dy), cross_section=xs)
+    
+    # Bend going UP (diverging from center)
+    # Positive y_offset for upward shift.
+    bend_up = gf.components.bend_s(size=(l_bend, dy), cross_section=xs)
+
+    # --- Assembly ---
+    
+    # Top Arm Construction
+    t1 = c << s_io
+    t1.movey(y_io_top)
+    
+    t2 = c << bend_down
+    t2.connect("o1", t1.ports["o2"])
+    
+    t3 = c << s_coup
+    t3.connect("o1", t2.ports["o2"])
+    
+    t4 = c << bend_up
+    t4.connect("o1", t3.ports["o2"])
+    
+    t5 = c << s_io
+    t5.connect("o1", t4.ports["o2"])
+
+    # Bottom Arm Construction
+    b1 = c << s_io
+    b1.movey(y_io_bot)
+    
+    # Bottom converges by bending UP (towards y=0)
+    b2 = c << bend_up
+    b2.connect("o1", b1.ports["o2"])
+    
+    b3 = c << s_coup
+    b3.connect("o1", b2.ports["o2"])
+    
+    # Bottom diverges by bending DOWN (away from y=0)
+    b4 = c << bend_down
+    b4.connect("o1", b3.ports["o2"])
+    
+    b5 = c << s_io
+    b5.connect("o1", b4.ports["o2"])
+
+    # --- Ports ---
+    c.add_port("o1", port=t1.ports["o1"])
+    c.add_port("o2", port=b1.ports["o1"])
+    c.add_port("o3", port=t5.ports["o2"])
+    c.add_port("o4", port=b5.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler_refined_v2()
+    device.write_gds("directional_coupler_refined_v2.gds")
+    device.show()
+```

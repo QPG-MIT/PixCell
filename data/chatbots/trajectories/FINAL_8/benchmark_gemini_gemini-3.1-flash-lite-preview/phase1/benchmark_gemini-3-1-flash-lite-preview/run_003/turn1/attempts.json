@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.200967",
+      "api_duration_seconds": 52.82279109954834,
+      "usage": {
+        "input_tokens": 3155,
+        "output_tokens": 1059,
+        "total_tokens": 8287
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:11:09.672212",
+      "api_duration_seconds": 22.14493203163147,
+      "usage": {
+        "input_tokens": 4233,
+        "output_tokens": 968,
+        "total_tokens": 7491
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'taper_gdsfactorypcomponentsptapersptaper_L1p5_W100_W120_42c30bb6' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:11:33.341216",
+      "api_duration_seconds": 22.974251747131348,
+      "usage": {
+        "input_tokens": 5267,
+        "output_tokens": 908,
+        "total_tokens": 8691
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S130_0_601bb04c' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12655,
+    "output_tokens": 2935,
+    "total_tokens": 24469
+  }
+}

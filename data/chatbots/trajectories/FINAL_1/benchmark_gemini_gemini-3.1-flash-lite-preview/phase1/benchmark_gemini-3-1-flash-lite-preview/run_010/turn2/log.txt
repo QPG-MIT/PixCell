@@ -1,0 +1,69 @@
+Turn 2 Response:
+
+To achieve the geometry shown in your original image—where the central waveguide tapers to a point while the top and bottom waveguides flare outwards—we need to construct the top and bottom arms using a combination of **straight** and **bend_euler** components. 
+
+The previous error (disconnected lines) occurred because simple placement doesn't ensure the components are geometrically locked together. Using `connect` ensures the components snap together perfectly at their ports.
+
+Here is the corrected, robust script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def tapered_triplet():
+    c = gf.Component()
+    
+    # 1. Define common cross-section
+    xs = gf.cross_section.cross_section(width=0.4, layer=(1, 0))
+    
+    # 2. Central Taper (Center point of the device)
+    # Tapers from 0.4um to 0.1um over 40um length
+    center_wg = c << gf.components.taper(length=40, width1=0.4, width2=0.1)
+    
+    # 3. Helper to build flared arms (Straight -> Bend -> Straight)
+    # This creates the "flaring out" effect seen in the original image
+    def create_arm(angle):
+        # We start with a straight section
+        s1 = gf.components.straight(length=15, cross_section=xs)
+        # Add a gentle euler bend to flare out
+        b = gf.components.bend_euler(radius=50, angle=angle, cross_section=xs)
+        # Finish with a straight section to complete the length
+        s2 = gf.components.straight(length=15, cross_section=xs)
+        
+        # Connect them in a chain
+        c_arm = gf.Component()
+        s1_ref = c_arm << s1
+        b_ref = c_arm << b
+        s2_ref = c_arm << s2
+        
+        b_ref.connect("o1", s1_ref.ports["o2"])
+        s2_ref.connect("o1", b_ref.ports["o2"])
+        
+        c_arm.add_port("o1", port=s1_ref.ports["o1"])
+        c_arm.add_port("o2", port=s2_ref.ports["o2"])
+        return c_arm
+
+    # 4. Assemble the top and bottom arms
+    # Use the helper to create arms that flare up (+10 deg) and down (-10 deg)
+    top_arm = c << create_arm(angle=10)
+    bot_arm = c << create_arm(angle=-10)
+    
+    # Position them vertically relative to the center taper
+    # Spacing of 0.6um ensures a clear separation
+    top_arm.movey(0.6)
+    bot_arm.movey(-0.6)
+    
+    return c
+
+# Generate GDS
+if __name__ == "__main__":
+    device = tapered_triplet()
+    device.write_gds("triplet_device.gds")
+    # device.show() # Uncomment to view in KLayout
+```
+
+### Key Improvements:
+1.  **Component Chaining**: Instead of guessing positions, I created a `create_arm` helper function that chains `straight` and `bend_euler` components using `connect`. This ensures the structure is physically continuous.
+2.  **Euler Bends**: I replaced the S-bend with an `Euler` bend. Euler bends are standard in photonics for the "flaring out" curve you see in your reference image because they minimize optical loss during the transition.
+3.  **Corrected Geometry**: By moving the arms to `+0.6` and `-0.6` on the Y-axis and keeping the taper at `0`, the structure now mimics the "triplet" appearance, with the taper centered between two slightly curved waveguides.
+4.  **No Hardcoding**: The script builds the geometry entirely using parametric functions (`taper`, `straight`, `bend_euler`) and port connections, satisfying the requirement to avoid raw polygons.

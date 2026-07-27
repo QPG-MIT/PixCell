@@ -1,0 +1,74 @@
+import gdsfactory as gf
+import math
+import numpy as np # Import numpy for linspace
+
+@gf.cell
+def wavy_bands():
+    """
+    Recreates the geometry from the provided image using GDSFactory
+    parametric primitives.
+    """
+    c = gf.Component("wavy_bands")
+    
+    L = 18 # Total length (footprint x-dimension)
+    H = 3  # Total height (footprint y-dimension)
+
+    # Define a cross-section for the black bands
+    band_width = 0.5 # Width of the black bands (um)
+    layer_band = (1, 0) # GDSII layer (layer, datatype)
+    xs = gf.cross_section.cross_section(width=band_width, layer=layer_band)
+
+    # Parameters for the sinusoidal path that defines the band centerlines
+    # The curve will be a half-period cosine wave from x=0 to x=L.
+    # y = Y_offset + Amplitude * cos(pi * x / L)
+    # The total vertical span (from y_min of bottom band to y_max of top band)
+    # must fit within H (3 um).
+    # This leads to: Y_offset_top + Amplitude + band_width/2 = H/2 = 1.5
+    amplitude = 0.4       # Amplitude of the cosine wave
+    y_offset_top = 1.25 - amplitude # Y-offset for the top band centerline
+
+    # Number of points to sample for the path for smooth curves
+    num_points = 200 
+    # Use numpy's linspace function to generate evenly spaced x-coordinates
+    x_coords = np.linspace(0, L, num=num_points) 
+    
+    # 1. Create the top black band
+    points_top_band = []
+    for x in x_coords:
+        y = y_offset_top + amplitude * math.cos(math.pi * x / L)
+        points_top_band.append((x, y))
+    
+    path_top = gf.Path(points_top_band)
+    # Extrude the path with the defined cross_section
+    c_top_band = c << gf.path.extrude(path_top, cross_section=xs)
+
+    # 2. Create the bottom black band (mirrored vertically from the top band)
+    points_bottom_band = []
+    for x in x_coords:
+        y = -(y_offset_top + amplitude * math.cos(math.pi * x / L)) # Invert Y for bottom band
+        points_bottom_band.append((x, y))
+    
+    path_bottom = gf.Path(points_bottom_band)
+    # Extrude the path with the defined cross_section
+    c_bottom_band = c << gf.path.extrude(path_bottom, cross_section=xs)
+
+    # 3. Position the component to fit the footprint [18, 3]
+    # The paths are defined from x=0 to x=L.
+    # The y-coordinates span from -H/2 to H/2 (i.e., -1.5 to 1.5).
+    # To match a footprint with y-range [0, H], we need to shift the component up by H/2.
+    c.movey(H/2) 
+    
+    # The x-coordinates already span from 0 to L=18, so no x-translation is needed.
+
+    return c
+
+# Example usage and verification
+if __name__ == "__main__":
+    device = wavy_bands()
+    print(f"Device bounds (xmin, ymin, xmax, ymax): {device.xmin, device.ymin, device.xmax, device.ymax}")
+    # Expected bounds after movey(1.5): (0.0, 0.0, 18.0, 3.0)
+    # Uncomment the line below to show the GDS in KLayout (if installed)
+    # device.show() 
+    
+    # This line now ensures the GDS file is produced
+    device.write_gds("wavy_bands.gds")

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.951280",
+      "api_duration_seconds": 28.24863600730896,
+      "usage": {
+        "input_tokens": 5444,
+        "output_tokens": 493,
+        "total_tokens": 5937
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for CrossSection\nwidth\n  Instance is frozen [type=frozen_instance, input_value=1.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/frozen_instance",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:39.729244",
+      "api_duration_seconds": 9.296064853668213,
+      "usage": {
+        "input_tokens": 6024,
+        "output_tokens": 762,
+        "total_tokens": 6786
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:55.930171",
+      "api_duration_seconds": 5.816475868225098,
+      "usage": {
+        "input_tokens": 6803,
+        "output_tokens": 663,
+        "total_tokens": 7466
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 18271,
+    "output_tokens": 1918,
+    "total_tokens": 20189
+  }
+}

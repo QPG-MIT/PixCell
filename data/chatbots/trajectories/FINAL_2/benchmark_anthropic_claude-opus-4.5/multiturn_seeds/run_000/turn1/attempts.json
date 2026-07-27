@@ -1,0 +1,45 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:13:46.565528",
+      "api_duration_seconds": 0.0,
+      "usage": null,
+      "success": false,
+      "failure_type": "api_error",
+      "error_message": "Error code: 429 - {'type': 'error', 'error': {'type': 'rate_limit_error', 'message': 'This request would exceed the rate limit for your organization (5879a810-a1af-4ae9-b89b-1b2ccb37d9e4) of 400,000 output tokens per minute. For details, refer to: https://docs.claude.com/en/api/rate-limits. You can see the response headers for current usage. Please reduce the prompt length or the maximum tokens requested, or try again later. You may also contact sales at https://www.anthropic.com/contact-sales t",
+      "code_extracted": false
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:14:45.466765",
+      "api_duration_seconds": 195.7500138282776,
+      "usage": {
+        "input_tokens": 3795,
+        "output_tokens": 13527,
+        "total_tokens": 17322
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:18:02.519820",
+      "api_duration_seconds": 0.0,
+      "usage": null,
+      "success": false,
+      "failure_type": "api_error",
+      "error_message": "Error code: 429 - {'type': 'error', 'error': {'type': 'rate_limit_error', 'message': 'This request would exceed the rate limit for your organization (5879a810-a1af-4ae9-b89b-1b2ccb37d9e4) of 400,000 output tokens per minute. For details, refer to: https://docs.claude.com/en/api/rate-limits. You can see the response headers for current usage. Please reduce the prompt length or the maximum tokens requested, or try again later. You may also contact sales at https://www.anthropic.com/contact-sales t",
+      "code_extracted": false
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 3795,
+    "output_tokens": 13527,
+    "total_tokens": 17322
+  }
+}

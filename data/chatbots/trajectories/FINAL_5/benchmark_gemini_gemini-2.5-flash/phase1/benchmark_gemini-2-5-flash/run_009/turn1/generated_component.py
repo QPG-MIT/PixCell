@@ -1,0 +1,290 @@
+import gdsfactory as gf
+from gdsfactory.typings import CrossSectionSpec
+
+@gf.cell
+def custom_device(
+    width_main: float = 0.05,
+    comb_tooth_height: float = 0.1,
+    comb_tooth_width: float = 0.02,
+    comb_length: float = 12.0,  # Length of the section containing comb teeth
+    num_teeth: int = 29,
+    u_bend_radius: float = 0.5, # Radius for the U-bends
+    taper_length: float = 0.2, # Length of the taper at right U-shape ends
+    taper_width_min: float = 0.01, # Min width for taper (point)
+    tail_radius: float = 0.5, # Radius for the curved tails
+    tail_angle: float = 90, # Angle for the curved tails (e.g., 90 degrees)
+    tail_taper_straight_length: float = 0.1, # Small straight section before tail curve for taper
+    layer: gf.typings.LayerSpec = (1, 0),
+) -> gf.Component:
+    """
+    Recreates the specified device geometry using GDSFactory primitives.
+
+    Args:
+        width_main: Width of all main waveguide structures.
+        comb_tooth_height: Height of individual comb teeth.
+        comb_tooth_width: Width of individual comb teeth.
+        comb_length: Total length of the section containing comb teeth on the inner arms.
+        num_teeth: Number of comb teeth.
+        u_bend_radius: Radius for the Euler bends forming the U-shapes.
+        taper_length: Length of the linear tapers on the right ends.
+        taper_width_min: Minimum width for the tapers (makes them pointy).
+        tail_radius: Radius for the Euler bend in the curved tails on the left.
+        tail_angle: Angle for the Euler bend in the curved tails (e.g., 90 degrees).
+        tail_taper_straight_length: Initial straight segment length for the tapered tail path.
+        layer: GDS layer for all geometry.
+    """
+    c = gf.Component("custom_device")
+    
+    # Footprint constraint
+    WIDTH = 18.24
+    HEIGHT = 0.7
+
+    # Define cross-section for main waveguides
+    # Set the 'radius' parameter of the cross-section to allow smaller bends.
+    # It should be less than or equal to u_bend_radius and tail_radius.
+    # For safety, take the minimum of u_bend_radius and tail_radius if they differ,
+    # or just use u_bend_radius if they are expected to be the same.
+    xs_bend_radius = min(u_bend_radius, tail_radius) 
+    xs = gf.cross_section.cross_section(width=width_main, layer=layer, radius=xs_bend_radius)
+
+    # Calculate vertical spacing based on total height and 5 main horizontal tracks
+    # 5 tracks (width_main each) + 4 gaps (gap_track each)
+    gap_track = (HEIGHT - 5 * width_main) / 4
+    if gap_track < 0:
+        raise ValueError("Calculated gap_track is negative. width_main or HEIGHT is too large/small.")
+
+    # Y-coordinates of the centerlines of the 5 horizontal tracks (from center 0)
+    y_track_center_central = 0 # Assign the value here
+    y_track_center_top_inner = width_main / 2 + gap_track + width_main / 2
+    y_track_center_top_outer = y_track_center_top_inner + width_main / 2 + gap_track + width_main / 2
+    y_track_center_bottom_inner = -(width_main / 2 + gap_track + width_main / 2)
+    y_track_center_bottom_outer = -(y_track_center_bottom_inner + width_main / 2 + gap_track + width_main / 2)
+
+    # Length of the vertical straight segment connecting adjacent tracks in the U-bends
+    vertical_segment_length = abs(y_track_center_top_inner - y_track_center_top_outer) - width_main
+    if vertical_segment_length < 0:
+        vertical_segment_length = 0.001 # Ensure a minimal positive length
+
+    # Calculate the effective horizontal length of the straight sections for fitting WIDTH
+    # The device should span from -WIDTH/2 to WIDTH/2
+    
+    # Right end: The taper component adds `taper_length`.
+    # So the straight arm that connects to the taper ends at X = WIDTH/2 - taper_length.
+    x_end_straight_right = WIDTH / 2 - taper_length
+    
+    # Left end: The tail path (straight + Euler bend)
+    # The `gf.path.extrude_transition` will generate a component whose bounding box extends
+    # from its "o1" port. The path starts with `tail_taper_straight_length` straight,
+    # and then curves for `tail_radius` in X (for a 90-degree bend).
+    # So, total X extent from its "o1" port (facing west) is roughly `tail_taper_straight_length + tail_radius`.
+    # The "o1" port of the tail component is connected to the start of the outer_arm_left.
+    # Thus, the start of the outer_arm_left should be at `(-WIDTH/2) + (tail_taper_straight_length + tail_radius)`.
+    x_start_outer_arm_left = -WIDTH / 2 + tail_taper_straight_length + tail_radius
+
+    # The horizontal portion of the U-bend system takes up `2 * u_bend_radius` length.
+    # This `L_main_straight_seg` is the length of the straight part of the central bar and comb arms.
+    # It starts after the left Euler bend (connecting to comb_arm) and ends before the right Euler bend.
+    x_start_main_segment = x_start_outer_arm_left + 2 * u_bend_radius # x_start_outer_arm_left is the absolute x-coord of the beginning of the outer arm. The U-bend adds 2*radius.
+    x_end_main_segment = x_end_straight_right - 2 * u_bend_radius # x_end_straight_right is the absolute x-coord of the end of the outer arm. The U-bend takes 2*radius from the straight length.
+    
+    L_main_straight_seg = x_end_main_segment - x_start_main_segment
+    
+    if L_main_straight_seg < 0:
+        print(f"Warning: L_main_straight_seg is negative ({L_main_straight_seg:.2f}), adjusting to a minimal length. Check your WIDTH, taper_length, u_bend_radius, tail_radius, tail_taper_straight_length parameters.")
+        L_main_straight_seg = 0.5 # fallback to prevent error
+
+    # 1. Central Horizontal Bar
+    center_bar = c << gf.components.straight(length=L_main_straight_seg, cross_section=xs)
+    center_bar.center = (0, y_track_center_central)
+
+    # 2. Comb Structures (Top and Bottom Inner Arms)
+    comb_arm_top = c << gf.components.straight(length=L_main_straight_seg, cross_section=xs)
+    comb_arm_top.center = (0, y_track_center_top_inner)
+
+    comb_arm_bottom = c << gf.components.straight(length=L_main_straight_seg, cross_section=xs)
+    comb_arm_bottom.center = (0, y_track_center_bottom_inner)
+
+    # Add teeth to the comb bases
+    # Calculate spacing for teeth
+    actual_comb_length = min(comb_length, L_main_straight_seg - 0.1) # Add a small buffer to prevent overlap with bends
+    if actual_comb_length <= 0 and num_teeth > 0:
+        actual_comb_length = comb_tooth_width * num_teeth + 0.01 # ensure a minimal length for teeth if num_teeth > 0
+        print(f"Warning: comb_length too short or L_main_straight_seg too short. Adjusted actual_comb_length to {actual_comb_length:.2f}.")
+
+    total_tooth_width = num_teeth * comb_tooth_width
+    effective_tooth_gap = 0
+    if num_teeth > 1:
+        effective_tooth_gap = (actual_comb_length - total_tooth_width) / (num_teeth - 1)
+        if effective_tooth_gap < 0:
+            print(f"Warning: comb_tooth_width too large for actual_comb_length ({actual_comb_length:.2f}) and num_teeth ({num_teeth}). Adjusting comb_tooth_width.")
+            comb_tooth_width = (actual_comb_length - (num_teeth - 1) * 0.01) / num_teeth # Assign minimal gap
+            effective_tooth_gap = 0.01 # Set a small positive gap
+            if comb_tooth_width < 0: 
+                 comb_tooth_width = 0.01 # Final safeguard
+
+    x_start_teeth = comb_arm_top.xmin + (L_main_straight_seg - actual_comb_length) / 2
+
+    for i in range(num_teeth):
+        x_tooth_center = x_start_teeth + (i * (comb_tooth_width + effective_tooth_gap)) + comb_tooth_width / 2
+        
+        # Top comb teeth (protruding downwards)
+        tooth_top = c << gf.components.rectangle(
+            size=(comb_tooth_width, comb_tooth_height), layer=layer
+        )
+        tooth_top.center = (x_tooth_center, comb_arm_top.ymin - comb_tooth_height / 2)
+
+        # Bottom comb teeth (protruding upwards)
+        tooth_bottom = c << gf.components.rectangle(
+            size=(comb_tooth_width, comb_tooth_height), layer=layer
+        )
+        tooth_bottom.center = (x_tooth_center, comb_arm_bottom.ymax + comb_tooth_height / 2)
+
+    # 3. Outer straight arms (Left and Right parts) and U-bends.
+    # We will build from left to right, connecting components.
+
+    # 4. Left-side outer arms, U-bends, and tails
+    # Top-left outer straight arm
+    # It starts at `x_start_outer_arm_left` and goes right to meet the first Euler bend.
+    # The end of this straight arm should be `x_start_main_segment - u_bend_radius`.
+    outer_arm_top_left_length = (x_start_main_segment - u_bend_radius) - x_start_outer_arm_left
+    if outer_arm_top_left_length < 0:
+        print(f"Warning: outer_arm_top_left_length ({outer_arm_top_left_length:.2f}) is negative, adjusting.")
+        outer_arm_top_left_length = 0.01 # Fallback for minimal length
+    outer_arm_top_left = c << gf.components.straight(length=outer_arm_top_left_length, cross_section=xs)
+    outer_arm_top_left.xmin = x_start_outer_arm_left
+    outer_arm_top_left.y = y_track_center_top_outer
+
+    # Top-left U-bend (connects outer_arm_top_left to comb_arm_top)
+    b1_tl = c << gf.components.bend_euler(radius=u_bend_radius, angle=-90, cross_section=xs) # Turns from east to south
+    b1_tl.connect("o1", outer_arm_top_left.ports["o2"])
+    
+    v_tl = c << gf.components.straight(length=vertical_segment_length, cross_section=xs) # Vertical, south to north
+    v_tl.connect("o1", b1_tl.ports["o2"])
+    
+    b2_tl = c << gf.components.bend_euler(radius=u_bend_radius, angle=-90, cross_section=xs) # Turns from north to east
+    b2_tl.connect("o1", v_tl.ports["o2"])
+    
+    comb_arm_top.connect("o1", b2_tl.ports["o2"]) # Connects to left end of top inner arm
+
+    # Bottom-left outer straight arm
+    outer_arm_bottom_left_length = outer_arm_top_left_length # Same length as top
+    outer_arm_bottom_left = c << gf.components.straight(length=outer_arm_bottom_left_length, cross_section=xs)
+    outer_arm_bottom_left.xmin = x_start_outer_arm_left
+    outer_arm_bottom_left.y = y_track_center_bottom_outer
+
+    # Bottom-left U-bend (connects outer_arm_bottom_left to comb_arm_bottom)
+    b1_bl = c << gf.components.bend_euler(radius=u_bend_radius, angle=90, cross_section=xs) # Turns from east to north
+    b1_bl.connect("o1", outer_arm_bottom_left.ports["o2"])
+    
+    v_bl = c << gf.components.straight(length=vertical_segment_length, cross_section=xs) # Vertical, north to south
+    v_bl.connect("o1", b1_bl.ports["o2"])
+    
+    b2_bl = c << gf.components.bend_euler(radius=u_bend_radius, angle=90, cross_section=xs) # Turns from south to east
+    b2_bl.connect("o1", v_bl.ports["o2"])
+    
+    comb_arm_bottom.connect("o1", b2_bl.ports["o2"])
+
+    # 5. Left-side tails (curved and tapered)
+    # The CrossSection for the transition needs to respect tail_radius.
+    xs_taper_start = gf.cross_section.cross_section(width=width_main, layer=layer, radius=tail_radius)
+    xs_taper_end = gf.cross_section.cross_section(width=taper_width_min, layer=layer, radius=tail_radius)
+    tapered_xs_fn = gf.path.transition(xs_taper_start, xs_taper_end)
+
+    # Top-left tail
+    tail_top_left_path = gf.Path()
+    tail_top_left_path.append(gf.path.straight(length=tail_taper_straight_length))
+    tail_top_left_path.append(gf.path.euler(radius=tail_radius, angle=-tail_angle)) # Curves from west to south-west
+
+    tail_tl_comp = c << gf.path.extrude_transition(tail_top_left_path, tapered_xs_fn)
+    # The tail starts pointing left (port 'o1' on the right, 'o2' on the left).
+    # Its 'o1' port needs to connect to the 'o1' port of `outer_arm_top_left` (which is facing west).
+    tail_tl_comp.connect("o1", outer_arm_top_left.ports["o1"])
+
+    # Bottom-left tail (mirrored, curves from left to up-left)
+    tail_bottom_left_path = gf.Path()
+    tail_bottom_left_path.append(gf.path.straight(length=tail_taper_straight_length))
+    tail_bottom_left_path.append(gf.path.euler(radius=tail_radius, angle=tail_angle)) # Curves from west to north-west
+
+    tail_bl_comp = c << gf.path.extrude_transition(tail_bottom_left_path, tapered_xs_fn)
+    tail_bl_comp.connect("o1", outer_arm_bottom_left.ports["o1"])
+
+    # 6. Right-side outer arms, U-bends, and tapers
+    # Top right U-bend (connects comb_arm_top to top_outer_arm)
+    b1_tr = c << gf.components.bend_euler(radius=u_bend_radius, angle=90, cross_section=xs) # Turns from west to north
+    b1_tr.connect("o1", comb_arm_top.ports["o2"]) # Connects to right end of top inner arm
+    
+    v_tr = c << gf.components.straight(length=vertical_segment_length, cross_section=xs) # Vertical, north to south
+    v_tr.connect("o1", b1_tr.ports["o2"])
+    
+    b2_tr = c << gf.components.bend_euler(radius=u_bend_radius, angle=90, cross_section=xs) # Turns from south to west
+    b2_tr.connect("o1", v_tr.ports["o2"])
+
+    # Top-right outer straight arm
+    # It starts from b2_tr.o2 (pointing west) and should reach `x_end_straight_right - u_bend_radius`.
+    outer_arm_top_right_length = x_end_straight_right - (b2_tr.ports["o2"].x + u_bend_radius) 
+    if outer_arm_top_right_length < 0:
+        print(f"Warning: outer_arm_top_right_length ({outer_arm_top_right_length:.2f}) is negative, adjusting.")
+        outer_arm_top_right_length = 0.01 # Fallback for minimal length
+    outer_arm_top_right = c << gf.components.straight(length=outer_arm_top_right_length, cross_section=xs)
+    outer_arm_top_right.connect("o1", b2_tr.ports["o2"]) # Connect to the output of the bend
+
+    # Bottom right U-bend (connects comb_arm_bottom to bottom_outer_arm)
+    b1_br = c << gf.components.bend_euler(radius=u_bend_radius, angle=-90, cross_section=xs) # Turns from west to south
+    b1_br.connect("o1", comb_arm_bottom.ports["o2"])
+    
+    v_br = c << gf.components.straight(length=vertical_segment_length, cross_section=xs) # Vertical, south to north
+    v_br.connect("o1", b1_br.ports["o2"])
+    
+    b2_br = c << gf.components.bend_euler(radius=u_bend_radius, angle=-90, cross_section=xs) # Turns from north to west
+    b2_br.connect("o1", v_br.ports["o2"])
+    
+    # Bottom-right outer straight arm
+    outer_arm_bottom_right_length = outer_arm_top_right_length # Same length as top
+    outer_arm_bottom_right = c << gf.components.straight(length=outer_arm_bottom_right_length, cross_section=xs)
+    outer_arm_bottom_right.connect("o1", b2_br.ports["o2"])
+
+    # 7. Right-side tapers
+    taper_comp = gf.components.taper(
+        length=taper_length, width1=width_main, width2=taper_width_min, cross_section=xs
+    )
+    taper_top_right = c << taper_comp
+    taper_top_right.connect("o1", outer_arm_top_right.ports["o2"]) # Connects to the right end of the outer arm
+
+    taper_bottom_right = c << taper_comp
+    taper_bottom_right.connect("o1", outer_arm_bottom_right.ports["o2"])
+
+    # Final centering
+    c.flatten() # Flatten to get accurate bounds if components were hierarchical
+    actual_bounds = c.dbound()
+    actual_width = actual_bounds.xmax - actual_bounds.xmin
+    actual_height = actual_bounds.ymax - actual_bounds.ymin
+
+    # Center the component based on its actual bounds relative to the expected footprint center (0,0)
+    c.move([-actual_bounds.xmin - actual_width/2, -actual_bounds.ymin - actual_height/2])
+
+    return c
+
+if __name__ == "__main__":
+    device = custom_device()
+    device.show() # Requires KLayout installed
+    device.write_gds("custom_device.gds")
+
+    # Verify footprint
+    expected_footprint_um = [18.24, 0.7]
+    
+    final_bounds = device.dbound()
+    final_width = final_bounds.xmax - final_bounds.xmin
+    final_height = final_bounds.ymax - final_bounds.ymin
+    
+    print(f"Actual device width: {final_width:.2f} um (Expected: {expected_footprint_um[0]:.2f} um)")
+    print(f"Actual device height: {final_height:.2f} um (Expected: {expected_footprint_um[1]:.2f} um)")
+    
+    # Assertions for programmatic checking
+    assert abs(final_width - expected_footprint_um[0]) < 0.01, f"Width mismatch: {final_width:.2f} vs {expected_footprint_um[0]:.2f}"
+    assert abs(final_height - expected_footprint_um[1]) < 0.01, f"Height mismatch: {final_height:.2f} vs {expected_footprint_um[1]:.2f}"
+
+    # Also check if it's centered after the internal move.
+    assert abs(final_bounds.xmin - (-expected_footprint_um[0] / 2)) < 0.01, f"Xmin not centered: {final_bounds.xmin:.2f}"
+    assert abs(final_bounds.xmax - (expected_footprint_um[0] / 2)) < 0.01, f"Xmax not centered: {final_bounds.xmax:.2f}"
+    assert abs(final_bounds.ymin - (-expected_footprint_um[1] / 2)) < 0.01, f"Ymin not centered: {final_bounds.ymin:.2f}"
+    assert abs(final_bounds.ymax - (expected_footprint_um[1] / 2)) < 0.01, f"Ymax not centered: {final_bounds.ymax:.2f}"

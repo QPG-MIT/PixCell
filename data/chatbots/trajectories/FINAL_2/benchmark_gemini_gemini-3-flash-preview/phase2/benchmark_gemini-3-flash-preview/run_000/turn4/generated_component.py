@@ -1,0 +1,93 @@
+import gdsfactory as gf
+
+@gf.cell
+def compound_pillar(taper_length=2.2, straight_length=1.8, w_base=2.8, w_mid=1.1, layer=(1, 0)):
+    """
+    Creates a pillar with a chunky tapered base and a shorter neck.
+    Total height = taper_length + straight_length = 4.0um
+    """
+    c = gf.Component()
+    
+    # Define cross-section for the straight neck
+    xs = gf.cross_section.cross_section(width=w_mid, layer=layer)
+    
+    # Add the tapered base (shoulders)
+    taper = c << gf.components.taper(
+        length=taper_length, 
+        width1=w_base, 
+        width2=w_mid, 
+        layer=layer
+    )
+    
+    # Add the straight neck
+    straight = c << gf.components.straight(length=straight_length, cross_section=xs)
+    
+    # Connect neck to taper and expose bottom port
+    straight.connect("o1", taper.ports["o2"])
+    c.add_port("o1", port=taper.ports["o1"])
+    
+    return c
+
+@gf.cell
+def recreated_device():
+    """
+    Final silhouette recreation with refined proportions.
+    Footprint constraint: 25um (width) x 10um (height)
+    """
+    c = gf.Component("silhouette_v4")
+    layer = (1, 0)
+    
+    # --- Proportional Dimensions ---
+    # Total Height (10.0um) = Bottom (1.0) + Body (5.0) + Top (4.0)
+    body_w = 22.0
+    body_h = 5.0
+    top_p_h = 4.0  # (2.2 taper + 1.8 straight)
+    bot_p_h = 1.0
+    
+    # --- 1. Main Body ---
+    body = c << gf.components.rectangle(size=(body_w, body_h), layer=layer, centered=True)
+    
+    # --- 2. Top Pillars (4 pillars) ---
+    # Spread pillars across the body. 
+    # Spacing centers at roughly 5.5um intervals
+    x_positions = [-8.25, -2.75, 2.75, 8.25]
+    
+    for x in x_positions:
+        p = c << compound_pillar(
+            taper_length=2.2, 
+            straight_length=1.8, 
+            w_base=3.2, 
+            w_mid=1.2, 
+            layer=layer
+        )
+        p.rotate(90)
+        # Place base (o1) on the top edge of the body (y = 2.5)
+        p.move(origin=p.ports["o1"].center, destination=(x, 2.5))
+        
+    # --- 3. Bottom Pillar (Single wedge taper) ---
+    bot_p = c << gf.components.taper(
+        length=bot_p_h, 
+        width1=3.0, 
+        width2=1.4, 
+        layer=layer
+    )
+    bot_p.rotate(-90)
+    # Place wide base on bottom edge of body (y = -2.5)
+    bot_p.move(origin=bot_p.ports["o1"].center, destination=(0, -2.5))
+    
+    return c
+
+if __name__ == "__main__":
+    # Generate and show component
+    device = recreated_device()
+    
+    # Output file
+    device.write_gds("silhouette_refined.gds")
+    
+    print(f"Device size: {device.xsize:.2f} x {device.ysize:.2f} um")
+    # Expected: ~22.0 x 10.0 um
+    
+    try:
+        device.show()
+    except Exception:
+        pass

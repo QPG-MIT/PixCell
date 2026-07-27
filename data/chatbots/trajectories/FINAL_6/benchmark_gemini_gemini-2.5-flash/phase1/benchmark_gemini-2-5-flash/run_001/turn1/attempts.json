@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.891563",
+      "api_duration_seconds": 60.78248381614685,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 2609,
+        "total_tokens": 15625
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: boolean() missing 1 required positional argument: 'B'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:12.275010",
+      "api_duration_seconds": 10.795135974884033,
+      "usage": {
+        "input_tokens": 4984,
+        "output_tokens": 1781,
+        "total_tokens": 7417
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'method' object is not subscriptable",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:24.727804",
+      "api_duration_seconds": 31.23705816268921,
+      "usage": {
+        "input_tokens": 6789,
+        "output_tokens": 2168,
+        "total_tokens": 14716
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14120,
+    "output_tokens": 6558,
+    "total_tokens": 37758
+  }
+}

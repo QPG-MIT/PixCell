@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.850789",
+      "api_duration_seconds": 41.4002571105957,
+      "usage": {
+        "input_tokens": 4928,
+        "output_tokens": 1081,
+        "total_tokens": 6009
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ImportError: cannot import name 'Component' from 'gdsfactory.typings' (/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/gdsfactory/typings.py). Did you mean: 'component'?",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:52.694516",
+      "api_duration_seconds": 8.4561767578125,
+      "usage": {
+        "input_tokens": 6081,
+        "output_tokens": 1200,
+        "total_tokens": 7281
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 2 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:02.826441",
+      "api_duration_seconds": 8.019840955734253,
+      "usage": {
+        "input_tokens": 7322,
+        "output_tokens": 1260,
+        "total_tokens": 8582
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o1' is not a valid port name or index. Available ports: []\"",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 18331,
+    "output_tokens": 3541,
+    "total_tokens": 21872
+  }
+}

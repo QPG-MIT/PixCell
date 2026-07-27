@@ -1,0 +1,130 @@
+Turn 2 Response:
+
+Looking at the rendered image and comparing it with the original target image, I can see that my previous implementation created a Y-splitter with three separate waveguides, but the original image shows a different structure: it appears to be a single waveguide that splits into two, with the middle section being continuous and the top and bottom sections curving away.
+
+The original image shows:
+1. Three parallel waveguides on the left side
+2. The top and bottom waveguides curve outward while the middle one continues straight
+3. The structure is more like a Y-splitter where the middle waveguide is the main path and the top/bottom are the split paths
+
+Let me revise the approach. I'll create a more accurate representation by:
+1. Creating a main straight waveguide in the middle
+2. Creating two waveguides that start parallel to the main one, then curve away using Euler bends
+3. Ensuring proper alignment and connections
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def y_splitter():
+    c = gf.Component()
+    
+    # Define cross-section (width based on footprint constraint)
+    xs = gf.cross_section.cross_section(width=1.7, layer=(1, 0))
+    
+    # Create the main straight waveguide (middle)
+    main_wg = c << gf.components.straight(length=40.0, cross_section=xs)
+    main_wg.move((0, 0))
+    
+    # Create the top waveguide that curves away
+    # Start with a straight section parallel to main waveguide
+    top_straight = c << gf.components.straight(length=10.0, cross_section=xs)
+    top_straight.move((0, 1.7))  # Position above main waveguide
+    
+    # Create Euler bend to curve away
+    top_bend = c << gf.components.bend_euler(radius=10.0, angle=30, cross_section=xs)
+    top_bend.connect("o1", top_straight.ports["o2"])
+    
+    # Create final straight section
+    top_final = c << gf.components.straight(length=20.0, cross_section=xs)
+    top_final.connect("o1", top_bend.ports["o2"])
+    
+    # Create the bottom waveguide that curves away
+    # Start with a straight section parallel to main waveguide
+    bottom_straight = c << gf.components.straight(length=10.0, cross_section=xs)
+    bottom_straight.move((0, -1.7))  # Position below main waveguide
+    
+    # Create Euler bend to curve away
+    bottom_bend = c << gf.components.bend_euler(radius=10.0, angle=-30, cross_section=xs)
+    bottom_bend.connect("o1", bottom_straight.ports["o2"])
+    
+    # Create final straight section
+    bottom_final = c << gf.components.straight(length=20.0, cross_section=xs)
+    bottom_final.connect("o1", bottom_bend.ports["o2"])
+    
+    # Expose ports
+    c.add_port("o1", port=main_wg.ports["o1"])      # Main input
+    c.add_port("o2", port=top_straight.ports["o1"]) # Top input
+    c.add_port("o3", port=bottom_straight.ports["o1"]) # Bottom input
+    c.add_port("o4", port=main_wg.ports["o2"])      # Main output
+    c.add_port("o5", port=top_final.ports["o2"])    # Top output
+    c.add_port("o6", port=bottom_final.ports["o2"]) # Bottom output
+    
+    # Flatten to avoid off-grid instance issues
+    c.flatten()
+    
+    return c
+
+# Create and save the device
+device = y_splitter()
+device.write_gds("y_splitter.gds")
+```
+
+Wait, I think I'm still not capturing the essence of the original image. Let me reconsider. The original image appears to show a device where there are three waveguides on the left that then diverge, with the middle one continuing straight and the top and bottom ones curving outward. The key is that all three waveguides should start at the same position on the left.
+
+Let me create a more accurate representation:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def y_splitter():
+    c = gf.Component()
+    
+    # Define cross-section (width based on footprint constraint)
+    xs = gf.cross_section.cross_section(width=1.7, layer=(1, 0))
+    
+    # Create three waveguides starting from the same point on the left
+    # Middle waveguide (straight)
+    middle_wg = c << gf.components.straight(length=40.0, cross_section=xs)
+    middle_wg.move((0, 0))
+    
+    # Top waveguide (curves upward)
+    top_wg = c << gf.components.straight(length=10.0, cross_section=xs)
+    top_wg.move((0, 1.7))  # Position above middle
+    
+    top_bend = c << gf.components.bend_euler(radius=10.0, angle=30, cross_section=xs)
+    top_bend.connect("o1", top_wg.ports["o2"])
+    
+    top_final = c << gf.components.straight(length=20.0, cross_section=xs)
+    top_final.connect("o1", top_bend.ports["o2"])
+    
+    # Bottom waveguide (curves downward)
+    bottom_wg = c << gf.components.straight(length=10.0, cross_section=xs)
+    bottom_wg.move((0, -1.7))  # Position below middle
+    
+    bottom_bend = c << gf.components.bend_euler(radius=10.0, angle=-30, cross_section=xs)
+    bottom_bend.connect("o1", bottom_wg.ports["o2"])
+    
+    bottom_final = c << gf.components.straight(length=20.0, cross_section=xs)
+    bottom_final.connect("o1", bottom_bend.ports["o2"])
+    
+    # Expose ports
+    c.add_port("o1", port=middle_wg.ports["o1"])     # Middle input
+    c.add_port("o2", port=top_wg.ports["o1"])        # Top input
+    c.add_port("o3", port=bottom_wg.ports["o1"])     # Bottom input
+    c.add_port("o4", port=middle_wg.ports["o2"])     # Middle output
+    c.add_port("o5", port=top_final.ports["o2"])     # Top output
+    c.add_port("o6", port=bottom_final.ports["o2"])  # Bottom output
+    
+    # Flatten to avoid off-grid instance issues
+    c.flatten()
+    
+    return c
+
+# Create and save the device
+device = y_splitter()
+device.write_gds("y_splitter.gds")
+```
+
+This should create a structure that more closely matches the original image, with three waveguides starting parallel on the left, then the top and bottom ones curving away while the middle one continues straight.

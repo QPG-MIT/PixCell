@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.890523",
+      "api_duration_seconds": 51.8802170753479,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 1704,
+        "total_tokens": 13799
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: GeometricObject.move() got an unexpected keyword argument 'y'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:03.362613",
+      "api_duration_seconds": 9.356639862060547,
+      "usage": {
+        "input_tokens": 4080,
+        "output_tokens": 1783,
+        "total_tokens": 6325
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'method' object is not subscriptable",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:14.171301",
+      "api_duration_seconds": 59.93921995162964,
+      "usage": {
+        "input_tokens": 5887,
+        "output_tokens": 1840,
+        "total_tokens": 17878
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12314,
+    "output_tokens": 5327,
+    "total_tokens": 38002
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.209785",
+      "api_duration_seconds": 78.1890959739685,
+      "usage": {
+        "input_tokens": 2348,
+        "output_tokens": 1933,
+        "total_tokens": 19645
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: Unnamed_4_16309_456_A0p49999999999986244, Cell name: Unnamed_4\nInstance name: Unnamed_7_16309_-456_A359p5, Cell name: Unnamed_7",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:28.980418",
+      "api_duration_seconds": 17.622567176818848,
+      "usage": {
+        "input_tokens": 4435,
+        "output_tokens": 2024,
+        "total_tokens": 8996
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'method' object is not subscriptable",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:48.063307",
+      "api_duration_seconds": 10.89028787612915,
+      "usage": {
+        "input_tokens": 6483,
+        "output_tokens": 2046,
+        "total_tokens": 8923
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'DBox' object is not subscriptable",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13266,
+    "output_tokens": 6003,
+    "total_tokens": 37564
+  }
+}

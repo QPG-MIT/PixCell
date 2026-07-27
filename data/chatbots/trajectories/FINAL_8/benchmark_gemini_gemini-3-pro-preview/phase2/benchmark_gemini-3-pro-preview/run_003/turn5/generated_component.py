@@ -1,0 +1,122 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_recreation_improved():
+    """
+    Improved recreation of the waveguide array.
+    - Strictly constrained to 120um x 4um footprint.
+    - Central bundle: 5 fine lines.
+    - Outer bundles: 4 wide lines with narrow gaps (block-like appearance).
+    - Flared outer bundles using S-bends to maximize vertical utilization within the 4um limit.
+    """
+    c = gf.Component()
+    
+    # ---------------------------
+    # 1. Dimensions & Constraints
+    # ---------------------------
+    L_total = 120.0
+    L_mid = 40.0
+    L_bend = (L_total - L_mid) / 2.0
+    
+    # Vertical parameters optimized for 4.0um height limit
+    
+    # Center Bundle: 5 fine lines
+    n_center = 5
+    w_center = 0.08
+    gap_center = 0.08
+    p_center = w_center + gap_center
+    # Height of center bundle (edge to edge)
+    h_center_block = (n_center - 1) * p_center + w_center 
+    # = 4*0.16 + 0.08 = 0.72 um
+    
+    # Outer Bundles: 4 thick lines (Block texture with thin slits)
+    n_outer = 4
+    w_outer = 0.30   # Wide lines for blocky look
+    gap_outer = 0.04 # Thin gaps
+    p_outer = w_outer + gap_outer
+    # Height of outer bundle
+    h_outer_block = (n_outer - 1) * p_outer + w_outer
+    # = 3*0.34 + 0.30 = 1.32 um
+    
+    # Spacing between center and outer bundles
+    gap_waist = 0.15
+    
+    # Calculate current waist height
+    total_waist_height = h_center_block + 2 * gap_waist + 2 * h_outer_block
+    # = 0.72 + 0.30 + 2.64 = 3.66 um
+    
+    # Calculate available room for flare within 4.0um limit
+    max_height = 4.0
+    available_flare = max_height - total_waist_height # ~0.34 um
+    dy_flare = available_flare / 2.0 
+    
+    # We use 0.16um per side to stay safely inside the box
+    dy_flare = 0.16
+
+    xs_center = gf.cross_section.strip(width=w_center)
+    xs_outer = gf.cross_section.strip(width=w_outer)
+
+    # ---------------------------
+    # 2. Build Central Bundle
+    # ---------------------------
+    # Centered at y=0.
+    y_c_min = -h_center_block / 2
+    for i in range(n_center):
+        y = y_c_min + w_center/2 + i * p_center
+        wg = c << gf.components.straight(length=L_total, cross_section=xs_center)
+        wg.x = 0
+        wg.y = y
+
+    # ---------------------------
+    # 3. Build Top Outer Bundle
+    # ---------------------------
+    y_top_start = h_center_block / 2 + gap_waist
+    for i in range(n_outer):
+        # i=0 is the waveguide closest to center
+        y_loc = y_top_start + w_outer/2 + i * p_outer
+        
+        # A. Middle Straight Section
+        wg_mid = c << gf.components.straight(length=L_mid, cross_section=xs_outer)
+        wg_mid.x = 0
+        wg_mid.y = y_loc
+        
+        # B. Right Flare (S-bend UP)
+        # Connects to the East port, bending +y
+        sb_r = c << gf.components.bend_s(size=(L_bend, dy_flare), cross_section=xs_outer)
+        sb_r.connect("o1", wg_mid.ports["o2"])
+        
+        # C. Left Flare (S-bend UP)
+        # Connects to the West port. To flare UP (+y) while extending Left (-x),
+        # we need the local dy to be negative relative to the 180-rotated frame.
+        sb_l = c << gf.components.bend_s(size=(L_bend, -dy_flare), cross_section=xs_outer)
+        sb_l.connect("o1", wg_mid.ports["o1"])
+
+    # ---------------------------
+    # 4. Build Bottom Outer Bundle
+    # ---------------------------
+    y_bottom_start = - (h_center_block / 2 + gap_waist)
+    for i in range(n_outer):
+        # i=0 is the waveguide closest to center
+        y_loc = y_bottom_start - w_outer/2 - i * p_outer
+        
+        # A. Middle Straight Section
+        wg_mid = c << gf.components.straight(length=L_mid, cross_section=xs_outer)
+        wg_mid.x = 0
+        wg_mid.y = y_loc
+        
+        # B. Right Flare (S-bend DOWN)
+        # Connects to East port, bending -y
+        sb_r = c << gf.components.bend_s(size=(L_bend, -dy_flare), cross_section=xs_outer)
+        sb_r.connect("o1", wg_mid.ports["o2"])
+        
+        # C. Left Flare (S-bend DOWN)
+        # Connects to West port. To flare DOWN (-y) while extending Left (-x),
+        # we need the local dy to be positive relative to the 180-rotated frame.
+        sb_l = c << gf.components.bend_s(size=(L_bend, dy_flare), cross_section=xs_outer)
+        sb_l.connect("o1", wg_mid.ports["o1"])
+
+    return c
+
+# Create and save
+device = device_recreation_improved()
+device.write_gds("device_recreation_improved.gds")

@@ -1,0 +1,53 @@
+{
+  "turn": 4,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:40.707402",
+      "api_duration_seconds": 9.559790134429932,
+      "usage": {
+        "input_tokens": 3382,
+        "output_tokens": 1165,
+        "total_tokens": 4547
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(cell)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:51.766526",
+      "api_duration_seconds": 8.45296835899353,
+      "usage": {
+        "input_tokens": 4594,
+        "output_tokens": 1011,
+        "total_tokens": 5605
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(cell)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:02.850505",
+      "api_duration_seconds": 7.488312005996704,
+      "usage": {
+        "input_tokens": 5652,
+        "output_tokens": 913,
+        "total_tokens": 6565
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o2' is not a valid port name or index. Available ports: []\"\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_3/benchmark_gemini_gemini-2.0-flash/phase2/benchmark_gemini-2-0-flash/run_004/turn4/generated_component.py\", line 72, in <module>\n    c = capacitively_coupled_waveguide(\n        wg_length=30.0, g",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13628,
+    "output_tokens": 3089,
+    "total_tokens": 16717
+  }
+}

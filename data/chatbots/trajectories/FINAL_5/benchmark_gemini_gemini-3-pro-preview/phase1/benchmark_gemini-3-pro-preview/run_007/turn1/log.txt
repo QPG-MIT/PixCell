@@ -1,0 +1,125 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def contra_directional_coupler_device():
+    """
+    Creates a contra-directional coupler device similar to the provided image.
+    The device consists of two segmented (grating) waveguides coupled via a central region,
+    with return loops and tapered inputs/outputs.
+    """
+    c = gf.Component()
+
+    # --- Geometric Parameters ---
+    wg_width = 0.25
+    gap_mid = 0.1         # Gap between grating and central rail
+    mid_rail_width = 0.05 # Thin central separator
+    grating_period = 0.25
+    fill_factor = 0.5     # 50% duty cycle for grating
+    grating_length = 12.0 # Length of the coupling region
+    bend_radius = 0.5     # Tight bends for the loops
+    layer = (1, 0)
+
+    # Create Cross Section for solid waveguides with explicit radius
+    # Setting 'radius' here ensures validation passes for tight bends
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer, radius=bend_radius)
+
+    # --- 1. Define Grating Waveguide Component ---
+    # Constructed as a series of rectangles to form a segmented waveguide
+    def create_grating_segment(length, width, period, fill):
+        cmp = gf.Component()
+        block_len = period * fill
+        n_periods = int(length / period)
+        
+        # Create a single block primitive
+        rect = gf.components.rectangle(size=(block_len, width), layer=layer, centered=True)
+        
+        # Manually place blocks to avoid add_array version discrepancies
+        for i in range(n_periods):
+            ref = cmp << rect
+            ref.move((i * period, 0))
+        
+        # Calculate bounds to place ports accurately at the "logical" ends
+        x_start = -block_len / 2
+        x_end = (n_periods - 1) * period + block_len / 2
+        
+        cmp.add_port("o1", center=(x_start, 0), orientation=180, width=width, layer=layer)
+        cmp.add_port("o2", center=(x_end, 0), orientation=0, width=width, layer=layer)
+        return cmp
+
+    # Instantiate the grating definition
+    grating_cmp = create_grating_segment(grating_length, wg_width, grating_period, fill_factor)
+
+    # --- 2. Central Rail ---
+    # Thin solid line separating the two gratings
+    mid_rail = c << gf.components.rectangle(size=(grating_length + 1.0, mid_rail_width), layer=layer, centered=True)
+
+    # --- 3. Place Gratings ---
+    top_g = c << grating_cmp
+    bot_g = c << grating_cmp
+    
+    # Center the gratings horizontally relative to the mid rail
+    x_center = (top_g.ports["o1"].center[0] + top_g.ports["o2"].center[0]) / 2
+    
+    # Y-offset calculation
+    y_offset = (mid_rail_width / 2) + gap_mid + (wg_width / 2)
+    
+    top_g.move((-x_center, y_offset))
+    bot_g.move((-x_center, -y_offset))
+
+    # --- 4. Top Structure Assembly ---
+    # Top Loop (Right Side) -> Connects to top_g output
+    bend_top = c << gf.components.bend_euler(radius=bend_radius, angle=180, cross_section=xs)
+    bend_top.connect("o1", top_g.ports["o2"])
+    
+    # Return Path (Top) -> Straight waveguide going Left
+    return_len = grating_length + 2.0
+    ret_top = c << gf.components.straight(length=return_len, cross_section=xs)
+    ret_top.connect("o1", bend_top.ports["o2"])
+    
+    # Taper Termination (Top Left)
+    taper_top_term = c << gf.components.taper(length=0.5, width1=wg_width, width2=0.05, layer=layer)
+    taper_top_term.connect("o1", ret_top.ports["o2"])
+    
+    # Input Curve (Top Left) -> Connects to top_g input
+    # Curves UP and AWAY (Left)
+    input_curve_top = c << gf.components.bend_euler(radius=1.5, angle=30, cross_section=xs)
+    input_curve_top.mirror_y() 
+    input_curve_top.connect("o1", top_g.ports["o1"])
+    
+    # Input Taper (Top)
+    input_taper_top = c << gf.components.taper(length=1.0, width1=wg_width, width2=0.05, layer=layer)
+    input_taper_top.connect("o1", input_curve_top.ports["o2"])
+
+    # --- 5. Bottom Structure Assembly (Mirrored Logic) ---
+    # Bottom Loop (Left Side) -> Connects to bot_g input (Left)
+    bend_bot = c << gf.components.bend_euler(radius=bend_radius, angle=180, cross_section=xs)
+    bend_bot.connect("o1", bot_g.ports["o1"]) 
+    
+    # Return Path (Bottom) -> Straight waveguide going Right
+    ret_bot = c << gf.components.straight(length=return_len, cross_section=xs)
+    ret_bot.connect("o1", bend_bot.ports["o2"])
+    
+    # Taper Termination (Bottom Right)
+    taper_bot_term = c << gf.components.taper(length=0.5, width1=wg_width, width2=0.05, layer=layer)
+    taper_bot_term.connect("o1", ret_bot.ports["o2"])
+    
+    # Input Curve (Bottom Right) -> Connects to bot_g output (Right)
+    # Curves DOWN and AWAY (Right)
+    input_curve_bot = c << gf.components.bend_euler(radius=1.5, angle=30, cross_section=xs)
+    input_curve_bot.mirror_y() 
+    input_curve_bot.connect("o1", bot_g.ports["o2"])
+    
+    # Input Taper (Bottom)
+    input_taper_bot = c << gf.components.taper(length=1.0, width1=wg_width, width2=0.05, layer=layer)
+    input_taper_bot.connect("o1", input_curve_bot.ports["o2"])
+
+    return c
+
+# Generate and show the device
+if __name__ == "__main__":
+    device = contra_directional_coupler_device()
+    device.show()
+```

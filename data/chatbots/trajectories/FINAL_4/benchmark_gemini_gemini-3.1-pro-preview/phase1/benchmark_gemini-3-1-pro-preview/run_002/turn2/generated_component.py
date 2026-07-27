@@ -1,0 +1,71 @@
+import gdsfactory as gf
+
+@gf.cell
+def coupler_sbends(
+    length: float = 18.0, 
+    height: float = 3.0, 
+    wg_width: float = 1.0,  # Increased from 0.5 to match the original proportions
+    gap: float = 0.2
+) -> gf.Component:
+    """
+    Creates a symmetrical coupler structure using back-to-back S-bends.
+    Matches the footprint of [18, 3] with accurate visual proportions.
+    """
+    c = gf.Component("coupler_sbends_thick")
+    
+    # Define cross section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    
+    # Calculate geometric parameters
+    half_length = length / 2.0
+    
+    # Center-to-center distance at the outer edges
+    # To satisfy total 'height' of 3.0, the outer edges are at ±1.5.
+    # The port centers are half a waveguide width inward.
+    y_end = (height - wg_width) / 2.0  # (3.0 - 1.0) / 2 = 1.0
+    
+    # Center-to-center distance at the middle (closest point)
+    # The gap between inner edges is 'gap'.
+    y_mid = (gap + wg_width) / 2.0     # (0.2 + 1.0) / 2 = 0.6
+    
+    # Calculate the vertical shift (dy) for the first S-bends
+    # Top arm drops from y=1.0 to y=0.6, so dy = -0.4
+    dy_top = y_mid - y_end 
+    # Bottom arm rises from y=-1.0 to y=-0.6, so dy = 0.4
+    dy_bot = -y_mid - (-y_end) 
+    
+    # --- Top Arm ---
+    # First half goes inward
+    top_left = c << gf.components.bend_s(size=(half_length, dy_top), cross_section=xs)
+    # Second half goes outward (opposite dy)
+    top_right = c << gf.components.bend_s(size=(half_length, -dy_top), cross_section=xs)
+    
+    # --- Bottom Arm ---
+    # First half goes inward
+    bot_left = c << gf.components.bend_s(size=(half_length, dy_bot), cross_section=xs)
+    # Second half goes outward
+    bot_right = c << gf.components.bend_s(size=(half_length, -dy_bot), cross_section=xs)
+    
+    # --- Positioning and Connections ---
+    # Move starting ports to their respective outer y-coordinates
+    top_left.move((0, y_end))
+    bot_left.move((0, -y_end))
+    
+    # Connect the second halves to the first halves
+    # This automatically aligns and translates the right-side S-bends
+    top_right.connect("o1", top_left.ports["o2"])
+    bot_right.connect("o1", bot_left.ports["o2"])
+    
+    # Add external ports to the final component
+    c.add_port("o1", port=top_left.ports["o1"])
+    c.add_port("o2", port=bot_left.ports["o1"])
+    c.add_port("o3", port=top_right.ports["o2"])
+    c.add_port("o4", port=bot_right.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    # Build the device
+    c = coupler_sbends()
+    # Save to a GDS file to fulfill the requirement
+    c.write_gds("coupler_sbends.gds")

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.946231",
+      "api_duration_seconds": 115.75474786758423,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 1304,
+        "total_tokens": 12590
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(component)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:07.182416",
+      "api_duration_seconds": 44.35695290565491,
+      "usage": {
+        "input_tokens": 3702,
+        "output_tokens": 1429,
+        "total_tokens": 9172
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:52.988418",
+      "api_duration_seconds": 22.39205288887024,
+      "usage": {
+        "input_tokens": 5150,
+        "output_tokens": 1483,
+        "total_tokens": 7151
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11201,
+    "output_tokens": 4216,
+    "total_tokens": 28913
+  }
+}

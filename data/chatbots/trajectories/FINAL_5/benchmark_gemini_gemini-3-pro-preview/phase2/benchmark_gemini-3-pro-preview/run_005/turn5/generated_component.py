@@ -1,0 +1,190 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def grating_arm(
+    length=15.0,
+    width=0.45,
+    tooth_depth=0.15,
+    pitch=0.28,
+    fill_factor=0.5,
+    layer=(1, 0)
+):
+    """
+    Creates a straight waveguide section with rectangular grating teeth 
+    protruding from the bottom side (y < 0).
+    The port axis is defined at the center of the waveguide core (y=0).
+    """
+    c = gf.Component()
+    
+    # Waveguide Core
+    # Centered at (length/2, 0) so ports at (0,0) and (length,0) align with center.
+    wg = c << gf.components.rectangle(size=(length, width), layer=layer, centered=True)
+    wg.movex(length/2)
+    
+    # Teeth geometry
+    tooth_w = pitch * fill_factor
+    tooth_h = tooth_depth
+    overlap = 0.01  # Small overlap ensures boolean connectivity with core
+    
+    # Tooth shape: defined from bottom-left corner
+    tooth_shape = gf.components.rectangle(size=(tooth_w, tooth_h + overlap), layer=layer, centered=False)
+    
+    n_teeth = int(length // pitch)
+    
+    for i in range(n_teeth):
+        # x: centered within the pitch period
+        x = i * pitch + (pitch - tooth_w) / 2
+        # y: The tooth sits below the waveguide. 
+        # Waveguide bottom is at -width/2. 
+        # We place the bottom of the tooth at (-width/2 - tooth_h).
+        y = -width/2 - tooth_h
+        
+        t = c << tooth_shape
+        t.move((x, y))
+        
+    c.add_port("o1", center=(0, 0), width=width, orientation=180, layer=layer)
+    c.add_port("o2", center=(length, 0), width=width, orientation=0, layer=layer)
+    return c
+
+@gf.cell
+def loop_structure(
+    length_grating=15.0,
+    width=0.45,
+    tooth_depth=0.15,
+    pitch=0.28,
+    radius=2.0,
+    layer=(1, 0)
+):
+    """
+    One half of the device (e.g. the Top structure).
+    Consists of:
+    1. Grating Arm (Bottom, with teeth pointing down)
+    2. U-Bend
+    3. Return Arm (Top)
+    4. S-bend 'tails' curving upwards to separate ports.
+    """
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=width, layer=layer, radius_min=0.5)
+    
+    # 1. Grating Arm
+    grating = c << grating_arm(
+        length=length_grating,
+        width=width,
+        tooth_depth=tooth_depth,
+        pitch=pitch,
+        layer=layer
+    )
+    
+    # 2. U-Bend (Right side)
+    # Connects to grating o2 (East). 180 deg turn.
+    bend = c << gf.components.bend_euler(radius=radius, angle=180, cross_section=xs)
+    bend.connect("o1", grating.ports["o2"])
+    
+    # 3. Return Arm (Top arm)
+    # Runs parallel, Right to Left.
+    return_arm = c << gf.components.straight(length=length_grating, cross_section=xs)
+    return_arm.connect("o2", bend.ports["o2"])
+    
+    # 4. Tails (S-bends)
+    # We want the tails to curve UP (North) and West.
+    # Connecting to West-facing ports (180).
+    # A standard S-bend moves East (+x) and Vertically (+y or -y).
+    # When connected to a West port, it gets rotated 180 degrees.
+    # To move West (-x) and UP (+y) after rotation, we need the original S-bend
+    # to move DOWN (-y).
+    
+    tail_length = 6.0
+    tail_height = 4.0 # Vertical separation
+    
+    # Input Tail (Left of Grating)
+    tail_in = c << gf.components.bend_s(size=(tail_length, -tail_height), cross_section=xs)
+    tail_in.connect("o1", grating.ports["o1"])
+    
+    # Output Tail (Left of Return Arm)
+    tail_out = c << gf.components.bend_s(size=(tail_length, -tail_height), cross_section=xs)
+    tail_out.connect("o1", return_arm.ports["o1"])
+    
+    # Input/Output Tapers
+    taper_len = 3.0
+    taper_w_tip = 0.15
+    
+    t_in = c << gf.components.taper(length=taper_len, width1=width, width2=taper_w_tip, layer=layer)
+    t_in.connect("o1", tail_in.ports["o2"])
+
+    t_out = c << gf.components.taper(length=taper_len, width1=width, width2=taper_w_tip, layer=layer)
+    t_out.connect("o1", tail_out.ports["o2"])
+
+    c.flatten()
+    return c
+
+@gf.cell
+def contra_dc_device():
+    """
+    Full assembly of the Contra-Directional Coupler.
+    Two loop structures placed symmetrically around a central bus.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions ---
+    L_grating = 15.0
+    W = 0.45          
+    Tooth_depth = 0.15
+    Gap = 0.2         # Distinct gap between teeth tip and bus
+    Pitch = 0.28
+    Radius = 2.0      # Loop radius
+    
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=W, layer=layer)
+    
+    # 1. Central Bus
+    # Length sufficient to pass the tails
+    bus_len = L_grating + 18.0
+    bus = c << gf.components.straight(length=bus_len, cross_section=xs)
+    bus.center = (0, 0)
+    
+    # 2. Top Structure
+    top = c << loop_structure(
+        length_grating=L_grating,
+        width=W,
+        tooth_depth=Tooth_depth,
+        pitch=Pitch,
+        radius=Radius,
+        layer=layer
+    )
+    
+    # Y Position Calculation:
+    # Top structure origin (y=0) is the center of its grating arm.
+    # Its teeth extend down to: y_tip = -W/2 - Tooth_depth (relative to origin).
+    # We want y_tip to be at global Y = W/2 + Gap.
+    # Therefore: origin_y + (-W/2 - Tooth_depth) = W/2 + Gap
+    # origin_y = W + Gap + Tooth_depth
+    y_offset = W + Gap + Tooth_depth
+    
+    # X Position:
+    # Grating arm starts at x=0 (relative to top structure origin).
+    # We want to center the grating section (length L) at x=0 global.
+    top.move(( -L_grating / 2, y_offset ))
+    
+    # 3. Bottom Structure
+    # Mirror of Top structure across the X-axis.
+    bot = c << loop_structure(
+        length_grating=L_grating,
+        width=W,
+        tooth_depth=Tooth_depth,
+        pitch=Pitch,
+        radius=Radius,
+        layer=layer
+    )
+    # Mirror vertically
+    bot.mirror(p1=(0,0), p2=(1,0))
+    
+    # Align Bottom structure (symmetric)
+    bot.move(( -L_grating / 2, -y_offset ))
+    
+    return c
+
+if __name__ == "__main__":
+    device = contra_dc_device()
+    device.write_gds("contra_dc.gds")
+    device.show()

@@ -1,0 +1,154 @@
+import gdsfactory as gf
+
+@gf.cell
+def reproduction_device():
+    c = gf.Component("Device_Reproduction")
+
+    # =======================================================================
+    # 1. Define Parameters based on Footprint Constraint [3um x 5.5um]
+    # =======================================================================
+    device_h = 3.0
+    device_w = 5.5
+    
+    # Visual params
+    ring_width = 0.6
+    arm_width = 0.25
+    layer_wg = (1, 0)
+
+    # Geometry Calculations
+    # Centerline Radius for outer ring to fit exactly in 3.0 height:
+    # Height = 2 * (R_center + Width/2) = 3.0
+    # R_center = 1.5 - 0.3 = 1.2
+    r_center = (device_h - ring_width) / 2.0
+    
+    # Straight Length for width to fit exactly in 5.5:
+    # Width = Straight + 2 * (R_center + Width/2) = Straight + 3.0
+    # Straight = 2.5
+    ring_straight_len = device_w - device_h
+
+    # =======================================================================
+    # 2. Define Cross Sections with Relaxed Constraints (FIXED)
+    # =======================================================================
+    # Ring Cross Section
+    xs_ring = gf.cross_section.cross_section(
+        width=ring_width, 
+        layer=layer_wg,
+        radius=1.0  # Safe for the 1.2um radius ring
+    )
+    
+    # Inner Arm Cross Section
+    # FIX: Set radius to 0.1 to allow the tight S-bends (approx 0.3um radius)
+    # This prevents the "min_bend_radius < CrossSection.radius_min" ValueError.
+    xs_arm = gf.cross_section.cross_section(
+        width=arm_width, 
+        layer=layer_wg,
+        radius=0.1 
+    )
+
+    # =======================================================================
+    # 3. Build Outer Racetrack Ring
+    # =======================================================================
+    bend = gf.components.bend_circular(radius=r_center, angle=180, cross_section=xs_ring)
+    straight = gf.components.straight(length=ring_straight_len, cross_section=xs_ring)
+
+    # Instantiate
+    bl = c << bend      # Left Bend
+    br = c << bend      # Right Bend
+    st = c << straight  # Top Straight
+    sb = c << straight  # Bottom Straight
+
+    # Assembly (Center at 0,0)
+    bl.rotate(180)
+    bl.movex(-ring_straight_len/2)
+    br.movex(ring_straight_len/2)
+    
+    st.connect("o1", bl.ports["o1"])
+    sb.connect("o1", br.ports["o2"])
+
+    # =======================================================================
+    # 4. Build Inner MZI Structure
+    # =======================================================================
+    # MZI Params
+    arm_spacing = 0.9  # vertical separation between arms
+    inner_len = 1.0    # length of straight arm section
+    s_bend_len = 0.7   # length of S-bend transition
+    dy = arm_spacing / 2.0
+
+    # Create S-bend for splitting/combining
+    splitter = gf.components.bend_s(
+        size=(s_bend_len, dy), 
+        cross_section=xs_arm
+    )
+
+    # Create MZI Straight Arm
+    arm_wg = gf.components.straight(length=inner_len, cross_section=xs_arm)
+
+    # --- Left Input Joint ---
+    in_block = c << gf.components.rectangle(size=(0.4, ring_width), layer=layer_wg, centered=True)
+    in_block.movex(-ring_straight_len/2 - 0.1) 
+
+    # --- Left Splitters ---
+    # Top Left S-bend
+    ls_top = c << splitter
+    # Move to start at the input block face
+    ls_top.move((in_block.xmax, 0))
+    
+    # Bottom Left S-bend (Mirrored)
+    ls_bot = c << splitter
+    ls_bot.mirror_y()
+    ls_bot.move((in_block.xmax, 0))
+
+    # --- Arms ---
+    arm_top = c << arm_wg
+    arm_bot = c << arm_wg
+    
+    arm_top.connect("o1", ls_top.ports["o2"])
+    arm_bot.connect("o1", ls_bot.ports["o2"])
+
+    # --- Right Combiners ---
+    rs_top = c << splitter
+    rs_bot = c << splitter
+    
+    # Top combiner (Connects to arm end, bends down to center)
+    rs_top.connect("o1", arm_top.ports["o2"])
+    rs_top.mirror_y() 
+    
+    # Bottom combiner (Connects to arm end, bends up to center)
+    rs_bot.connect("o1", arm_bot.ports["o2"])
+    
+    # --- Right Output Joint ---
+    out_block = c << gf.components.rectangle(size=(0.4, ring_width), layer=layer_wg, centered=True)
+    # Align to end of combiners
+    out_block.move((rs_top.ports["o2"].center[0] + 0.2, 0))
+
+    # =======================================================================
+    # 5. Add Heater Pads
+    # =======================================================================
+    pad_w, pad_h = 0.45, 0.35
+    pad_gap = 0.1
+    
+    pad_rect = gf.components.rectangle(size=(pad_w, pad_h), layer=layer_wg, centered=True)
+    
+    # Calculate starting position for pads
+    x_start = arm_top.ports["o1"].center[0]
+    y_top = arm_top.center[1]
+    y_bot = arm_bot.center[1]
+    
+    # Positions
+    p1_x = x_start + pad_w/2 + 0.05
+    p2_x = p1_x + pad_w + pad_gap
+    
+    # Place pads on Top Arm
+    c.add_ref(pad_rect).move((p1_x, y_top))
+    c.add_ref(pad_rect).move((p2_x, y_top))
+    
+    # Place pads on Bottom Arm
+    c.add_ref(pad_rect).move((p1_x, y_bot))
+    c.add_ref(pad_rect).move((p2_x, y_bot))
+
+    return c
+
+if __name__ == "__main__":
+    device = reproduction_device()
+    device.show()
+    device.write_gds("recreated_device.gds")

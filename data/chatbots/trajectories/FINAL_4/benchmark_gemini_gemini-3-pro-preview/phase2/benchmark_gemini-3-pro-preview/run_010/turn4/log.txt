@@ -1,0 +1,85 @@
+Turn 4 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_geometry():
+    """
+    Creates a directional coupler geometry matching the provided image and footprint.
+    
+    Footprint: 18 um x 3 um
+    
+    Refinement Strategy:
+    - Vertical Scale: Analysis of the target image shows white space above and below the waveguides.
+      The previous iteration filled the entire 3um height, resulting in steep bends.
+      We adjust the input ports to +/- 0.75um, creating a total occupied height of 2.0um within the 3.0um footprint.
+      This matches the visual ratio of ~0.66 (structure/frame).
+    - Coupling Gap: Tightened to 0.1um to match the "kissing" appearance in the center.
+    - Curvature: With reduced vertical displacement (dy=0.45um over 9um), the S-bends become
+      gentle and smooth, eliminating the need for a straight coupling section to match the image profile.
+    """
+    c = gf.Component()
+
+    # --- Parameters ---
+    total_length = 18.0
+    
+    # Feature dimensions
+    wg_width = 0.5
+    gap = 0.1
+    
+    # Vertical Positioning
+    # Placing ports at +/- 0.75um centers the device with correct padding inside the 3um footprint.
+    y_port = 0.75
+    
+    # Calculate coupling region y-position (center of waveguide)
+    # 0.1 gap -> 0.05 half-gap. Plus 0.25 half-width -> 0.3 offset.
+    y_couple = (gap / 2) + (wg_width / 2)
+    
+    # Bend Geometry parameters
+    # The device consists of two mirrored S-bend sections (converging then diverging)
+    bend_length = total_length / 2  # 9.0 um
+    dy = y_port - y_couple          # 0.75 - 0.3 = 0.45 um (Vertical drop for the S-bend)
+
+    # Cross Section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Primitives ---
+    # Top branch requires:
+    # 1. Downward S-bend (Input)
+    # 2. Upward S-bend (Output)
+    s_down = gf.components.bend_s(size=(bend_length, -dy), cross_section=xs)
+    s_up   = gf.components.bend_s(size=(bend_length, dy), cross_section=xs)
+
+    # --- Assembly ---
+
+    # Top Branch
+    # Input: Starts at (-L/2, y_port), curves down to center
+    top_in = c << s_down
+    top_in.move((-bend_length, y_port))
+    
+    # Output: Starts at center, curves up to (L/2, y_port)
+    top_out = c << s_up
+    top_out.connect("o1", top_in.ports["o2"])
+
+    # Bottom Branch
+    # Input: Starts at (-L/2, -y_port), curves up to center
+    bot_in = c << s_up
+    bot_in.move((-bend_length, -y_port))
+    
+    # Output: Starts at center, curves down to (L/2, -y_port)
+    bot_out = c << s_down
+    bot_out.connect("o1", bot_in.ports["o2"])
+
+    # --- Ports ---
+    c.add_port("o1", port=top_in.ports["o1"])
+    c.add_port("o2", port=bot_in.ports["o1"])
+    c.add_port("o3", port=top_out.ports["o2"])
+    c.add_port("o4", port=bot_out.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler_geometry()
+    device.write_gds("directional_coupler_refined.gds")
+```

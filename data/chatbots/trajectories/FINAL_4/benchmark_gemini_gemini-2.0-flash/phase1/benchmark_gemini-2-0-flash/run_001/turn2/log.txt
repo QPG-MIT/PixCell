@@ -1,0 +1,96 @@
+Turn 2 Response:
+
+The rastered output reveals that the wavy channel is not correctly generating the desired geometry. The fundamental problem lies in how the bends and straights are connected to create the wavy shape. The previous attempt produced two unconnected wavy lines, instead of the intended single, continuous channel. The correct approach is to create a series of alternating bends that connect to form the wave.
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import bend_euler, straight
+
+
+@gf.cell
+def wavy_channel(width: float = 3, wavelength: float = 18, bend_radius: float = 10):
+    """
+    Creates a continuous wavy channel using gdsfactory.
+
+    Args:
+        width: The width of the channel in um.
+        wavelength: The wavelength of the wave in um (approximately straight segment length).
+        bend_radius: The radius of the bends.
+    """
+
+    c = gf.Component("wavy_channel")
+
+    # Define cross section parameters
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+
+    # Calculate amplitude (vertical displacement)
+    amplitude = width
+
+    # Number of wave cycles
+    num_cycles = 2
+
+    # Start with a straight segment
+    straight_start = c << straight(length=wavelength/2, cross_section=xs)
+    current_port = straight_start.ports["o2"]
+
+    for i in range(num_cycles):
+        # Create a bend up
+        bend_up = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+        bend_up.connect("o1", current_port)
+        current_port = bend_up.ports["o2"]
+
+        # Create a straight segment
+        straight_mid = c << straight(length=wavelength, cross_section=xs)
+        straight_mid.connect("o1", current_port)
+        current_port = straight_mid.ports["o2"]
+        
+        #Create a bend down
+        bend_down = c << bend_euler(radius=bend_radius, angle=-90, cross_section=xs)
+        bend_down.connect("o1", current_port)
+        current_port = bend_down.ports["o2"]
+        
+        # Another straight
+        straight_mid2 = c << straight(length=wavelength, cross_section=xs)
+        straight_mid2.connect("o1", current_port)
+        current_port = straight_mid2.ports["o2"]
+        
+    bend_up_last = c << bend_euler(radius=bend_radius, angle=90, cross_section=xs)
+    bend_up_last.connect("o1", current_port)
+    current_port = bend_up_last.ports["o2"]
+    
+        # End with a final straight
+    straight_end = c << straight(length=wavelength/2, cross_section=xs)
+    straight_end.connect("o1", current_port)
+    current_port = straight_end.ports["o2"]
+
+
+    # Add ports at the start and end
+    c.add_port("o1", port=straight_start.ports["o1"])
+    c.add_port("o2", port=straight_end.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    c = wavy_channel()
+    c.show()
+    c.write_gds("wavy_channel.gds")
+```
+
+**Key Improvements and Reasoning:**
+
+1.  **Continuous Connection:** The code now focuses on creating a *continuous* wavy channel. It starts with a straight section and then iteratively adds bends (up and down) and straight sections to form the wave.  `current_port` variable ensures elements are connected in sequence.
+
+2.  **Alternating Bends:** The core of the wave is created by alternating positive (up) and negative (down) bends. This ensures that the channel oscillates vertically.
+
+3.  **Straights between Bends:** Straight segments are inserted between the bends to define the "wavelength" of the wave and to ensure smooth transitions between the bends.
+
+4.  **Ports:** Correctly assigns ports to the start and end to allow for connecting this wavy channel to other components.
+
+5. **Wavelength as straight segment length**: Changed meaning of wavelength parameter
+
+6.  **More parameters added**: Added a bend_radius parameter
+
+7.  **Num Cycles**: Number of cycles to be done
+
+This revised approach directly addresses the problem of creating a connected wavy channel using the available GDSFactory primitives. The output will now be a single, continuous waveguide that undulates in a wavy pattern.

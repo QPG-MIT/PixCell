@@ -1,0 +1,128 @@
+Turn 4 Response:
+
+I have pinpointed the cause of the `ValueError: Found off-grid instances`. This error is triggered by GDSFactory's built-in design rule checker, which ensures that all component instances are placed on coordinates that align with the manufacturing grid (typically 1nm). In our case, the complex connections between the `bend_circular` and `bend_euler` components, especially with calculated floating-point angles, result in instance origins that are slightly off-grid.
+
+The error message itself suggests the solution: run `c.flatten()` on the component that contains the off-grid instances before returning it. I have applied this fix to the `create_jaw` sub-component. By calling `jaw_component.flatten()`, we dissolve the internal primitive instances (`bend_euler`, `straight`, etc.) into a single set of polygons within the `jaw_component`. This resolves the error because the `final_device` no longer contains off-grid *instances*, only correctly placed references to the now-flattened `jaw_component`.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def create_device():
+    """
+    Creates the target device by modeling the "jaws" with a shallow arc to
+    reproduce the observed "bulge" and adjusting all parameters to fit the
+    [120, 4.0] footprint constraint.
+
+    This version fixes a ValueError related to off-grid instances. When
+    connecting components with complex, calculated geometries, the resulting
+    instance placements can have floating-point coordinates that do not align
+    with the default 1nm manufacturing grid. The fix is to call `.flatten()`
+    on the problematic sub-component (`create_jaw`) before it is returned.
+    This converts its internal instances into polygons, resolving the error.
+    """
+    # 1. Define Geometric Parameters based on footprint and visual proportions
+    # Overall dimensions and spacing
+    footprint_width = 120.0
+    v_gap = 0.35
+
+    # Multi-stripe cross-section (constant throughout)
+    num_stripes = 5
+    stripe_width = 0.15
+    pitch = 0.3
+    layer = (1, 0)
+
+    # Central straight component
+    length_middle = footprint_width
+
+    # U-shape ("jaw") parameters
+    bend_radius = 0.5
+    length_v_U = 0.2
+
+    # Arc parameters for the "bulge"
+    arc_radius = 6000
+    arc_span = footprint_width - 2 * bend_radius - 4.0
+    arc_angle_rad = 2 * np.arcsin(arc_span / (2 * arc_radius))
+    arc_angle_deg = np.rad2deg(arc_angle_rad)
+
+    # 2. Define the multi-stripe CrossSection
+    sections = []
+    center_offset = (num_stripes - 1) * pitch / 2
+    middle_stripe_index = num_stripes // 2
+
+    for i in range(num_stripes):
+        offset = i * pitch - center_offset
+        if i == middle_stripe_index:
+            s = gf.Section(
+                width=stripe_width,
+                offset=offset,
+                layer=layer,
+                port_names=("o1", "o2"),
+            )
+        else:
+            s = gf.Section(width=stripe_width, offset=offset, layer=layer)
+        sections.append(s)
+    xs_multi_stripe = gf.CrossSection(sections=sections)
+
+    # 3. Create the jaw subcomponent by assembling primitives
+    @gf.cell
+    def create_jaw():
+        """Creates a single jaw, opening downwards, with a central arc."""
+        c = gf.Component()
+        arc_h = c << gf.components.bend_circular(
+            radius=arc_radius, angle=-arc_angle_deg, cross_section=xs_multi_stripe
+        )
+        b_left = c << gf.components.bend_euler(
+            radius=bend_radius, angle=90, cross_section=xs_multi_stripe
+        )
+        s_v_left = c << gf.components.straight(
+            length=length_v_U, cross_section=xs_multi_stripe
+        )
+        b_right = c << gf.components.bend_euler(
+            radius=bend_radius, angle=-90, cross_section=xs_multi_stripe
+        )
+        s_v_right = c << gf.components.straight(
+            length=length_v_U, cross_section=xs_multi_stripe
+        )
+
+        b_left.connect('o1', arc_h.ports['o1'])
+        s_v_left.connect('o1', b_left.ports['o2'])
+        b_right.connect('o1', arc_h.ports['o2'])
+        s_v_right.connect('o1', b_right.ports['o2'])
+
+        # FIX: Flatten the component to resolve off-grid instance errors.
+        # This dissolves the internal instances (arc, bends, straights) into
+        # polygons, satisfying the on-grid placement requirement.
+        c.flatten()
+        return c
+
+    jaw_component = create_jaw()
+
+    # 4. Create the central straight component
+    middle_straights = gf.components.straight(
+        length=length_middle, cross_section=xs_multi_stripe
+    )
+
+    # 5. Assemble the final device
+    c_final = gf.Component("final_device")
+    middle_ref = c_final << middle_straights
+    top_ref = c_final << jaw_component
+    bottom_ref = c_final << jaw_component
+
+    middle_ref.center = (0, 0)
+
+    y_center_arc_local = arc_radius * (1 - np.cos(arc_angle_rad / 2))
+    
+    top_ref.centerx = 0
+    top_ref.y = middle_ref.ymax + v_gap + y_center_arc_local
+
+    bottom_ref.mirror(p1=(0, 0), p2=(1, 0))
+    bottom_ref.centerx = 0
+    bottom_ref.y = middle_ref.ymin - v_gap - y_center_arc_local
+    
+    return c_final
+
+# Create an instance of the device for verification and output
+device = create_device()
+```

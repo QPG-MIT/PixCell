@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:08.920251",
+      "api_duration_seconds": 58.48386192321777,
+      "usage": {
+        "input_tokens": 3182,
+        "output_tokens": 1228,
+        "total_tokens": 10974
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:14.202659",
+      "api_duration_seconds": 38.5318078994751,
+      "usage": {
+        "input_tokens": 4429,
+        "output_tokens": 1156,
+        "total_tokens": 9606
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:54.177776",
+      "api_duration_seconds": 12.26279902458191,
+      "usage": {
+        "input_tokens": 6068,
+        "output_tokens": 1100,
+        "total_tokens": 7582
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13679,
+    "output_tokens": 3484,
+    "total_tokens": 28162
+  }
+}

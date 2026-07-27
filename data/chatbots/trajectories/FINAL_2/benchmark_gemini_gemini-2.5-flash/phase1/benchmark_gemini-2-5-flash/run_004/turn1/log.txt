@@ -1,0 +1,151 @@
+Turn 1 Response:
+
+The `RuntimeError: Cell '...' cannot be modified as it is locked in Cell.transform` typically occurs when you attempt to modify a GDSFactory `Component` definition after it has been instantiated or used as a base for other operations, especially when transformations are involved. GDSFactory (and its underlying kfactory library) locks components to ensure their immutability once defined and placed, preventing unexpected side effects across multiple instances.
+
+The issue in your script lies in directly calling `.movey()` or `.movex()` on component *definitions* (like `gf.components.rectangle(...)` or the result of a `gf.boolean(...)`) rather than on `ComponentReference` objects.
+
+**Here's the corrected approach:**
+
+1.  **Create an empty `gf.Component` to act as a container.**
+2.  **Add your primitive shapes (rectangles, triangles) as *references* to this container.**
+3.  **Perform transformations (like `movex`, `movey`, `mirror`) on these *references* within the container.** This modifies the instance's position, not the component's definition.
+4.  **When performing boolean operations, pass these containers (which now hold the correctly positioned references) to `gf.boolean()`**.
+
+I've refactored the main body and single tower creation to follow this pattern.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def custom_device():
+    c = gf.Component("my_device")
+    layer = (1, 0) # Default layer for all geometry
+
+    # --- 1. Define Device and Sub-component Dimensions ---
+    overall_width = 25.0
+    overall_height = 10.0
+
+    # Main Body Dimensions
+    main_body_rect_height = 4.0
+    v_cut_depth = 1.0 # The 'V' shape points down, its lowest point will be y=0
+    v_cut_width_half = 2.0 # Total V-cut width at top is 4.0
+
+    # Tower Dimensions
+    tower_taper_height = 2.0
+    tower_top_height = 3.0
+    tower_top_width = 1.5
+    tower_base_width = 3.0
+    tri_side_width = (tower_base_width - tower_top_width) / 2
+
+    # Tower Placement Parameters
+    num_towers = 4
+    x_offset_first_tower = 2.0 # From global x=0 to first tower's base-left edge
+    gap_between_towers = 3.0
+
+    # --- 2. Create the Main Body Component (Rectangle with V-cutout) ---
+
+    # Component A for boolean: The main rectangle, positioned correctly.
+    # Create an empty component to hold the rectangle reference.
+    main_rect_for_boolean = gf.Component("main_rect_A_input")
+    rect_ref_in_A = main_rect_for_boolean << gf.components.rectangle(
+        size=(overall_width, main_body_rect_height), layer=layer, centered=False
+    )
+    # Move the reference within its container, so its bottom-left is at (0, v_cut_depth).
+    rect_ref_in_A.movey(v_cut_depth)
+
+
+    # Component B for boolean: The V-shaped cutout, positioned for subtraction.
+    # 1. Create the upward-pointing isosceles triangle base (centered at 0,0, apex at (0, v_cut_depth)).
+    #    This is a temporary component for combining two right-angled triangles.
+    temp_up_triangle_container = gf.Component("temp_up_triangle_container")
+    t1_ref = temp_up_triangle_container << gf.components.triangle(x=v_cut_width_half, y=v_cut_depth, layer=layer)
+    t2_ref = temp_up_triangle_container << gf.components.triangle(x=v_cut_width_half, y=v_cut_depth, layer=layer)
+    t2_ref.mirror(p1=(0,0), p2=(0,1)) # Mirror t2 across its Y-axis to form the left half.
+    # Combine into a single upward-pointing triangle component.
+    upward_triangle_component = gf.boolean(t1_ref, t2_ref, operation="or", layer=layer)
+
+    # 2. Create the final V-cutout component (pointing downwards), correctly positioned for boolean.
+    v_cut_shape_for_boolean = gf.Component("v_cut_B_input")
+    # Add a reference to the upward triangle.
+    ref_to_up_tri = v_cut_shape_for_boolean << upward_triangle_component
+    # Mirror this reference to make it point downwards. The base will be at y = v_cut_depth.
+    ref_to_up_tri.mirror(p1=(0, v_cut_depth / 2), p2=(1, v_cut_depth / 2))
+    # Move this reference horizontally to be centered within the overall width.
+    ref_to_up_tri.movex(overall_width / 2)
+
+    # Perform boolean subtraction to create the final main body shape.
+    main_body_result = gf.boolean(
+        main_rect_for_boolean,
+        v_cut_shape_for_boolean,
+        operation="not",
+        layer=layer
+    )
+    c.add_ref(main_body_result) # Add the final boolean result to the main component `c`.
+
+    # --- 3. Create a Single Tower Component ---
+    # This component will be built such that its lowest point is at y=0 and it's horizontally centered.
+    # Create an empty component to hold all parts of a single tower.
+    c_single_tower_container = gf.Component("single_tower_container")
+
+    # Top rectangular part
+    rect_top_comp = gf.components.rectangle(
+        size=(tower_top_width, tower_top_height), layer=layer, centered=True
+    )
+    rt_ref = c_single_tower_container << rect_top_comp
+    # Position its bottom edge at the top of the tapered part.
+    rt_ref.movey(tower_taper_height + tower_top_height / 2)
+
+    # Tapered base (trapezoid)
+    # Start with a core rectangle of the trapezoid's top width and full height.
+    rect_taper_core_comp = gf.components.rectangle(
+        size=(tower_top_width, tower_taper_height), layer=layer, centered=True
+    )
+    rtc_ref = c_single_tower_container << rect_taper_core_comp
+    rtc_ref.movey(tower_taper_height / 2) # Position its bottom edge at y=0.
+
+    # Add side triangles to complete the trapezoid.
+    tri_left_base = gf.components.triangle(x=tri_side_width, y=tower_taper_height, layer=layer)
+    tri_right_base = gf.components.triangle(x=tri_side_width, y=tower_taper_height, layer=layer)
+
+    r_tri_l_ref = c_single_tower_container << tri_left_base
+    r_tri_r_ref = c_single_tower_container << tri_right_base
+
+    # For the left triangle: mirror it across Y-axis, then position it.
+    r_tri_l_ref.mirror(p1=(0,0), p2=(0,1))
+    r_tri_l_ref.movex(-tower_top_width / 2) # Align with left side of central rectangle.
+    r_tri_l_ref.movey(tower_taper_height / 2) # Adjust for centered reference point of triangle primitive.
+
+    # For the right triangle: position its leftmost point should align with the core rect's right edge.
+    r_tri_r_ref.movex(tower_top_width / 2) # Align with right side of central rectangle.
+    r_tri_r_ref.movey(tower_taper_height / 2) # Adjust for centered reference point of triangle primitive.
+
+    # Combine all parts of the single tower using boolean OR.
+    # Passing the container component directly to gf.boolean will combine all its polygons.
+    single_tower_final = gf.boolean(c_single_tower_container, operation="or", layer=layer)
+
+    # --- 4. Add 4 Tower Instances to the Main Device ---
+    # Calculate the Y position for the bottom of the towers.
+    tower_y_position_bottom = v_cut_depth + main_body_rect_height
+
+    for i in range(num_towers):
+        tower_ref = c << single_tower_final # Add a reference to the single tower component.
+        
+        # Calculate the x-center for the current tower.
+        x_center_tower = x_offset_first_tower + (tower_base_width / 2) + i * (tower_base_width + gap_between_towers)
+        
+        # Move the tower reference to its correct absolute position.
+        tower_ref.move((x_center_tower, tower_y_position_bottom))
+
+    return c
+
+# Create and view the device
+if __name__ == "__main__":
+    device = custom_device()
+    device.show()
+    # To save the GDS file:
+    # device.write_gds("my_gds_device.gds")
+
+    # Check the footprint for verification
+    print(f"Device bounds: {device.dbbox()}")
+    # Expected bounds: [[0.0, 0.0], [25.0, 10.0]]
+```

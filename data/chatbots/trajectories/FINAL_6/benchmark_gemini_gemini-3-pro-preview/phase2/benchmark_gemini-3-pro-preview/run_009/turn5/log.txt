@@ -1,0 +1,115 @@
+Turn 5 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def star_cross_device():
+    """
+    Generates a 4-lobed cross device with smooth transitions to waveguide ports.
+    
+    Refined parameters (Iteration 5) to eliminate the "muffin top" artifact
+    and match the slender, tapered look of the target image.
+    
+    Geometry:
+    - 4 Elliptical lobes forming the body (slender aspect ratio).
+    - 4 Rectangular stubs forming the waveguide ports.
+    - Transition point adjusted so ellipse width matches stub width (0.32um)
+      exactly, creating a seamless connection.
+    
+    Footprint: 4.7 um x 4.7 um
+    """
+    c = gf.Component()
+    
+    # 1. Dimensional Parameters
+    footprint = 4.7
+    radius_bound = footprint / 2.0  # Device boundary at +/- 2.35 um
+    
+    # Stub Dimensions
+    # Width of the waveguide port (matches target visual thinness)
+    stub_width = 0.32
+    # Length of the straight waveguide section
+    # Reduced from 0.4 to 0.3 to push the transition point to a wider part of the ellipse
+    stub_length = 0.3 
+    
+    # Lobe Dimensions
+    # We maintain the slender "petal" look with a minor radius of 0.55.
+    # We calculate the major radius such that the ellipse width equals the 
+    # stub width (0.32) at the connection point (radius_bound - stub_length = 2.05).
+    #
+    # Calculation Logic:
+    # x_connection = 2.05
+    # y_connection = stub_width / 2 = 0.16
+    # Ellipse Eq: (x/a)^2 + (y/b)^2 = 1
+    # Solve for a: a = x / sqrt(1 - (y/b)^2)
+    # a = 2.05 / sqrt(1 - (0.16/0.55)^2) approx 2.145
+    lobe_minor_radius = 0.55
+    lobe_major_radius = 2.145
+    
+    # 2. Define Primitives
+    # Main elliptical body
+    # The ellipse is slightly longer (2.145) than the connection point (2.05),
+    # ensuring the tip is buried inside the rectangular stub for continuity.
+    ellipse = gf.components.ellipse(
+        radii=(lobe_major_radius, lobe_minor_radius), 
+        layer=(1, 0)
+    )
+    
+    # Rectangular port tip
+    stub = gf.components.rectangle(
+        size=(stub_length, stub_width), 
+        layer=(1, 0), 
+        centered=True
+    )
+
+    # 3. Assembly
+    
+    # Add Horizontal Lobe
+    c << ellipse
+    
+    # Add Vertical Lobe (Rotated 90 degrees)
+    v_lobe_ref = c << ellipse
+    v_lobe_ref.rotate(90)
+    
+    # Add Port Stubs
+    # Calculate center position to align outer edge with radius_bound
+    stub_center_dist = radius_bound - (stub_length / 2.0)
+    
+    # Right Stub (East)
+    s_right = c << stub
+    s_right.movex(stub_center_dist)
+    
+    # Left Stub (West)
+    s_left = c << stub
+    s_left.movex(-stub_center_dist)
+    
+    # Top Stub (North)
+    s_top = c << stub
+    s_top.rotate(90)
+    s_top.movey(stub_center_dist)
+    
+    # Bottom Stub (South)
+    s_bot = c << stub
+    s_bot.rotate(90)
+    s_bot.movey(-stub_center_dist)
+    
+    # 4. Add Ports
+    c.add_port("o1", center=(radius_bound, 0), width=stub_width, orientation=0, layer=(1,0))
+    c.add_port("o2", center=(0, radius_bound), width=stub_width, orientation=90, layer=(1,0))
+    c.add_port("o3", center=(-radius_bound, 0), width=stub_width, orientation=180, layer=(1,0))
+    c.add_port("o4", center=(0, -radius_bound), width=stub_width, orientation=270, layer=(1,0))
+
+    return c
+
+if __name__ == "__main__":
+    # Create the device
+    device = star_cross_device()
+    
+    # Verify dimensions
+    print(f"Device width: {device.size_info.width:.2f} um")
+    print(f"Device height: {device.size_info.height:.2f} um")
+    
+    # Show and Save
+    device.show()
+    device.write_gds("star_cross_refined_v5.gds")
+```

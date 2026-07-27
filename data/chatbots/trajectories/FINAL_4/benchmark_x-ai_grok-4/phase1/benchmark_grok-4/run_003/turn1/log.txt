@@ -1,0 +1,45 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+
+    # Parameters based on footprint [18, 3] um
+    length = 18.0
+    height = 3.0
+    width = 0.5  # Typical waveguide width
+    sep = height - width  # Center-to-center separation at ends
+    gap = 0.2  # Typical coupler gap (edge-to-edge)
+    close = width + gap  # Center-to-center separation in middle
+    center_sep = sep / 2
+    center_close = close / 2
+
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+
+    # Top waveguide path
+    points_top = [(0, center_sep), (length / 2, center_close), (length, center_sep)]
+    path_top = gf.path.smooth(points=points_top, radius=3.0)
+    wg_top = gf.path.extrude(path_top, xs)
+    top_ref = c << wg_top
+
+    # Bottom waveguide path
+    points_bottom = [(0, -center_sep), (length / 2, -center_close), (length, -center_sep)]
+    path_bottom = gf.path.smooth(points=points_bottom, radius=3.0)
+    wg_bottom = gf.path.extrude(path_bottom, xs)
+    bottom_ref = c << wg_bottom
+
+    # Add ports
+    c.add_port("o1", port=top_ref.ports["o1"])
+    c.add_port("o2", port=top_ref.ports["o2"])
+    c.add_port("o3", port=bottom_ref.ports["o1"])
+    c.add_port("o4", port=bottom_ref.ports["o2"])
+
+    return c
+
+# Create and save
+device = my_device()
+device.write_gds("my_device.gds")
+```

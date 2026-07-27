@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.979313",
+      "api_duration_seconds": 159.00555205345154,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 3690,
+        "total_tokens": 30612
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 2 validation errors for CrossSection\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nlayer\n  Extra inputs are not permitted [type=extra_forbidden, input_value=(1, 0), input_type=tuple]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:50.651713",
+      "api_duration_seconds": 14.48008418083191,
+      "usage": {
+        "input_tokens": 6185,
+        "output_tokens": 1704,
+        "total_tokens": 8434
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')\nAttributeError: 'CrossSection' object has no attribute 'add'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:07.192799",
+      "api_duration_seconds": 15.176109075546265,
+      "usage": {
+        "input_tokens": 7942,
+        "output_tokens": 1710,
+        "total_tokens": 10171
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<2 lines>...\n    )\nValueError: smooth(): Not enough distance between points to to fit curves.Try reducing the radius or spacing the points out farther",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16476,
+    "output_tokens": 7104,
+    "total_tokens": 49217
+  }
+}

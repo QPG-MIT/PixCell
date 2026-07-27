@@ -1,0 +1,114 @@
+import gdsfactory as gf
+from gdsfactory.cross_section import Section
+
+@gf.cell
+def create_device():
+    """Creates the full device by assembling its components."""
+
+    # --- 1. Define Parameters from Footprint and Image Analysis ---
+    
+    # Footprint dimensions
+    footprint_width = 120.0
+    footprint_height = 4.0
+    
+    # Cross-section parameters (deduced from footprint_height)
+    num_lines = 5
+    line_width = 0.12
+    gap = 0.1
+    layer = (1, 0)
+    
+    # Path parameters (deduced from footprint_width and visual inspection)
+    length_center_straight = 40.0
+    bend_horizontal_length = 20.0
+    length_end_straight = (footprint_width - length_center_straight - 2 * bend_horizontal_length) / 2
+    
+    # Vertical placement parameters
+    cross_section_height = num_lines * line_width + (num_lines - 1) * gap
+    y_outer_center = (footprint_height - cross_section_height) / 2
+    bend_vertical_displacement = 0.9 
+
+
+    # --- 2. Define the Custom Multi-Line Cross-Section ---
+    
+    # Calculate offsets to center the lines around the path
+    offsets = [(i - (num_lines - 1) / 2) * (line_width + gap) for i in range(num_lines)]
+    
+    sections = [
+        Section(width=line_width, offset=offset, layer=layer) for offset in offsets
+    ]
+    xs = gf.cross_section.cross_section(sections=sections)
+
+
+    # --- 3. Create a Parametric Cell for the Top/Bottom Arms ---
+    
+    @gf.cell
+    def create_arm():
+        """Creates one of the curved multi-line arms."""
+        c = gf.Component()
+        
+        # Create the five segments of the arm
+        s_left = c << gf.components.straight(length=length_end_straight, cross_section=xs)
+        bend_down = c << gf.components.bend_s(
+            size=(bend_horizontal_length, -bend_vertical_displacement), cross_section=xs
+        )
+        s_center = c << gf.components.straight(length=length_center_straight, cross_section=xs)
+        bend_up = c << gf.components.bend_s(
+            size=(bend_horizontal_length, bend_vertical_displacement), cross_section=xs
+        )
+        s_right = c << gf.components.straight(length=length_end_straight, cross_section=xs)
+
+        # Connect the segments in sequence
+        bend_down.connect("o1", s_left.ports["o2"])
+        s_center.connect("o1", bend_down.ports["o2"])
+        bend_up.connect("o1", s_center.ports["o2"])
+        s_right.connect("o1", bend_up.ports["o2"])
+        
+        c.add_port("o1", port=s_left.ports["o1"])
+        c.add_port("o2", port=s_right.ports["o2"])
+        return c
+
+    # --- 4. Assemble the Final Device ---
+    
+    c = gf.Component("multi_line_coupler")
+
+    # Instantiate the arm cell
+    arm = create_arm()
+    
+    # Add and position the top arm
+    top_arm = c << arm
+    top_arm.move(
+        origin=top_arm.ports["o1"].center, 
+        destination=(-footprint_width / 2, y_outer_center)
+    )
+
+    # Add, mirror, and position the bottom arm
+    bottom_arm = c << arm
+    # FIX: Use mirror() to reflect across the horizontal x-axis, not mirror_y()
+    bottom_arm.mirror()
+    bottom_arm.move(
+        origin=bottom_arm.ports["o1"].center, 
+        destination=(-footprint_width / 2, -y_outer_center)
+    )
+
+    # Add the central straight multi-line section
+    center_section = c << gf.components.straight(length=footprint_width, cross_section=xs)
+    center_section.move(
+        origin=center_section.ports["o1"].center,
+        destination=(-footprint_width / 2, 0)
+    )
+
+    return c
+
+# --- Main execution block to generate the GDS file ---
+# FIX: This block was commented out, which is why no GDS file was produced.
+# It is now active, ensuring the script creates and saves the output.
+if __name__ == "__main__":
+    # Create an instance of the device
+    device_to_write = create_device()
+
+    # Write the GDS file to disk
+    device_to_write.write_gds("output.gds")
+
+    print("GDS file 'output.gds' has been successfully generated.")
+    # Optional: uncomment the line below to show the geometry in a viewer if you have one configured
+    # device_to_write.show()

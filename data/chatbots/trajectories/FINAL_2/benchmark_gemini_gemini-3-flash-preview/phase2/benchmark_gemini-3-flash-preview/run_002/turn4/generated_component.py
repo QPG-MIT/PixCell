@@ -1,0 +1,79 @@
+import gdsfactory as gf
+
+@gf.cell
+def refined_device_v4():
+    """
+    Refined recreation of the device silhouette (Turn 4).
+    Constraint: [25um width, 10um height]
+    
+    Proportions adjusted to match target:
+    - Body: 20um wide, 5.2um high
+    - Top Fingers (4x): 3.8um total height 
+        (3.3um taper for a gradual slope + 0.5um straight tip for flat top)
+    - Bottom Feature: 1.0um high taper (narrower)
+    Total height = 3.8 + 5.2 + 1.0 = 10.0um
+    """
+    c = gf.Component("refined_device_turn4")
+    layer = (1, 0)
+    
+    # 1. Body Dimensions
+    body_w = 20.0
+    body_h = 5.2
+    
+    # 2. Top Finger Design
+    # Target has long tapers and very short flat tips.
+    finger_taper_h = 3.3
+    finger_straight_h = 0.5
+    w_base = 3.0   # Base width of the finger
+    w_tip = 1.4    # Tip width
+    
+    # Create the finger parts
+    taper_part = gf.components.taper(length=finger_taper_h, width1=w_base, width2=w_tip, layer=layer)
+    straight_part = gf.components.straight(length=finger_straight_h, cross_section=gf.cross_section.cross_section(width=w_tip, layer=layer))
+    
+    # Combine into a single finger component
+    finger = gf.Component("single_finger")
+    t_ref = finger << taper_part
+    s_ref = finger << straight_part
+    s_ref.connect("o1", t_ref.ports["o2"])
+    
+    # 3. Bottom Feature (Narrower trapezoid)
+    bot_h = 1.0
+    bot_w1 = 2.8
+    bot_w2 = 1.0
+    bottom_feat = gf.components.taper(length=bot_h, width1=bot_w1, width2=bot_w2, layer=layer)
+
+    # 4. Main Body
+    body = gf.components.rectangle(size=(body_w, body_h), layer=layer, centered=True)
+    
+    # 5. Assembly
+    features = gf.Component("all_features")
+    
+    # Position 4 fingers
+    # To match the target, outer fingers are at the very edges:
+    # Outer centers: +/- (body_w/2 - w_base/2) = +/- (10 - 1.5) = 8.5
+    # Inner centers: spacing them evenly within the remaining space
+    x_positions = [-8.5, -2.8, 2.8, 8.5]
+    
+    for x in x_positions:
+        f_ref = features << finger
+        f_ref.rotate(90)
+        # Align base of finger (o1) to top edge of body
+        f_ref.move((x, body_h / 2))
+        
+    # Position bottom feature
+    b_ref = features << bottom_feat
+    b_ref.rotate(-90)
+    b_ref.move((0, -body_h / 2))
+
+    # 6. Final Merge
+    merged = gf.boolean(A=body, B=features, operation="or", layer=layer)
+    c << merged
+
+    return c
+
+if __name__ == "__main__":
+    device = refined_device_v4()
+    output_filename = "refined_device_v4.gds"
+    device.write_gds(output_filename)
+    print(f"Turn 4 GDS file generated: {output_filename}")

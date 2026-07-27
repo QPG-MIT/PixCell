@@ -1,0 +1,143 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_complex_splitter():
+    c = gf.Component("complex_splitter")
+    layer = (1, 0) # Use layer (1, 0) for the black shapes
+
+    # --- Define common parameters based on visual estimation and footprint (40x1.7um) ---
+    # Initial widths and gaps at x=0
+    w_line_start = 0.15 # Width of all three lines at their start
+    w_gap_start = 0.25  # Gap between middle and outer lines at their start
+
+    # Central Waveguide parameters
+    w_mid_start = w_line_start # 0.15
+    w_mid_max = 0.25            # Max width of the central part
+    w_mid_end = 0.05            # End width of the central part
+    L_mid_taper1 = 5            # Length of first taper (start to max width)
+    L_mid_straight1 = 15        # Length of straight section at max width
+    L_mid_taper2 = 5            # Length of second taper (max width to end width)
+    L_mid_end_straight = 3      # Length of final straight section
+
+    # Outer Waveguide parameters
+    w_outer_start = w_line_start # 0.15
+    y_max_device = 1.7 / 2 # 0.85 (half of the total 1.7 um height)
+    # At x=40, the outer waveguides are wide.
+    # If the outer waveguide's top edge is at y_max_device, and its centerline is at y_outer_center_end,
+    # then its half-width is (y_max_device - y_outer_center_end).
+    # We estimate y_outer_center_end = 0.5, so half-width = (0.85 - 0.5) = 0.35.
+    # Full width w_outer_end = 2 * 0.35 = 0.7.
+    w_outer_end = 0.7
+
+    # --- Central Waveguide Construction ---
+
+    # Create specific cross_section objects for each segment's width.
+    # This ensures consistency for connections, especially with 'taper' components
+    # which seem to prioritize the 'cross_section.width' over their 'width1/width2' for port definitions.
+
+    # Cross-section for the section with width w_mid_max (0.25)
+    xs_mid_max = gf.cross_section.cross_section(width=w_mid_max, layer=layer)
+    # Cross-section for the section with width w_mid_end (0.05)
+    xs_mid_end = gf.cross_section.cross_section(width=w_mid_end, layer=layer)
+    # Cross-section for the initial section with width w_mid_start (0.15)
+    xs_mid_start = gf.cross_section.cross_section(width=w_mid_start, layer=layer)
+
+
+    # Taper 1: from w_mid_start (0.15) to w_mid_max (0.25)
+    # Pass a cross_section object that has the *output* width (w_mid_max).
+    taper_mid_1 = c << gf.components.taper(
+        length=L_mid_taper1,
+        width1=w_mid_start,
+        width2=w_mid_max,
+        cross_section=xs_mid_max # Use cross_section with width 0.25
+    )
+    taper_mid_1.center = (taper_mid_1.x, 0) # Center vertically at y=0
+
+    # Straight 1: with max width (0.25)
+    straight_mid_1 = c << gf.components.straight(
+        length=L_mid_straight1,
+        cross_section=xs_mid_max # Reuse cross_section with width 0.25
+    )
+    # Connect straight_mid_1.o1 (width 0.25) to taper_mid_1.o2 (now correctly width 0.25)
+    straight_mid_1.connect("o1", taper_mid_1.ports["o2"])
+
+    # Taper 2: from w_mid_max (0.25) to w_mid_end (0.05)
+    # Pass a cross_section object that has the *output* width (w_mid_end).
+    taper_mid_2 = c << gf.components.taper(
+        length=L_mid_taper2,
+        width1=w_mid_max,
+        width2=w_mid_end,
+        cross_section=xs_mid_end # Use cross_section with width 0.05
+    )
+    # Connect taper_mid_2.o1 (width 0.25) to straight_mid_1.o2 (width 0.25)
+    taper_mid_2.connect("o1", straight_mid_1.ports["o2"])
+
+    # End Straight: with end width (0.05)
+    straight_mid_end = c << gf.components.straight(
+        length=L_mid_end_straight,
+        cross_section=xs_mid_end # Reuse cross_section with width 0.05
+    )
+    # Connect straight_mid_end.o1 (width 0.05) to taper_mid_2.o2 (now correctly width 0.05)
+    straight_mid_end.connect("o1", taper_mid_2.ports["o2"])
+
+    # --- Outer Waveguides Construction (Top and Bottom) ---
+    # Calculate initial Y-center for the outer waveguides at x=0
+    # Center of mid-line (0) + half_mid_line_width + gap + half_outer_line_width
+    # Since w_mid_start and w_outer_start are both w_line_start:
+    y_outer_center_start = w_line_start + w_gap_start # 0.15 + 0.25 = 0.4um
+
+    # Calculate Final Y-center for the outer waveguides at x=40
+    # Top edge of device is y_max_device (0.85).
+    # Centerline is y_max_device - half_outer_width_at_end.
+    y_outer_center_end = y_max_device - (w_outer_end / 2) # 0.85 - (0.7/2) = 0.5um
+
+    # Define a transition for the width along the path
+    # These cross-sections must have their specific width defined.
+    xs_outer_start = gf.cross_section.cross_section(width=w_outer_start, layer=layer)
+    xs_outer_end = gf.cross_section.cross_section(width=w_outer_end, layer=layer)
+    xs_transition_outer = gf.path.transition(xs_outer_start, xs_outer_end, width_type='sine')
+
+    # Path for the TOP outer waveguide (centerline) using a Bezier curve
+    # Control points guide the smooth curvature and ensure horizontal start/end tangents.
+    cp_top_outer = [
+        (0, y_outer_center_start),            # P0: (0, 0.4) - Start point
+        (10, y_outer_center_start),           # P1: (10, 0.4) - Ensures horizontal tangent at P0
+        (25, y_outer_center_start + 0.1),     # P2: (25, 0.5) - Guides the curve gently upwards
+        (35, y_outer_center_end),             # P3: (35, 0.5) - Guides towards horizontal tangent at P4
+        (40, y_outer_center_end)              # P4: (40, 0.5) - End point, ensures horizontal tangent at end
+    ]
+    path_top_outer = gf.path.bezier(control_points=cp_top_outer)
+    top_outer_element = c << gf.path.extrude_transition(path_top_outer, xs_transition_outer)
+
+    # Path for the BOTTOM outer waveguide (centerline) - mirrored version of the top
+    # Simply negate the Y-coordinates of the control points.
+    cp_bottom_outer = [
+        (x, -y) for x, y in cp_top_outer
+    ]
+    path_bottom_outer = gf.path.bezier(control_points=cp_bottom_outer)
+    bottom_outer_element = c << gf.path.extrude_transition(path_bottom_outer, xs_transition_outer)
+
+    return c
+
+# Create the device component
+device = my_complex_splitter()
+
+# --- Verify Footprint Constraint ---
+bbox = device.bounding_box()
+actual_width = bbox[1, 0] - bbox[0, 0]
+actual_height = bbox[1, 1] - bbox[0, 1]
+
+# Using a small tolerance for floating point comparisons
+TOLERANCE = 1e-3
+
+assert abs(actual_width - 40.0) < TOLERANCE, f"Actual width {actual_width:.3f} um != 40.0 um"
+assert abs(actual_height - 1.7) < TOLERANCE, f"Actual height {actual_height:.3f} um != 1.7 um"
+
+print(f"Device created successfully with actual width: {actual_width:.3f} um (expected 40.0 um)")
+print(f"Device created successfully with actual height: {actual_height:.3f} um (expected 1.7 um)")
+
+# Optional: Uncomment to save the GDS file for visual inspection in a layout viewer
+# device.write_gds("complex_splitter.gds")
+
+# Optional: Uncomment to show the component (requires KLayout or similar viewer setup)
+# device.show()

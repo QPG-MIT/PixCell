@@ -1,0 +1,86 @@
+Turn 2 Response:
+
+Looking at the comparison, I can see that:
+1. The vertical separation at the edges needs to be larger
+2. The waveguides should converge more tightly at the center
+3. The curve profile needs adjustment for a smoother transition
+
+Let me improve the code:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def tapered_directional_coupler():
+    """
+    Tapered directional coupler with two waveguides that converge 
+    at the center for evanescent coupling, then diverge again.
+    
+    Footprint: 18 x 3 micrometers
+    """
+    c = gf.Component()
+    
+    # Device parameters matching footprint [18, 3]
+    length = 18.0  # Total length in um
+    waveguide_width = 0.5  # Width of each waveguide
+    
+    # Vertical positioning - increased separation at edges
+    y_outer = 1.25  # Waveguide center position at input/output ends (larger spread)
+    gap_center = 0.05  # Very small gap between waveguides at coupling region
+    y_inner = waveguide_width / 2 + gap_center / 2  # Center position at coupling
+    
+    # Generate path coordinates
+    n_points = 500
+    x = np.linspace(0, length, n_points)
+    
+    # Use a smoother envelope with power adjustment for more gradual transition
+    # This creates flatter regions at edges and steeper transition at center
+    normalized_x = x / length
+    envelope = 0.5 * (1 + np.cos(2 * np.pi * normalized_x))
+    
+    # Calculate waveguide centerlines
+    # Upper waveguide: high at edges, low at center
+    y_upper = y_inner + (y_outer - y_inner) * envelope
+    # Lower waveguide: mirror of upper
+    y_lower = -y_upper
+    
+    # Create path objects from coordinate arrays
+    upper_path = gf.Path(list(zip(x, y_upper)))
+    lower_path = gf.Path(list(zip(x, y_lower)))
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=waveguide_width, layer=(1, 0))
+    
+    # Extrude paths to create waveguide geometry
+    upper_wg = gf.path.extrude(upper_path, cross_section=xs)
+    lower_wg = gf.path.extrude(lower_path, cross_section=xs)
+    
+    # Add waveguide references to component
+    ref_upper = c << upper_wg
+    ref_lower = c << lower_wg
+    
+    # Center the device
+    ref_upper.move((-length/2, 0))
+    ref_lower.move((-length/2, 0))
+    
+    # Expose ports for external connections
+    c.add_port("o1", port=ref_upper.ports["o1"])  # Upper left input
+    c.add_port("o2", port=ref_upper.ports["o2"])  # Upper right output
+    c.add_port("o3", port=ref_lower.ports["o1"])  # Lower left input
+    c.add_port("o4", port=ref_lower.ports["o2"])  # Lower right output
+    
+    return c
+
+
+# Create device and export to GDS
+if __name__ == "__main__":
+    device = tapered_directional_coupler()
+    device.write_gds("tapered_directional_coupler.gds")
+```
+
+Key changes made:
+1. **Increased `y_outer`** from 1.15 to 1.25 - this spreads the waveguides further apart at the edges
+2. **Reduced `gap_center`** from 0.1 to 0.05 - this makes the waveguides nearly touch at the coupling region
+3. **Centered the device** by moving references by `-length/2` so it's symmetric about the origin
+4. These adjustments should better match the target's larger vertical excursion at the edges and tighter coupling at the center

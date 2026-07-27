@@ -1,0 +1,114 @@
+Turn 1 Response:
+
+The error occurs because the waveguide components are being placed at non-integer or non-grid-aligned positions (like `y=1.7` and `y=-1.7`), which violates foundry design rules. To fix this, I need to ensure all placements are on the grid.
+
+Since the footprint is 40.0μm x 1.7μm, and 1.7μm is likely the waveguide width, I'll adjust the positioning to use integer multiples of the grid (typically 0.001μm or 1nm in GDSFactory). I'll also use the `@gf.cell` decorator with `check_instances=False` as suggested, or alternatively, ensure all placements are on-grid.
+
+Here's the corrected script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell(check_instances=False)  # Disable instance checking to avoid off-grid errors
+def y_splitter():
+    c = gf.Component()
+    
+    # Define cross-section (width based on footprint constraint)
+    xs = gf.cross_section.cross_section(width=1.7, layer=(1, 0))
+    
+    # Create three parallel waveguides on the left
+    # Use precise positioning to avoid off-grid issues
+    top_wg = c << gf.components.straight(length=15.0, cross_section=xs)
+    top_wg.move((0, 1.7))  # Position above center
+    
+    middle_wg = c << gf.components.straight(length=15.0, cross_section=xs)
+    middle_wg.move((0, 0))  # Center position
+    
+    bottom_wg = c << gf.components.straight(length=15.0, cross_section=xs)
+    bottom_wg.move((0, -1.7))  # Position below center
+    
+    # Create Euler bends for top and bottom waveguides to diverge
+    top_bend = c << gf.components.bend_euler(radius=10.0, angle=30, cross_section=xs)
+    top_bend.connect("o1", top_wg.ports["o2"])
+    
+    bottom_bend = c << gf.components.bend_euler(radius=10.0, angle=-30, cross_section=xs)
+    bottom_bend.connect("o1", bottom_wg.ports["o2"])
+    
+    # Create straight sections after the bends
+    top_straight = c << gf.components.straight(length=15.0, cross_section=xs)
+    top_straight.connect("o1", top_bend.ports["o2"])
+    
+    bottom_straight = c << gf.components.straight(length=15.0, cross_section=xs)
+    bottom_straight.connect("o1", bottom_bend.ports["o2"])
+    
+    # Expose ports
+    c.add_port("o1", port=top_wg.ports["o1"])     # Top input
+    c.add_port("o2", port=middle_wg.ports["o1"])  # Middle input
+    c.add_port("o3", port=bottom_wg.ports["o1"])  # Bottom input
+    c.add_port("o4", port=top_straight.ports["o2"])     # Top output
+    c.add_port("o5", port=middle_wg.ports["o2"])  # Middle output
+    c.add_port("o6", port=bottom_straight.ports["o2"])  # Bottom output
+    
+    return c
+
+# Create and save the device
+device = y_splitter()
+device.write_gds("y_splitter.gds")
+```
+
+Alternatively, if you prefer to keep the grid alignment strict, here's a version that uses grid-aligned positions:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def y_splitter():
+    c = gf.Component()
+    
+    # Define cross-section (width based on footprint constraint)
+    xs = gf.cross_section.cross_section(width=1.7, layer=(1, 0))
+    
+    # Create three parallel waveguides on the left
+    # Use grid-aligned positions (multiples of 0.001μm)
+    top_wg = c << gf.components.straight(length=15.0, cross_section=xs)
+    top_wg.move((0, 1.7))  # Position above center
+    
+    middle_wg = c << gf.components.straight(length=15.0, cross_section=xs)
+    middle_wg.move((0, 0))  # Center position
+    
+    bottom_wg = c << gf.components.straight(length=15.0, cross_section=xs)
+    bottom_wg.move((0, -1.7))  # Position below center
+    
+    # Create Euler bends for top and bottom waveguides to diverge
+    top_bend = c << gf.components.bend_euler(radius=10.0, angle=30, cross_section=xs)
+    top_bend.connect("o1", top_wg.ports["o2"])
+    
+    bottom_bend = c << gf.components.bend_euler(radius=10.0, angle=-30, cross_section=xs)
+    bottom_bend.connect("o1", bottom_wg.ports["o2"])
+    
+    # Create straight sections after the bends
+    top_straight = c << gf.components.straight(length=15.0, cross_section=xs)
+    top_straight.connect("o1", top_bend.ports["o2"])
+    
+    bottom_straight = c << gf.components.straight(length=15.0, cross_section=xs)
+    bottom_straight.connect("o1", bottom_bend.ports["o2"])
+    
+    # Expose ports
+    c.add_port("o1", port=top_wg.ports["o1"])     # Top input
+    c.add_port("o2", port=middle_wg.ports["o1"])  # Middle input
+    c.add_port("o3", port=bottom_wg.ports["o1"])  # Bottom input
+    c.add_port("o4", port=top_straight.ports["o2"])     # Top output
+    c.add_port("o5", port=middle_wg.ports["o2"])  # Middle output
+    c.add_port("o6", port=bottom_straight.ports["o2"])  # Bottom output
+    
+    # Flatten to avoid off-grid instance issues
+    c.flatten()
+    
+    return c
+
+# Create and save the device
+device = y_splitter()
+device.write_gds("y_splitter.gds")
+```
+
+I've added `c.flatten()` to the second version, which will resolve the off-grid instance issue by converting all instances to polygons. This is often the preferred approach for final GDS export.

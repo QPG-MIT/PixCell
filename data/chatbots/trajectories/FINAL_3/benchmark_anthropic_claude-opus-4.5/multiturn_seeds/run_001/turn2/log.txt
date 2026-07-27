@@ -1,0 +1,86 @@
+Turn 2 Response:
+
+Looking at the comparison, I need to adjust the proportions:
+- The S-bends should be shorter horizontally
+- The coupling region should be longer
+- The port separation should be larger to better use the vertical space
+- The input/output straight sections should be minimal
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler():
+    """
+    2x2 Directional coupler with S-bend transitions.
+    Fits in 120 x 4 μm footprint.
+    """
+    c = gf.Component()
+    
+    # Cross-section definition
+    waveguide_width = 0.5
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=waveguide_width, layer=layer)
+    
+    # Geometry parameters for 120 x 4 μm footprint
+    port_separation = 3.5  # larger vertical separation at I/O ports
+    coupling_gap = 0.25    # small gap in coupling region
+    coupling_center_spacing = coupling_gap + waveguide_width  # 0.75 μm
+    
+    # Length allocations (total = 120 μm)
+    # Shorter S-bends, longer coupling region
+    sbend_dx = 20.0        # shorter horizontal span of S-bends
+    coupling_length = 80.0 # longer parallel coupling region
+    
+    # S-bend vertical offset (how much each waveguide moves vertically)
+    sbend_dy = (port_separation - coupling_center_spacing) / 2  # ~1.375 μm
+    
+    # Port y-positions
+    y_top = port_separation / 2   # +1.75 μm
+    y_bot = -port_separation / 2  # -1.75 μm
+    
+    # === TOP WAVEGUIDE ===
+    # Input S-bend (goes DOWN toward coupling region)
+    sb_top_in = c << gf.components.bend_s(size=(sbend_dx, -sbend_dy), cross_section=xs)
+    sb_top_in.move((0, y_top))
+    
+    # Coupling straight section
+    coup_top = c << gf.components.straight(length=coupling_length, cross_section=xs)
+    coup_top.connect("o1", sb_top_in.ports["o2"])
+    
+    # Output S-bend (goes UP away from coupling region)
+    sb_top_out = c << gf.components.bend_s(size=(sbend_dx, sbend_dy), cross_section=xs)
+    sb_top_out.connect("o1", coup_top.ports["o2"])
+    
+    # === BOTTOM WAVEGUIDE ===
+    # Input S-bend (goes UP toward coupling region)
+    sb_bot_in = c << gf.components.bend_s(size=(sbend_dx, sbend_dy), cross_section=xs)
+    sb_bot_in.move((0, y_bot))
+    
+    # Coupling straight section
+    coup_bot = c << gf.components.straight(length=coupling_length, cross_section=xs)
+    coup_bot.connect("o1", sb_bot_in.ports["o2"])
+    
+    # Output S-bend (goes DOWN away from coupling region)
+    sb_bot_out = c << gf.components.bend_s(size=(sbend_dx, -sbend_dy), cross_section=xs)
+    sb_bot_out.connect("o1", coup_bot.ports["o2"])
+    
+    # Expose external ports
+    c.add_port("o1", port=sb_top_in.ports["o1"])
+    c.add_port("o2", port=sb_bot_in.ports["o1"])
+    c.add_port("o3", port=sb_top_out.ports["o2"])
+    c.add_port("o4", port=sb_bot_out.ports["o2"])
+    
+    return c
+
+# Create and save
+device = directional_coupler()
+device.write_gds("directional_coupler.gds")
+```
+
+Key changes made:
+- **Removed input/output straight sections** - the original shows S-bends starting right at the edges
+- **Shortened S-bend horizontal span** from 30 μm to 20 μm
+- **Lengthened coupling region** from 50 μm to 80 μm
+- **Increased port separation** from 3.0 μm to 3.5 μm for better use of vertical space
+- **Total**: 20 + 80 + 20 = 120 μm (matches footprint)

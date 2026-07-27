@@ -1,0 +1,169 @@
+import gdsfactory as gf
+
+@gf.cell
+def contra_directional_coupler_fixed():
+    """
+    Parametric recreation of a Contra-Directional Coupler with loopback paths.
+    
+    Fixes:
+    - Uses a loop instead of 'add_array' for compatibility.
+    - Flattens the component to snap off-grid vertices (caused by 30-degree angles) to the grid.
+    - Includes overlap to prevent rendering gaps between teeth and core.
+    """
+    c = gf.Component()
+
+    # --- 1. Parameters ---
+    # Dimensions derived to match the ~18.24um length constraint
+    L_grating = 13.0        # Length of the active coupling region
+    period = 0.32           # Grating period
+    duty_cycle = 0.5        # Duty cycle of the teeth
+    teeth_depth = 0.15      # Depth of the corrugations extending into the gap
+    wg_width = 0.45         # Width of the waveguide core
+    gap = 0.15              # Minimum gap distance between the tips of the teeth
+    
+    bend_radius = 2.0       # Radius for the 180-degree return loops
+    flare_angle = 30.0      # Angle for input/output flares
+    
+    # Overlap allows the teeth to merge into the core, preventing rendering gaps
+    overlap = 0.05 
+
+    # Layer definition
+    layer_wg = (1, 0)
+    
+    # Cross-section with explicit radius for bends
+    xs = gf.cross_section.cross_section(
+        width=wg_width, 
+        layer=layer_wg, 
+        radius=bend_radius
+    )
+
+    # --- 2. Helper Components ---
+
+    # Define the tooth primitive
+    # The height is increased by 'overlap' so it sinks into the waveguide core
+    tooth_height = teeth_depth + overlap
+    tooth = gf.components.rectangle(
+        size=(period * duty_cycle, tooth_height), 
+        layer=layer_wg, 
+        centered=False
+    )
+
+    # Define Taper primitive
+    taper_tip = gf.components.taper(
+        length=2.0, 
+        width1=wg_width, 
+        width2=0.05, 
+        cross_section=xs
+    )
+
+    def make_grated_arm(length, y_pos, teeth_direction):
+        """
+        Creates a straight waveguide with periodic teeth using a loop.
+        teeth_direction: -1 for teeth pointing down, 1 for teeth pointing up.
+        """
+        arm = gf.Component()
+        
+        # 1. Main waveguide core
+        core = arm << gf.components.straight(length=length, cross_section=xs)
+        core.movey(y_pos)
+        
+        # Expose ports for connection
+        arm.add_port("o1", port=core.ports["o1"])
+        arm.add_port("o2", port=core.ports["o2"])
+        
+        # 2. Add periodic teeth (Using a loop for maximum compatibility)
+        n_teeth = int(length / period)
+        
+        # Calculate Y position for the teeth
+        if teeth_direction == -1: # Pointing Down (Top Arm)
+            # The tooth rectangle sits below the core but overlaps it slightly.
+            # Top of rect needs to be inside the core.
+            # y_rect_bottom = (Core Bottom) - (Visible Depth)
+            # Core Bottom = y_pos - wg_width/2
+            y_rect_bottom = (y_pos - wg_width/2) - teeth_depth
+        else: # Pointing Up (Bottom Arm)
+            # The tooth rectangle sits above the core but overlaps it slightly.
+            # Bottom of rect needs to be inside the core.
+            # y_rect_bottom = (Core Top) - (Overlap)
+            # Core Top = y_pos + wg_width/2
+            y_rect_bottom = (y_pos + wg_width/2) - overlap
+
+        for i in range(n_teeth):
+            t = arm << tooth
+            t.move((i * period, y_rect_bottom))
+                
+        return arm
+
+    # --- 3. Construct Geometry ---
+
+    # Calculate Vertical Offsets
+    # The gap is the space between the TIPS of the teeth.
+    y_core_offset = (gap / 2) + teeth_depth + (wg_width / 2)
+
+    # Create Top and Bottom Grating Arms
+    top_grating = c << make_grated_arm(L_grating, y_core_offset, teeth_direction=-1)
+    bot_grating = c << make_grated_arm(L_grating, -y_core_offset, teeth_direction=1)
+
+    # Define components for routing
+    bend_180 = gf.components.bend_euler(radius=bend_radius, angle=180, cross_section=xs)
+    bend_flare = gf.components.bend_euler(radius=bend_radius*1.5, angle=flare_angle, cross_section=xs)
+    
+    # Return path length (slightly longer than grating to clear it)
+    wg_return = gf.components.straight(length=L_grating + 2.0, cross_section=xs)
+
+    # -- Top Loop Assembly --
+    # 1. Loop Back (Right side): Connects to "o2" (Right)
+    top_loop = c << bend_180
+    top_loop.connect("o1", top_grating.ports["o2"]) 
+    
+    # 2. Return Path (Top)
+    top_ret = c << wg_return
+    top_ret.connect("o1", top_loop.ports["o2"])
+    
+    # 3. Taper Termination (Top Return)
+    t_tip1 = c << taper_tip
+    t_tip1.connect("o1", top_ret.ports["o2"])
+
+    # 4. Input Flare (Left side): Connects to "o1" (Left)
+    top_flare = c << bend_flare
+    top_flare.mirror() # Mirror to curve UP/Left
+    top_flare.connect("o1", top_grating.ports["o1"])
+    
+    # 5. Taper Input
+    t_tip2 = c << taper_tip
+    t_tip2.connect("o1", top_flare.ports["o2"])
+
+    # -- Bottom Loop Assembly --
+    # 1. Loop Back (Right side): Connects to "o2" (Right)
+    bot_loop = c << bend_180
+    bot_loop.mirror() # Mirror to turn Right -> DOWN/South here
+    bot_loop.connect("o1", bot_grating.ports["o2"])
+    
+    # 2. Return Path (Bottom)
+    bot_ret = c << wg_return
+    bot_ret.connect("o1", bot_loop.ports["o2"])
+    
+    # 3. Taper Termination (Bottom Return)
+    b_tip1 = c << taper_tip
+    b_tip1.connect("o1", bot_ret.ports["o2"])
+
+    # 4. Output Flare (Left side): Connects to "o1" (Left)
+    bot_flare = c << bend_flare
+    bot_flare.mirror() # Mirror to curve DOWN/Left
+    bot_flare.connect("o1", bot_grating.ports["o1"])
+    
+    # 5. Taper Output
+    b_tip2 = c << taper_tip
+    b_tip2.connect("o1", bot_flare.ports["o2"])
+
+    # --- 4. Finalization ---
+    # CRITICAL: Flatten to snap off-grid vertices (from 30-degree bends) to the grid.
+    # This prevents the ValueError about off-grid instances.
+    c.flatten()
+
+    return c
+
+if __name__ == "__main__":
+    device = contra_directional_coupler_fixed()
+    device.write_gds("cdc_fixed.gds")
+    device.show()

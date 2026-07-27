@@ -1,0 +1,82 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_18x3_continuous():
+    c = gf.Component()
+
+    # =============================================================
+    # Geometry Parameters
+    # Total Footprint: 18.0 x 3.0 um
+    # =============================================================
+    total_length = 18.0
+    total_height = 3.0
+    
+    wg_width = 0.5
+    gap_min = 0.2  # Minimum gap at the center waist
+    
+    # The device is symmetric left-right.
+    # We construct it using two S-bends for each arm (converging then diverging).
+    # Length of each S-bend section is half the total length.
+    L_section = total_length / 2.0
+    
+    # =============================================================
+    # Coordinate Calculations
+    # =============================================================
+    # Outer Y position (at ports):
+    # To fit within 3.0um height, top edge is +1.5, bot edge is -1.5.
+    # Center line of top waveguide = 1.5 - wg_width/2 = 1.25
+    y_outer = (total_height / 2.0) - (wg_width / 2.0)
+    
+    # Inner Y position (at center waist):
+    # Gap is gap_min, so center line of top waveguide is gap_min/2 + wg_width/2
+    y_inner = (gap_min + wg_width) / 2.0
+    
+    # Vertical displacement (dy) for the S-bend (Input -> Center)
+    # For top arm: goes from y_outer (1.25) down to y_inner (0.35).
+    # dy should be negative.
+    dy_top = y_inner - y_outer
+    
+    # Define cross section
+    # Using a relaxed radius constraint as this is a geometric path generation
+    xs = gf.cross_section.cross_section(width=wg_width, radius=5.0)
+
+    # =============================================================
+    # 1. Input Section (Left Half)
+    # =============================================================
+    # Top Input: S-bend moving down
+    # bend_s generates a cosine path from (0,0) to (size)
+    sb_in_top = c << gf.components.bend_s(size=(L_section, dy_top), cross_section=xs)
+    sb_in_top.movey(y_outer) # Shift start point to correct input height
+    
+    # Bottom Input: S-bend moving up
+    # Symmetric to top, so dy is positive (-dy_top)
+    # Start Y is -y_outer
+    sb_in_bot = c << gf.components.bend_s(size=(L_section, -dy_top), cross_section=xs)
+    sb_in_bot.movey(-y_outer)
+
+    # =============================================================
+    # 2. Output Section (Right Half)
+    # =============================================================
+    # Top Output: S-bend moving up (from center back to outer)
+    # Displacement is -dy_top (positive)
+    sb_out_top = c << gf.components.bend_s(size=(L_section, -dy_top), cross_section=xs)
+    sb_out_top.connect("o1", sb_in_top.ports["o2"])
+    
+    # Bottom Output: S-bend moving down (from center back to outer)
+    # Displacement is dy_top (negative)
+    sb_out_bot = c << gf.components.bend_s(size=(L_section, dy_top), cross_section=xs)
+    sb_out_bot.connect("o1", sb_in_bot.ports["o2"])
+
+    # =============================================================
+    # 3. Expose Ports
+    # =============================================================
+    c.add_port("o1", port=sb_in_top.ports["o1"])
+    c.add_port("o2", port=sb_in_bot.ports["o1"])
+    c.add_port("o3", port=sb_out_top.ports["o2"])
+    c.add_port("o4", port=sb_out_bot.ports["o2"])
+
+    return c
+
+# Create and save the device
+device = directional_coupler_18x3_continuous()
+device.write_gds("directional_coupler_18x3_continuous.gds")

@@ -1,0 +1,53 @@
+{
+  "turn": 4,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:23:26.237722",
+      "api_duration_seconds": 163.95748710632324,
+      "usage": {
+        "input_tokens": 5635,
+        "output_tokens": 1185,
+        "total_tokens": 22309
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'NoneType' object has no attribute 'is_regular_array'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:26:11.371156",
+      "api_duration_seconds": 85.26294875144958,
+      "usage": {
+        "input_tokens": 6852,
+        "output_tokens": 1149,
+        "total_tokens": 16320
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.components' has no attribute 'polygon'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:27:37.731651",
+      "api_duration_seconds": 83.53714728355408,
+      "usage": {
+        "input_tokens": 8032,
+        "output_tokens": 1300,
+        "total_tokens": 16815
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 20519,
+    "output_tokens": 3634,
+    "total_tokens": 55444
+  }
+}

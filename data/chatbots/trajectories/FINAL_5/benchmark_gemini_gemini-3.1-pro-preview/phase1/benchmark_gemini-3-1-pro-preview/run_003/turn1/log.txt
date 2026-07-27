@@ -1,0 +1,111 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def seg_wg(wg_width: float = 0.06, L_seg: float = 14.0) -> gf.Component:
+    """
+    Generates a segmented waveguide (subwavelength grating).
+    Parametrized to precisely fit within the defined length.
+    """
+    c = gf.Component()
+    w = wg_width  
+    N = 141       # Odd number of blocks
+    g = (L_seg - N * w) / (N - 1)
+    seg_pitch = w + g
+
+    for i in range(N):
+        x = i * seg_pitch
+        ref = c << gf.components.rectangle(size=(w, wg_width), layer=(1,0), centered=True)
+        ref.move((x + w/2, 0))
+
+    # Add logical ports for precise connection to the routing system
+    c.add_port("o1", center=(0, 0), width=wg_width, orientation=180, layer=(1,0))
+    c.add_port("o2", center=(L_seg, 0), width=wg_width, orientation=0, layer=(1,0))
+    return c
+
+@gf.cell
+def subwavelength_coupler() -> gf.Component:
+    """
+    Parametric recreation of the subwavelength grating directional coupler.
+    Built completely from basic GDSFactory geometric primitives.
+    Matches the topology of a 5-track structure with exact footprint [18.24, 0.7].
+    """
+    c = gf.Component("subwavelength_coupler")
+
+    # --- Core Parameters ---
+    wg_width = 0.06
+    gap = 0.04
+    pitch = wg_width + gap  # 0.10
+    
+    # Custom cross-section to bypass default 10um radius_min for our tight U-bends
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0), radius_min=0.001)
+
+    # Y-coordinates for the 5 parallel tracks
+    y_mid = 0.0
+    y_seg_top = pitch      # 0.10
+    y_sol_top = 2 * pitch  # 0.20
+    y_seg_bot = -pitch     # -0.10
+    y_sol_bot = -2 * pitch # -0.20
+
+    # X-coordinates & Lengths (Target footprint: 18.24)
+    L_seg = 14.0
+    L_mid_str = 15.0
+    L_taper_mid = 1.62     # 15.0 + 2 * 1.62 = 18.24 exactly
+
+    bend_radius = 2.0
+    bend_angle = -5.0      # Slight angle to fit exactly within 0.7um height constraint
+    taper_len = 1.5
+    w_tip = 0.01
+
+    # --- 1. Track 3: Middle Solid Waveguide ---
+    mid_str = c << gf.components.straight(length=L_mid_str, cross_section=xs)
+    mid_str.move((-L_mid_str / 2, y_mid))
+
+    taper_mid_L = c << gf.components.taper(length=L_taper_mid, width1=w_tip, width2=wg_width, cross_section=xs)
+    taper_mid_R = c << gf.components.taper(length=L_taper_mid, width1=wg_width, width2=w_tip, cross_section=xs)
+    taper_mid_L.connect("o2", mid_str.ports["o1"])
+    taper_mid_R.connect("o1", mid_str.ports["o2"])
+
+    # --- 2. Track 2 & 4: Segmented Waveguides ---
+    top_seg = c << seg_wg(wg_width=wg_width, L_seg=L_seg)
+    top_seg.move((-L_seg / 2, y_seg_top))
+
+    bot_seg = c << seg_wg(wg_width=wg_width, L_seg=L_seg)
+    bot_seg.move((-L_seg / 2, y_seg_bot))
+
+    # --- 3. Track 1: Top Solid Waveguide ---
+    top_str = c << gf.components.straight(length=L_seg, cross_section=xs)
+    top_str.move((-L_seg / 2, y_sol_top))
+
+    # Right U-bend (connects Top Solid down to Top Seg bounding box)
+    ubend_R = c << gf.components.bend_circular(radius=pitch/2, angle=-180, cross_section=xs)
+    ubend_R.connect("o1", top_str.ports["o2"])
+
+    # Top Left Curved Taper
+    bend_TL = c << gf.components.bend_euler(radius=bend_radius, angle=bend_angle, cross_section=xs)
+    bend_TL.connect("o1", top_str.ports["o1"])
+    taper_TL = c << gf.components.taper(length=taper_len, width1=wg_width, width2=w_tip, cross_section=xs)
+    taper_TL.connect("o1", bend_TL.ports["o2"])
+
+    # --- 4. Track 5: Bottom Solid Waveguide ---
+    bot_str = c << gf.components.straight(length=L_seg, cross_section=xs)
+    bot_str.move((-L_seg / 2, y_sol_bot))
+
+    # Left U-bend (connects Bottom Solid up to Bottom Seg bounding box)
+    ubend_L = c << gf.components.bend_circular(radius=pitch/2, angle=-180, cross_section=xs)
+    ubend_L.connect("o1", bot_str.ports["o1"])
+
+    # Bottom Right Curved Taper
+    bend_BR = c << gf.components.bend_euler(radius=bend_radius, angle=bend_angle, cross_section=xs)
+    bend_BR.connect("o1", bot_str.ports["o2"])
+    taper_BR = c << gf.components.taper(length=taper_len, width1=wg_width, width2=w_tip, cross_section=xs)
+    taper_BR.connect("o1", bend_BR.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = subwavelength_coupler()
+    device.show()
+```

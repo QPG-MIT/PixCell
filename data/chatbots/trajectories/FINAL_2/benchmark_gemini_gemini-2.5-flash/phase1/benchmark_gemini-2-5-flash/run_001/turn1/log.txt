@@ -1,0 +1,133 @@
+Turn 1 Response:
+
+The `RuntimeError: Cell '...' cannot be modified as it is locked in Cell.transform` error in GDSFactory typically occurs when you attempt to modify a `Component` object (e.g., by moving, rotating, or performing boolean operations) after it has been implicitly "locked." Components can become locked when they are added as references to a parent component or when certain operations internally mark them as immutable to prevent unintended side effects.
+
+In the previous script, even though `gf.boolean` was called with a list of components, the individual components in that list (like `rect_main_comp`, `taper_bottom_comp`, etc.) were directly modified with `.movey()` or `.rotate()` after their initial creation. If GDSFactory's internal boolean logic then tried to further transform these *exact* component instances (for alignment or processing), it could hit the locked state.
+
+The fix involves making an explicit `.copy()` of each primitive `Component` immediately after its creation and *before* applying any transformations (`.move()`, `.rotate()`) or passing it into complex operations like `gf.boolean`. This ensures that you are always working with a mutable, independent copy, allowing transformations without affecting a potentially locked original instance.
+
+Here's the corrected script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def custom_device() -> gf.Component:
+    """
+    Recreates the geometry from the provided image using GDSFactory
+    parametric functions and boolean operations.
+    """
+    c = gf.Component("my_parametric_device")
+    layer = (1, 0) # Use a dummy layer for all shapes
+
+    # --- 1. Define Dimensions ---
+    total_width = 25.0
+    total_height = 10.0 # From bottom-most point to top-most point
+
+    # Main rectangular body dimensions
+    w_main_body = total_width
+    h_main_body = 6.0
+
+    # Bottom protrusion dimensions
+    h_bottom = 1.0
+    w_btop = 3.0  # Width at the top (where it connects to main body)
+    w_bbottom = 2.0 # Width at the very bottom
+
+    # Spire dimensions
+    h_spire_taper = 2.0  # Height of the tapered part of the spire
+    w_spire_base = 3.0   # Width at the base of the spire taper
+    w_spire_middle = 1.5 # Width at the top of the spire taper / base of straight part
+    h_spire_straight = 1.0 # Height of the straight top part of the spire
+    w_spire_top = 1.5    # Width of the straight top part (same as w_spire_middle)
+
+    # --- 2. Calculate Spire Horizontal Positions ---
+    num_spires = 4
+    spire_pitch_width = w_spire_base
+    
+    total_spire_material_width = num_spires * spire_pitch_width
+    remaining_space = total_width - total_spire_material_width
+    num_gaps = num_spires + 1
+    gap = remaining_space / num_gaps
+
+    spire_x_centers = []
+    current_x = -total_width / 2 + gap + spire_pitch_width / 2
+    for _ in range(num_spires):
+        spire_x_centers.append(current_x)
+        current_x += spire_pitch_width + gap
+
+    # --- 3. Create Individual Geometric Components (already positioned) ---
+    shapes_for_boolean = []
+
+    # Main rectangular body
+    # Create the rectangle primitive, then copy it *before* moving it.
+    rect_main_primitive = gf.components.rectangle(size=(w_main_body, h_main_body), centered=True, layer=layer)
+    rect_main_comp = rect_main_primitive.copy() # Make a mutable copy
+    rect_main_comp.movey(h_main_body / 2) # Now bottom is at y=0, top is at y=h_main_body
+    shapes_for_boolean.append(rect_main_comp)
+
+    # Bottom protrusion
+    # Create the taper primitive, then copy it *before* rotating it.
+    taper_bottom_primitive = gf.components.taper(
+        length=h_bottom, width1=w_btop, width2=w_bbottom, layer=layer
+    )
+    taper_bottom_comp = taper_bottom_primitive.copy() # Make a mutable copy
+    taper_bottom_comp.rotate(-90)
+    # The top of this taper (width1) is centered at (0,0), bottom at (0, -h_bottom)
+    shapes_for_boolean.append(taper_bottom_comp)
+
+    # Create a single spire shape (composite of taper and rectangle)
+    # Tapered part of spire: Create primitive, copy, then rotate.
+    spire_taper_primitive = gf.components.taper(
+        length=h_spire_taper, width1=w_spire_base, width2=w_spire_middle, layer=layer
+    )
+    spire_taper_part = spire_taper_primitive.copy() # Make a mutable copy
+    spire_taper_part.rotate(90)
+
+    # Straight top part of spire: Create primitive, copy, then move.
+    spire_rect_primitive = gf.components.rectangle(
+        size=(w_spire_top, h_spire_straight), centered=True, layer=layer
+    )
+    spire_rect_part = spire_rect_primitive.copy() # Make a mutable copy
+    spire_rect_part.movey(h_spire_taper + h_spire_straight / 2)
+    
+    # Merge the taper and rectangle to form one complete spire component.
+    # The result of gf.boolean is already a new component, so no further copy needed here.
+    final_spire_base_shape = gf.boolean(spire_taper_part, spire_rect_part, operation="or", layer=layer)
+
+    # Instantiate and place the 4 spire instances
+    for x_center in spire_x_centers:
+        # Create a fresh copy of the base spire shape for each instance
+        spire_instance = final_spire_base_shape.copy()
+        # Place the spire so its base (y=0 in its local coordinates)
+        # is at the top of the main body (y=h_main_body).
+        spire_instance.move((x_center, h_main_body))
+        shapes_for_boolean.append(spire_instance)
+
+    # --- 4. Boolean All Shapes Together in a single operation ---
+    # Pass the list of all components to gf.boolean for a single union operation.
+    merged_component = gf.boolean(A=shapes_for_boolean, operation="or", layer=layer)
+    
+    # Add the final merged component to the main component 'c'
+    c << merged_component
+
+    # --- 5. Center the Final Device Vertically ---
+    # Get the current bounds of the component 'c' which now contains the merged geometry.
+    current_bounds = c.bounds
+    current_y_min = current_bounds[1] # min_y
+    current_y_max = current_bounds[3] # max_y
+    current_center_y = (current_y_min + current_y_max) / 2
+
+    # Target vertical center for total_height 10um (from -5 to 5) is 0.0
+    target_center_y = 0.0
+    vertical_shift_needed = target_center_y - current_center_y
+    
+    c.movey(vertical_shift_needed)
+
+    return c
+
+# Create and save the device
+if __name__ == "__main__":
+    device = custom_device()
+    device.write_gds("my_custom_device.gds")
+    device.show() # Optional: view the component (requires KLayout)
+```

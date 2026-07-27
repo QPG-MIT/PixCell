@@ -1,0 +1,71 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreate_cross_petal_v3():
+    """
+    Iteration 3: Refined cross-petal device.
+    Uses four shifted ellipses to allow for a thinner central intersection 
+    and a more accurate "bulge" profile.
+    
+    Constraint: 4.7um x 4.7um footprint.
+    """
+    c = gf.Component("refined_device_v3")
+    layer = (1, 0)
+    
+    # 1. Dimensions based on visual analysis of the target
+    total_size = 4.7
+    half_size = total_size / 2  # 2.35um
+    
+    tip_width = 0.32     # Width of the rectangular stems
+    petal_rx = 1.05      # Half-length of the elliptical petal bulge
+    petal_ry = 0.65      # Half-width of the bulge (Total bulge width ~1.3um)
+    petal_offset = 0.92  # Shift from center to control the "waist" at the origin
+    
+    # 2. Create the base cross (defines the absolute 4.7um footprint)
+    main_cross = gf.components.cross(
+        length=total_size, 
+        width=tip_width, 
+        layer=layer
+    )
+    
+    # 3. Create the four petals
+    # We define horizontal and vertical templates
+    petal_h = gf.components.ellipse(radii=(petal_rx, petal_ry), layer=layer)
+    petal_v = gf.components.ellipse(radii=(petal_ry, petal_rx), layer=layer)
+    
+    # Place petals with specific offsets
+    # Right petal
+    p_right = petal_h.copy().move((petal_offset, 0))
+    # Left petal
+    p_left = petal_h.copy().move((-petal_offset, 0))
+    # Top petal
+    p_top = petal_v.copy().move((0, petal_offset))
+    # Bottom petal
+    p_bottom = petal_v.copy().move((0, -petal_offset))
+    
+    # 4. Merge all components into a single clean geometry
+    # We start with the cross and union each petal
+    final_shape = main_cross
+    for petal in [p_right, p_left, p_top, p_bottom]:
+        final_shape = gf.boolean(
+            A=final_shape, 
+            B=petal, 
+            operation="or", 
+            layer=layer
+        )
+    
+    c.add_ref(final_shape)
+    
+    # Validate footprint
+    print(f"Footprint: {c.xsize:.3f} x {c.ysize:.3f} um")
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    device = recreate_cross_petal_v3()
+    
+    # Write to GDS
+    device.write_gds("cross_petal_v3.gds")
+    
+    # Show for verification if environment allows
+    # device.show()

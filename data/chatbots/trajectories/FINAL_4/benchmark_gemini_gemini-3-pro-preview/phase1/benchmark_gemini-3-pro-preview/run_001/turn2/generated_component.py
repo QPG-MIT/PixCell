@@ -1,0 +1,75 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_18x3_fixed():
+    c = gf.Component()
+
+    # =============================================================
+    # Geometry Parameters
+    # Total Footprint: 18.0 x 3.0 um
+    # =============================================================
+    length_straight = 8.0       
+    length_bend = 5.0           
+    
+    gap = 0.2                   
+    width = 0.5                 
+    
+    # Vertical offset calculation
+    # Center y: +/- 0.35 (gap/2 + width/2)
+    # Outer y: +/- 1.25 (to fit within 3.0 height)
+    dy = 0.9                    
+    
+    # =============================================================
+    # Fix for ValueError
+    # =============================================================
+    # The default cross_section has a radius_min of 10.0um.
+    # Our geometry creates a bend radius ~5.44um.
+    # We define the cross_section with radius=2.0 to pass validation.
+    xs = gf.cross_section.cross_section(width=width, radius=2.0)
+
+    # =============================================================
+    # 1. Central Straight Region
+    # =============================================================
+    # Top straight
+    wg_top = c << gf.components.straight(length=length_straight, cross_section=xs)
+    wg_top.movey((gap + width) / 2)
+    
+    # Bottom straight
+    wg_bot = c << gf.components.straight(length=length_straight, cross_section=xs)
+    wg_bot.movey(-(gap + width) / 2)
+
+    # =============================================================
+    # 2. Input S-Bends (Left Side)
+    # =============================================================
+    # Top Left: Connects from higher Y down to straight
+    sb_in_top = c << gf.components.bend_s(size=(length_bend, -dy), cross_section=xs)
+    sb_in_top.connect("o2", wg_top.ports["o1"])
+
+    # Bottom Left: Connects from lower Y up to straight
+    sb_in_bot = c << gf.components.bend_s(size=(length_bend, dy), cross_section=xs)
+    sb_in_bot.connect("o2", wg_bot.ports["o1"])
+
+    # =============================================================
+    # 3. Output S-Bends (Right Side)
+    # =============================================================
+    # Top Right: Connects from straight up to higher Y
+    sb_out_top = c << gf.components.bend_s(size=(length_bend, dy), cross_section=xs)
+    sb_out_top.connect("o1", wg_top.ports["o2"])
+
+    # Bottom Right: Connects from straight down to lower Y
+    sb_out_bot = c << gf.components.bend_s(size=(length_bend, -dy), cross_section=xs)
+    sb_out_bot.connect("o1", wg_bot.ports["o2"])
+
+    # =============================================================
+    # 4. Expose Ports
+    # =============================================================
+    c.add_port("o1", port=sb_in_top.ports["o1"])
+    c.add_port("o2", port=sb_in_bot.ports["o1"])
+    c.add_port("o3", port=sb_out_top.ports["o2"])
+    c.add_port("o4", port=sb_out_bot.ports["o2"])
+
+    return c
+
+# Create and save the device
+device = directional_coupler_18x3_fixed()
+device.write_gds("directional_coupler_18x3_fixed.gds")

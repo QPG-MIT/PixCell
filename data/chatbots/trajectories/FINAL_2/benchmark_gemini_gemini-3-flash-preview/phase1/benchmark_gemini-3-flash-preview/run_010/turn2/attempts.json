@@ -1,0 +1,39 @@
+{
+  "turn": 2,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:20:47.355280",
+      "api_duration_seconds": 36.19718790054321,
+      "usage": {
+        "input_tokens": 6638,
+        "output_tokens": 1152,
+        "total_tokens": 12152
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "kfactory.exceptions.LockedError: 'rectangle_gdsfactorypcomponentspshapesprectangle_S25_6__8e698dcc' is locked and likely stored in cache. Modifications are disabled as its associated function is decorated with `cell`. To modify, update the code in the function or create a copy of the Component.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:24.935261",
+      "api_duration_seconds": 13.933704853057861,
+      "usage": {
+        "input_tokens": 7879,
+        "output_tokens": 1115,
+        "total_tokens": 9662
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14517,
+    "output_tokens": 2267,
+    "total_tokens": 21814
+  }
+}

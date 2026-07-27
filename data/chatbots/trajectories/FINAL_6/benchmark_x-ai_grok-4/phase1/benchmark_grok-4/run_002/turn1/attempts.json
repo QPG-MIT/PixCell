@@ -1,0 +1,39 @@
+{
+  "turn": 1,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:48:15.811949",
+      "api_duration_seconds": 835.0095450878143,
+      "usage": {
+        "input_tokens": 2769,
+        "output_tokens": 33370,
+        "total_tokens": 36139
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'arm_L1p5_L0p8500000000000001_WN0p1_WW1p2_L1_0' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T21:02:12.032135",
+      "api_duration_seconds": 199.67343497276306,
+      "usage": {
+        "input_tokens": 3305,
+        "output_tokens": 8021,
+        "total_tokens": 11326
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 6074,
+    "output_tokens": 41391,
+    "total_tokens": 47465
+  }
+}

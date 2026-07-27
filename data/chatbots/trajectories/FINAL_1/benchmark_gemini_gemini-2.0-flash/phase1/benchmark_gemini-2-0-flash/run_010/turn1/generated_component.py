@@ -1,0 +1,75 @@
+import gdsfactory as gf
+from gdsfactory.component import Component
+
+@gf.cell
+def recreate_device() -> Component:
+    """Recreates the device in the image using GDSFactory parametric functions."""
+    c = gf.Component("recreated_device")
+
+    # Define the waveguide cross-section
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0), radius=10) #set a default radius of 10 for the cross section
+
+    # Define straight waveguide parameters
+    straight_length = 10  # Approximate length, adjust as needed
+    taper_length = 5  # Approximate length, adjust as needed
+    taper_width = 0.5  # Waveguide width
+    straight_width = 0.5
+
+    # Define bend parameters
+    bend_radius = 10 # Adjust radius as needed. Use euler bend
+    bend_angle = 90
+
+    # Create the top waveguide branch
+    # 1. Straight waveguide
+    straight1 = c << gf.components.straight(length=straight_length, cross_section=xs)
+
+    # 2. Taper (narrow to wider)
+    taper1 = c << gf.components.taper(length=taper_length, width1=taper_width, width2=straight_width)
+    taper1.connect("o1", straight1.ports["o2"])
+
+    # 3. Euler bend
+    bend1 = c << gf.components.bend_euler(radius=bend_radius, angle=bend_angle, cross_section=xs)
+    bend1.connect("o1", taper1.ports["o2"])
+    
+    # 4. Straight waveguide
+    straight2 = c << gf.components.straight(length=straight_length, cross_section=xs)
+    straight2.connect("o1", bend1.ports["o2"])
+   
+
+    # Create the bottom waveguide branch
+    # 1. Straight waveguide
+    straight3 = c << gf.components.straight(length=straight_length, cross_section=xs)
+
+    # 2. Taper (narrow to wider)
+    taper2 = c << gf.components.taper(length=taper_length, width1=taper_width, width2=straight_width)
+    taper2.connect("o1", straight3.ports["o2"])
+
+    # 3. Euler bend (mirrored vertically)
+    bend2 = c << gf.components.bend_euler(radius=bend_radius, angle=-bend_angle, cross_section=xs)
+    bend2.connect("o2", taper2.ports["o2"])
+
+    # 4. Straight waveguide
+    straight4 = c << gf.components.straight(length=straight_length, cross_section=xs)
+    straight4.connect("o1", bend2.ports["o1"])
+
+
+    # Create the middle waveguide
+    middle_straight = c << gf.components.straight(length=straight_length + taper_length * 2, cross_section=xs)
+    middle_straight.movey((bend1.ymax + bend2.ymin) / 2 - middle_straight.center[1])
+    middle_straight.movex(straight1.xmin - middle_straight.xmin)
+
+
+    # Add ports
+    c.add_port("o1", port=straight1.ports["o1"])
+    c.add_port("o2", port=straight2.ports["o2"])
+    c.add_port("o3", port=middle_straight.ports["o1"])
+    c.add_port("o4", port=straight3.ports["o1"])
+    c.add_port("o5", port=straight4.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    device = recreate_device()
+    device.show(show_ports=True) # Show the device in a viewer
+    device.write_gds("recreated_device.gds") # Save as GDS file

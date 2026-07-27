@@ -1,0 +1,97 @@
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+from gdsfactory.components import ellipse
+
+@gf.cell(check_instances=False)
+def recreate_device():
+    c = gf.Component()
+    layer = (1, 0)
+
+    # Outer ellipse
+    ellipse_outer = c << ellipse(radii=(15, 2.75), layer=layer)
+
+    # Inner structure parameters
+    width = 0.5
+    rect_length = 2
+    gap = 0.2
+    short_arm_length = 1.5
+    long_arm_length = 2
+
+    # Top rectangular block
+    rect1 = c << rectangle(size=(rect_length, width), layer=layer, centered=True)
+    rect1.movex(-rect_length / 2 - gap - short_arm_length)
+    rect1.movey(0.75 + gap)
+
+    rect2 = c << rectangle(size=(rect_length, width), layer=layer, centered=True)
+    rect2.movex(rect_length / 2 + gap + short_arm_length)
+    rect2.movey(0.75 + gap)
+
+    square1 = c << rectangle(size=(width, width), layer=layer, centered=True)
+    square1.movex(rect1.xmax + gap)
+    square1.movey(0.75 + gap)
+    
+    square2 = c << rectangle(size=(width, width), layer=layer, centered=True)
+    square2.movex(rect2.xmin - gap)
+    square2.movey(0.75 + gap)
+    
+    rect1_arm = c << rectangle(size=(short_arm_length, width), layer=layer, centered=True)
+    rect1_arm.movex(rect1.xmin - short_arm_length/2)
+    rect1_arm.movey(0.75 + gap)
+    
+    rect2_arm = c << rectangle(size=(short_arm_length, width), layer=layer, centered=True)
+    rect2_arm.movex(rect2.xmax + short_arm_length/2)
+    rect2_arm.movey(0.75 + gap)
+    
+    # Bottom rectangular block
+    rect3 = c << rectangle(size=(rect_length, width), layer=layer, centered=True)
+    rect3.movex(-rect_length / 2 - gap - short_arm_length)
+    rect3.movey(-0.75 - gap)
+
+    rect4 = c << rectangle(size=(rect_length, width), layer=layer, centered=True)
+    rect4.movex(rect_length / 2 + gap + short_arm_length)
+    rect4.movey(-0.75 - gap)
+    
+    square3 = c << rectangle(size=(width, width), layer=layer, centered=True)
+    square3.movex(rect3.xmax + gap)
+    square3.movey(-0.75 - gap)
+    
+    square4 = c << rectangle(size=(width, width), layer=layer, centered=True)
+    square4.movex(rect4.xmin - gap)
+    square4.movey(-0.75 - gap)
+
+    rect3_arm = c << rectangle(size=(short_arm_length, width), layer=layer, centered=True)
+    rect3_arm.movex(rect3.xmin - short_arm_length/2)
+    rect3_arm.movey(-0.75 - gap)
+    
+    rect4_arm = c << rectangle(size=(short_arm_length, width), layer=layer, centered=True)
+    rect4_arm.movex(rect4.xmax + short_arm_length/2)
+    rect4_arm.movey(-0.75 - gap)
+
+    # Central horizontal line
+    central_line = c << rectangle(size=(2 * (rect_length + gap + short_arm_length), width), layer=layer, centered=True)
+
+    # Angled features
+    angled_length = 2.5
+    angled_width = width
+    
+    angled1 = c << rectangle(size=(angled_length, width), layer=layer, centered=True)
+    angled1.rotate(20)
+    angled1.movex(-9)
+    
+    angled2 = c << rectangle(size=(angled_length, width), layer=layer, centered=True)
+    angled2.rotate(-20)
+    angled2.movex(-9)
+    
+    angled3 = c << rectangle(size=(angled_length, width), layer=layer, centered=True)
+    angled3.rotate(-20)
+    angled3.movex(9)
+    
+    angled4 = c << rectangle(size=(angled_length, width), layer=layer, centered=True)
+    angled4.rotate(20)
+    angled4.movex(9)
+
+    return c
+
+if __name__ == "__main__":
+    device = recreate_device()
+    device.show()  # Remove show_ports=True

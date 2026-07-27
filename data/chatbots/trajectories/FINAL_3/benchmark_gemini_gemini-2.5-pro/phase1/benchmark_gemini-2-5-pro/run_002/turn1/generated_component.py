@@ -1,0 +1,53 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_device():
+    """
+    Creates a directional coupler based on the provided image and footprint.
+
+    The device is identified as a standard directional coupler. The parameters
+    are derived from the total footprint [120, 4] um and visual proportions.
+
+    Footprint analysis:
+    - Total width = 120 um
+    - Total height = 4 um
+
+    Parameter derivation:
+    - Assume a standard waveguide width of 0.5 um.
+    - The total bounding box height is dy (port separation) + width.
+      4.0 = dy + 0.5  =>  dy = 3.5 um.
+    - The total width is length (coupling) + 2 * dx (bends).
+      120 = length + 2 * dx.
+    - From visual inspection, we estimate length is half the total width.
+      length = 60 um.
+    - This gives dx = (120 - 60) / 2 = 30 um.
+    - A standard gap, visually similar to the width, is assumed: gap = 0.5 um.
+    """
+
+    # Define the cross-section for the waveguide
+    xs = gf.cross_section.cross_section(width=0.5)
+
+    # Create the coupler component with the derived parameters
+    c = gf.components.coupler(
+        length=60.0,
+        gap=0.5,
+        dy=3.5,
+        dx=30.0,
+        cross_section=xs
+    )
+    return c
+
+# Main execution block to instantiate and verify the component
+if __name__ == "__main__":
+    # Create an instance of the device
+    device = directional_coupler_device()
+
+    # The .size attribute is deprecated. Use .size_info.width and .size_info.height
+    # to get the component's dimensions.
+    size_info = device.size_info
+    print(f"Component bounding box size: ({size_info.width}, {size_info.height})")
+    print(f"Expected footprint: [120, 4]")
+
+    # FIX: The `show_ports` argument is no longer supported in the `show()` method.
+    # Calling show() without arguments will display the component with its ports by default.
+    device.show()

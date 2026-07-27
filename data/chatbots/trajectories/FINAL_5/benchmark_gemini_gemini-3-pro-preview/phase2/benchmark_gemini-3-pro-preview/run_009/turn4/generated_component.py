@@ -1,0 +1,181 @@
+import gdsfactory as gf
+
+# ==============================================================================
+# Parametric Settings
+# ==============================================================================
+# Dimensions derived from target image and hints
+LENGTH_GRATING = 18.24  # From footprint hint
+WIDTH_CORE = 0.5        # Standard waveguide width
+WIDTH_BUS = 0.5         # Central bus width
+TOOTH_DEPTH = 0.2       # Corrugation depth
+PERIOD = 0.318          # Grating period
+DUTY_CYCLE = 0.5        # Duty cycle
+GAP = 0.15              # Coupling gap between tooth tip and bus
+BEND_RADIUS = 1.5       # Tight bend radius
+SBEND_LENGTH = 5.0      # Length of S-bend flares
+SBEND_HEIGHT = 2.0      # Vertical offset of S-bend flares
+LAYER_WG = (1, 0)
+
+# ==============================================================================
+# 1. Custom Components
+# ==============================================================================
+
+@gf.cell
+def grating_arm_straight(length, period, w_core, tooth_depth, dc):
+    """
+    Straight waveguide with periodic rectangular teeth on the BOTTOM edge.
+    """
+    c = gf.Component()
+    
+    # Core waveguide
+    # Placed such that y=0 is the vertical center of the core
+    core = c << gf.components.rectangle(
+        size=(length, w_core),
+        layer=LAYER_WG,
+        centered=False
+    )
+    core.movey(-w_core / 2.0)
+    
+    # Teeth generation
+    n_periods = int(length / period)
+    tooth_len = period * dc
+    
+    # Tooth polygon (unmoved)
+    tooth_poly = gf.components.rectangle(
+        size=(tooth_len, tooth_depth),
+        layer=LAYER_WG,
+        centered=False
+    )
+    
+    for i in range(n_periods):
+        t = c << tooth_poly
+        # X position: i * period
+        # Y position: bottom of core (-w/2) - tooth height (tooth_depth)
+        t.move((i * period, -w_core / 2.0 - tooth_depth))
+
+    # Ports
+    c.add_port("o1", center=(0, 0), width=w_core, orientation=180, layer=LAYER_WG)
+    c.add_port("o2", center=(length, 0), width=w_core, orientation=0, layer=LAYER_WG)
+    
+    return c
+
+@gf.cell
+def folded_coupler_half():
+    """
+    Creates one half of the folded coupler structure (The "Top" half).
+    Structure: S-Bend Input -> Straight Return -> U-Bend -> Grating Arm.
+    """
+    c = gf.Component()
+    
+    # Define cross-section explicitly with the desired radius to avoid ValueError
+    xs = gf.cross_section.cross_section(
+        width=WIDTH_CORE, 
+        layer=LAYER_WG, 
+        radius=BEND_RADIUS
+    )
+    
+    # 1. Grating Arm (Inner arm, bottom edge has teeth)
+    g_arm = c << grating_arm_straight(
+        length=LENGTH_GRATING,
+        period=PERIOD,
+        w_core=WIDTH_CORE,
+        tooth_depth=TOOTH_DEPTH,
+        dc=DUTY_CYCLE
+    )
+    
+    # 2. U-Bend (180 degrees)
+    bend = c << gf.components.bend_euler(
+        angle=180,
+        radius=BEND_RADIUS,
+        cross_section=xs
+    )
+    bend.connect("o1", g_arm.ports["o2"])
+    
+    # 3. Return Arm (Outer arm, straight)
+    return_wg = c << gf.components.straight(
+        length=LENGTH_GRATING,
+        cross_section=xs
+    )
+    return_wg.connect("o1", bend.ports["o2"])
+    
+    # 4. Input S-Bend Flare
+    # We want the flare to go Outwards (Up) relative to the device center.
+    # The return_wg ends facing West (180).
+    # An S-bend with size (L, -H) attached to a 180-deg port will result in a path
+    # moving Left by L and Up by H.
+    flare = c << gf.components.bend_s(
+        size=(SBEND_LENGTH, -SBEND_HEIGHT),
+        cross_section=xs
+    )
+    flare.connect("o1", return_wg.ports["o2"])
+    
+    # Expose ports
+    c.add_port("grating", port=g_arm.ports["o1"])
+    c.add_port("io", port=flare.ports["o2"])
+    
+    return c
+
+# ==============================================================================
+# 2. Final Device Assembly
+# ==============================================================================
+
+@gf.cell
+def contra_directional_coupler():
+    c = gf.Component()
+    
+    # Cross-section for the central bus
+    xs_bus = gf.cross_section.cross_section(
+        width=WIDTH_BUS, 
+        layer=LAYER_WG,
+        radius=BEND_RADIUS
+    )
+
+    # 1. Central Bus Waveguide
+    bus = c << gf.components.straight(length=LENGTH_GRATING, cross_section=xs_bus)
+    # Center the bus horizontally
+    bus.x = 0
+    bus.movex(LENGTH_GRATING/2.0) # Adjust if needed, but centering component relative to origin is good practice
+    # Actually, let's keep bus starting at 0,0 for simplicity, then move everything relative to it
+    bus.x = 0
+    bus.y = 0
+
+    # Calculate Vertical Offset for Top Half
+    # Top Half Grating Arm center is at local y=0. Teeth extend down to -w/2 - depth.
+    # We want teeth tips to be at y_bus_top + GAP.
+    # Bus top edge y = WIDTH_BUS / 2.
+    # Target tip y = WIDTH_BUS/2 + GAP.
+    # Top Half local tip y = -WIDTH_CORE/2 - TOOTH_DEPTH.
+    # Shift required: Target - Local
+    # Shift = (WIDTH_BUS/2 + GAP) - (-WIDTH_CORE/2 - TOOTH_DEPTH)
+    #       = (WIDTH_BUS + WIDTH_CORE)/2 + GAP + TOOTH_DEPTH
+    y_shift = (WIDTH_BUS + WIDTH_CORE)/2.0 + GAP + TOOTH_DEPTH
+    
+    # 2. Top Half
+    top = c << folded_coupler_half()
+    top.movey(y_shift)
+    
+    # 3. Bottom Half
+    # Rotated 180 degrees creates point symmetry. 
+    # The grating arm (which was on bottom) becomes top, facing the bus.
+    bot = c << folded_coupler_half()
+    bot.rotate(180)
+    
+    # Align Bottom Half
+    # After rotation, it needs to be shifted down by y_shift.
+    # And it needs to be aligned horizontally. 
+    # Top half spans x=[0, L]. 
+    # Rotated bottom half (pivot 0,0) spans x=[-L, 0].
+    # So we move x by +L.
+    bot.move((LENGTH_GRATING, -y_shift))
+    
+    # Add ports
+    c.add_port("o1", port=bus.ports["o1"])
+    c.add_port("o2", port=bus.ports["o2"])
+    c.add_port("top_io", port=top.ports["io"])
+    c.add_port("bot_io", port=bot.ports["io"])
+
+    return c
+
+if __name__ == "__main__":
+    device = contra_directional_coupler()
+    device.write_gds("contra_directional_coupler.gds")

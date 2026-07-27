@@ -1,0 +1,135 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    
+    # Define parameters based on footprint and image analysis
+    total_width = 120.0
+    total_height = 4.0
+    
+    # Unit width for lines and gaps, derived from image (9 equal units vertically)
+    unit_width = total_height / 9 
+    
+    # Layer for the device geometry
+    device_layer = (1, 0)
+    
+    # 1. Create the main solid black rectangle (the canvas)
+    main_rect = gf.components.rectangle(
+        size=(total_width, total_height), 
+        layer=device_layer, 
+        centered=True
+    )
+    main_rect_ref = c << main_rect
+    
+    # Parameters for the white channel construction
+    W_edge_bar_white = unit_width # Width of the vertical white bars at the extreme edges
+    
+    # Define the *intended visual radius* for the bends
+    intended_R_outer = unit_width / 2 
+    intended_R_inner = unit_width     
+    
+    # A small buffer to ensure `segment_length > radius` for gf.path.smooth
+    # This value slightly modifies the effective bend radius for the algorithm.
+    buffer_for_smooth = unit_width / 100 
+
+    # Define actual radii to be passed to gf.path.smooth (slightly smaller than intended)
+    R_path_bend_outer_actual = intended_R_outer - buffer_for_smooth
+    R_path_bend_inner_actual = intended_R_inner - buffer_for_smooth
+
+    # Ensure radii are not negative or excessively small due to buffer
+    R_path_bend_outer_actual = max(R_path_bend_outer_actual, 0.001)
+    R_path_bend_inner_actual = max(R_path_bend_inner_actual, 0.001)
+
+    # Define cross-section for the white cutouts
+    cutout_xs = gf.cross_section.cross_section(width=unit_width, layer=device_layer)
+    
+    # Y-centers for the 4 white channels (y=0 is the center of the total_height)
+    # These represent the centerlines of the horizontal segments of the white cutouts.
+    y_outer_top = 3.5 * unit_width 
+    y_inner_top = 2.0 * unit_width  
+    y_inner_bottom = -2.0 * unit_width 
+    y_outer_bottom = -3.5 * unit_width 
+    
+    channel_y_centers = [y_outer_top, y_inner_top, y_inner_bottom, y_outer_bottom]
+    
+    # A temporary component to aggregate all white cutouts for boolean subtraction
+    white_cutouts_aggr = gf.Component("white_cutouts")
+
+    # Add the two main vertical white bars at the extreme left and right edges
+    left_bar_ref = white_cutouts_aggr << gf.components.rectangle(
+        size=(W_edge_bar_white, total_height), 
+        layer=device_layer, 
+        centered=True
+    )
+    left_bar_ref.movex(-total_width/2 + W_edge_bar_white/2)
+    
+    right_bar_ref = white_cutouts_aggr << gf.components.rectangle(
+        size=(W_edge_bar_white, total_height), 
+        layer=device_layer, 
+        centered=True
+    )
+    right_bar_ref.movex(total_width/2 - W_edge_bar_white/2)
+
+    # Define fixed x-coordinates for the vertical segments of the cutouts.
+    x_left_vertical_segment = -total_width/2 + W_edge_bar_white
+    x_right_vertical_segment = total_width/2 - W_edge_bar_white
+    
+    # For each of the four channels, construct its shape using gf.path.smooth
+    for y_center in channel_y_centers:
+        path_points = []
+        sign = 1 if y_center > 0 else -1 # Determines if bend goes up (+) or down (-) from y_center
+
+        # Determine the specific bend radius for this channel type for gf.path.smooth
+        if abs(y_center) == y_outer_top: # Outer channels (top-most / bottom-most)
+            current_R_path_bend = R_path_bend_outer_actual
+            # The y-coordinate where the vertical segment of the path's centerline ends/begins.
+            # Adjusted by `buffer_for_smooth` to ensure sufficient straight segment length.
+            y_target_vert_centerline_adjusted = y_center + sign * (intended_R_outer + buffer_for_smooth)
+        else: # Inner channels (second from top / second from bottom)
+            current_R_path_bend = R_path_bend_inner_actual
+            # The y-coordinate where the vertical segment of the path's centerline ends/begins.
+            # Adjusted by `buffer_for_smooth` to ensure sufficient straight segment length.
+            y_target_vert_centerline_adjusted = y_center + sign * (intended_R_inner + buffer_for_smooth)
+
+        # Define waypoints for the path's centerline (these are the 'corners' to be smoothed)
+        # P1: Start point of the left vertical segment's centerline (at the device edge, adjusted for buffer)
+        path_points.append( (x_left_vertical_segment, y_target_vert_centerline_adjusted) )
+
+        # P2: The actual corner vertex where the path *would* sharply turn from vertical to horizontal.
+        # This is the (x_vertical_line, y_horizontal_line) intersection.
+        path_points.append( (x_left_vertical_segment, y_center) )
+
+        # P3: The actual corner vertex where the path *would* sharply turn from horizontal to vertical.
+        # This is the (x_vertical_line, y_horizontal_line) intersection on the right side.
+        path_points.append( (x_right_vertical_segment, y_center) )
+
+        # P4: End point of the right vertical segment's centerline (at the device edge, adjusted for buffer)
+        path_points.append( (x_right_vertical_segment, y_target_vert_centerline_adjusted) )
+
+        # Create path using gf.path.smooth with the adjusted radius.
+        path = gf.path.smooth(points=path_points, radius=current_R_path_bend)
+
+        # Extrude the path to create the component (the white cutout)
+        cutout_channel_comp = gf.path.extrude(path, cross_section=cutout_xs)
+        white_cutouts_aggr << cutout_channel_comp
+
+    # 5. Perform boolean subtraction to create the final geometry
+    cutouts_ref = c << white_cutouts_aggr
+    
+    final_device_geom = gf.boolean(
+        main_rect_ref, 
+        cutouts_ref, 
+        operation="not", 
+        layer=device_layer
+    )
+    
+    c_final = gf.Component("my_final_device")
+    c_final << final_device_geom
+    return c_final
+
+if __name__ == "__main__":
+    device = my_device()
+    device.show() 
+    device.write_gds("my_device.gds")

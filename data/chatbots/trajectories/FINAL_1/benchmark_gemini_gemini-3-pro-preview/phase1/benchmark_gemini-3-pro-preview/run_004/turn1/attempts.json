@@ -1,0 +1,39 @@
+{
+  "turn": 1,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:55:12.695894",
+      "api_duration_seconds": 145.96218919754028,
+      "usage": {
+        "input_tokens": 3182,
+        "output_tokens": 1377,
+        "total_tokens": 16930
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n        f\"transition() found no common section names X1 {names1} and X2 {names2}\"\n    )\nValueError: transition() found no common section names X1 ['s_0ac033e5'] and X2 ['s_2663413f']",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:57:39.886219",
+      "api_duration_seconds": 50.30673885345459,
+      "usage": {
+        "input_tokens": 4642,
+        "output_tokens": 1002,
+        "total_tokens": 9759
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 7824,
+    "output_tokens": 2379,
+    "total_tokens": 26689
+  }
+}

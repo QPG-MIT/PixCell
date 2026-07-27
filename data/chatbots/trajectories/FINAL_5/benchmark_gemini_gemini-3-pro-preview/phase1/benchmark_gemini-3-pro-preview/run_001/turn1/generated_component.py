@@ -1,0 +1,151 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_recreation():
+    """
+    Recreates the grating-assisted coupler device.
+    Corrects the radius_min check by defining explicit radii in cross_sections.
+    """
+    c = gf.Component()
+
+    # Dimensions
+    L_total = 18.24
+    wg_width = 0.45
+    gap = 0.15          
+    bend_radius = 1.5   
+    
+    # Grating parameters
+    grating_period = 0.4
+    duty_cycle = 0.5
+    grating_length = 11.2 
+    
+    # Define common cross-section with explicit radius
+    # Setting 'radius' here updates the minimum allowed radius for this cross-section
+    xs_wg = gf.cross_section.cross_section(
+        width=wg_width, 
+        layer=(1, 0), 
+        radius=bend_radius  # Vital to prevent radius_min error
+    )
+
+    # 1. Central Bus Waveguide
+    bus = c << gf.components.straight(length=L_total + 2.0, cross_section=xs_wg)
+    bus.x = 0
+    bus.y = 0
+
+    # ---------------------------------------------------------
+    # Helper Functions
+    # ---------------------------------------------------------
+
+    def create_grating_waveguide(length, width, period, dc):
+        """Creates a straight waveguide with periodic rectangular slots (SWG/Bragg)."""
+        # Create explicit cross section for the waveguide base
+        # Ensure radius is consistent to avoid mismatch warnings/errors
+        xs = gf.cross_section.cross_section(width=width, layer=(1, 0), radius=bend_radius)
+        
+        # Base waveguide
+        wg = gf.components.straight(length=length, cross_section=xs)
+        
+        # Define the slot geometry
+        slot_w = period * dc
+        slot_h = width * 0.7 
+        slot = gf.components.rectangle(size=(slot_w, slot_h), layer=(2, 0), centered=True)
+        
+        # Create array of slots
+        cuts = gf.Component()
+        n_slots = int(length / period)
+        
+        for i in range(n_slots):
+            s = cuts << slot
+            # Center slots along the waveguide axis (y=0)
+            # straight waveguide runs from x=0 to x=length
+            s.x = (i + 0.5) * period
+            s.y = 0
+            
+        # Boolean subtraction: Waveguide - Slots
+        # Result is placed on layer (1,0)
+        etched_wg_ref = gf.boolean(wg, cuts, operation="not", layer=(1, 0))
+        
+        # Wrap in a new component to add ports back (boolean destroys ports)
+        D = gf.Component()
+        ref = D << etched_wg_ref
+        D.add_port("o1", center=(0, 0), width=width, orientation=180, layer=(1, 0))
+        D.add_port("o2", center=(length, 0), width=width, orientation=0, layer=(1, 0))
+        return D
+
+    def create_tapered_tip():
+        """Creates the curved, tapered tip for the termination."""
+        D = gf.Component()
+        
+        # Path radius used is 3.0
+        path_r = 3.0
+        
+        # Path curves slightly 'Right' (negative angle)
+        p = gf.path.euler(radius=path_r, angle=-45, p=0.5)
+        
+        # Define start and end cross sections for the transition
+        # We set radius=path_r to ensure validation passes for this specific segment
+        xs_start = gf.cross_section.cross_section(width=wg_width, layer=(1, 0), radius=path_r)
+        xs_end = gf.cross_section.cross_section(width=0.04, layer=(1, 0), radius=path_r)
+        
+        # Create width transition
+        trans = gf.path.transition(xs_start, xs_end, width_type='sine')
+        
+        # Extrude
+        ref = D << gf.path.extrude_transition(p, trans)
+        D.add_port("o1", port=ref.ports["o1"])
+        return D
+
+    # Instantiate reusable sub-components
+    grating_comp = create_grating_waveguide(grating_length, wg_width, grating_period, duty_cycle)
+    tip_comp = create_tapered_tip()
+
+    # ---------------------------------------------------------
+    # Top Arm Assembly
+    # ---------------------------------------------------------
+    
+    # 1. Grating Section (Inner arm)
+    t_g = c << grating_comp
+    t_g.x = -grating_length / 2
+    t_g.y = wg_width + gap 
+    
+    # 2. 180 Degree Bend (Right side loop)
+    # The xs_wg has radius=1.5 defined, allowing this bend
+    t_bend = c << gf.components.bend_euler(radius=bend_radius, angle=180, cross_section=xs_wg)
+    t_bend.connect("o1", t_g.ports["o2"])
+    
+    # 3. Return Arm (Outer arm, flows Left)
+    ret_len = grating_length + 2.0
+    t_ret = c << gf.components.straight(length=ret_len, cross_section=xs_wg)
+    t_ret.connect("o1", t_bend.ports["o2"])
+    
+    # 4. Tip (Far Left)
+    t_tip = c << tip_comp
+    t_tip.connect("o1", t_ret.ports["o2"])
+
+    # ---------------------------------------------------------
+    # Bottom Arm Assembly
+    # ---------------------------------------------------------
+    
+    # 1. Grating Section (Inner arm)
+    b_g = c << grating_comp
+    b_g.x = -grating_length / 2
+    b_g.y = -(wg_width + gap)
+    
+    # 2. 180 Degree Bend (Left side loop)
+    b_bend = c << gf.components.bend_euler(radius=bend_radius, angle=180, cross_section=xs_wg)
+    b_bend.connect("o1", b_g.ports["o1"])
+    
+    # 3. Return Arm (Outer arm, flows Right)
+    b_ret = c << gf.components.straight(length=ret_len, cross_section=xs_wg)
+    b_ret.connect("o1", b_bend.ports["o2"])
+    
+    # 4. Tip (Far Right)
+    b_tip = c << tip_comp
+    b_tip.connect("o1", b_ret.ports["o2"])
+
+    return c
+
+# Generate and save
+device = device_recreation()
+device.write_gds("grating_coupler_device.gds")

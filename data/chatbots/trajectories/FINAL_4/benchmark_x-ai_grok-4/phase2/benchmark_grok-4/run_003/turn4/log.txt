@@ -1,0 +1,55 @@
+Turn 4 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+
+    width = 0.5
+    gap = 0.2
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0), radius_min=5.0)
+
+    length = 18.0
+    height = 3.0
+    center_sep = (height - width) / 2  # 1.25
+    center_close = (width + gap) / 2  # 0.35
+    delta = center_sep - center_close  # 0.9
+    couple_length = 6.0
+    half_length = (length - couple_length) / 2  # 6.0
+
+    # Base bend_s for positive and negative offset
+    b = gf.components.bend_s(size=(half_length, delta), cross_section=xs)
+    b_neg = gf.components.bend_s(size=(half_length, -delta), cross_section=xs)
+
+    # Top waveguide: first down (negative dy), then straight, then up (positive dy)
+    first_top = c << b_neg
+    first_top.move((0, center_sep))
+    top_straight = c << gf.components.straight(length=couple_length, cross_section=xs)
+    top_straight.connect("o1", first_top.ports["o2"])
+    second_top = c << b
+    second_top.connect("o1", top_straight.ports["o2"])
+
+    # Bottom waveguide: first up (positive dy), then straight, then down (negative dy)
+    first_bottom = c << b_neg
+    first_bottom.mirror(p1=(0, 0), p2=(1, 0))  # flip to positive dy
+    first_bottom.move((0, -center_sep))
+    bottom_straight = c << gf.components.straight(length=couple_length, cross_section=xs)
+    bottom_straight.connect("o1", first_bottom.ports["o2"])
+    second_bottom = c << b
+    second_bottom.mirror(p1=(0, 0), p2=(1, 0))  # flip to negative dy
+    second_bottom.connect("o1", bottom_straight.ports["o2"])
+
+    # Add ports
+    c.add_port("o1", port=first_top.ports["o1"])
+    c.add_port("o2", port=second_top.ports["o2"])
+    c.add_port("o3", port=first_bottom.ports["o1"])
+    c.add_port("o4", port=second_bottom.ports["o2"])
+
+    return c
+
+# Create and save
+device = my_device()
+device.write_gds("my_device.gds")
+```

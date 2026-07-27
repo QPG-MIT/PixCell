@@ -1,0 +1,166 @@
+Turn 1 Response:
+
+The error `pydantic_core._pydantic_core.ValidationError: 1 validation error for Section width Input should be a valid number` indicates that the `gf.cross_section.cross_section` helper function expects a numerical value for `width` when defining a `Section` (which it does internally).
+
+However, GDSFactory's `gf.CrossSection` object *itself* is designed to accept a callable function for its `width` attribute when you want a varying width extrusion. The helper `gf.cross_section.cross_section` abstracts this, usually creating a simple `Section` with a fixed width.
+
+The fix is to directly instantiate `gf.CrossSection` with our `get_wg_width_profile` function for the `width` argument, instead of using the helper function `gf.cross_section.cross_section`. This allows the `width` to be a callable that takes `t` (normalized path length).
+
+Here's the corrected script:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def custom_three_waveguide_device() -> gf.Component:
+    """
+    Recreates the geometry from the provided image using GDSFactory.
+
+    The device consists of three waveguides:
+    - A straight central waveguide.
+    - Two outer waveguides (top and bottom) that curve outwards and
+      feature a varying width profile (tapering down and then up).
+    """
+    c = gf.Component("custom_three_waveguide_device")
+
+    # Define common layer for all geometry
+    layer = (1, 0) # Example layer (e.g., Silicon core)
+
+    # Device dimensions from footprint constraint and visual analysis
+    total_length = 40.0 # x-dimension of the footprint
+    total_height = 1.7  # y-dimension of the footprint
+
+    # Nominal waveguide parameters (initial/final width and gap)
+    wg_width_nominal = 0.5 # Width of straight sections of all waveguides
+    wg_gap_nominal = 0.1   # Gap between waveguides in straight sections
+    min_width_taper = 0.3  # Estimated minimum width for outer waveguides in the curved section
+
+    # --- Middle waveguide ---
+    # It's a straight waveguide centered vertically.
+    mid_wg_center_y = total_height / 2  # 1.7 / 2 = 0.85 µm
+    
+    # For a constant width, we pass a CrossSection object directly
+    # Here, using the helper `gf.cross_section.cross_section` is fine as width is constant.
+    constant_xs = gf.cross_section.cross_section(width=wg_width_nominal, layer=layer)
+    
+    mid_wg = gf.components.straight(
+        length=total_length, cross_section=constant_xs
+    )
+    mid_wg_ref = c << mid_wg
+    # Position the middle waveguide to be centered within the total length and at its calculated y-center
+    mid_wg_ref.center = (total_length / 2, mid_wg_center_y)
+
+    # --- Outer Waveguides (Top and Bottom) ---
+    # These waveguides have a curved centerline and a varying width.
+    # We define a common width profile function for both.
+
+    # X-coordinates for defining path segments and width transitions
+    x_straight_segment_len = 5.0 # Length of initial/final straight part before/after curve/taper
+    x_taper_start = x_straight_segment_len
+    x_peak_bend = total_length / 2 # x-coordinate of the peak of the bend/taper
+    x_taper_end = total_length - x_straight_segment_len
+
+    def get_wg_width_profile(t_normalized_path_length: float) -> float:
+        """
+        Defines the width of the outer waveguides as a function of normalized path length 't'.
+        Width transitions from nominal (0.5) down to min_width_taper (0.3) and back.
+        Uses linear interpolation based on approximate 't' values derived from x-coordinates.
+        """
+        # Normalized 't' values corresponding to the key x-coordinates for width changes
+        # For paths that are primarily monotonic in X, using X/total_length as a proxy for
+        # 't' (normalized path length) for these definition points is a good approximation.
+        
+        t_points = np.array([
+            0, # Start of path
+            (x_taper_start / total_length), # Approx t for start of taper
+            0.5, # Midpoint of path (where peak bend/min width occurs)
+            (x_taper_end / total_length), # Approx t for end of taper
+            1.0  # End of path
+        ])
+        # Corresponding width values at these 't' points
+        width_points = np.array([
+            wg_width_nominal,
+            wg_width_nominal,
+            min_width_taper,
+            wg_width_nominal,
+            wg_width_nominal
+        ])
+        
+        return np.interp(t_normalized_path_length, t_points, width_points)
+
+    # Define the varying cross-section by directly instantiating gf.CrossSection
+    # and passing the callable `get_wg_width_profile` as its `width` parameter.
+    # This is the key fix for the Pydantic validation error.
+    varying_xs = gf.CrossSection(width=get_wg_width_profile, layer=layer)
+
+    # --- Top waveguide ---
+    # Path definition: The centerline of the top waveguide curves outwards.
+    
+    # Calculate starting/ending y-center for the top waveguide
+    y_start_top = mid_wg_center_y + wg_gap_nominal + wg_width_nominal / 2 # 0.85 + 0.1 + 0.25 = 1.2 µm
+
+    # Calculate peak y-center for the top waveguide (outer edge touches footprint top)
+    y_peak_centerline_top = total_height - min_width_taper / 2 # 1.7 - 0.3/2 = 1.55 µm
+
+    # Using smooth path with radius for better control of the curve
+    # Points defining the centerline for the top waveguide
+    points_top_path = [
+        (0, y_start_top),
+        (x_taper_start, y_start_top),
+        (x_peak_bend, y_peak_centerline_top),
+        (x_taper_end, y_start_top),
+        (total_length, y_start_top),
+    ]
+
+    path_top = gf.path.smooth(points_top_path, radius=3.0) # Using a radius for smoothing
+    
+    # Create the top waveguide component by extruding the path with varying cross-section
+    top_wg_ref = c << gf.path.extrude(
+        path_top,
+        cross_section=varying_xs # Pass the gf.CrossSection object whose width is a callable
+    )
+
+    # --- Bottom waveguide ---
+    # Symmetrical to the top waveguide, mirrored across the horizontal center line.
+    
+    # Calculate starting/ending y-center for the bottom waveguide
+    y_start_bottom = mid_wg_center_y - (wg_gap_nominal + wg_width_nominal / 2) # 0.85 - (0.1 + 0.25) = 0.5 µm
+
+    # Calculate peak y-center for the bottom waveguide (outer edge touches footprint bottom)
+    y_peak_centerline_bottom = min_width_taper / 2 # 0.3/2 = 0.15 µm
+
+    # Points defining the centerline for the bottom waveguide
+    points_bottom_path = [
+        (0, y_start_bottom),
+        (x_taper_start, y_start_bottom),
+        (x_peak_bend, y_peak_centerline_bottom),
+        (x_taper_end, y_start_bottom),
+        (total_length, y_start_bottom),
+    ]
+    path_bottom = gf.path.smooth(points_bottom_path, radius=3.0)
+
+    # The width profile is the same as the top waveguide
+    bottom_wg_ref = c << gf.path.extrude(
+        path_bottom,
+        cross_section=varying_xs # Pass the gf.CrossSection object whose width is a callable
+    )
+
+    # --- Add Ports (for connectivity to other components if needed) ---
+    c.add_port("o1_mid", port=mid_wg_ref.ports["o1"])
+    c.add_port("o2_mid", port=mid_wg_ref.ports["o2"])
+    
+    c.add_port("o1_top", port=top_wg_ref.ports["o1"])
+    c.add_port("o2_top", port=top_wg_ref.ports["o2"])
+    
+    c.add_port("o1_bottom", port=bottom_wg_ref.ports["o1"])
+    c.add_port("o2_bottom", port=bottom_wg_ref.ports["o2"])
+
+    return c
+
+# If this script is run directly, generate and show the GDSFactory component
+if __name__ == "__main__":
+    device = custom_three_waveguide_device()
+    device.show() # Renders the component for visualization
+    # device.write_gds("custom_three_waveguide_device.gds") # Uncomment to save as a GDS file
+```

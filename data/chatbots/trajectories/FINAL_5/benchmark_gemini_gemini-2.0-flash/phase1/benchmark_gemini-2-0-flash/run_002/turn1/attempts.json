@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.818970",
+      "api_duration_seconds": 42.81295394897461,
+      "usage": {
+        "input_tokens": 4928,
+        "output_tokens": 1547,
+        "total_tokens": 6475
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(cell)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:54.082884",
+      "api_duration_seconds": 8.815195798873901,
+      "usage": {
+        "input_tokens": 6522,
+        "output_tokens": 1338,
+        "total_tokens": 7860
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(cell)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:04.472140",
+      "api_duration_seconds": 9.014473915100098,
+      "usage": {
+        "input_tokens": 7907,
+        "output_tokens": 1444,
+        "total_tokens": 9351
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 19357,
+    "output_tokens": 4329,
+    "total_tokens": 23686
+  }
+}

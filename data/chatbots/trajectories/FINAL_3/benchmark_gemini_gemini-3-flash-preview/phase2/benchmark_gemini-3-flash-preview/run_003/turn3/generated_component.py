@@ -1,0 +1,91 @@
+import gdsfactory as gf
+
+@gf.cell
+def coupler_recreation():
+    """
+    Recreates the directional coupler with improved proportions.
+    Total length: 120um, Total height: 4um.
+    
+    Proportions:
+    - Input/Output Straights: 20um each (x2 = 40um)
+    - S-bend Transitions: 15um each (x2 = 30um)
+    - Central Coupling: 50um
+    - Total: 40 + 30 + 50 = 120um
+    """
+    c = gf.Component("directional_coupler_v3")
+    
+    # 1. Design Parameters
+    width = 0.5      # Standard waveguide width
+    gap = 0.1        # Tight interaction gap for coupling
+    
+    # Length segments to reach exactly 120um
+    length_end = 20
+    length_mid = 50
+    dx_bend = 15
+    
+    # Calculate dy for exactly 4um total footprint height
+    # Total height = (2 * waveguide_half_width) + (2 * dy) + gap + width
+    # 4.0 = 0.5 + 2*dy + 0.1 + 0.5  => 4.0 = 1.1 + 2*dy => 2.9 = 2*dy
+    # Center-to-center vertical offset (dy) = 1.45um
+    dy = 1.45
+    
+    # Define cross-section
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    # 2. Create Parametric Primitives
+    s_bend_up = gf.components.bend_s(size=(dx_bend, dy), cross_section=xs)
+    s_bend_down = gf.components.bend_s(size=(dx_bend, -dy), cross_section=xs)
+    straight_mid = gf.components.straight(length=length_mid, cross_section=xs)
+    straight_end = gf.components.straight(length=length_end, cross_section=xs)
+    
+    # 3. Assemble the Central Region
+    bot_mid = c << straight_mid
+    top_mid = c << straight_mid
+    # Place relative to center line
+    bot_mid.movey(-(gap + width) / 2)
+    top_mid.movey((gap + width) / 2)
+    
+    # 4. Assemble Left Side (Input)
+    bot_bend_l = c << s_bend_up
+    bot_bend_l.connect("o2", bot_mid.ports["o1"])
+    bot_in = c << straight_end
+    bot_in.connect("o2", bot_bend_l.ports["o1"])
+    
+    top_bend_l = c << s_bend_down
+    top_bend_l.connect("o2", top_mid.ports["o1"])
+    top_in = c << straight_end
+    top_in.connect("o2", top_bend_l.ports["o1"])
+    
+    # 5. Assemble Right Side (Output)
+    bot_bend_r = c << s_bend_down
+    bot_bend_r.connect("o1", bot_mid.ports["o2"])
+    bot_out = c << straight_end
+    bot_out.connect("o1", bot_bend_r.ports["o2"])
+    
+    top_bend_r = c << s_bend_up
+    top_bend_r.connect("o1", top_mid.ports["o2"])
+    top_out = c << straight_end
+    top_out.connect("o1", top_bend_r.ports["o2"])
+    
+    # 6. Finalization
+    c.add_port("o1", port=bot_in.ports["o1"])
+    c.add_port("o2", port=top_in.ports["o1"])
+    c.add_port("o3", port=top_out.ports["o2"])
+    c.add_port("o4", port=bot_out.ports["o2"])
+    
+    # Center the geometry
+    c.move(c.center, (0, 0))
+    
+    return c
+
+if __name__ == "__main__":
+    my_coupler = coupler_recreation()
+    
+    # Verification
+    width_um = my_coupler.dxsize
+    height_um = my_coupler.dysize
+    
+    print(f"Verified Footprint: {width_um:.2f}um x {height_um:.2f}um")
+    
+    my_coupler.write_gds("directional_coupler_final.gds")
+    my_coupler.show()

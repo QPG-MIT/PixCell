@@ -1,0 +1,98 @@
+Turn 2 Response:
+
+To move towards the original image, we need to address three key aspects that were missing or incorrect in the previous render:
+1.  **Straight End Sections**: The original image clearly shows parallel, horizontal waveguides at the far left and far right. We must add `straight` segments at the four ports.
+2.  **Transition Logic**: The previous render showed waveguides crossing or "tangling" because the mirroring and port connection logic for the S-bends on the right side was inverted. We will ensure the top waveguide stays top and the bottom waveguide stays bottom.
+3.  **Proportions**: We will adjust the lengths to ensure the device fills the **120µm** footprint while maintaining the "stretched" look of the coupling region.
+
+### Corrected Python Script
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_recreated():
+    """
+    Recreates the directional coupler with straight inputs/outputs.
+    Footprint target: 120um x 4um
+    """
+    c = gf.Component("directional_coupler")
+    
+    # --- 1. Dimensions & Constraints ---
+    total_length = 120.0
+    w = 0.5
+    gap = 0.2
+    
+    # Calculate vertical transition (dy)
+    # Outer centers at +/- 1.75um, Inner centers at +/- 0.35um
+    dy = (4.0/2 - w/2) - (gap/2 + w/2) # 1.4 um
+    
+    # Allocate horizontal lengths (Total = 120)
+    l_end_straight = 15.0  # Horizontal segments at the far ends
+    l_bend = 25.0          # S-bend transition length
+    l_coupler = total_length - 2*l_end_straight - 2*l_bend # 40.0 um
+    
+    xs = gf.cross_section.cross_section(width=w, layer=(1, 0))
+    
+    # --- 2. Create Primitives ---
+    coupler = gf.components.coupler_straight(length=l_coupler, gap=gap, cross_section=xs)
+    s_bend = gf.components.bend_s(size=(l_bend, dy), cross_section=xs)
+    end_straight = gf.components.straight(length=l_end_straight, cross_section=xs)
+    
+    # --- 3. Assembly (Starting from center) ---
+    mid = c << coupler
+    
+    # LEFT SIDE
+    # Bottom-Left: S-bend UP from outer to inner
+    bl_bend = c << s_bend
+    bl_bend.connect("o2", mid.ports["o1"])
+    bl_ext = c << end_straight
+    bl_ext.connect("o2", bl_bend.ports["o1"])
+    
+    # Top-Left: S-bend DOWN from outer to inner (mirrored)
+    tl_bend = c << s_bend
+    tl_bend.mirror(p1=(0, 0), p2=(1, 0))
+    tl_bend.connect("o2", mid.ports["o2"])
+    tl_ext = c << end_straight
+    tl_ext.connect("o2", tl_bend.ports["o1"])
+    
+    # RIGHT SIDE
+    # Top-Right: S-bend UP from inner to outer (no mirror needed)
+    tr_bend = c << s_bend
+    tr_bend.connect("o1", mid.ports["o3"])
+    tr_ext = c << end_straight
+    tr_ext.connect("o1", tr_bend.ports["o2"])
+    
+    # Bottom-Right: S-bend DOWN from inner to outer (mirrored)
+    br_bend = c << s_bend
+    br_bend.mirror(p1=(0, 0), p2=(1, 0))
+    br_bend.connect("o1", mid.ports["o4"])
+    br_ext = c << end_straight
+    br_ext.connect("o1", br_bend.ports["o2"])
+    
+    # --- 4. Define External Ports ---
+    c.add_port("o1", port=bl_ext.ports["o1"])
+    c.add_port("o2", port=tl_ext.ports["o1"])
+    c.add_port("o3", port=tr_ext.ports["o2"])
+    c.add_port("o4", port=br_ext.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler_recreated()
+    device.write_gds("directional_coupler_fixed.gds")
+    
+    # Print dimensions to console for verification
+    print(f"Footprint: {device.dxsize:.2f} um x {device.dysize:.2f} um")
+    
+    # Show in local viewer if available
+    device.show()
+```
+
+### Changes implemented:
+1.  **Added `end_straight`**: Included 15µm straight segments at all four ends to match the "flat" entry and exit points seen in the original image.
+2.  **Fixed Right-Side Connection**: 
+    *   The `tr_bend` (top-right) now correctly uses a standard `bend_s` to move **UP** from the center.
+    *   The `br_bend` (bottom-right) now correctly uses a mirrored `bend_s` to move **DOWN** from the center.
+    *   This prevents the "crossing" effect seen in the previous iteration.
+3.  **Corrected Port Connectors**: Swapped the port logic (`o1` vs `o2`) for the right-hand side to ensure the S-bends are oriented away from the center coupler.

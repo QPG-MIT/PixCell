@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:48.581963",
+      "api_duration_seconds": 84.0535569190979,
+      "usage": {
+        "input_tokens": 4964,
+        "output_tokens": 1844,
+        "total_tokens": 15855
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bend_s'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:13.914546",
+      "api_duration_seconds": 33.94474124908447,
+      "usage": {
+        "input_tokens": 6841,
+        "output_tokens": 1467,
+        "total_tokens": 11241
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\"Must specify layer or cross_section\")\nValueError: Must specify layer or cross_section",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:49.297381",
+      "api_duration_seconds": 30.762566089630127,
+      "usage": {
+        "input_tokens": 8344,
+        "output_tokens": 1396,
+        "total_tokens": 11649
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 20149,
+    "output_tokens": 4707,
+    "total_tokens": 38745
+  }
+}

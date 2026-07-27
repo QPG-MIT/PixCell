@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:55:12.728534",
+      "api_duration_seconds": 110.96973085403442,
+      "usage": {
+        "input_tokens": 3170,
+        "output_tokens": 1672,
+        "total_tokens": 13374
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 1.25 < CrossSection.radius_min 5.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:57:05.000102",
+      "api_duration_seconds": 71.84351372718811,
+      "usage": {
+        "input_tokens": 4888,
+        "output_tokens": 1527,
+        "total_tokens": 11961
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:58:18.197415",
+      "api_duration_seconds": 37.899494886398315,
+      "usage": {
+        "input_tokens": 6441,
+        "output_tokens": 1575,
+        "total_tokens": 10100
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'list' object has no attribute 'is_regular_array'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14499,
+    "output_tokens": 4774,
+    "total_tokens": 35435
+  }
+}

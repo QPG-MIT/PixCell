@@ -1,0 +1,129 @@
+Turn 3 Response:
+
+The error `AttributeError: 'list' object has no attribute 'is_regular_array'` occurs because `gf.boolean` in your specific environment expects a single Component or Reference for the second argument (`B`), but a list of references was passed.
+
+To fix this, we must group the cutouts (the "holes") into a single Component first, and then perform the boolean subtraction between the Body Component and the Holes Component.
+
+Here is the corrected and fully robust script.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def photonic_racetrack_mzi_final():
+    """
+    Recreates the device with high fidelity:
+    - Thick Racetrack Ring
+    - "Double Window" Phase Shifters (Fixed boolean operation)
+    - Thick diagonal routing merging into end hubs
+    """
+    c = gf.Component()
+    
+    # --- Dimensions & Parameters ---
+    width_total = 5.5
+    height_total = 3.0
+    layer_main = (1, 0)
+    
+    # Feature widths (Thick features to match image)
+    width_ring = 0.6
+    width_arm = 0.45 
+    
+    # Define Cross Sections
+    xs_ring = gf.cross_section.cross_section(width=width_ring, layer=layer_main)
+    xs_arm = gf.cross_section.cross_section(width=width_arm, layer=layer_main)
+
+    # --- 1. Construct Outer Racetrack ---
+    # Geometry: 5.5 x 3.0 footprint
+    # Straight length = 5.5 - 3.0 = 2.5
+    # Center Radius = (3.0 / 2) - (0.6 / 2) = 1.2
+    
+    p_ring = gf.Path()
+    p_ring.append(gf.path.straight(length=2.5))
+    p_ring.append(gf.path.arc(radius=1.2, angle=-180))
+    p_ring.append(gf.path.straight(length=2.5))
+    p_ring.append(gf.path.arc(radius=1.2, angle=-180))
+    
+    ring = c << gf.path.extrude(p_ring, cross_section=xs_ring)
+    ring.move(origin=ring.center, destination=(0,0))
+
+    # --- 2. Construct "Double Window" Pads (FIXED) ---
+    # We create a specific component for the holes to avoid passing a list to gf.boolean
+    
+    def create_split_pad():
+        # 1. Create the solid body geometry
+        # gf.components.rectangle returns a Component
+        c_body = gf.components.rectangle(size=(1.4, 0.6), layer=layer_main, centered=True)
+        
+        # 2. Create the holes geometry (Grouped in one Component)
+        c_holes = gf.Component()
+        cutout_size = (0.45, 0.3)
+        
+        # Left Hole
+        h1 = c_holes << gf.components.rectangle(size=cutout_size, layer=layer_main, centered=True)
+        h1.movex(-0.35)
+        
+        # Right Hole
+        h2 = c_holes << gf.components.rectangle(size=cutout_size, layer=layer_main, centered=True)
+        h2.movex(0.35)
+        
+        # 3. Boolean subtract: Body - Holes_Component
+        # Passing Components directly is robust
+        return gf.boolean(A=c_body, B=c_holes, operation="not", layer=layer_main)
+
+    pad_template = create_split_pad()
+    
+    # Place Top and Bottom Pads
+    pad_y_pos = 0.6
+    
+    pad_top = c << pad_template
+    pad_top.movey(pad_y_pos)
+    
+    pad_bot = c << pad_template
+    pad_bot.movey(-pad_y_pos)
+
+    # --- 3. Construct End Hubs ---
+    # Large solid blocks at the ends
+    hub_size = (0.7, 0.8)
+    hub_x_pos = 1.5
+    
+    hub_right = c << gf.components.rectangle(size=hub_size, layer=layer_main, centered=True)
+    hub_right.movex(hub_x_pos)
+    
+    hub_left = c << gf.components.rectangle(size=hub_size, layer=layer_main, centered=True)
+    hub_left.movex(-hub_x_pos)
+
+    # --- 4. Construct Thick Connecting Arms ---
+    # Connect pads to hubs with thick waveguides
+    
+    pad_edge_x = 0.7  # Half of pad width (1.4/2)
+    hub_inner_x = hub_x_pos - (hub_size[0]/2) + 0.1 # Overlap into hub
+    
+    # Target Y at the hub (slight offset creates the "V" separation)
+    hub_target_y = 0.15 
+    
+    # Top Right Arm
+    ptr = gf.Path([(pad_edge_x, pad_y_pos), (hub_inner_x, hub_target_y)])
+    c << gf.path.extrude(ptr, cross_section=xs_arm)
+
+    # Bottom Right Arm
+    pbr = gf.Path([(pad_edge_x, -pad_y_pos), (hub_inner_x, -hub_target_y)])
+    c << gf.path.extrude(pbr, cross_section=xs_arm)
+
+    # Top Left Arm
+    ptl = gf.Path([(-pad_edge_x, pad_y_pos), (-hub_inner_x, hub_target_y)])
+    c << gf.path.extrude(ptl, cross_section=xs_arm)
+
+    # Bottom Left Arm
+    pbl = gf.Path([(-pad_edge_x, -pad_y_pos), (-hub_inner_x, -hub_target_y)])
+    c << gf.path.extrude(pbl, cross_section=xs_arm)
+
+    return c
+
+if __name__ == "__main__":
+    device = photonic_racetrack_mzi_final()
+    device.show() 
+    device.write_gds("photonic_device_final.gds")
+    
+    # Output footprint check
+    print(f"Device Footprint: {device.dxsize:.2f} x {device.dysize:.2f} um")
+```

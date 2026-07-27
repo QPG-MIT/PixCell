@@ -1,0 +1,140 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_racetrack_heaters():
+    c = gf.Component()
+
+    # =======================================================================
+    # 1. Dimensions & Configuration
+    # =======================================================================
+    # Footprint: 5.5um x 3.0um
+    
+    # Outer dimensions
+    h_device = 3.0
+    w_device = 5.5
+    
+    # Ring parameters
+    w_ring = 0.5
+    # Radius calculation: Outer edge is at y = 1.5. Center-line is 1.5 - w/2.
+    r_ring = (h_device - w_ring) / 2.0  # (3.0 - 0.5)/2 = 1.25 um
+    
+    # Straight length calculation: 
+    # Total width = Length + 2 * (Radius + w/2)
+    # 5.5 = L + 3.0  => L = 2.5 um
+    l_straight = 2.5
+    
+    # Inner Structure Geometry (Heaters/Electrodes)
+    gap_center = 0.4        # Separation between left and right structures
+    y_offset_arm = 0.55     # Vertical offset from center axis
+    
+    l_pad = 0.7             # Length of the rectangular pad
+    w_pad = 0.4             # Width of the pad
+    l_taper = 0.3           # Length of the taper
+    w_wire = 0.15           # Width of the thin wire
+    r_wire = 0.6            # Bend radius of the inner wire
+    
+    # =======================================================================
+    # 2. Cross Sections
+    # =======================================================================
+    # FIX: Explicitly set 'radius' in cross_section to override default checks.
+    
+    xs_ring = gf.cross_section.cross_section(
+        width=w_ring, 
+        layer=(1, 0), 
+        radius=r_ring  # Sets the default/minimum radius to 1.25
+    )
+    
+    xs_pad = gf.cross_section.cross_section(
+        width=w_pad, 
+        layer=(1, 0)
+    )
+    
+    xs_wire = gf.cross_section.cross_section(
+        width=w_wire, 
+        layer=(1, 0),
+        radius=r_wire # Allow tight bends for the inner wire
+    )
+
+    # =======================================================================
+    # 3. Build Outer Racetrack Ring
+    # =======================================================================
+    
+    # Top Straight
+    wg_top = c << gf.components.straight(length=l_straight, cross_section=xs_ring)
+    # Move so the center of the waveguide is at y = +r_ring
+    wg_top.move((-l_straight/2, r_ring)) 
+    
+    # Right Bend (180 degrees, turns clockwise)
+    bend_r = c << gf.components.bend_circular(radius=r_ring, angle=-180, cross_section=xs_ring)
+    bend_r.connect("o1", wg_top.ports["o2"])
+    
+    # Bottom Straight
+    wg_bot = c << gf.components.straight(length=l_straight, cross_section=xs_ring)
+    wg_bot.connect("o1", bend_r.ports["o2"])
+    
+    # Left Bend (180 degrees, turns clockwise to close loop)
+    bend_l = c << gf.components.bend_circular(radius=r_ring, angle=-180, cross_section=xs_ring)
+    bend_l.connect("o1", wg_bot.ports["o2"])
+
+    # =======================================================================
+    # 4. Build Inner Heater/Electrode Arms
+    # =======================================================================
+    
+    # Sub-component for a single arm: Pad -> Taper -> Bent Wire
+    def create_arm():
+        arm = gf.Component()
+        
+        # 1. Rectangular Pad
+        p = arm << gf.components.straight(length=l_pad, cross_section=xs_pad)
+        
+        # 2. Taper (Width transition)
+        t = arm << gf.components.taper(
+            length=l_taper, 
+            width1=w_pad, 
+            width2=w_wire, 
+            layer=(1, 0)
+        )
+        t.connect("o1", p.ports["o2"])
+        
+        # 3. Curved Wire (Bends towards the horizontal center line)
+        b = arm << gf.components.bend_circular(
+            radius=r_wire, 
+            angle=-45, 
+            cross_section=xs_wire
+        )
+        b.connect("o1", t.ports["o2"])
+        
+        # Expose port for placement
+        arm.add_port("o1", port=p.ports["o1"])
+        return arm
+
+    # Create the template arm
+    arm_template = create_arm()
+    
+    # Placement Calculations
+    x_off = gap_center / 2.0
+    
+    # -- Top Right --
+    tr = c << arm_template
+    tr.move((x_off, y_offset_arm))
+    
+    # -- Bottom Right (Mirror Top-Right vertically) --
+    br = c << arm_template
+    br.mirror(p1=(0,0), p2=(1,0)) # Mirror across X-axis
+    br.move((x_off, -y_offset_arm))
+    
+    # -- Top Left (Mirror Top-Right horizontally) --
+    tl = c << arm_template
+    tl.mirror(p1=(0,0), p2=(0,1)) # Mirror across Y-axis
+    tl.move((-x_off, y_offset_arm))
+    
+    # -- Bottom Left (Rotate Top-Right 180 degrees) --
+    bl = c << arm_template
+    bl.rotate(180)
+    bl.move((-x_off, -y_offset_arm))
+
+    return c
+
+if __name__ == "__main__":
+    device = device_racetrack_heaters()
+    device.write_gds("racetrack_heaters.gds")

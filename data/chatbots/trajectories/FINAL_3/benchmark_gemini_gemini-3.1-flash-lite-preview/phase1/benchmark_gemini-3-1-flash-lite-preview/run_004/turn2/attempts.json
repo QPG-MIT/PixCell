@@ -1,0 +1,39 @@
+{
+  "turn": 2,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:56.538938",
+      "api_duration_seconds": 15.186038970947266,
+      "usage": {
+        "input_tokens": 5177,
+        "output_tokens": 804,
+        "total_tokens": 8459
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_3/benchmark_gemini_gemini-3.1-flash-lite-preview/phase1/benchmark_gemini-3-1-flash-lite-preview/run_004/turn2/generated_component.py\", line 42, in <module>\n    device = smooth_coupler_device()\n  File \"/Users/aadarwal/Desktop/HOMI/.ve",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:11:13.091505",
+      "api_duration_seconds": 18.753039836883545,
+      "usage": {
+        "input_tokens": 6522,
+        "output_tokens": 682,
+        "total_tokens": 9828
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11699,
+    "output_tokens": 1486,
+    "total_tokens": 18287
+  }
+}

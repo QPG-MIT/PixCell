@@ -1,0 +1,89 @@
+import gdsfactory as gf
+from gdsfactory.components import straight, bend_circular, rectangle
+from gdsfactory.cross_section import strip
+
+
+@gf.cell
+def my_device():
+    c = gf.Component("tunable_mzi")
+
+    # Parameters
+    wg_width = 0.5
+    straight_length = 20
+    bend_radius = 5
+    taper_length = 5
+    heater_width = 0.4
+    heater_length = 10
+    splitter_length = 1
+    splitter_width = 2
+    layer = (1,0) # GDS layer for the geometry
+
+
+    # Cross-section
+    xs = strip(width=wg_width)
+
+    # Components
+    # input straight section
+    input_straight = c << straight(length=splitter_length, cross_section=xs)
+
+    # bends
+    bend1 = c << bend_circular(radius=bend_radius, angle=90, cross_section=xs)
+    bend2 = c << bend_circular(radius=bend_radius, angle=90, cross_section=xs)
+    bend3 = c << bend_circular(radius=bend_radius, angle=-90, cross_section=xs)
+    bend4 = c << bend_circular(radius=bend_radius, angle=-90, cross_section=xs)
+
+    # Straight waveguides
+    upper_straight = c << straight(length=straight_length, cross_section=xs)
+    lower_straight = c << straight(length=straight_length, cross_section=xs)
+
+    # Heater
+    heater = c << rectangle(size=(heater_length, heater_width), layer = layer)
+
+    # Output section
+    output_straight = c << straight(length=splitter_length, cross_section=xs)
+
+    splitter = c << rectangle(size=(splitter_width, 2*bend_radius+wg_width), layer=layer)
+    splitter_hole = c << rectangle(size=(heater_length, wg_width), centered = True, layer=layer)
+
+
+
+    # Placement
+    bend1.connect("o1", input_straight.ports["o2"])
+    bend4.connect("o1", input_straight.ports["o2"])
+
+    upper_straight.connect("o1", bend1.ports["o2"])
+    lower_straight.connect("o1", bend4.ports["o2"])
+
+    bend2.connect("o1", upper_straight.ports["o2"])
+    bend3.connect("o1", lower_straight.ports["o2"])
+
+    output_straight.connect("o2", bend2.ports["o2"])
+    output_straight.connect("o2", bend3.ports["o2"])
+    output_straight.rotate(angle = 180)
+    output_straight.movex(splitter_length)
+    output_straight.movey(0)
+
+    splitter.movex(splitter_length)
+    splitter.movey(0)
+
+    splitter_hole.movex(splitter_length)
+    splitter_hole.movey(0)
+    #heater.movex(input_straight.xmin + straight_length/2)
+    #heater.movey(input_straight.ymin + bend_radius+wg_width/2)
+
+
+    # Ports
+    c.add_port("o1", port=input_straight.ports["o1"])
+    c.add_port("o2", port=output_straight.ports["o1"])
+
+    full_device = gf.Component("full_device")
+    full_device << c
+    full_device = gf.boolean(full_device, splitter_hole, operation="not", layer=layer)
+
+    return full_device
+
+
+if __name__ == "__main__":
+    device = my_device()
+    device.show()
+    device.write_gds("tunable_mzi.gds")

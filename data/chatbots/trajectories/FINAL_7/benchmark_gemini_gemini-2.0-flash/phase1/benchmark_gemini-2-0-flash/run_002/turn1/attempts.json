@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.704274",
+      "api_duration_seconds": 15.080942153930664,
+      "usage": {
+        "input_tokens": 3894,
+        "output_tokens": 1759,
+        "total_tokens": 5653
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ModuleNotFoundError: No module named 'gdsfactory.geometry'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:26.166596",
+      "api_duration_seconds": 10.460291147232056,
+      "usage": {
+        "input_tokens": 5678,
+        "output_tokens": 1397,
+        "total_tokens": 7075
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ModuleNotFoundError: No module named 'gdsfactory.difraction'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:38.407465",
+      "api_duration_seconds": 8.541335105895996,
+      "usage": {
+        "input_tokens": 7101,
+        "output_tokens": 1293,
+        "total_tokens": 8394
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o1' is not a valid port name or index. Available ports: ['e1', 'e2', 'e3', 'e4']\"\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_7/benchmark_gemini_gemini-2.0-flash/phase1/benchmark_gemini-2-0-flash/run_002/turn1/generated_component.py\", line 90, in <module>\n    device = my_device()\n  File \"/Users/aad",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16673,
+    "output_tokens": 4449,
+    "total_tokens": 21122
+  }
+}

@@ -1,0 +1,83 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler():
+    c = gf.Component()
+    
+    # 1. Base Parameters & Constraints
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Constraints required to perfectly hit a 120 x 4 footprint bounding box
+    L_total = 120.0
+    W_total = 4.0
+    wg_width = 0.5
+    gap = 0.2
+
+    # Derived geometric parameters
+    # To achieve a total bounding height of 4.0 with 0.5um waveguides, 
+    # the centers must be vertically separated by 3.5um (+/- 1.75).
+    y_port = (W_total - wg_width) / 2.0  
+    
+    # The central coupling section has an inner gap of 0.2um.
+    y_mid = (gap + wg_width) / 2.0       
+
+    # Calculate horizontal distribution (S-bends, Middle section, and Outer port segments)
+    dx_sbend = 30.0
+    L_mid = 40.0
+    L_end = (L_total - L_mid - 2 * dx_sbend) / 2.0 
+
+    # S-bend vertical shifts required to connect port level and mid level
+    dy_shift = y_port - y_mid
+
+    # 2. Instantiate Base Primitives
+    str_end = gf.components.straight(length=L_end, cross_section=xs)
+    str_mid = gf.components.straight(length=L_mid, cross_section=xs)
+    
+    # S-bend pointing down and S-bend pointing up
+    sbend_down = gf.components.bend_s(size=(dx_sbend, -dy_shift), cross_section=xs)
+    sbend_up = gf.components.bend_s(size=(dx_sbend, dy_shift), cross_section=xs)
+
+    # 3. Assemble Components (Top Arm)
+    t_end1 = c << str_end
+    t_end1.move((0, y_port))
+
+    t_sbend1 = c << sbend_down
+    t_sbend1.connect("o1", t_end1.ports["o2"])
+
+    t_mid = c << str_mid
+    t_mid.connect("o1", t_sbend1.ports["o2"])
+
+    t_sbend2 = c << sbend_up
+    t_sbend2.connect("o1", t_mid.ports["o2"])
+
+    t_end2 = c << str_end
+    t_end2.connect("o1", t_sbend2.ports["o2"])
+
+    # 4. Assemble Components (Bottom Arm)
+    b_end1 = c << str_end
+    b_end1.move((0, -y_port))
+
+    b_sbend1 = c << sbend_up
+    b_sbend1.connect("o1", b_end1.ports["o2"])
+
+    b_mid = c << str_mid
+    b_mid.connect("o1", b_sbend1.ports["o2"])
+
+    b_sbend2 = c << sbend_down
+    b_sbend2.connect("o1", b_mid.ports["o2"])
+
+    b_end2 = c << str_end
+    b_end2.connect("o1", b_sbend2.ports["o2"])
+
+    # 5. Export Exterior Ports
+    c.add_port("o1", port=t_end1.ports["o1"])
+    c.add_port("o2", port=b_end1.ports["o1"])
+    c.add_port("o3", port=t_end2.ports["o2"])
+    c.add_port("o4", port=b_end2.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Create the instance and save to a GDS file
+    coupler = directional_coupler()
+    coupler.write_gds("directional_coupler.gds")

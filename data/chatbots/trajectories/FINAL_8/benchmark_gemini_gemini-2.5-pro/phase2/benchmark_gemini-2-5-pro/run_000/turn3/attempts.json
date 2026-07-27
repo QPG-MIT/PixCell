@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:25:15.893501",
+      "api_duration_seconds": 85.62149095535278,
+      "usage": {
+        "input_tokens": 3842,
+        "output_tokens": 1702,
+        "total_tokens": 14941
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 8.0 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:26:42.880137",
+      "api_duration_seconds": 24.636352062225342,
+      "usage": {
+        "input_tokens": 5589,
+        "output_tokens": 1488,
+        "total_tokens": 8173
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: bad operand type for unary -: 'tuple'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:27:08.810120",
+      "api_duration_seconds": 29.15432095527649,
+      "usage": {
+        "input_tokens": 7103,
+        "output_tokens": 1507,
+        "total_tokens": 10743
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16534,
+    "output_tokens": 4697,
+    "total_tokens": 33857
+  }
+}

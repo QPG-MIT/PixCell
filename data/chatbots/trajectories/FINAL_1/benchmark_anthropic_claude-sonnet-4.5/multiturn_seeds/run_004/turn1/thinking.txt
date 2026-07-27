@@ -1,0 +1,15 @@
+The error is caused by the rotation operation creating off-grid positions. When we rotate the middle waveguide, it creates non-Manhattan geometry that results in off-grid instances. I need to either:
+1. Flatten the component before returning
+2. Use `@cell(check_instances=False)`
+3. Avoid rotation and create the diagonal effect differently
+
+Looking at the image more carefully, the middle waveguide might not actually be rotated - it might just be positioned differently or the visual effect is from the image. Let me reconsider the structure.
+
+Actually, looking at the three black shapes:
+1. Top: has a bulge/wider section
+2. Middle: appears to be a tapered or varying width waveguide
+3. Bottom: has a taper at the end
+
+Instead of rotating, I should try to match the shapes more directly without rotation. Or I can simply flatten the component.
+
+The easiest fix is to add `c.flatten()` before returning, or use the decorator parameter. Let me go with flattening the component.

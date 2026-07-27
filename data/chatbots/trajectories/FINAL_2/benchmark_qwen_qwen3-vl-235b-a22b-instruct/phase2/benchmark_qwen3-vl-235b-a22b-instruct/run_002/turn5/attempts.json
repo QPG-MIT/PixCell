@@ -1,0 +1,53 @@
+{
+  "turn": 5,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:30:28.334228",
+      "api_duration_seconds": 11.752081871032715,
+      "usage": {
+        "input_tokens": 5310,
+        "output_tokens": 283,
+        "total_tokens": 5593
+      },
+      "success": false,
+      "failure_type": "no_code_extracted",
+      "error_message": null,
+      "code_extracted": false
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:30:40.086343",
+      "api_duration_seconds": 85.4168848991394,
+      "usage": {
+        "input_tokens": 11137,
+        "output_tokens": 1847,
+        "total_tokens": 12984
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.components' has no attribute 'polygon'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:32:06.740531",
+      "api_duration_seconds": 150.52122688293457,
+      "usage": {
+        "input_tokens": 13019,
+        "output_tokens": 3561,
+        "total_tokens": 16580
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 29466,
+    "output_tokens": 5691,
+    "total_tokens": 35157
+  }
+}

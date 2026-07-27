@@ -1,0 +1,67 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler() -> gf.Component:
+    """
+    Creates a directional coupler matching the target footprint of [18, 3].
+    
+    Dimensions derived from footprint [18, 3]:
+    - Total length = 18.0
+    - Total height = 3.0
+    - Waveguide width = 0.5
+    - Y-center of top ports = 1.25 (top edge = 1.5)
+    - Y-center of bottom ports = -1.25 (bottom edge = -1.5)
+    - Coupling gap = 0.2
+    - Y-center of top straight section = 0.35 (bottom edge = 0.1)
+    - Y-center of bottom straight section = -0.35 (top edge = -0.1)
+    - S-bend dy = 1.25 - 0.35 = 0.9
+    - Straight coupling length = 4.0
+    - S-bend dx = (18.0 - 4.0) / 2 = 7.0
+    """
+    c = gf.Component("directional_coupler")
+
+    # Define standard cross section as specified in catalog
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    # Parameters
+    L_straight = 4.0
+    dx_bend = 7.0
+    dy_bend = 0.9
+
+    # Create primitives
+    straight_mid = gf.components.straight(length=L_straight, cross_section=xs)
+    bend_down = gf.components.bend_s(size=(dx_bend, -dy_bend), cross_section=xs)
+    bend_up = gf.components.bend_s(size=(dx_bend, dy_bend), cross_section=xs)
+
+    # --- Assemble Top Waveguide ---
+    top_left = c << bend_down
+    top_mid = c << straight_mid
+    top_right = c << bend_up
+
+    # Position first component and connect the rest sequentially
+    top_left.move((0, 1.25))
+    top_mid.connect("o1", top_left.ports["o2"])
+    top_right.connect("o1", top_mid.ports["o2"])
+
+    # --- Assemble Bottom Waveguide ---
+    bot_left = c << bend_up
+    bot_mid = c << straight_mid
+    bot_right = c << bend_down
+
+    # Position first component and connect the rest sequentially
+    bot_left.move((0, -1.25))
+    bot_mid.connect("o1", bot_left.ports["o2"])
+    bot_right.connect("o1", bot_mid.ports["o2"])
+
+    # Expose external ports following standard component assembly pattern
+    c.add_port("o1", port=top_left.ports["o1"])   # Top left input
+    c.add_port("o2", port=bot_left.ports["o1"])   # Bottom left input
+    c.add_port("o3", port=top_right.ports["o2"])  # Top right output
+    c.add_port("o4", port=bot_right.ports["o2"])  # Bottom right output
+
+    return c
+
+if __name__ == "__main__":
+    # Create and save the device to GDS file
+    device = directional_coupler()
+    device.write_gds("directional_coupler.gds")

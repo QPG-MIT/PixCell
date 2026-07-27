@@ -1,0 +1,118 @@
+Turn 2 Response:
+
+To improve the design fidelity and match the original image, I have refined the geometric parameters. 
+
+**Adjustments made:**
+1.  **Reduced Straight Section Length**: The original image shows the side arms beginning to diverge relatively early. I reduced `l_straight` to 6.0 µm to allow for a longer, smoother bending section.
+2.  **Optimized Transverse Dimensions**: To maximize the visual "flare" within the 1.7 µm footprint constraint, I tightened the input dimensions (narrower waveguides and gaps) and increased the output waveguide width.
+    *   Input: Tighter confinement (`gap=0.1`, `width=0.15`).
+    *   Output: Wider waveguides (`width=0.45`) at the footprint edge.
+    *   This increases the vertical shift (`dy`), making the S-bend more pronounced and matching the "opening up" shape of the reference.
+3.  **Grid Snapping**: Kept `c.flatten()` and added coordinate rounding to ensure valid manufacturing geometry.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_inverse_taper():
+    c = gf.Component()
+
+    # --- Dimensions & Parameters ---
+    length_total = 40.0
+    height_footprint = 1.7
+    
+    # Longitudinal segments
+    # Reduced straight section to allow for a smoother, longer flare
+    l_straight = 6.0 
+    l_bend = length_total - l_straight # 34.0
+    l_center_taper = 24.0
+    
+    # Transverse dimensions (widths)
+    # Tightened input parameters to maximize the expansion ratio within the footprint
+    w_center_in = 0.4       
+    w_center_tip = 0.05     
+    w_side_in = 0.15        # Narrower input for side arms
+    w_side_out = 0.45       # Wider output for side arms
+    gap_in = 0.1            # Tighter gap
+    
+    # Layer definition
+    layer_wg = (1, 0)
+    
+    # --- Y-Coordinate Calculations ---
+    # Center axis is y=0.
+    # Calculate Y center for side waveguides at input
+    y_side_in = (w_center_in / 2) + gap_in + (w_side_in / 2)
+    
+    # Calculate Y center for side waveguides at output
+    # Total height is 1.7, so top boundary is y = 0.85
+    y_max = height_footprint / 2
+    y_side_out = y_max - (w_side_out / 2)
+    
+    # The vertical shift required for the S-bend
+    dy_shift = y_side_out - y_side_in
+
+    # --- 1. Central Taper ---
+    taper = c << gf.components.taper(
+        length=l_center_taper,
+        width1=w_center_in,
+        width2=w_center_tip,
+        layer=layer_wg
+    )
+    taper.move((0, 0))
+
+    # --- 2. Side Arms Configuration ---
+    xs_in = gf.cross_section.cross_section(width=w_side_in, layer=layer_wg)
+    xs_out = gf.cross_section.cross_section(width=w_side_out, layer=layer_wg)
+
+    # --- Straight Sections ---
+    # Top Straight
+    straight_top = c << gf.components.straight(length=l_straight, cross_section=xs_in)
+    straight_top.move((0, y_side_in))
+    
+    # Bottom Straight
+    straight_bot = c << gf.components.straight(length=l_straight, cross_section=xs_in)
+    straight_bot.move((0, -y_side_in))
+
+    # --- S-Bend Paths with Width Transition ---
+    # Generate points for a smooth cosine S-bend
+    num_points = 300 
+    x_pts = np.linspace(0, l_bend, num_points)
+    
+    # Cosine S-bend function: y(x) = dy * (1 - cos(pi * x / L)) / 2
+    curve_shape = (1 - np.cos(np.pi * x_pts / l_bend)) / 2
+    
+    # Top Path (moves +dy)
+    y_pts_top = dy_shift * curve_shape
+    pts_top = np.column_stack((x_pts, y_pts_top))
+    pts_top = np.round(pts_top, 4) # Rounding helps consistency
+    path_top = gf.Path(pts_top)
+    
+    # Bottom Path (moves -dy)
+    y_pts_bot = -dy_shift * curve_shape
+    pts_bot = np.column_stack((x_pts, y_pts_bot))
+    pts_bot = np.round(pts_bot, 4)
+    path_bot = gf.Path(pts_bot)
+    
+    # Create transition object (sine width transition)
+    # Expands width from 0.15 to 0.45 while bending
+    transition = gf.path.transition(xs_in, xs_out, width_type='sine')
+
+    # Extrude Top Bend
+    bend_top = c << gf.path.extrude_transition(path_top, transition)
+    bend_top.connect("o1", straight_top.ports["o2"])
+    
+    # Extrude Bottom Bend
+    bend_bot = c << gf.path.extrude_transition(path_bot, transition)
+    bend_bot.connect("o1", straight_bot.ports["o2"])
+
+    # --- Flatten ---
+    # Required to snap vertices to grid and fix "off-grid instances" errors
+    c.flatten()
+
+    return c
+
+# Generate and save
+device = device_inverse_taper()
+device.write_gds("inverse_taper_coupler.gds")
+```

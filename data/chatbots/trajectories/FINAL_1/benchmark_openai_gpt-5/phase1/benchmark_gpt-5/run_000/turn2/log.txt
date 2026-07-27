@@ -1,0 +1,79 @@
+Turn 2 Response:
+
+```python
+# Revised geometry: keep the slit open at the left and create a solid body to the right
+# Built only from parametric primitives; produces a GDS file.
+
+import gdsfactory as gf
+
+
+@gf.cell
+def right_body() -> gf.Component:
+    """
+    Right solid body with a narrow 'nozzle' opening to the left.
+    Built from two S-bends (top/bottom) plus a right rectangle that merges them.
+    """
+    c = gf.Component()
+
+    # Waveguide section (defines the top/bottom boundaries of the body)
+    w = 0.70          # boundary width
+    gap = 0.10        # slit opening between top & bottom at the left
+    dx = 10.0         # S-bend length
+    dy = 0.40         # vertical offset (keeps overall height <= 1.7 um)
+
+    xs = gf.cross_section.cross_section(width=w, layer=(1, 0))
+
+    # S-bends (left ends form the slit, right ends are horizontal)
+    s_top = c << gf.components.bend_s(size=(dx, +dy), cross_section=xs)
+    s_top.movey(+gap / 2)
+
+    s_bot = c << gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+    s_bot.movey(-gap / 2)
+
+    # Right rectangular block that merges the two branches into a single solid body
+    H = 2 * (w / 2 + dy) + gap  # = 1.7 um target
+    W = 14.0                    # width of the solid block to the right
+    rect = c << gf.components.rectangle(size=(W, H), layer=(1, 0), centered=False)
+    rect.move((dx, -H / 2))     # left edge aligns to S-bend outputs, centered in y
+
+    # Union to get a single body while preserving the left slit
+    u1 = gf.boolean(s_top, rect, operation="or", layer=(1, 0))
+    body = gf.boolean(u1, s_bot, operation="or", layer=(1, 0))
+    return body
+
+
+@gf.cell
+def three_tapers() -> gf.Component:
+    """Three left tapers aiming toward the slit."""
+    c = gf.Component()
+    L = 18.0
+    w1 = 0.45
+    w2 = 0.06
+    t_mid = c << gf.components.taper(length=L, width1=w1, width2=w2, layer=(1, 0))
+    t_top = c << gf.components.taper(length=L, width1=w1, width2=w2, layer=(1, 0))
+    t_bot = c << gf.components.taper(length=L, width1=w1, width2=w2, layer=(1, 0))
+    t_top.movey(+0.50)
+    t_bot.movey(-0.50)
+    return c
+
+
+@gf.cell
+def device() -> gf.Component:
+    """Complete device within ~40 x 1.7 µm footprint."""
+    c = gf.Component()
+
+    left = c << three_tapers()
+    left.move((0, 0))
+
+    right = c << right_body()
+    # Place the solid body so total length is ~40 µm and there is a symmetric gap
+    right.movex(26.0)
+
+    return c
+
+
+if __name__ == "__main__":
+    D = device()
+    D.write_gds("recreated_device.gds")
+    print("Wrote GDS: recreated_device.gds")
+```

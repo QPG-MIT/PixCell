@@ -1,0 +1,87 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreated_device_final():
+    """
+    Recreates the device silhouette with refined proportions to match the target.
+    Footprint: 10um (Width) x 25um (Height)
+    
+    Breakdown:
+    - Bottom Pin: 3.0 um
+    - Main Body: 12.0 um
+    - Top Pins: 10.0 um (2.5um taper + 7.5um straight)
+    """
+    layer = (1, 0)
+    c = gf.Component("device_silhouette_v4")
+    
+    # --- 1. MAIN BODY ---
+    # Centered at (0, 6) so bottom edge is at y=0 and top is at y=12
+    body_w = 10.0
+    body_h = 12.0
+    body = c << gf.components.rectangle(size=(body_w, body_h), layer=layer)
+    body.movex(-body_w / 2)
+    body.movey(0)
+    
+    # --- 2. TOP PINS ASSEMBLY ---
+    # Each pin: Tapered base + straight rectangular neck
+    tp_taper_h = 2.5
+    tp_straight_h = 7.5
+    tp_base_w = 1.8   # Flare where it meets the body
+    tp_tip_w = 1.0    # Consistent neck width
+    
+    # Component to group protrusions for the boolean operation
+    protrusions = gf.Component("protrusions")
+    
+    # Pin spacing (Centers at -3.75, -1.25, 1.25, 3.75 provides even distribution)
+    x_offsets = [-3.75, -1.25, 1.25, 3.75]
+    
+    for x in x_offsets:
+        # Create a single pin sub-assembly
+        pin_part = gf.Component()
+        
+        # Taper at the base
+        tap = pin_part << gf.components.taper(
+            length=tp_taper_h, width1=tp_base_w, width2=tp_tip_w, layer=layer
+        )
+        
+        # Straight neck
+        xs_tip = gf.cross_section.cross_section(width=tp_tip_w, layer=layer)
+        strt = pin_part << gf.components.straight(length=tp_straight_h, cross_section=xs_tip)
+        strt.connect("o1", tap.ports["o2"])
+        
+        # Position the pin on top of the body (y=12)
+        p_ref = protrusions << pin_part
+        p_ref.rotate(90)
+        p_ref.move((x, 12.0))
+
+    # --- 3. BOTTOM PIN ---
+    # A single small taper at the bottom center
+    bp_h = 3.0
+    bp_w1 = 2.0
+    bp_w2 = 1.0
+    btap = protrusions << gf.components.taper(
+        length=bp_h, width1=bp_w1, width2=bp_w2, layer=layer
+    )
+    btap.rotate(-90)
+    btap.move((0, 0)) # Connects to the bottom edge of body at y=0
+
+    # --- 4. FINAL ASSEMBLY ---
+    # Use boolean OR to create a single continuous silhouette shape
+    final_shape = gf.boolean(A=body, B=protrusions, operation="or", layer=layer)
+    
+    # Final check of dimensions
+    # Current Y: -3 (bottom pin tip) to 22 (top pin tip) -> 25um
+    # Current X: -5 to 5 -> 10um
+    
+    return final_shape
+
+if __name__ == "__main__":
+    # Create the component
+    device = recreated_device_final()
+    
+    # Export for visualization
+    filename = "final_device_recreation.gds"
+    device.write_gds(filename)
+    
+    print(f"Success: '{filename}' generated.")
+    print(f"Dimensions: {device.xsize:.2f}um wide x {device.ysize:.2f}um high")

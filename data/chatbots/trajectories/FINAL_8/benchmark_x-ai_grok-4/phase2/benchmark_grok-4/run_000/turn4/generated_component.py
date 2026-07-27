@@ -1,0 +1,53 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+    rx = 60.0
+
+    # Create upper_clip component with moved rectangle reference
+    upper_clip = gf.Component()
+    upper_rect_ref = upper_clip << gf.components.rectangle(size=(120, 4), layer=layer, centered=True)
+    upper_rect_ref.move((0, 2))
+
+    # Create lower_clip component with moved rectangle reference
+    lower_clip = gf.Component()
+    lower_rect_ref = lower_clip << gf.components.rectangle(size=(120, 4), layer=layer, centered=True)
+    lower_rect_ref.move((0, -2))
+
+    # Function to create diamond
+    def diamond(rx, ry, layer):
+        points = [(0, ry), (rx, 0), (0, -ry), (-rx, 0)]
+        d = gf.Component()
+        d.add_polygon(points, layer=layer)
+        return d
+
+    # List of (ry_inner, ry_outer) for solid and thin lines, adjusted for larger gap with more thin lines
+    ry_pairs = [
+        (0.6, 1.0),  # solid, further increased inner for larger gap
+        (1.05, 1.10),  # thin 1
+        (1.15, 1.20),  # thin 2
+        (1.25, 1.30),  # thin 3
+        (1.35, 1.40),  # thin 4
+        (1.45, 1.50),  # thin 5
+        (1.55, 1.60),  # thin 6
+        (1.65, 1.70),  # thin 7
+        (1.75, 1.80),  # thin 8
+        (1.85, 1.90),  # thin 9
+        (1.95, 2.00),  # thin 10
+    ]
+
+    for ry_inner, ry_outer in ry_pairs:
+        outer = diamond(rx, ry_outer, layer)
+        inner = diamond(rx, ry_inner, layer)
+        ring = gf.boolean(outer, inner, operation="not", layer=layer)
+        upper_ring = gf.boolean(ring, upper_clip, operation="and", layer=layer)
+        lower_ring = gf.boolean(ring, lower_clip, operation="and", layer=layer)
+        c << upper_ring
+        c << lower_ring
+
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")

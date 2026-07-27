@@ -1,0 +1,97 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler():
+    c = gf.Component()
+
+    # 1. Define Design Parameters
+    # Constraints: Footprint 120um x 4um
+    total_length = 120.0
+    total_height = 4.0
+    
+    # Waveguide specs
+    wg_width = 0.5
+    gap = 0.2
+    layer = (1, 0)
+    
+    # Define Cross Section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+
+    # 2. Calculate Derived Geometry
+    # Longitudinal partition: 40um bends + 40um straight + 40um bends = 120um
+    length_straight = 40.0
+    length_bend = (total_length - length_straight) / 2
+    
+    # Vertical partition:
+    # Outer ports separation (to fit in 4um height):
+    # Center y = +/- (4.0 - 0.5)/2 = +/- 1.75
+    y_outer_top = 1.75
+    
+    # Inner coupling separation:
+    # Center y = +/- (gap + width)/2 = +/- 0.35
+    y_inner_top = (gap + wg_width) / 2
+    
+    # Calculate vertical shift (dy) for the S-bends
+    dy = y_outer_top - y_inner_top # 1.75 - 0.35 = 1.4
+
+    # 3. Create Primitives
+    
+    # Central Straight Coupler Section
+    # Note: coupler_straight creates ports o1(top-left), o2(bot-left), o3(top-right), o4(bot-right)
+    coupler_core = c << gf.components.coupler_straight(
+        length=length_straight, 
+        gap=gap, 
+        cross_section=xs
+    )
+
+    # Define S-Bend primitives
+    # Top-side bends need to shift vertically by 'dy'.
+    # bend_s size parameter is (length, height_change)
+    
+    # Bend for Top Left: starts high, goes down to coupler.
+    # Since we connect the end (o2) to the coupler, and the bend travels "forward",
+    # we define a bend that drops down (negative dy).
+    bend_down = gf.components.bend_s(size=(length_bend, -dy), cross_section=xs)
+    
+    # Bend for Bottom Left: starts low, goes up to coupler.
+    bend_up = gf.components.bend_s(size=(length_bend, dy), cross_section=xs)
+
+    # 4. Assembly (Place and Connect)
+    
+    # -- Left Side (Inputs) --
+    
+    # Top Left Arm
+    tl = c << bend_down
+    # Connect end of S-bend to Top-Left of coupler
+    tl.connect("o2", coupler_core.ports["o1"])
+    
+    # Bottom Left Arm
+    bl = c << bend_up
+    # Connect end of S-bend to Bottom-Left of coupler
+    bl.connect("o2", coupler_core.ports["o2"])
+    
+    # -- Right Side (Outputs) --
+    
+    # Top Right Arm
+    # We use the 'bend_up' geometry here because it goes UP from the coupler to the output.
+    tr = c << bend_up
+    # Connect start of S-bend to Top-Right of coupler
+    tr.connect("o1", coupler_core.ports["o3"])
+    
+    # Bottom Right Arm
+    # We use 'bend_down' geometry here because it goes DOWN from the coupler to the output.
+    br = c << bend_down
+    # Connect start of S-bend to Bottom-Right of coupler
+    br.connect("o1", coupler_core.ports["o4"])
+
+    # 5. Add Ports
+    c.add_port("o1", port=tl.ports["o1"]) # Top Input
+    c.add_port("o2", port=bl.ports["o1"]) # Bottom Input
+    c.add_port("o3", port=tr.ports["o2"]) # Top Output
+    c.add_port("o4", port=br.ports["o2"]) # Bottom Output
+
+    return c
+
+# Create the device
+device = directional_coupler()
+device.write_gds("directional_coupler.gds")

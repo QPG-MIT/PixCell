@@ -1,0 +1,68 @@
+import gdsfactory as gf
+
+@gf.cell
+def adiabatic_coupler():
+    c = gf.Component()
+    
+    # 1. Dimensions & Constraints
+    # Footprint constraint: 18um x 3um
+    total_length = 18.0
+    total_height = 3.0
+    
+    # Visual Adjustments:
+    # The original image shows thick waveguides relative to the gap.
+    # Increasing width and decreasing gap to match the "heavy" visual weight.
+    wg_width = 1.0 
+    min_gap = 0.2
+    
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # 2. Geometric Calculations
+    # Split the length into converging and diverging halves
+    half_length = total_length / 2.0
+    
+    # Calculate Y positions relative to center (y=0)
+    # Start Position: Waveguide is flush with the top edge of the 3um height
+    # y = (Height/2) - (Width/2)
+    y_top_start = (total_height / 2.0) - (wg_width / 2.0)
+    
+    # Waist Position: Waveguide is flush with the central gap
+    # y = (Gap/2) + (Width/2)
+    y_top_waist = (min_gap / 2.0) + (wg_width / 2.0)
+    
+    # Calculate the vertical displacement (dy) for the S-bend
+    # Top arm goes from Start (High) to Waist (Low) -> dy is negative
+    dy = y_top_waist - y_top_start
+
+    # 3. Build Top Arm (Down then Up)
+    # Converging section
+    t1 = c << gf.components.bend_s(size=(half_length, dy), cross_section=xs)
+    t1.move((0, y_top_start))
+    
+    # Diverging section (dy is inverted to go back up)
+    t2 = c << gf.components.bend_s(size=(half_length, -dy), cross_section=xs)
+    t2.connect("o1", t1.ports["o2"])
+
+    # 4. Build Bottom Arm (Up then Down)
+    # Symmetric start position
+    y_bot_start = -y_top_start
+    
+    # Converging section (goes UP, so displacement is -dy)
+    b1 = c << gf.components.bend_s(size=(half_length, -dy), cross_section=xs)
+    b1.move((0, y_bot_start))
+    
+    # Diverging section (goes DOWN, so displacement is dy)
+    b2 = c << gf.components.bend_s(size=(half_length, dy), cross_section=xs)
+    b2.connect("o1", b1.ports["o2"])
+
+    # 5. Expose Ports
+    c.add_port("o1", port=t1.ports["o1"])
+    c.add_port("o2", port=b1.ports["o1"])
+    c.add_port("o3", port=t2.ports["o2"])
+    c.add_port("o4", port=b2.ports["o2"])
+
+    return c
+
+# Generate and save the device
+device = adiabatic_coupler()
+device.write_gds("adiabatic_coupler.gds")

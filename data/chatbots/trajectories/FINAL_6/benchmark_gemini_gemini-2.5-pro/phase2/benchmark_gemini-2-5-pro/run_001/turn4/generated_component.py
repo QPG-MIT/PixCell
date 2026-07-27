@@ -1,0 +1,87 @@
+import gdsfactory as gf
+
+@gf.cell
+def create_arm():
+    """
+    Creates a single arm of the device, consisting of a petal and a stem.
+    This component is designed to be the basic building block, which can
+    then be rotated to form the final device.
+    """
+    # 1. Define parameters for a single arm.
+    petal_length = 1.9
+    petal_max_width = 1.6
+    stem_length = 0.45
+    stem_width = 0.4
+    min_width = 0.002
+    taper_half_length = petal_length / 2.0
+    target_layer = (1, 0)
+    
+    arm = gf.Component("single_arm")
+
+    # 2. Create the two tapers that form the petal body.
+    # These are primitive shapes and correctly accept a 'layer' argument.
+    taper_in = gf.components.taper_parabolic(
+        length=taper_half_length,
+        width1=min_width,
+        width2=petal_max_width,
+        layer=target_layer
+    )
+    taper_out = gf.components.taper_parabolic(
+        length=taper_half_length,
+        width1=petal_max_width,
+        width2=min_width,
+        layer=target_layer
+    )
+    
+    # 3. Create the rectangular stem.
+    # FIX: gf.components.straight requires a cross_section object to define
+    # its layer and width, not direct arguments for them.
+    
+    # Define the cross_section for the stem.
+    stem_xs = gf.cross_section.cross_section(width=stem_width, layer=target_layer)
+    
+    # Create the stem using the length and the defined cross_section.
+    stem = gf.components.straight(
+        length=stem_length, 
+        cross_section=stem_xs
+    )
+    
+    # 4. Add and connect the parts sequentially to form the complete arm.
+    ref_taper_in = arm.add_ref(taper_in)
+    ref_taper_out = arm.add_ref(taper_out)
+    ref_taper_out.connect("o1", ref_taper_in.ports["o2"])
+    
+    ref_stem = arm.add_ref(stem)
+    ref_stem.connect("o1", ref_taper_out.ports["o2"])
+
+    return arm
+
+
+@gf.cell
+def create_new_device():
+    """
+    Creates the target shape by assembling four rotated "arm" components.
+    This constructive approach is more robust and directly models the
+    target geometry.
+    """
+    c = gf.Component("petal_cross_constructive")
+
+    # 1. Create the basic building block: a single arm.
+    arm_unit = create_arm()
+
+    # 2. Add four instances of the arm, rotated into position.
+    for angle in [0, 90, 180, 270]:
+        arm_ref = c.add_ref(arm_unit)
+        arm_ref.rotate(angle)
+
+    # 3. Flatten the component to merge the overlapping bases of the arms
+    # at the origin into a single, clean polygon.
+    c.flatten()
+
+    return c
+
+# Instantiate the final component
+device = create_new_device()
+
+# Write the component to a GDS file for output
+device.write_gds("device.gds")

@@ -1,0 +1,101 @@
+import gdsfactory as gf
+
+
+@gf.cell
+def recreated_device(
+    # Footprint target (um)
+    length_total: float = 40.0,
+    height_total: float = 1.7,
+    # Outer arms geometry
+    w_outer: float = 0.35,
+    w_outer_in: float = 0.22,
+    length_taper: float = 5.0,
+    length_coupler: float = 18.0,   # long parallel region (left/middle)
+    length_sbend: float = 12.0,     # smooth divergence region (right)
+    # Middle stub (thin, ends early)
+    length_mid: float = 26.0,
+    w_mid_in: float = 0.12,
+    w_mid_out: float = 0.01,
+    mid_dy: float = -0.05,          # slight downward drift
+    # Left-side spacing of the outer arms (centers)
+    y_outer_left: float = 0.25,
+    layer: tuple[int, int] = (1, 0),
+) -> gf.Component:
+    c = gf.Component()
+
+    # Final outer-arm center offset to match total footprint height.
+    # total height = (top center + w/2) - (bottom center - w/2) = 2*y + w
+    y_outer_right = (height_total - w_outer) / 2
+    dy_outer = y_outer_right - y_outer_left
+
+    length_out = length_total - (length_taper + length_coupler + length_sbend)
+    if length_out <= 0:
+        raise ValueError("length_total too small for given segment lengths.")
+
+    xs_outer = gf.cross_section.strip(width=w_outer, layer=layer)
+
+    # -----------------------
+    # Top outer arm (taper -> straight -> s-bend -> straight)
+    # -----------------------
+    top_taper = c << gf.components.taper(
+        length=length_taper, width1=w_outer_in, width2=w_outer, layer=layer
+    )
+    top_taper.move((0, y_outer_left))
+
+    top_cpl = c << gf.components.straight(length=length_coupler, cross_section=xs_outer)
+    top_cpl.connect("o1", top_taper.ports["o2"])
+
+    top_sb = c << gf.components.bend_s(size=(length_sbend, +dy_outer), cross_section=xs_outer)
+    top_sb.connect("o1", top_cpl.ports["o2"])
+
+    top_out = c << gf.components.straight(length=length_out, cross_section=xs_outer)
+    top_out.connect("o1", top_sb.ports["o2"])
+
+    # -----------------------
+    # Bottom outer arm (mirrored dy)
+    # -----------------------
+    bot_taper = c << gf.components.taper(
+        length=length_taper, width1=w_outer_in, width2=w_outer, layer=layer
+    )
+    bot_taper.move((0, -y_outer_left))
+
+    bot_cpl = c << gf.components.straight(length=length_coupler, cross_section=xs_outer)
+    bot_cpl.connect("o1", bot_taper.ports["o2"])
+
+    bot_sb = c << gf.components.bend_s(size=(length_sbend, -dy_outer), cross_section=xs_outer)
+    bot_sb.connect("o1", bot_cpl.ports["o2"])
+
+    bot_out = c << gf.components.straight(length=length_out, cross_section=xs_outer)
+    bot_out.connect("o1", bot_sb.ports["o2"])
+
+    # -----------------------
+    # Middle thin stub: smooth path + width transition, ends early
+    # -----------------------
+    xs_mid1 = gf.cross_section.strip(width=w_mid_in, layer=layer)
+    xs_mid2 = gf.cross_section.strip(width=w_mid_out, layer=layer)
+    trans_mid = gf.path.transition(xs_mid1, xs_mid2, width_type="sine")
+
+    p_mid = gf.path.smooth(
+        points=[(0.0, 0.0), (0.6 * length_mid, 0.0), (length_mid, mid_dy)],
+        radius=30.0,
+    )
+    mid = c << gf.path.extrude_transition(p_mid, trans_mid)
+    # Start at x=0, centered near y=0 already (from the points)
+
+    # -----------------------
+    # Expose ports
+    # -----------------------
+    c.add_port("in_top", port=top_taper.ports["o1"])
+    c.add_port("in_mid", port=mid.ports["o1"])
+    c.add_port("in_bot", port=bot_taper.ports["o1"])
+
+    c.add_port("out_top", port=top_out.ports["o2"])
+    c.add_port("out_bot", port=bot_out.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    d = recreated_device()
+    d.show()
+    d.write_gds("recreated_device.gds")

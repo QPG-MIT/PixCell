@@ -1,0 +1,57 @@
+Turn 2 Response:
+
+Based on the rendered image and the original image, it seems like the shape should be a rounded rectangle or similar shape. The current output is just a filled black rectangle. Let's use a rectangle and then boolean it with a couple of circles to round off the edges.
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+from gdsfactory.components import circle
+from gdsfactory import boolean
+
+@gf.cell
+def rounded_rectangle(width: float = 10.0, height: float = 5.0, radius: float = 2.0, layer=(1, 0)):
+    """Creates a rounded rectangle using boolean operations."""
+    c = gf.Component()
+
+    # Create the base rectangle
+    rect = c << rectangle(size=(width, height), layer=layer, centered=True)
+
+    # Create four circles for the rounded corners
+    circle1 = c << circle(radius=radius, layer=layer)
+    circle2 = c << circle(radius=radius, layer=layer)
+    circle3 = c << circle(radius=radius, layer=layer)
+    circle4 = c << circle(radius=radius, layer=layer)
+
+    # Position the circles at the corners
+    circle1.move((width / 2 - radius, height / 2 - radius))
+    circle2.move((-width / 2 + radius, height / 2 - radius))
+    circle3.move((width / 2 - radius, -height / 2 + radius))
+    circle4.move((-width / 2 + radius, -height / 2 + radius))
+
+    # Boolean OR operation to combine the rectangle and circles
+    rounded_rect = boolean(rect, circle1, operation="or", layer=layer)
+    rounded_rect = boolean(rounded_rect, circle2, operation="or", layer=layer)
+    rounded_rect = boolean(rounded_rect, circle3, operation="or", layer=layer)
+    rounded_rect = boolean(rounded_rect, circle4, operation="or", layer=layer)
+
+    c << rounded_rect
+
+    return c
+
+
+if __name__ == "__main__":
+    c = rounded_rectangle(width=10.0, height=5.0, radius=2.0)
+    c.show()
+    c.write_gds("rounded_rectangle.gds")
+```
+
+**Explanation:**
+
+1. **`rounded_rectangle` function:** This function takes width, height, radius of the rounded corners, and layer as parameters.
+2. **Base Rectangle:** Creates a rectangle with the given width and height.
+3. **Corner Circles:** Creates four circles with the specified radius.
+4. **Positioning:** Positions the circles at each corner of the rectangle.
+5. **Boolean OR:**  Performs a series of boolean "OR" operations. This combines the rectangle and each of the corner circles, effectively rounding the corners.
+6. **Component Creation and Display:**  The main part of the script calls the `rounded_rectangle` function with some example values, displays the result using `c.show()`, and saves it to a GDS file.
+
+This corrected script constructs a rounded rectangle using parametric shapes and boolean operations, providing a better approximation of the original image.

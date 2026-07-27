@@ -1,0 +1,58 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Parameters
+    w_center = 0.4
+    w_wide = 2.0
+    w_tip = 0.2
+    l1 = 1.0
+    l2 = 0.8
+    l3 = 0.55  # l1 + l2 + l3 = 2.35, total tip-to-tip 4.7
+    
+    # Cross sections
+    xs_center = gf.cross_section.cross_section(width=w_center, layer=layer)
+    xs_wide = gf.cross_section.cross_section(width=w_wide, layer=layer)
+    xs_tip = gf.cross_section.cross_section(width=w_tip, layer=layer)
+    
+    # Arm component
+    arm = gf.Component("arm")
+    
+    # First segment: transition from center to wide
+    trans1 = gf.path.transition(xs_center, xs_wide, width_type='sine')
+    path1 = gf.path.straight(length=l1)
+    segment1 = gf.path.extrude_transition(path1, trans1)
+    s1 = arm << segment1
+    
+    # Second segment: transition from wide to tip
+    trans2 = gf.path.transition(xs_wide, xs_tip, width_type='sine')
+    path2 = gf.path.straight(length=l2)
+    segment2 = gf.path.extrude_transition(path2, trans2)
+    s2 = arm << segment2
+    s2.connect("o1", s1.ports["o2"])
+    
+    # Third segment: straight tip
+    path3 = gf.path.straight(length=l3)
+    segment3 = gf.path.extrude(path3, xs_tip)
+    s3 = arm << segment3
+    s3.connect("o1", s2.ports["o2"])
+    
+    # Add arms to main component
+    right = c << arm
+    
+    left = c << arm
+    left.rotate(180)
+    
+    up = c << arm
+    up.rotate(90)
+    
+    down = c << arm
+    down.rotate(270)
+    
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")

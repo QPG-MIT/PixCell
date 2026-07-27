@@ -1,0 +1,92 @@
+Turn 1 Response:
+
+Based on the visual analysis of the provided image (a 1x4 Multi-Mode Interference splitter/combiner) and the specified footprint constraint of `[25, 10]`, here is the GDSFactory script to recreate the geometry.
+
+**Design Logic:**
+1.  **Dimensions:** The constraint `[25, 10]` is interpreted as `[Length, Width]` in the standard horizontal waveguide orientation, which matches the physical physics of an MMI device (Length > Width). The image shows the device rotated 90 degrees (vertical), but we will construct it horizontally to adhere to standard GDSFactory conventions and port orientations.
+    *   **Total Length (x):** 25.0 µm
+    *   **Total Width (y):** 10.0 µm
+2.  **Components:**
+    *   **Body:** A central rectangle where the multimode interference occurs. We allocate 15 µm to the length of this section.
+    *   **Input:** A single tapered waveguide on the left (matches the single "bottom" port in the image). Length 5 µm.
+    *   **Outputs:** Four tapered waveguides on the right (matches the four "top" ports in the image). Length 5 µm.
+3.  **Positioning:**
+    *   The Input taper connects to the left edge of the body.
+    *   The Output tapers are arrayed along the right edge, evenly spaced across the 10 µm width.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def mmi_1x4_custom():
+    """
+    Parametric 1x4 MMI component recreation.
+    Footprint: 25um x 10um.
+    """
+    c = gf.Component()
+
+    # --- Parameters ---
+    # Derived to satisfy the [25, 10] bounding box constraint
+    total_length = 25.0
+    total_width = 10.0
+    
+    taper_len = 5.0
+    mmi_len = total_length - 2 * taper_len  # 25 - 10 = 15.0
+    mmi_wid = total_width                   # 10.0
+    
+    # Waveguide widths
+    wg_width = 0.5
+    mmi_taper_width = 1.8  # Width of taper at the MMI interface
+
+    # --- 1. MMI Body ---
+    # Create the central interference region using a rectangle primitive
+    mmi_body = c << gf.components.rectangle(
+        size=(mmi_len, mmi_wid),
+        layer=(1, 0),
+        centered=True
+    )
+
+    # --- 2. Input Taper (Left) ---
+    # Create a taper widening from the waveguide width to the MMI interface
+    taper_in_ref = c << gf.components.taper(
+        length=taper_len,
+        width1=wg_width,
+        width2=mmi_taper_width,
+        layer=(1, 0)
+    )
+    # Position: Attach the wide end (width2) to the left edge of the MMI
+    # Taper geometric center is at (length/2, 0) relative to its origin
+    # We simply move it so its rightmost point is at -mmi_len/2
+    taper_in_ref.move(( -mmi_len/2 - taper_len, 0 ))
+
+    # --- 3. Output Tapers (Right) ---
+    # Create a template for the output tapers (wide to narrow)
+    taper_out_template = gf.components.taper(
+        length=taper_len,
+        width1=mmi_taper_width,
+        width2=wg_width,
+        layer=(1, 0)
+    )
+    
+    # Calculate spacing for 4 ports distributed across the MMI width
+    # Centers located at: +/- 1.25, +/- 3.75
+    n_outputs = 4
+    pitch = mmi_wid / n_outputs
+    y_offsets = [(i - (n_outputs - 1) / 2) * pitch for i in range(n_outputs)]
+
+    for y in y_offsets:
+        t_out = c << taper_out_template
+        # Position: Start (wide end) at the right edge of the MMI
+        t_out.move((mmi_len / 2, y))
+
+    return c
+
+# Create the component
+device = mmi_1x4_custom()
+
+# Save to GDS
+device.write_gds("mmi_1x4_custom.gds")
+
+# Optional: Visualize
+device.show()
+```

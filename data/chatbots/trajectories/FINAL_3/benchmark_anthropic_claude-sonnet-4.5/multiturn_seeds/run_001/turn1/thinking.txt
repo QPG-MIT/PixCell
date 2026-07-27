@@ -1,0 +1,78 @@
+Looking at the image, I can see a device that appears to be two S-bend waveguides or meandering structures. Let me analyze the geometry:
+
+1. The device has two horizontal structures that mirror each other
+2. Each structure starts with a straight section, then curves up/down, continues horizontally, and curves back
+3. The top structure curves downward and back up
+4. The bottom structure curves upward and back down
+5. They appear to be symmetric
+
+The footprint constraint is [120, 4] micrometers, which means:
+- Width: 120 µm
+- Height: 4 µm
+
+Looking more carefully at the shapes:
+- Left side: both structures have straight sections extending to the left
+- Then they have S-bend like curves
+- Middle section: horizontal straight portions
+- Right side: another set of curves bringing them back
+- Right ends: straight sections extending to the right
+
+This looks like it could be constructed using:
+- Straight waveguides
+- S-bends or euler bends
+- Path-based construction might be ideal here
+
+Let me think about the geometry more carefully:
+- The top trace starts at the top left, curves down slightly into the middle, runs horizontally, then curves back up to the top right
+- The bottom trace starts at the bottom left, curves up slightly into the middle, runs horizontally, then curves back down to the bottom right
+- They appear to be creating a narrower channel in the middle
+
+Given the footprint is 120 µm wide and 4 µm tall, and looking at the symmetry, I'd estimate:
+- The vertical separation at the edges is about 4 µm
+- The vertical separation in the middle is maybe 2 µm
+- Each waveguide probably has a width around 0.5 µm or similar
+
+Let me construct this using paths or components:
+
+Option 1: Use S-bends and straight sections
+Option 2: Use custom path
+
+I think the cleanest approach is to use a path that goes:
+
+
+- Top waveguide: starting at (0, 2), transitions down via S-bend, travels straight through the middle section, then transitions back up to end at (120, 2)
+- Bottom waveguide: starting at (0, -2), transitions up via S-bend, travels straight through the middle, then transitions back down to end at (120, -2)
+
+The vertical transitions likely involve modest deflections of around 0.5-1 µm to create the narrowed middle section while maintaining the overall 4 µm height constraint. gf.path.euler(radius=10, angle=-20))
+    p_top.append(gf.path.straight(length=80))
+    p_top.append(gf.path.euler(radius=10, angle=20))
+    p_top.append(gf.path.straight(length=10))
+
+I realize this approach won't capture the exact geometry. Looking at the image again, I notice two roughly parallel waveguides that converge toward the center with smooth bends, then diverge again. I should define waypoints for each trace instead: the top one travels from (0, 2) through a curved section to (30, 1), continues straight to (90, 1), then curves back to (120, 2). The bottom trace follows a similar pattern starting from (0, -2). , cross_section=xs)
+    c << wg_top
+    
+    # Bottom waveguide path
+    points_bottom = [
+        (0, -2),
+        (20, -1.25),
+        (100, -1.25),
+        (120, -2)
+    ]
+    
+    path_bottom = gf.path.smooth(points_bottom, radius=5)
+    wg_bottom = gf.path.extrude(path_bottom, cross_section=xs)
+    c << wg_bottom
+    
+    return c
+
+device = device()
+device.write_gds("device.gds")
+```
+
+Looking back at the image, I notice the total height is constrained to 4 µm, so the two waveguides should fit within the -2 to +2 µm range. The left edge shows the waveguides positioned at their starting points, and they need to converge toward the center before diverging again at the right side.
+
+The layout appears to have waveguides at maximum separation on the edges and minimum separation in the middle section. I'll revise the implementation to reflect this behavior with adjusted y-coordinates and define the cross-section parameters to match the footprint constraint of [120, 4].
+
+For the top waveguide, I'm setting control points at (0, 1.75), (30, 1.0), (90, 1.0), and (120, 1.75) to create the converging-then-diverging pattern. The bottom waveguide mirrors this with negative y-values. I'll use smooth curves with an 8-unit bend radius to connect these points, then extrude both paths using the cross-section to generate the actual waveguide geometry.
+
+Once both waveguides are created and added to the cell, I instantiate the device and export it to a GDS file. The resulting structure has the two guides starting separated, narrowing toward the center section, then spreading apart again at the output.

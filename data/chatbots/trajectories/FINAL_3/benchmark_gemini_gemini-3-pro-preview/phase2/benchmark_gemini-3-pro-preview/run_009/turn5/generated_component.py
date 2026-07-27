@@ -1,0 +1,123 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_120x4():
+    """
+    Creates a directional coupler matching the 120um x 4um footprint constraint.
+    
+    Design Specifications:
+    - Footprint: 120um (Length) x 4um (Height)
+    - Waveguide Width: 0.5um
+    - Coupling Gap: 0.2um
+    - Architecture: Straight IO -> S-Bends -> Parallel Coupler -> S-Bends -> Straight IO
+    
+    Dimension Derivation:
+    - Vertical IO Separation: 4.0um total height - 0.5um wg width = 3.5um center-to-center.
+    - Vertical Coupler Separation: 0.5um wg width + 0.2um gap = 0.7um center-to-center.
+    - S-Bend Height (dy): (3.5 - 0.7) / 2 = 1.4um.
+    - Lengths: 10um (IO) + 20um (Bend) + 60um (Couple) + 20um (Bend) + 10um (IO) = 120um Total.
+    """
+    c = gf.Component()
+
+    # === Geometric Parameters ===
+    # Dimensions
+    L_total = 120.0
+    L_couple = 60.0
+    L_bend = 20.0
+    L_straight = 10.0
+    
+    H_total = 4.0
+    width = 0.5
+    gap = 0.2
+    
+    # Calculate vertical offsets (y-coordinates of centerlines)
+    # The device is centered vertically at y=0
+    
+    # Outer ports (Inputs/Outputs)
+    # Top y: (4.0 - 0.5)/2 = 1.75
+    y_io_top = (H_total - width) / 2
+    y_io_bot = -y_io_top
+    
+    # Inner coupling region
+    # Top y: (0.2 + 0.5)/2 = 0.35
+    y_coup_top = (gap + width) / 2
+    y_coup_bot = -y_coup_top
+    
+    # Vertical displacement for S-bends
+    dy = y_io_top - y_coup_top  # 1.4 um
+
+    # Cross-section definition
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+
+    # === Component Definition ===
+    
+    # 1. Central Coupling Region
+    # Manually defined as two straight waveguides to ensure exact gap control and centering
+    coup_top = c << gf.components.straight(length=L_couple, cross_section=xs)
+    coup_bot = c << gf.components.straight(length=L_couple, cross_section=xs)
+    
+    # Center the coupling region
+    coup_top.x = 0
+    coup_top.y = y_coup_top
+    coup_bot.x = 0
+    coup_bot.y = y_coup_bot
+
+    # 2. Reusable Primitives
+    # S-bend moving Right and Up (positive y offset)
+    bend_up = gf.components.bend_s(size=(L_bend, dy), cross_section=xs)
+    # S-bend moving Right and Down (negative y offset)
+    bend_down = gf.components.bend_s(size=(L_bend, -dy), cross_section=xs)
+    # Straight IO section
+    io_wg = gf.components.straight(length=L_straight, cross_section=xs)
+
+    # === Assembly / Routing ===
+    # We assemble outwards from the central coupler to ensure perfect alignment.
+
+    # --- West Side (Inputs) ---
+    
+    # Top-Left Path: Input (High) -> Bend Down -> Coupler (Low)
+    # Connect END of bend ("o2") to START of coupler ("o1")
+    bl_top = c << bend_down
+    bl_top.connect("o2", coup_top.ports["o1"])
+    
+    # Connect END of straight to START of bend
+    sl_top = c << io_wg
+    sl_top.connect("o2", bl_top.ports["o1"])
+    
+    # Bottom-Left Path: Input (Low) -> Bend Up -> Coupler (High)
+    bl_bot = c << bend_up
+    bl_bot.connect("o2", coup_bot.ports["o1"])
+    
+    sl_bot = c << io_wg
+    sl_bot.connect("o2", bl_bot.ports["o1"])
+    
+    # --- East Side (Outputs) ---
+    
+    # Top-Right Path: Coupler (Low) -> Bend Up -> Output (High)
+    # Connect START of bend ("o1") to END of coupler ("o2")
+    br_top = c << bend_up
+    br_top.connect("o1", coup_top.ports["o2"])
+    
+    sr_top = c << io_wg
+    sr_top.connect("o1", br_top.ports["o2"])
+    
+    # Bottom-Right Path: Coupler (High) -> Bend Down -> Output (Low)
+    br_bot = c << bend_down
+    br_bot.connect("o1", coup_bot.ports["o2"])
+    
+    sr_bot = c << io_wg
+    sr_bot.connect("o1", br_bot.ports["o2"])
+
+    # === Port Exposure ===
+    # Standard numbering: o1/o2 = West (Top/Bot), o3/o4 = East (Top/Bot)
+    c.add_port("o1", port=sl_top.ports["o1"])
+    c.add_port("o2", port=sl_bot.ports["o1"])
+    c.add_port("o3", port=sr_top.ports["o2"])
+    c.add_port("o4", port=sr_bot.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = directional_coupler_120x4()
+    device.show()
+    device.write_gds("directional_coupler_120x4.gds")

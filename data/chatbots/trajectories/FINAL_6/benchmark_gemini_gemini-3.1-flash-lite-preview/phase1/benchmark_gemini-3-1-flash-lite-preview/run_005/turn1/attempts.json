@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.095821",
+      "api_duration_seconds": 22.283446073532104,
+      "usage": {
+        "input_tokens": 3193,
+        "output_tokens": 945,
+        "total_tokens": 7216
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:10:38.838609",
+      "api_duration_seconds": 16.853603839874268,
+      "usage": {
+        "input_tokens": 4157,
+        "output_tokens": 724,
+        "total_tokens": 7229
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'petal' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:10:57.090008",
+      "api_duration_seconds": 10.496371984481812,
+      "usage": {
+        "input_tokens": 4913,
+        "output_tokens": 701,
+        "total_tokens": 7166
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'geometry'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12263,
+    "output_tokens": 2370,
+    "total_tokens": 21611
+  }
+}

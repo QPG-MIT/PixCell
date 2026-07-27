@@ -1,0 +1,62 @@
+import gdsfactory as gf
+from gdsfactory.components import rectangle, straight
+from gdsfactory.cross_section import cross_section
+from gdsfactory.path import arc, extrude
+
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    xs = cross_section(width=1.0, layer=(1, 0))
+    gap = 1  # Gap between the middle lines.
+    num_lines = 5  # Number of middle lines.
+    line_length = 100
+    offset_x = 20  # Offset from the origin in x
+    bar_thickness = 7  # Thickness of the horizontal bars
+    leg_width = 5  # Width of the "legs"
+    leg_length = 20  # Length of the leg's horizontal portion
+    bar_vertical_offset = 25 # Vertical offset of the bars from center
+    curve_radius = bar_vertical_offset - bar_thickness/2 #Radius of the connecting arc
+
+    # Top and bottom horizontal bars
+    top_bar = c << rectangle(size=(line_length, bar_thickness), layer=(1, 0))
+    bottom_bar = c << rectangle(size=(line_length, bar_thickness), layer=(1, 0))
+    top_bar.move((offset_x, bar_vertical_offset))
+    bottom_bar.move((offset_x, -bar_vertical_offset))
+
+    # Middle lines
+    middle_lines = []
+    middle_y_offset = -(num_lines - 1) * gap / 2  # Calculate the offset to center the lines vertically
+    for i in range(num_lines):
+        line = c << straight(length=line_length, cross_section=xs)
+        line.move((offset_x, middle_y_offset + i * gap))
+        middle_lines.append(line)
+
+    # Create Legs
+    leg1 = c << rectangle(size=(leg_length, leg_width), layer=(1, 0))
+    leg1.move((0, bar_vertical_offset))  #Position it correctly to top bar
+
+    leg2 = c << rectangle(size=(leg_length, leg_width), layer=(1, 0))
+    leg2.move((0, -bar_vertical_offset))  #Position it correctly to bottom bar
+
+    # Create the connecting curve
+    # First make the path for the top and bottom curves.  The angle here is what makes the curve connect.
+    top_curve_path = arc(radius=curve_radius, angle=-90)
+    bottom_curve_path = arc(radius=curve_radius, angle=90)
+
+
+    # Extrude the path
+    top_curve = c << extrude(top_curve_path, cross_section=gf.cross_section.cross_section(width=leg_width, layer=(1, 0)))
+    bottom_curve = c << extrude(bottom_curve_path, cross_section=gf.cross_section.cross_section(width=leg_width, layer=(1, 0)))
+
+    # Position the curves
+    top_curve.move((leg_length, bar_thickness/2))
+    bottom_curve.move((leg_length, -bar_vertical_offset + bar_thickness/2 + leg_width))  # Adjust for width and alignment
+
+    return c
+
+
+# Create and save
+device = my_device()
+device.show()
+device.write_gds("my_device.gds")

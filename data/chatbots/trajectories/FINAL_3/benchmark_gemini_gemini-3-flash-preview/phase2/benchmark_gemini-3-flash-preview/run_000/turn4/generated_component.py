@@ -1,0 +1,78 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_v4(
+    width: float = 0.5,
+    gap: float = 0.1,         # Significantly reduced gap for target interaction style
+    coupler_length: float = 80.0, # Increased to match visual proportions
+    bend_length: float = 12.0,
+    ext_length: float = 8.0,
+    layer: tuple[int, int] = (1, 0),
+) -> gf.Component:
+    """
+    Directional coupler refined for tighter coupling and accurate 120x4 footprint.
+    
+    Footprint Calculation:
+    - Total Width: 8 (ext) + 12 (bend) + 80 (coupler) + 12 (bend) + 8 (ext) = 120 um
+    - Total Height:
+        Coupler center waveguides are at +/- (gap/2 + width/2) = +/- 0.3 um
+        Outer port centers should be at +/- 1.75 um.
+        Required dy for S-bend = 1.75 - 0.3 = 1.45 um.
+        Outer edges at +/- (1.75 + width/2) = +/- 2.0 um -> Total 4.0 um height.
+    """
+    c = gf.Component()
+    
+    # Define cross section
+    xs = gf.cross_section.cross_section(width=width, layer=layer)
+
+    # 1. Central Interaction Region
+    m = c << gf.components.coupler_straight(length=coupler_length, gap=gap, cross_section=xs)
+
+    # 2. Define S-bend and extension
+    bend_height = 1.45
+    s_up = gf.components.bend_s(size=(bend_length, bend_height), cross_section=xs, npoints=200)
+    s_dn = gf.components.bend_s(size=(bend_length, -bend_height), cross_section=xs, npoints=200)
+    ext = gf.components.straight(length=ext_length, cross_section=xs)
+
+    # 3. Assemble Left Side (Input)
+    # Top-Left Branch (goes UP to the left)
+    blt = c << s_dn 
+    blt.connect("o2", m.ports["o1"])
+    elt = c << ext
+    elt.connect("o2", blt.ports["o1"])
+
+    # Bot-Left Branch (goes DOWN to the left)
+    blb = c << s_up
+    blb.connect("o2", m.ports["o2"])
+    elb = c << ext
+    elb.connect("o2", blb.ports["o1"])
+
+    # 4. Assemble Right Side (Output)
+    # Top-Right Branch (goes UP to the right)
+    brt = c << s_up
+    brt.connect("o1", m.ports["o4"])
+    ert = c << ext
+    ert.connect("o1", brt.ports["o2"])
+
+    # Bot-Right Branch (goes DOWN to the right)
+    brb = c << s_dn
+    brb.connect("o1", m.ports["o3"])
+    erb = c << ext
+    erb.connect("o1", brb.ports["o2"])
+
+    # 5. Expose External Ports
+    c.add_port("o1", port=elt.ports["o1"])
+    c.add_port("o2", port=elb.ports["o1"])
+    c.add_port("o3", port=erb.ports["o2"])
+    c.add_port("o4", port=ert.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    component = directional_coupler_v4()
+    
+    # Precise footprint check
+    print(f"Final Footprint: {component.xsize:.1f} um x {component.ysize:.1f} um")
+    
+    component.write_gds("directional_coupler_v4.gds")
+    component.show()

@@ -1,0 +1,149 @@
+import gdsfactory as gf
+
+@gf.cell
+def dense_coupler_array():
+    """
+    Recreates the dense waveguide coupler matching the reference image style.
+    
+    Design Adjustments:
+    - Dimensions: 120um x 4um footprint.
+    - Geometry: Long adiabatic S-bends for smooth transitions.
+    - Density: Optimized line count and pitch to create distinct, resolvable lines 
+      (avoiding the 'solid block' rendering issue) while maintaining the 'dense' physics.
+    """
+    c = gf.Component("Dense_Coupler_Optimized")
+
+    # --- Dimensions & Constraints ---
+    total_length = 120.0
+    
+    # Waveguide parameters adjusted for "Bold" look of reference
+    wg_width = 0.35
+    gap = 0.15          # Tight 150nm gap for strong coupling
+    pitch = wg_width + gap
+    
+    # Component Counts (3 center, 2 top, 2 bottom fit clearly in 4um)
+    n_center = 3
+    n_outer = 2
+    
+    # Vertical Planning to fit in 4um height (+- 2.0um)
+    # Center bundle takes up ~1.05um centered at 0
+    # Top/Bottom bundles need to couple tightly (1 pitch away) then bend away.
+    
+    # Y-position of the center-line of the highest central waveguide
+    y_center_top = (n_center - 1) / 2 * pitch
+    
+    # Y-position of the straight section of the lowest top-bundle waveguide
+    # It sits exactly one pitch unit away to maintain the array uniformity in the center
+    y_top_straight_lowest = y_center_top + pitch
+    
+    # Vertical bend offset (flare). 
+    # Must fit within Y=2.0um.
+    # Highest straight wire is at y_top_straight_lowest + (n_outer-1)*pitch
+    y_top_straight_highest = y_top_straight_lowest + (n_outer - 1) * pitch
+    
+    # Max allowed Y is 2.0. Remaining space for bend = 2.0 - 1.55 = 0.45.
+    # We use 0.4 to be safe.
+    dy_bend = 0.4
+    
+    # Longitudinal Planning
+    # Long bends for smooth, adiabatic look (matches reference image)
+    bend_length = 35.0
+    straight_length = total_length - 2 * bend_length
+    
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- 1. Central Straight Bundle ---
+    wg_straight = gf.components.straight(length=total_length, cross_section=xs)
+    
+    center_ref = c.add_ref(wg_straight)
+    center_ref.rows = n_center
+    center_ref.columns = 1
+    center_ref.spacing = (0, pitch)
+    # Center the array vertically
+    center_ref.movey(-(n_center - 1) * pitch / 2)
+
+    # --- 2. Top Arm Bundle ---
+    # Create the Top Arm Component (Bend Down -> Straight -> Bend Up)
+    arm_top = gf.Component("Top_Arm")
+    
+    # Bend 1: S-bend down towards the coupling region
+    b1 = arm_top << gf.components.bend_s(
+        size=(bend_length, -dy_bend), 
+        cross_section=xs
+    )
+    # Straight coupling region
+    st = arm_top << gf.components.straight(
+        length=straight_length, 
+        cross_section=xs
+    )
+    # Bend 2: S-bend up towards output port
+    b2 = arm_top << gf.components.bend_s(
+        size=(bend_length, dy_bend), 
+        cross_section=xs
+    )
+    
+    st.connect("o1", b1.ports["o2"])
+    b2.connect("o1", st.ports["o2"])
+    
+    arm_top.add_port("o1", port=b1.ports["o1"])
+    arm_top.add_port("o2", port=b2.ports["o2"])
+
+    # Array the top arms
+    top_ref = c.add_ref(arm_top)
+    top_ref.rows = n_outer
+    top_ref.columns = 1
+    top_ref.spacing = (0, pitch)
+    
+    # Position the Top Bundle
+    # The 'Arm' component has its straight section at Y = -dy_bend (relative to its origin o1).
+    # We align the straight section of the lowest arm (index 0) to `y_top_straight_lowest`.
+    # Equation: Origin_Y + (-dy_bend) = Target_Y
+    # Origin_Y = Target_Y + dy_bend
+    top_ref.movey(y_top_straight_lowest + dy_bend)
+
+    # --- 3. Bottom Arm Bundle ---
+    # Create the Bottom Arm Component (Bend Up -> Straight -> Bend Down)
+    arm_bot = gf.Component("Bottom_Arm")
+    
+    b1_b = arm_bot << gf.components.bend_s(
+        size=(bend_length, dy_bend), 
+        cross_section=xs
+    )
+    st_b = arm_bot << gf.components.straight(
+        length=straight_length, 
+        cross_section=xs
+    )
+    b2_b = arm_bot << gf.components.bend_s(
+        size=(bend_length, -dy_bend), 
+        cross_section=xs
+    )
+    
+    st_b.connect("o1", b1_b.ports["o2"])
+    b2_b.connect("o1", st_b.ports["o2"])
+    
+    arm_bot.add_port("o1", port=b1_b.ports["o1"])
+    arm_bot.add_port("o2", port=b2_b.ports["o2"])
+
+    # Array the bottom arms
+    bot_ref = c.add_ref(arm_bot)
+    bot_ref.rows = n_outer
+    bot_ref.columns = 1
+    bot_ref.spacing = (0, pitch)
+    
+    # Position the Bottom Bundle
+    # We mirror the target Y for the highest arm (index n-1)
+    # Target straight Y = -y_top_straight_lowest
+    # The 'Arm' straight section is at Y = +dy_bend.
+    # The highest array element is at Y_origin + (rows-1)*pitch.
+    # Equation: (Origin_Y + (rows-1)*pitch) + dy_bend = Target_Y
+    # Origin_Y = Target_Y - dy_bend - (rows-1)*pitch
+    
+    target_y_bot = -y_top_straight_lowest
+    bot_ref.movey(target_y_bot - dy_bend - (n_outer - 1) * pitch)
+
+    return c
+
+if __name__ == "__main__":
+    device = dense_coupler_array()
+    device.write_gds("dense_coupler_final.gds")
+    device.show()

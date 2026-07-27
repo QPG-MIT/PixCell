@@ -1,0 +1,69 @@
+import gdsfactory as gf
+
+@gf.cell
+def recreate_cross_device_v4():
+    """
+    Recreates the cross-shaped device with organic tapered 'leaf' petals.
+    Fixes the ValueError by using gf.path.extrude_transition for variable widths.
+    Footprint constraint: 4.7um x 4.7um (Radius = 2.35um)
+    """
+    c = gf.Component("tapered_leaf_cross")
+    
+    # 1. Dimensions for 4.7um footprint
+    # Total radius = 0.8 + 1.05 + 0.5 = 2.35um
+    p1_len = 0.8    # Length from center to the widest part of the leaf
+    p2_len = 1.05   # Length from widest part to the start of the tip
+    tip_len = 0.5   # Length of the rectangular end tip
+    
+    # Widths to match visual proportions
+    w_center = 0.6   # Width at the central hub connection
+    w_max = 1.6      # Maximum bulge width of the petal
+    w_tip = 0.3      # Constant width of the outer rectangular tip
+    
+    # 2. Define Cross-Sections
+    xs_center = gf.cross_section.cross_section(width=w_center, layer=(1, 0))
+    xs_max = gf.cross_section.cross_section(width=w_max, layer=(1, 0))
+    xs_tip = gf.cross_section.cross_section(width=w_tip, layer=(1, 0))
+    
+    # 3. Create a single Arm Component using Path Transitions
+    arm = gf.Component("arm_unit")
+    
+    # Part A: Center to Max Width (Using 'sine' for a smooth organic bulge)
+    trans1 = gf.path.transition(cross_section1=xs_center, cross_section2=xs_max, width_type="sine")
+    p1 = arm << gf.path.extrude_transition(gf.path.straight(length=p1_len), transition=trans1)
+    
+    # Part B: Max Width to Tip Width (Using 'sine' to taper back down)
+    trans2 = gf.path.transition(cross_section1=xs_max, cross_section2=xs_tip, width_type="sine")
+    p2 = arm << gf.path.extrude_transition(gf.path.straight(length=p2_len), transition=trans2)
+    p2.movex(p1_len)
+    
+    # Part C: The Rectangular Tip
+    tip = arm << gf.components.straight(length=tip_len, cross_section=xs_tip)
+    tip.movex(p1_len + p2_len)
+    
+    # 4. Assemble the full cross using rotational symmetry
+    for angle in [0, 90, 180, 270]:
+        arm_ref = c << arm
+        arm_ref.rotate(angle)
+    
+    # 5. Add a small central hub circle
+    # This ensures a smooth, gap-free connection at the very center of the cross.
+    c << gf.components.circle(radius=w_center/2, layer=(1, 0))
+    
+    # 6. Perform Boolean OR to merge the parts into one seamless polygon
+    return gf.boolean(A=c, B=c, operation="or", layer=(1, 0))
+
+if __name__ == "__main__":
+    # Generate the device
+    device = recreate_cross_device_v4()
+    
+    # Write GDS file
+    device.write_gds("cross_device_v4_final.gds")
+    
+    # Verification Output
+    # Expected width/height: ~4.70 um
+    print(f"Device width: {device.dxsize:.3f} um")
+    print(f"Device height: {device.dysize:.3f} um")
+    
+    # Display the result
+    device.show()

@@ -1,0 +1,70 @@
+Looking at the image, I can see two black wavy horizontal bands that appear to be sinusoidal or wave-like waveguides. They are roughly parallel to each other with some white space between them.
+
+The footprint constraint is [18, 3] microns, which suggests:
+- Width: 18 μm
+- Height: 3 μm
+
+The two black bands appear to be:
+1. Upper band - a wavy/sinusoidal shape
+2. Lower band - another wavy/sinusoidal shape, roughly parallel but possibly with phase offset
+
+The bands look like they could be created using:
+- Path-based construction with sinusoidal offsets
+- Or straight waveguides with varying width transitions
+
+Looking more carefully, these appear to be two waveguides that have a sinusoidal or wave-like pattern. They seem to oscillate vertically while progressing horizontally.
+
+Given the 18 μm x 3 μm constraint:
+- Total horizontal length: ~18 μm
+- Total vertical height: ~3 μm
+
+The two bands take up the vertical space, so each might have:
+- Amplitude of oscillation: ~0.3-0.5 μm
+- Wavelength: needs to fit within 18 μm horizontally
+- Waveguide width: maybe 0.5-0.8 μm
+
+Let me create a parametric design using paths with sinusoidal variations:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def wavy_waveguides():
+    c = gf.Component()
+    
+    # Parameters
+    length = 18.0  # μm
+    total_height = 3.0  # μm
+    waveguide_width = 0.5  # μm
+    num_waves = 2.5  # number of oscillations
+    amplitude = 0.3  # amplitude of wave
+    
+    # Number of points for smooth curve
+    npoints = 200
+    
+    # Create x coordinates
+    x = np.linspace(0, length, npoints)
+    
+    # Create upper wavy path
+    y_upper = total_height * 0.25 + amplitude * np.sin(2 * np.pi * num_waves * x / length)
+    points_upper = [(x[i], y_upper[i]) for i in range(npoints)]
+    path_upper = gf.Path(points_upper)
+    
+    # Create lower wavy path with phase offset
+    y_lower = total_height * 0.75 + amplitude * np.sin(2 * np.pi * num_waves * x / length)
+    points_lower = [(x[i], y_lower[i]) for i in range(npoints)]
+    path_lower = gf.Path(points_lower)
+```
+
+I'm setting up the sinusoidal paths by defining x-coordinates across the 18 μm length and calculating y-positions using sine functions with 2.5 oscillations. The upper path centers around 0.75 μm and the lower around 2.25 μm vertically, with each oscillating ±0.3 μm around those centerlines.
+
+Next I need to define a cross-section with the specified waveguide width and layer, then extrude both paths using that cross-section to create the actual waveguide structures. Finally, I'll add both waveguides to the component and return it, then instantiate and save the design as a GDS file.
+
+Looking more carefully at the image, the black bands appear noticeably thicker with smooth undulating curves. Given an 18 x 3 μm footprint, the two bands likely occupy most of the vertical space, suggesting each waveguide should be around 0.8-1.0 μm thick with a small gap between them. I'll adjust the waveguide width accordingly and recalculate the number of wave cycles to match the observed pattern.
+
+For the implementation, I need to set up the oscillation parameters—roughly 2 complete waves across the 18 μm length with a modest amplitude of 0.25 μm. The vertical positioning places the upper guide centered around 0.75 μm and the lower around 2.25 μm, maintaining a 0.3 μm separation. Using 300 points along the x-axis creates smooth curves, and I'll generate the sinusoidal paths for both waveguides by calculating their y-coordinates at each point.
+
+Once the point arrays are created, I convert them to Path objects and apply a cross-section definition with the specified waveguide width on layer (1, 0). Extruding each path with this cross-section produces the actual waveguide geometries, which I then add to the component.
+
+The function returns the completed component. Looking at the reference image more closely, the waves appear quite smooth with synchronized phase—both curves undulate in the same direction at corresponding x-positions. The thick black bands indicate a substantial waveguide width, so I should adjust the parameters to better capture this appearance.

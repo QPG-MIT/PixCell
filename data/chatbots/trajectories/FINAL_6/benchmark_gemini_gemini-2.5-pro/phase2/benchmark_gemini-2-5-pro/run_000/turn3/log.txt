@@ -1,0 +1,109 @@
+Turn 3 Response:
+
+An analysis of the previous attempt reveals a fundamental mismatch between the implemented strategy and the target geometry. The target image is a C4 rotationally symmetric cross, whereas the previous code generated a highly asymmetric shape using unrelated ellipses and a truncation operation.
+
+The new approach completely discards the old logic and rebuilds the device from the ground up using a compositional strategy that mirrors the target's symmetry.
+
+### Analysis of My Change:
+
+1.  **Correct Strategy (Composition and Symmetry)**: The core problem with the previous code was its strategy. I've replaced it with a much more robust and appropriate method:
+    *   **Decomposition**: I identified that the complex shape is just one simple "arm" shape, rotated four times.
+    *   **Composition**: I first build this single arm, and then assemble the final device by instancing and rotating it. This is a canonical and efficient pattern for creating symmetric devices in gdsfactory.
+
+2.  **Building the "Arm"**:
+    *   I created a single arm component composed of two primitives: a `gf.components.ellipse` for the curved "petal" body and a `gf.components.rectangle` for the straight "tip" or "stem".
+    *   This arm is carefully constructed to originate at `(0, 0)` and extend in a single direction (positive Y-axis).
+
+3.  **Assembly**:
+    *   The main component creates four references to this arm template.
+    *   By rotating these four instances by 0, 90, 180, and 270 degrees, they naturally form the desired cross shape, perfectly joined at the center.
+
+4.  **Parametrization for Footprint Matching**:
+    *   The parameters for the ellipse and rectangle (`petal_length`, `tip_length`, etc.) are calculated to ensure the final device's dimensions precisely match the required `4.7 x 4.7 um` footprint. The total length of one arm is `petal_length + tip_length`, which is set to `4.7 / 2 = 2.35 um`.
+
+This new script is a complete rewrite that correctly models the target geometry, resulting in a shape that should be an excellent match.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def lobed_cross():
+    """
+    Creates a four-lobed cross shape with C4 rotational symmetry.
+
+    This design strategy is based on composition. The key idea is to build
+    one "arm" of the cross and then replicate it four times with rotation.
+    
+    1.  A single "arm" component is defined as a template. This arm consists
+        of a main body (a "petal") and a small rectangular tip (a "stem").
+    2.  The petal is modeled using a `gf.components.ellipse`, and the tip is a
+        `gf.components.rectangle`.
+    3.  These two shapes are positioned to form a single arm extending
+        upwards from the origin (0, 0).
+    4.  The main component then creates four instances of this arm template.
+    5.  Each instance is rotated by a multiple of 90 degrees (0, 90, 180, 270)
+        around the origin, forming the complete, symmetric cross.
+    """
+    # --- 1. Define Parameters for a Single Arm ---
+    # These parameters are chosen to match the target footprint of 4.7x4.7 um.
+    # The total length of one arm from the center is 4.7 / 2 = 2.35 um.
+    petal_length = 2.05  # Corresponds to 2 * y_radius of the ellipse
+    tip_length = 0.3
+    
+    # Derived and aesthetic parameters
+    petal_y_radius = petal_length / 2.0
+    petal_x_radius = 0.8  # Defines the "fullness" or width of the petal
+    tip_width = 0.3       # Making the tip a square (0.3x0.3)
+
+    # --- 2. Create the Single Arm Template ---
+    # This is a temporary component that will be referenced.
+    arm_template = gf.Component("arm_template")
+
+    # Create the petal shape using an ellipse
+    petal = arm_template << gf.components.ellipse(
+        radii=(petal_x_radius, petal_y_radius), layer=(1, 0)
+    )
+    
+    # Create the rectangular tip
+    tip = arm_template << gf.components.rectangle(
+        size=(tip_width, tip_length), layer=(1, 0)
+    )
+    
+    # Position the components to form an arm extending in the +y direction from (0,0)
+    # Move the ellipse so its bottom point is at the origin
+    petal.movey(petal_y_radius)
+    
+    # Position the tip at the far end of the ellipse
+    # The petal's top is at y = 2 * petal_y_radius. The tip is centered beyond that.
+    tip_y_center = (2 * petal_y_radius) + (tip_length / 2)
+    tip.movey(tip_y_center)
+
+    # --- 3. Assemble the Final Cross from Four Arms ---
+    c = gf.Component("final_lobed_cross")
+
+    # Create four references to the arm template
+    arm_top = c << arm_template
+    arm_right = c << arm_template
+    arm_bottom = c << arm_template
+    arm_left = c << arm_template
+
+    # Rotate the arms into their final positions around the origin
+    arm_top.rotate(0)
+    arm_right.rotate(270)  # Rotates clockwise by 90 degrees
+    arm_bottom.rotate(180)
+    arm_left.rotate(90)   # Rotates counter-clockwise by 90 degrees
+
+    return c
+
+# To display and SAVE the component if the script is run directly
+if __name__ == "__main__":
+    # Instantiate the component
+    device = lobed_cross()
+
+    # Display the component in the KLayout viewer (optional, for verification)
+    device.show()
+
+    # Save the component to a GDSII file.
+    device.write_gds("lobed_cross.gds")
+    print("GDS file 'lobed_cross.gds' saved successfully.")
+```

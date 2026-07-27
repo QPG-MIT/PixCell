@@ -1,0 +1,112 @@
+import gdsfactory as gf
+import pathlib
+
+@gf.cell
+def create_device():
+    """
+    Creates a four-petal shape with stems using parametric GDSFactory functions.
+
+    The geometry is constructed by taking the boolean union of two underlying shapes:
+    1. A "petal" or "quatrefoil" shape, which is formed by the union of two
+       overlapping ellipses: one oriented vertically and one horizontally.
+    2. A "stem" shape, which is a simple thin cross created with the
+       `gf.components.cross` primitive. This component defines the
+       overall footprint of the final device.
+
+    The combination of these two shapes accurately reproduces the target image
+    while adhering to the parametric design principles.
+    """
+
+    # --- Parameters ---
+    # Derived from the footprint constraint and visual analysis of the image.
+
+    # The total width and height of the device, from the footprint constraint.
+    footprint_size = 4.7  # um
+
+    # The width of the thin stems. Estimated visually.
+    stem_width = 0.4  # um
+
+    # The dimensions of the ellipses that form the four petals.
+    # The major radius defines the length of a petal from the center. It's set
+    # to be slightly less than half the total footprint to ensure the stems protrude.
+    petal_major_radius = 2.0  # um
+
+    # The minor radius defines the width of a petal. It's set to half the major
+    # radius to match the visual aspect ratio.
+    petal_minor_radius = 1.0  # um
+    
+    # Define the GDS layer for the geometry.
+    layer = (1, 0)
+
+    # --- Geometry Construction ---
+
+    # 1. Create the central petal shape by unioning two ellipses.
+    
+    # Create a vertically oriented ellipse.
+    ellipse_vertical = gf.components.ellipse(
+        radii=(petal_minor_radius, petal_major_radius),
+        layer=layer
+    )
+
+    # Create a horizontally oriented ellipse.
+    ellipse_horizontal = gf.components.ellipse(
+        radii=(petal_major_radius, petal_minor_radius),
+        layer=layer
+    )
+
+    # Perform a boolean 'or' (union) operation to merge the ellipses into a single shape.
+    petals = gf.boolean(
+        A=ellipse_vertical,
+        B=ellipse_horizontal,
+        operation="or",
+        layer=layer
+    )
+
+    # 2. Create the stem shape using the cross primitive.
+    # The 'length' parameter of the cross defines the final extent of the device.
+    stems = gf.components.cross(
+        length=footprint_size,
+        width=stem_width,
+        layer=layer
+    )
+
+    # 3. Combine the petals and stems into the final shape.
+    # Perform another boolean union to merge the petal body with the stems.
+    final_shape = gf.boolean(
+        A=petals,
+        B=stems,
+        operation="or",
+        layer=layer
+    )
+
+    # --- Final Component Assembly ---
+
+    # Create a new, empty component to hold the final geometry.
+    c = gf.Component("petal_cross_device")
+
+    # Add the combined shape as a reference.
+    # This is the standard way to place geometry in a component.
+    c.add_ref(final_shape)
+
+    return c
+
+# This block allows the script to be run directly to generate and view the GDS.
+if __name__ == "__main__":
+    # Instantiate the component by calling the decorated function.
+    device = create_device()
+
+    # Use the show() method to open the component in the KLayout viewer.
+    device.show()
+    
+    # Print the component's bounding box size to verify it matches the footprint.
+    print(f"Component created: {device.name}")
+    print(f"Bounding box size (width, height): ({device.xsize}, {device.ysize})")
+    print(f"Expected footprint: [{4.7}, {4.7}]")
+    
+    # FIX: Add the command to write the GDS file to disk.
+    # Get the directory of the current script
+    script_dir = pathlib.Path(__file__).parent.resolve()
+    # Define the output file path
+    output_gds_path = script_dir / "output.gds"
+    device.write_gds(output_gds_path)
+    print(f"GDS file saved to: {output_gds_path}")

@@ -1,0 +1,97 @@
+import gdsfactory as gf
+
+@gf.cell
+def finger_component():
+    """
+    Creates a single finger consisting of a tapered base 
+    and a long, thin needle-like tip.
+    """
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # 1. Tapered base (1.0um height)
+    # Transitioning from 0.8um base to 0.25um tip
+    tbase = c << gf.components.taper(
+        length=1.0, 
+        width1=0.8, 
+        width2=0.25, 
+        layer=layer
+    )
+    tbase.rotate(90) # Orient upwards
+    
+    # 2. Straight needle tip (2.0um height)
+    # Width matches the end of the taper (0.25um)
+    ttip = c << gf.components.rectangle(
+        size=(0.25, 2.0), 
+        layer=layer, 
+        centered=True
+    )
+    # Position needle on top of the taper
+    # Taper base at 0, top at 1.0. Rectangle center should be at 1.0 + 1.0 = 2.0
+    ttip.movey(2.0)
+    
+    return c
+
+@gf.cell
+def recreate_device():
+    """
+    Reconstructs the device with refined proportions.
+    Total Footprint: 25um (width) x 10um (height)
+    """
+    c = gf.Component("recreated_device")
+    layer = (1, 0)
+    
+    # Vertical Budget (Total = 10.0 um):
+    # Bottom Stub: 0.5 um
+    # Main Body:   6.5 um
+    # Top Fingers: 3.0 um (1.0 taper + 2.0 straight)
+    
+    # 1. Main Body (Rectangle)
+    body = c << gf.components.rectangle(
+        size=(25.0, 6.5), 
+        layer=layer, 
+        centered=True
+    )
+    # Place body bottom edge at y=0.5 (above the stub)
+    body.movey(0.5 + 3.25)
+    
+    # 2. Top Fingers (4 units)
+    f_unit = finger_component()
+    # Spacing fingers closer together to match the original image density
+    # X-positions: spread across roughly 55% of the body width
+    finger_x_positions = [-6.75, -2.25, 2.25, 6.75]
+    for x in finger_x_positions:
+        f_ref = c << f_unit
+        f_ref.move((x, 7.0)) # Attach to the top edge of the body (y=7.0)
+        
+    # 3. Bottom Stub (Small sharp taper)
+    stub = c << gf.components.taper(
+        length=0.5, 
+        width1=1.2, 
+        width2=0.2, 
+        layer=layer
+    )
+    stub.rotate(-90) # Orient downwards
+    # Taper top at y=0.5, tip at y=0.0
+    stub.movey(0.5)
+    
+    return c
+
+if __name__ == "__main__":
+    # Generate the device
+    device = recreate_device()
+    
+    # Produce the GDS file
+    filename = "refined_device.gds"
+    device.write_gds(filename)
+    
+    # Verification and Output
+    print(f"Success: '{filename}' generated.")
+    # Access xsize and ysize directly (Standard Component properties)
+    print(f"Device Footprint: {device.xsize:.1f}um x {device.ysize:.1f}um")
+    
+    # Attempt to visualize
+    try:
+        device.show()
+    except Exception:
+        print("Note: Layout viewer (show) unavailable, please inspect the GDS file.")

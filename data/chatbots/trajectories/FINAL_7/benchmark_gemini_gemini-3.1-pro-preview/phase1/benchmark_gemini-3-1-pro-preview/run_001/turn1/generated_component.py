@@ -1,0 +1,78 @@
+import gdsfactory as gf
+
+@gf.cell
+def hollow_block_cell():
+    """Constructs the central rectangular block with two cutouts without booleans."""
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Top and bottom solid bars
+    r_top = c << gf.components.rectangle(size=(2.0, 0.2), centered=True, layer=layer)
+    r_top.move((0, 0.2))
+    r_bot = c << gf.components.rectangle(size=(2.0, 0.2), centered=True, layer=layer)
+    r_bot.move((0, -0.2))
+    
+    # Three vertical pillars (left edge, middle divider, right edge)
+    r_l = c << gf.components.rectangle(size=(0.2, 0.2), centered=True, layer=layer)
+    r_l.move((-0.9, 0))
+    r_m = c << gf.components.rectangle(size=(0.2, 0.2), centered=True, layer=layer)
+    # Middle is naturally perfectly centered at (0, 0)
+    r_r = c << gf.components.rectangle(size=(0.2, 0.2), centered=True, layer=layer)
+    r_r.move((0.9, 0))
+    
+    return c
+
+@gf.cell
+def device():
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # 1. Main outer stadium track (Using Path ensures a seamless solid shape)
+    # A single continuous path to trace the center-line, then extruded
+    p = gf.Path()
+    p.append(gf.path.straight(length=2.5))
+    p.append(gf.path.arc(radius=1.2, angle=180))
+    p.append(gf.path.straight(length=2.5))
+    p.append(gf.path.arc(radius=1.2, angle=180))
+    
+    xs_track = gf.cross_section.cross_section(width=0.6, layer=layer)
+    track = gf.path.extrude(p, cross_section=xs_track)
+    track_ref = c << track
+    # Center the path-extruded component (moves the centerline center to 0,0)
+    track_ref.move((-1.25, -1.2))
+
+    # 2. Add the Central Hollow Blocks
+    h_block = hollow_block_cell()
+    
+    block_top = c << h_block
+    block_top.move((0, 0.4))
+
+    block_bot = c << h_block
+    block_bot.move((0, -0.4))
+
+    # 3. Add internal MZI Arm traces
+    # The paths are extended slightly into solid (track walls & block borders) to guarantee visually perfect overlap
+    xs_arm = gf.cross_section.cross_section(width=0.2, layer=layer)
+
+    # Top Left Arm
+    p_tl = gf.Path([(-2.3, 0), (-1.8, 0), (-1.4, 0.4), (-0.9, 0.4)])
+    c << gf.path.extrude(p_tl, cross_section=xs_arm)
+
+    # Top Right Arm
+    p_tr = gf.Path([(0.9, 0.4), (1.4, 0.4), (1.8, 0), (2.3, 0)])
+    c << gf.path.extrude(p_tr, cross_section=xs_arm)
+
+    # Bottom Left Arm
+    p_bl = gf.Path([(-2.3, 0), (-1.8, 0), (-1.4, -0.4), (-0.9, -0.4)])
+    c << gf.path.extrude(p_bl, cross_section=xs_arm)
+
+    # Bottom Right Arm
+    p_br = gf.Path([(0.9, -0.4), (1.4, -0.4), (1.8, 0), (2.3, 0)])
+    c << gf.path.extrude(p_br, cross_section=xs_arm)
+
+    return c
+
+if __name__ == "__main__":
+    c = device()
+    # Explicitly write the output to a GDS file as required by the evaluator
+    c.write_gds("device.gds")

@@ -1,0 +1,102 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_quatrefoil():
+    """
+    Recreates the quatrefoil-shaped device geometry using parametric primitives.
+    
+    The shape is constructed from:
+    1. Four ellipses acting as the petals/lobes, shifted from the center.
+    2. Four rectangular stubs at the extremities.
+    3. A boolean union to merge them into a single polygon.
+    """
+    # 1. Define Design Parameters
+    # Constrained by footprint: 4.7 x 4.7 um
+    total_footprint = 4.7
+    
+    # Dimensions derived from image analysis
+    # The stubs are small connectors at the tips
+    stick_length = 0.35
+    stick_width = 0.15
+    
+    # Core radius (center of device to the start of the stick)
+    # This defines the extent of the floral pattern.
+    # Radius = (Total - 2*Stubs) / 2 = (4.7 - 0.7) / 2 = 2.0
+    core_radius = (total_footprint / 2) - stick_length  # 2.0 um
+    
+    # Petal Geometry adjustments for "pinched" center:
+    # To get the sharp intersection at the center, the ellipses should be shifted 
+    # outwards significantly, so they only barely overlap at (0,0).
+    
+    # If shift = 0.9 and r_major = 1.1:
+    #   Tip is at 0.9 + 1.1 = 2.0 (Matches core radius)
+    #   Tail is at 0.9 - 1.1 = -0.2 (Overlaps center by 0.2um)
+    # This creates a narrow waist at the center.
+    petal_shift = 0.9
+    petal_r_major = core_radius - petal_shift # 1.1
+    
+    # Make petals slightly slimmer to match the visual proportions
+    petal_r_minor = 0.5 
+    
+    layer = (1, 0)
+
+    # 2. Create Primitives
+    # We create a temporary component to act as a staging area
+    c_temp = gf.Component("temp_assembly")
+    
+    # Define primitives
+    e_vert = gf.components.ellipse(radii=(petal_r_minor, petal_r_major), layer=layer)
+    e_horiz = gf.components.ellipse(radii=(petal_r_major, petal_r_minor), layer=layer)
+    
+    r_horiz = gf.components.rectangle(size=(stick_length, stick_width), layer=layer, centered=True)
+    r_vert = gf.components.rectangle(size=(stick_width, stick_length), layer=layer, centered=True)
+
+    # 3. Assemble References in c_temp
+    
+    # -- Petals --
+    # North
+    p_n = c_temp << e_vert
+    p_n.movey(petal_shift)
+    
+    # South
+    p_s = c_temp << e_vert
+    p_s.movey(-petal_shift)
+    
+    # East
+    p_e = c_temp << e_horiz
+    p_e.movex(petal_shift)
+    
+    # West
+    p_w = c_temp << e_horiz
+    p_w.movex(-petal_shift)
+    
+    # -- Stubs --
+    # North Stick
+    s_n = c_temp << r_vert
+    s_n.movey(core_radius + stick_length/2)
+    
+    # South Stick
+    s_s = c_temp << r_vert
+    s_s.movey(-(core_radius + stick_length/2))
+    
+    # East Stick
+    s_e = c_temp << r_horiz
+    s_e.movex(core_radius + stick_length/2)
+    
+    # West Stick
+    s_w = c_temp << r_horiz
+    s_w.movex(-(core_radius + stick_length/2))
+
+    # 4. Boolean Operation
+    # Flatten the temporary assembly into a single polygon
+    # Boolean 'OR' of the component with itself merges all touching polygons
+    c_final = gf.boolean(c_temp, c_temp, operation='or', layer=layer)
+    
+    c_final.name = "quatrefoil_device"
+    return c_final
+
+# Create and save the device
+if __name__ == "__main__":
+    component = device_quatrefoil()
+    component.show() # View in KLayout/GDS viewer if available
+    component.write_gds("quatrefoil_device.gds")

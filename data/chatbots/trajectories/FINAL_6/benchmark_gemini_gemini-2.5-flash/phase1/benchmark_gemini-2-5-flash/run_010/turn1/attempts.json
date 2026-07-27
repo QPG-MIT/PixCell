@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:19:30.194959",
+      "api_duration_seconds": 54.827921867370605,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 1964,
+        "total_tokens": 15331
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: taper() got an unexpected keyword argument 'centered'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:26.509189",
+      "api_duration_seconds": 12.289177656173706,
+      "usage": {
+        "input_tokens": 4337,
+        "output_tokens": 1961,
+        "total_tokens": 7448
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:40.167766",
+      "api_duration_seconds": 28.156818151474,
+      "usage": {
+        "input_tokens": 6811,
+        "output_tokens": 2183,
+        "total_tokens": 13927
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: boolean() missing 1 required positional argument: 'B'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13495,
+    "output_tokens": 6108,
+    "total_tokens": 36706
+  }
+}

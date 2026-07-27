@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.928410",
+      "api_duration_seconds": 125.07068204879761,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 4773,
+        "total_tokens": 31693
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: 'float' object is not subscriptable",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:16.317023",
+      "api_duration_seconds": 65.97869420051575,
+      "usage": {
+        "input_tokens": 7144,
+        "output_tokens": 2967,
+        "total_tokens": 22791
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise KeyError(\n    ...<2 lines>...\n    ) from e\nKeyError: \"key='o1' is not a valid port name or index. Available ports: ['e1', 'e2', 'e3', 'e4']\"\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_7/benchmark_gemini_gemini-2.5-flash/phase1/benchmark_gemini-2-5-flash/run_002/turn1/generated_component.py\", line 184, in <module>\n    device = device_from_image()\n  File \"/",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:23.746851",
+      "api_duration_seconds": 70.54783630371094,
+      "usage": {
+        "input_tokens": 10668,
+        "output_tokens": 2822,
+        "total_tokens": 27756
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<3 lines>...\n    )\nValueError: portname cannot be None if an Instance Object is given. Forcomplex connections (non-90 degree and floating point ports) useroute_cplx instead",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 20159,
+    "output_tokens": 10562,
+    "total_tokens": 82240
+  }
+}

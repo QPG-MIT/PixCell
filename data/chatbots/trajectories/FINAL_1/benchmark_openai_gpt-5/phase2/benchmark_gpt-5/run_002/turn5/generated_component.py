@@ -1,0 +1,79 @@
+import gdsfactory as gf
+
+
+@gf.cell
+def fork_with_triple_tapers_v5():
+    c = gf.Component()
+
+    # Footprint
+    W = 40.0
+
+    # Left three tapers (same idea as before)
+    L_mid = 23.2
+    L_outer = 21.2
+    w_mid1, w_mid2 = 0.52, 0.16
+    w_out1, w_out2 = 0.36, 0.08
+
+    y_mid = 0.0
+    y_outer = 0.58
+
+    t_mid = c << gf.components.taper(length=L_mid,  width1=w_mid1, width2=w_mid2,  cross_section="strip")
+    t_top = c << gf.components.taper(length=L_outer, width1=w_out1, width2=w_out2, cross_section="strip")
+    t_bot = c << gf.components.taper(length=L_outer, width1=w_out1, width2=w_out2, cross_section="strip")
+
+    t_mid.move((0, y_mid))
+    t_top.move((0, +y_outer))
+    t_bot.move((0, -y_outer))
+
+    # Gap from mid-taper tip to the start of the rails
+    gap_mid = 0.06
+    x_start = L_mid + gap_mid
+
+    # Right rails: grow from almost-zero width and bend outwards smoothly
+    w_rail = 0.60
+    w_tip = 0.02           # ~point at the throat (removes the vertical seam)
+    gap_slit = 0.02        # minimum white slit at the throat
+
+    xs_tip = gf.cross_section.strip(width=w_tip,  layer=(1, 0))
+    xs_wide = gf.cross_section.strip(width=w_rail, layer=(1, 0))
+    ts = gf.path.transition(xs_tip, xs_wide, width_type="sine")
+
+    # Positions
+    y_in = w_tip / 2 + gap_slit   # start very close to center
+    y_out = 0.55                  # final centerlines to meet 1.7 µm total height
+    dy = y_out - y_in
+
+    # S-bend length and shape
+    s_dx = 14.0
+    r_smooth = 4.0                # rounding radius for smooth path
+
+    # Build S-bend paths (use 4 points to get a true S-bend with horizontal ends)
+    pts_top  = [(0, 0), (s_dx*0.40, 0), (s_dx*0.60, dy), (s_dx, dy)]
+    pts_bot  = [(0, 0), (s_dx*0.40, 0), (s_dx*0.60, -dy), (s_dx, -dy)]
+
+    p_top = gf.path.smooth(pts_top, radius=r_smooth)
+    p_bot = gf.path.smooth(pts_bot, radius=r_smooth)
+
+    s_top = c << gf.path.extrude_transition(p_top, ts)
+    s_bot = c << gf.path.extrude_transition(p_bot, ts)
+
+    # Place the S-bends so their starts sit just to the right of the center taper
+    s_top.move((x_start, +y_in))
+    s_bot.move((x_start, -y_in))
+
+    # Straight constant-width rails to the right edge
+    L_right = W - (x_start + s_dx)
+    p_straight = gf.path.straight(L_right)
+
+    st_top = c << gf.path.extrude(p_straight, xs_wide)
+    st_bot = c << gf.path.extrude(p_straight, xs_wide)
+    st_top.connect("o1", s_top.ports["o2"])
+    st_bot.connect("o1", s_bot.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    comp = fork_with_triple_tapers_v5()
+    comp.write_gds("fork_with_triple_tapers_v5.gds")
+    print("Wrote GDS: fork_with_triple_tapers_v5.gds")

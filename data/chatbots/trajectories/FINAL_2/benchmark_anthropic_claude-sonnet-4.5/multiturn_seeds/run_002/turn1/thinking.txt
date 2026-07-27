@@ -1,0 +1,54 @@
+Looking at the image, I can see a structure that resembles a factory or industrial building with four chimneys/smokestacks on top. The structure has:
+1. A rectangular base/building body
+2. Four vertical columns/chimneys extending upward from the top
+3. The chimneys appear to taper (get narrower) as they go up from the base
+4. There's a small triangular or trapezoidal extension at the bottom center
+
+Given the footprint constraint of [25, 10] microns, I need to create a structure that fits within these dimensions.
+
+Let me break down the components:
+1. Main rectangular body (the factory building)
+2. Four tapered columns/chimneys on top
+3. A small triangular or trapezoidal protrusion at the bottom
+
+The chimneys appear to:
+- Start wider at the base
+- Taper to a narrower width at the top
+- Have rectangular tops
+- Be evenly spaced
+
+Let me design this step by step:
+
+1. Main body: A large rectangle forming the building
+2. Four chimneys: These could be created using tapered rectangles or trapezoids
+3. Bottom protrusion: A small triangle or trapezoid pointing down
+
+I'll use the rectangle primitive for the main body and create custom tapered shapes for the chimneys. The chimneys appear to taper inward (narrower at top).
+
+Looking more carefully at the image:
+- The chimneys seem to have a uniform width at the top and bottom, but taper in the middle, creating an hourglass or tapered cone shape
+- They appear to be simple tapered columns
+
+Let me create this using gdsfactory components and boolean operations if needed, or by creating custom polygons.
+
+Actually, looking at the structure again, each chimney appears to:
+1. Have a rectangular top section
+2. A tapered middle section (wider at bottom, narrow at top)
+3. Connect to the main body
+
+I can create each chimney as a combination of rectangles and trapezoids, or use polygon points directly.
+
+
+Now I'll implement this in code. I'll start with the main building body as a rectangle, then add the four chimneys using tapered shapes. The total footprint needs to stay within [25, 10] microns, so I'll make the building about 22 microns wide and 4.5 microns tall, leaving room for the chimneys to extend upward.
+
+For the chimneys, I'll space them evenly across the building width and create trapezoid shapes that taper from a wider base to a narrower top. Each chimney will be positioned at x-coordinates calculated by dividing the building width into equal sections, then I'll define the polygon points to form the tapered shape.
+
+After the chimneys, I'm adding a triangular protrusion at the bottom center of the building to give it more architectural detail, then returning the completed cell.
+
+Now I need to set up the main execution block and reconsider the overall proportions. The building body should occupy roughly 40-50% of the total height while the chimneys extend upward for about 50-60%, and I want to ensure the chimneys taper appropriately toward the top. The bottom triangle needs to be centered and point downward. Let me restructure the code with these refined dimensions in mind, starting with the factory device function and establishing the footprint constraints.
+
+I'm setting the total dimensions to fit within [25, 10], then creating a main building rectangle that's 24 units wide and 4.5 units tall, positioned slightly below center. For the chimneys, I'm spacing four of them evenly across the building width, making them 5.5 units tall with a narrower top width of 1.4 units to create that tapered effect.
+
+Now I'm iterating through each chimney position and constructing them as trapezoid polygons. The bottom width is 3.5 units, wider than the top, so I calculate the x-position based on the spacing, then define the four corner points that form the tapered shape—wider at the building's top edge and narrowing toward the chimney peak.
+
+After adding the chimneys, I'm adding a triangular protrusion at the base with a 2.5-unit base and 1.2-unit height pointing downward. Finally, I return the cell and write it to a GDS file when the script runs.

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.188070",
+      "api_duration_seconds": 58.058011054992676,
+      "usage": {
+        "input_tokens": 2348,
+        "output_tokens": 2571,
+        "total_tokens": 16307
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S40_1p_82ceb6d5' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:08.824482",
+      "api_duration_seconds": 36.580495834350586,
+      "usage": {
+        "input_tokens": 4978,
+        "output_tokens": 2093,
+        "total_tokens": 13455
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:46.918367",
+      "api_duration_seconds": 14.580756902694702,
+      "usage": {
+        "input_tokens": 7102,
+        "output_tokens": 1860,
+        "total_tokens": 10489
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'elements'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14428,
+    "output_tokens": 6524,
+    "total_tokens": 40251
+  }
+}

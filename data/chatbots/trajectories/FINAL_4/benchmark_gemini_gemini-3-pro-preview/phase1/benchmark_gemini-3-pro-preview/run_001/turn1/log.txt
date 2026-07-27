@@ -1,0 +1,91 @@
+Turn 1 Response:
+
+Based on the provided image and footprint constraints, here is the GDSFactory script to generate the device.
+
+The device is a **directional coupler**. It consists of a central region where two waveguides are parallel and close together (coupling region), and input/output regions where the waveguides curve away from each other using S-bends.
+
+**Geometric Analysis:**
+*   **Total Footprint:** $18 \mu m \times 3 \mu m$.
+*   **Structure:** Two S-bends (input), two parallel straights (center), two S-bends (output).
+*   **Length Distribution:** To fit 18um, we can estimate the central straight region is $\approx 4 \mu m$ (visual aspect ratio), leaving $7 \mu m$ for the S-bends on each side ($7+4+7=18$).
+*   **Height Distribution:** To fit 3um height, with an estimated waveguide width of $0.5 \mu m$ and a central gap of $0.2 \mu m$, the vertical offset for the S-bends must be calculated to transition from the narrow central spacing to the wider input spacing.
+    *   Center Y positions: $\pm(0.2/2 + 0.5/2) = \pm 0.35 \mu m$.
+    *   Outer Y positions (derived from 3um height): Top edge at $+1.5$, Bottom edge at $-1.5$. Centers at $\pm 1.25 \mu m$.
+    *   Required S-bend vertical offset ($dy$): $1.25 - 0.35 = 0.9 \mu m$.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_18x3():
+    c = gf.Component()
+
+    # =============================================================
+    # Parameters derived from footprint 18um x 3um
+    # =============================================================
+    length_straight = 4.0       # Length of the central coupling region
+    length_bend = 7.0           # Length of the input/output S-bends
+    gap = 0.2                   # Gap between waveguides in the center
+    width = 0.5                 # Waveguide width
+    dy = 0.9                    # Vertical displacement of the S-bends
+    
+    # Create Cross Section
+    xs = gf.cross_section.cross_section(width=width)
+
+    # =============================================================
+    # 1. Central Straight Region
+    # =============================================================
+    # Create two parallel straight waveguides for the coupling region
+    # Top straight
+    wg_top = c << gf.components.straight(length=length_straight, cross_section=xs)
+    wg_top.movey((gap + width) / 2)
+    
+    # Bottom straight
+    wg_bot = c << gf.components.straight(length=length_straight, cross_section=xs)
+    wg_bot.movey(-(gap + width) / 2)
+
+    # =============================================================
+    # 2. Input S-Bends (Left Side)
+    # =============================================================
+    # Top Left: Connects to straight input (o1). Needs to come from higher Y.
+    # bend_s(size=(x, y)) goes from 0 to y. Connecting "o2" to straight means 
+    # the start (o1) is at -y relative to straight. We want +dy relative offset.
+    # Therefore y = -dy.
+    sb_in_top = c << gf.components.bend_s(size=(length_bend, -dy), cross_section=xs)
+    sb_in_top.connect("o2", wg_top.ports["o1"])
+
+    # Bottom Left: Connects to straight input. Needs to come from lower Y.
+    # We want start (o1) at -dy relative to straight. 
+    # Therefore y = dy.
+    sb_in_bot = c << gf.components.bend_s(size=(length_bend, dy), cross_section=xs)
+    sb_in_bot.connect("o2", wg_bot.ports["o1"])
+
+    # =============================================================
+    # 3. Output S-Bends (Right Side)
+    # =============================================================
+    # Top Right: Connects to straight output (o2). Needs to go to higher Y.
+    # We want end (o2) at +dy relative to straight.
+    # Therefore y = dy.
+    sb_out_top = c << gf.components.bend_s(size=(length_bend, dy), cross_section=xs)
+    sb_out_top.connect("o1", wg_top.ports["o2"])
+
+    # Bottom Right: Connects to straight output. Needs to go to lower Y.
+    # We want end (o2) at -dy relative to straight.
+    # Therefore y = -dy.
+    sb_out_bot = c << gf.components.bend_s(size=(length_bend, -dy), cross_section=xs)
+    sb_out_bot.connect("o1", wg_bot.ports["o2"])
+
+    # =============================================================
+    # 4. Expose Ports
+    # =============================================================
+    c.add_port("o1", port=sb_in_top.ports["o1"]) # Top Input
+    c.add_port("o2", port=sb_in_bot.ports["o1"]) # Bottom Input
+    c.add_port("o3", port=sb_out_top.ports["o2"]) # Top Output
+    c.add_port("o4", port=sb_out_bot.ports["o2"]) # Bottom Output
+
+    return c
+
+# Create and save the device
+device = directional_coupler_18x3()
+device.write_gds("directional_coupler_18x3.gds")
+```

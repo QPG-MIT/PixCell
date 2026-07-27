@@ -1,0 +1,74 @@
+Turn 1 Response:
+
+The error occurred because the previous script only displayed the geometry using `.show()` but did not explicitly save it to a file. 
+
+Here is the corrected script that uses `.write_gds()` to output the actual `.gds` file as required by your environment. The geometry logic remains identical, perfectly matching the 18x3 µm footprint constraint using parametric S-bends.
+
+### Corrected Python Code
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def zero_length_directional_coupler(
+    total_length: float = 18.0,
+    total_height: float = 3.0,
+    wg_width: float = 0.5,
+    gap: float = 0.2
+):
+    """
+    Creates a symmetric directional coupler using S-bends, matching 
+    a specific footprint without using a straight coupling section.
+    """
+    c = gf.Component("directional_coupler")
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+
+    # --- Footprint Calculations ---
+    # To achieve a total height of 3.0 with a width of 0.5, the max/min Y 
+    # of the waveguide centers must be at +/- 1.25.
+    port_y = (total_height - wg_width) / 2.0  
+    
+    # The center positions of the waveguides at the closest coupling point
+    center_y = (gap + wg_width) / 2.0 
+    
+    # Calculate the exact deltas for the S-bends
+    dx = total_length / 2.0            # Horizontal distance for each S-bend
+    dy = port_y - center_y             # Vertical distance for each S-bend
+
+    # --- Geometry Construction ---
+    # Left side (entering the coupling region)
+    # Top left bends downwards (negative dy)
+    top_left = c << gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+    # Bottom left bends upwards (positive dy)
+    bot_left = c << gf.components.bend_s(size=(dx, dy), cross_section=xs)
+
+    # Right side (exiting the coupling region)
+    # Top right bends back upwards (positive dy)
+    top_right = c << gf.components.bend_s(size=(dx, dy), cross_section=xs)
+    # Bottom right bends back downwards (negative dy)
+    bot_right = c << gf.components.bend_s(size=(dx, -dy), cross_section=xs)
+
+    # --- Assembly & Positioning ---
+    # Position the input ports of the left-side S-bends
+    top_left.move((0, port_y))
+    bot_left.move((0, -port_y))
+
+    # Connect the right-side S-bends natively to the outputs of the left side
+    top_right.connect("o1", top_left.ports["o2"])
+    bot_right.connect("o1", bot_left.ports["o2"])
+
+    # --- Expose External Ports ---
+    c.add_port("o1", port=top_left.ports["o1"])   # Top input
+    c.add_port("o2", port=bot_left.ports["o1"])   # Bottom input
+    c.add_port("o3", port=top_right.ports["o2"])  # Top output
+    c.add_port("o4", port=bot_right.ports["o2"])  # Bottom output
+
+    return c
+
+if __name__ == "__main__":
+    # Create the device
+    device = zero_length_directional_coupler()
+    
+    # Write the GDS file
+    device.write_gds("zero_length_directional_coupler.gds")
+```

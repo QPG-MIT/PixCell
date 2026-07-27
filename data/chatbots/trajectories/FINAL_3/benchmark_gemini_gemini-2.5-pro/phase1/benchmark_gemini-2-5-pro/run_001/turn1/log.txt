@@ -1,0 +1,79 @@
+Turn 1 Response:
+
+The error `TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'` indicates that the `show()` function in your version of gdsfactory no longer accepts the `show_ports` parameter. This is a common change in newer versions of the library where the visualization backend has been updated. The current default viewer displays ports automatically, so the argument is no longer needed.
+
+The fix is to remove the `show_ports=True` argument from the `coupler_device.show()` call.
+
+Here is the corrected script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_device_from_image():
+    """
+    Recreates the optical coupler geometry from the provided image using
+    GDSFactory's parametric components, based on the given footprint.
+
+    The device is identified as a 2x2 directional coupler, which consists of
+    two S-bends bringing waveguides together for a coupling region, and two
+    S-bends separating them again. The `gf.components.coupler` primitive
+    is the ideal high-level component for this topology.
+    """
+    # 1. Define device parameters from the footprint constraint and image analysis.
+    # Footprint is [120, 4] um, which corresponds to the total length and height.
+    footprint_length = 120.0
+    footprint_height = 4.0
+
+    # Assume a standard single-mode waveguide width.
+    waveguide_width = 0.5
+
+    # The total height is the center-to-center vertical separation of the ports (dy)
+    # plus the waveguide width.
+    # Therefore, dy = total_height - width.
+    port_separation_dy = footprint_height - waveguide_width
+
+    # The total length is composed of the central straight coupling section and
+    # the two S-bend transition sections (dx on each side).
+    # From the image, the straight section appears to be about half the total length.
+    # Total length = coupling_length + 2 * dx
+    coupling_length = 60.0
+    s_bend_horizontal_length = (footprint_length - coupling_length) / 2.0
+
+    # The gap between the waveguides in the coupling region is a critical parameter.
+    # A typical value for effective coupling is chosen.
+    coupling_gap = 0.2
+
+    # 2. Define the waveguide cross-section for extrusion.
+    xs = gf.cross_section.cross_section(width=waveguide_width)
+
+    # 3. Instantiate the coupler using the high-level parametric component.
+    # This component parametrically generates the S-bends and the straight
+    # coupling section, matching the image's topology.
+    device = gf.components.coupler(
+        length=coupling_length,
+        gap=coupling_gap,
+        dy=port_separation_dy,
+        dx=s_bend_horizontal_length,
+        cross_section=xs,
+    )
+    return device
+
+# Create an instance of the component.
+# This is the function call that generates the GDS cell.
+coupler_device = create_device_from_image()
+
+# The following lines are for verification and visualization purposes.
+# They are not part of the core geometry generation logic.
+if __name__ == "__main__":
+    # Print the size of the generated component to verify against the footprint.
+    print(f"Generated component size: ({coupler_device.xsize}, {coupler_device.ysize})")
+    
+    # FIX: The 'show_ports' argument is no longer supported in the show() method.
+    # The default viewer displays ports automatically.
+    coupler_device.show()
+    
+    # Save the component to a GDS file.
+    # coupler_device.write_gds("coupler.gds")
+
+```

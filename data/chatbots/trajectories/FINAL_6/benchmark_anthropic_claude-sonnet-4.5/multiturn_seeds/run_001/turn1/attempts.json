@@ -1,0 +1,39 @@
+{
+  "turn": 1,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:38:43.064547",
+      "api_duration_seconds": 51.90017580986023,
+      "usage": {
+        "input_tokens": 3633,
+        "output_tokens": 3692,
+        "total_tokens": 7325
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise TypeError(\n    ...<3 lines>...\n    )\nTypeError: The cell function 'four_way_cross' in '/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_6/benchmark_anthropic_claude-sonnet-4.5/multiturn_seeds/run_001/turn1/generated_component.py' returned None. Did you forget to return the cell or component at the end of the function?",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:39:36.275769",
+      "api_duration_seconds": 12.797990083694458,
+      "usage": {
+        "input_tokens": 4415,
+        "output_tokens": 1062,
+        "total_tokens": 5477
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 8048,
+    "output_tokens": 4754,
+    "total_tokens": 12802
+  }
+}

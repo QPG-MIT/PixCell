@@ -1,0 +1,53 @@
+{
+  "turn": 5,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:14:51.067926",
+      "api_duration_seconds": 102.7876558303833,
+      "usage": {
+        "input_tokens": 5397,
+        "output_tokens": 1566,
+        "total_tokens": 15697
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory.path' has no attribute 'bezier'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:16:35.127043",
+      "api_duration_seconds": 45.10519599914551,
+      "usage": {
+        "input_tokens": 6994,
+        "output_tokens": 1834,
+        "total_tokens": 11603
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: Unnamed_4_-25001_1776_A0p055185413555167484, Cell name: Unnamed_4\nInstance name: Unnamed_5_-25001_-1176_A359p94481458644384, Cell name: Unnamed_5\nInstance name: Unnamed_6_50000_600_A359p94481458644384, Cell name: Unnamed_6\nInstance name: Unnamed_7_50",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:17:21.491053",
+      "api_duration_seconds": 77.60812211036682,
+      "usage": {
+        "input_tokens": 9090,
+        "output_tokens": 1992,
+        "total_tokens": 17038
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 21481,
+    "output_tokens": 5392,
+    "total_tokens": 44338
+  }
+}

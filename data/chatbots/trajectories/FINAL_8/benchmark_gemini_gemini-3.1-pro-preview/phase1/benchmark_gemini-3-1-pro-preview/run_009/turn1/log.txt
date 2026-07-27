@@ -1,0 +1,109 @@
+Turn 1 Response:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def clipped_coupler_array():
+    """
+    Recreates the multi-waveguide coupler array with outer bends
+    clipped exactly to the 120.0 x 4.0 footprint.
+    Built using parametric paths and clean boolean intersections.
+    """
+    c_raw = gf.Component("raw_array")
+
+    L_total = 120.0
+    L_straight = 80.0
+    
+    # --- Y coordinates and Widths ---
+    
+    # 1. Central Group (5 parallel straight waveguides)
+    y_center = [-0.2, -0.1, 0.0, 0.1, 0.2]
+    w_center = 0.05
+    
+    for y in y_center:
+        xs = gf.cross_section.cross_section(width=w_center, layer=(1, 0))
+        # Make slightly longer to ensure clean boolean cut at the left/right edges
+        wg = c_raw << gf.components.straight(length=L_total + 4.0, cross_section=xs)
+        wg.move((-(L_total + 4.0)/2, y))
+
+    # 2. Top Group (Bends Upwards)
+    # Proportions matching the image: Thick inner band, 4 thin lines, Thick outer band
+    top_specs = [
+        {"y": 0.55, "w": 0.4},   # Inner Thick band
+        {"y": 0.85, "w": 0.05},  # Thin line 1
+        {"y": 0.95, "w": 0.05},  # Thin line 2
+        {"y": 1.05, "w": 0.05},  # Thin line 3
+        {"y": 1.15, "w": 0.05},  # Thin line 4
+        {"y": 1.35, "w": 0.2},   # Outer Thick band
+    ]
+    # Common center of curvature Y for all top arcs to remain perfectly concentric
+    y_c_top = 3.5
+
+    for spec in top_specs:
+        y = spec["y"]
+        w = spec["w"]
+        R = y_c_top - y  # Radius scales so they all share the exact same center (40, 3.5)
+        xs = gf.cross_section.cross_section(width=w, layer=(1, 0))
+        
+        # Right Side Segment
+        p_tr = gf.Path()
+        p_tr.append(gf.path.straight(length=L_straight/2))
+        p_tr.append(gf.path.arc(radius=R, angle=90))
+        p_tr.append(gf.path.straight(length=10.0)) # Long tail guarantees crossing the top y=2.0 boundary
+        
+        comp_tr = gf.path.extrude(p_tr, cross_section=xs)
+        wg_tr = c_raw << comp_tr
+        wg_tr.move((0, y))
+        
+        # Left Side Segment (Perfectly mirrored across Y-axis)
+        wg_tl = c_raw << comp_tr
+        wg_tl.move((0, y))
+        wg_tl.mirror(p1=(0,0), p2=(0,1))
+
+    # 3. Bottom Group (Bends Downwards, symmetric to Top Group)
+    bot_specs = [
+        {"y": -0.55, "w": 0.4},  
+        {"y": -0.85, "w": 0.05}, 
+        {"y": -0.95, "w": 0.05}, 
+        {"y": -1.05, "w": 0.05}, 
+        {"y": -1.15, "w": 0.05}, 
+        {"y": -1.35, "w": 0.2},  
+    ]
+    y_c_bot = -3.5
+
+    for spec in bot_specs:
+        y = spec["y"]
+        w = spec["w"]
+        R = y - y_c_bot # Symmetric concentric radius calculation
+        xs = gf.cross_section.cross_section(width=w, layer=(1, 0))
+        
+        # Right Side Segment
+        p_br = gf.Path()
+        p_br.append(gf.path.straight(length=L_straight/2))
+        p_br.append(gf.path.arc(radius=R, angle=-90)) # Turn DOWN
+        p_br.append(gf.path.straight(length=10.0))
+        
+        comp_br = gf.path.extrude(p_br, cross_section=xs)
+        wg_br = c_raw << comp_br
+        wg_br.move((0, y))
+        
+        # Left Side Segment (Mirrored)
+        wg_bl = c_raw << comp_br
+        wg_bl.move((0, y))
+        wg_bl.mirror(p1=(0,0), p2=(0,1))
+
+    # --- 4. Boundary Clipping ---
+    # Create the precise footprint bounding box
+    bbox = gf.components.rectangle(size=(120.0, 4.0), layer=(1, 0), centered=True)
+
+    # Intersect unbounded raw geometry with the bbox to create clean cuts at the boundaries
+    clipped_device = gf.boolean(c_raw, bbox, operation="and", layer=(1, 0))
+
+    return clipped_device
+
+
+if __name__ == "__main__":
+    device = clipped_coupler_array()
+    device.write_gds("output.gds")
+```

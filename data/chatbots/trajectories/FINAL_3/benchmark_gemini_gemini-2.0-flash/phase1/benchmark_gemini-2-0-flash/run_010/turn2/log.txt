@@ -1,0 +1,55 @@
+Turn 2 Response:
+
+I've analyzed the rendered image and the original image. The main components are a vertical section of waveguide, then a short horizontal section, then another section with a bend upwards, with a small rectangle near the second corner. Here's an updated script to better represent that shape:
+
+```python
+import gdsfactory as gf
+from gdsfactory.components import bend_euler, straight, rectangle
+from gdsfactory.path import smooth
+
+@gf.cell
+def stylized_waveguide():
+    """Stylized waveguide shape."""
+    c = gf.Component("stylized_waveguide")
+    xs = gf.cross_section.cross_section(width=0.5)
+
+    # Define path points
+    p = gf.Path()
+    p.append(gf.path.straight(length=20))
+    p.append(gf.path.arc(radius=5, angle=45))
+    p.append(gf.path.straight(length=5))
+    path = p
+
+    # Extrude the path
+    wg = c << path.extrude(cross_section=xs)
+    wg.rotate(-90)
+
+    # Add a rectangle near the second bend
+    rect = c << rectangle(size=(3, 1), layer=(1, 0)) # Adjust size as needed
+    rect.move((5, 8)) # Adjust position as needed
+    rect.rotate(-90)
+
+    # Add ports for easy connection
+    c.add_port("o1", port=wg.ports["o1"])
+    c.add_port("o2", port=wg.ports["o2"])
+
+    return c
+
+
+if __name__ == "__main__":
+    sw = stylized_waveguide()
+    sw.write_gds("stylized_waveguide.gds")
+    sw.show()
+    print("GDS file 'stylized_waveguide.gds' created.")
+```
+
+Key changes and reasoning:
+
+*   **Path-based Approach:** Uses `gf.Path` and `gf.path.extrude` to create the curved shape, giving more control over the waveguide's form than trying to connect individual bend and straight components.
+*   **Arc for Curvature:** Replaced the `bend_euler` with `gf.path.arc` within the path definition to generate a rounded section.
+*   **Rectangle Creation:** Added a `gf.components.rectangle` to create the square block and then it positions it near the corner. The `size` and `move` parameters will need fine-tuning to match the image exactly.
+*   **Rotation:** Rotated the complete waveguide so that it's vertical (aligned to the provided pictures).
+*   **Port Definitions:** Added ports to the component.
+*   **Clearer Parameterization:** More adjustable parameters (arc radius, lengths of straights, rectangle size and position).
+
+This approach allows to create the desired design and export it to a GDS file.

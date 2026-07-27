@@ -1,0 +1,53 @@
+{
+  "turn": 4,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:27:07.810643",
+      "api_duration_seconds": 81.40657591819763,
+      "usage": {
+        "input_tokens": 4879,
+        "output_tokens": 3586,
+        "total_tokens": 23655
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'rectangle_gdsfactorypcomponentspshapesprectangle_S0p1_0_f466a990' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:28:30.496048",
+      "api_duration_seconds": 23.787518978118896,
+      "usage": {
+        "input_tokens": 8525,
+        "output_tokens": 2911,
+        "total_tokens": 13846
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: taper() got an unexpected keyword argument 'centered'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:28:55.638857",
+      "api_duration_seconds": 18.732833862304688,
+      "usage": {
+        "input_tokens": 11462,
+        "output_tokens": 2676,
+        "total_tokens": 15713
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 24866,
+    "output_tokens": 9173,
+    "total_tokens": 53214
+  }
+}

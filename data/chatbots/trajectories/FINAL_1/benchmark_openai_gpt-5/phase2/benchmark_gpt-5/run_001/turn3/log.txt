@@ -1,0 +1,86 @@
+Turn 3 Response:
+
+Analysis of mismatch
+- The left side looks like one big filled wedge in your raster. This happens because the narrow top/bottom tapers (w_tip = 0.12) are too close to the center wedge base (w_center_base = 0.50). With y_left = 0.25, the edges overlap: y_left − w_tip/2 = 0.19 < w_center_base/2 = 0.25.
+- The white scallops you see near the right are because the center wedge extends into the region where the S-bends start (your center_len = 31 overlaps the S-bend that starts at x = L_taper = 26).
+- The total height is larger than 1.7 µm. To get a 1.7 µm tall device, the rail centers at the right must be at y_right = H/2 − w_rail/2.
+
+Fixes applied
+- Place the left tapers far enough from the center wedge so the three slivers are separated: y_left = w_center_base/2 + w_tip/2 + clearance.
+- Compute y_right from the required footprint height H = 1.7 so the overall height is correct.
+- Stop the center wedge before the S-bend begins to avoid the scallops.
+- Keep total length ≈ 40 µm.
+
+Improved code (Turn 3)
+
+```python
+import gdsfactory as gf
+
+
+@gf.cell
+def fork_funnel_v3():
+    c = gf.Component("fork_funnel_v3")
+
+    # footprint
+    L_total = 40.0
+    H_total = 1.7
+
+    # widths (µm)
+    w_tip = 0.12            # thin rails at the far left
+    w_rail = 0.90           # wide rails on the right
+    w_center_base = 0.50    # center wedge base (left)
+    w_center_tip = 0.06     # center wedge tip (right)
+
+    # lengths (µm)
+    L_taper = 26.0          # left taper length
+    dx_s = 6.0              # S-bend x-span
+    L_right = L_total - L_taper - dx_s  # keep total ~40 µm (≈8 µm)
+
+    # vertical placement
+    clearance = 0.04                           # gap between center wedge and side rails (left)
+    y_left = w_center_base/2 + w_tip/2 + clearance   # ≈ 0.35–0.36 µm
+    y_right = H_total/2 - w_rail/2                    # sets total height to 1.7 µm (≈0.40 µm)
+    dy = y_right - y_left                              # small fanout in the S-bend
+
+    xs_rail = gf.cross_section.cross_section(width=w_rail, layer=(1, 0))
+
+    # Top branch
+    t_top = c << gf.components.taper(length=L_taper, width1=w_rail, width2=w_tip, layer=(1, 0))
+    t_top.rotate(180)
+    t_top.movey(+y_left)
+
+    s_top = c << gf.components.bend_s(size=(dx_s, +dy), cross_section=xs_rail)
+    s_top.connect("o1", t_top.ports["o1"])
+
+    r_top = c << gf.components.straight(length=L_right, cross_section=xs_rail)
+    r_top.connect("o1", s_top.ports["o2"])
+
+    # Bottom branch
+    t_bot = c << gf.components.taper(length=L_taper, width1=w_rail, width2=w_tip, layer=(1, 0))
+    t_bot.rotate(180)
+    t_bot.movey(-y_left)
+
+    s_bot = c << gf.components.bend_s(size=(dx_s, -dy), cross_section=xs_rail)
+    s_bot.connect("o1", t_bot.ports["o1"])
+
+    r_bot = c << gf.components.straight(length=L_right, cross_section=xs_rail)
+    r_bot.connect("o1", s_bot.ports["o2"])
+
+    # Center wedge: stop before the S-bends start to avoid scallops
+    center_len = L_taper - 0.6  # ~0.6 µm buffer before S-bends
+    _center = c << gf.components.taper(
+        length=center_len, width1=w_center_base, width2=w_center_tip, layer=(1, 0)
+    )
+
+    return c
+
+
+if __name__ == "__main__":
+    comp = fork_funnel_v3()
+    comp.write_gds("fork_funnel_v3.gds")
+```
+
+What to expect
+- Three separate slender features on the left (top rail, center wedge, bottom rail) with a visible gap.
+- No intrusions into the center wedge near the transition to the right because the wedge ends before the S-bends.
+- Overall footprint close to 40 µm × 1.7 µm. Adjust clearance or center_len slightly if you need finer visual matching.

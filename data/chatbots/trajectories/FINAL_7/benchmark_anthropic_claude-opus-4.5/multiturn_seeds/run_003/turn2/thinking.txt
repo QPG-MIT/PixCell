@@ -1,0 +1,120 @@
+Looking at the rendered output vs the original target, I can see several issues:
+
+1. The original target shows a complete stadium/pill shape (closed on both ends), but my rendered output shows only the left curved portion - the right side is cut off
+2. The bars in the original have 3 windows on top and 2 windows on bottom, both bars appear to have the same structure with windows
+3. The aspect ratio seems different - the original is more elongated horizontally
+4. The bars connect to both curved ends of the stadium shape
+
+Let me analyze the original more carefully:
+- It's a stadium/pill shaped outer ring
+- Inside there are two horizontal bars
+- Top bar has 3 rectangular windows/holes
+- Bottom bar has 2 rectangular windows/holes
+- The bars span from one curved end to the other
+
+Looking at the footprint constraint of 5.5 x 3.0 μm, the device should be wider than tall.
+
+The issue with my code:
+1. The stadium shape isn't rendering correctly - probably because I'm using circles which don't merge properly
+2. The bars might be too short or not positioned correctly
+
+Let me rewrite this more carefully:
+
+1. Create the outer stadium as a proper closed shape using path extrusion or by creating proper stadium geometry
+2. Create the inner bars with proper window placement
+3. Make sure the overall dimensions fit the footprint
+
+Let me try a different approach - using path-based stadium creation:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def chain_link_device():
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Device parameters
+    total_width = 5.5
+    total_height = 3.0
+    ring_thickness = 0.28
+    
+    # Create outer stadium shape using a path
+    # Stadium = two semicircles connected by straight lines
+    radius = total_height / 2
+    straight_length = total_width - total_height  # Length of straight section
+
+
+```
+
+I need to construct the stadium outline properly by generating points for both the left and right semicircles, then connecting them with straight segments. Using numpy to create the arc angles and coordinates, I'll build the outer perimeter by iterating through angles for the left semicircle, then the right one, ensuring the shape closes completely.
+
+Once I have the outer polygon defined, I'll create an inner polygon with a reduced radius to form the ring thickness. The inner radius becomes the outer radius minus the ring thickness, and I follow the same angular approach to generate those points.
+```
++ inner_r * np.cos(a), inner_r * np.sin(a)))
+
+inner_poly = gf.Component()
+inner_poly.add_polygon(inner_pts, layer=layer)
+
+ring = gf.boolean(outer_poly, inner_poly, operation="not", layer=layer)
+c << ring
+```
+Then I use a boolean subtraction operation to cut out the inner polygon from the outer one, creating the actual ring structure. After that, I need to add the internal bars that connect across the device.
+
+Looking at the rendered output more carefully, the geometry isn't quite right—the outer ring looks incomplete and the bars extend beyond their intended boundaries. The issue might be with how the circular boolean operations are being applied. I should switch to a polygon-based approach for the stadium shape instead, which will give me more precise control over the geometry. The device footprint is roughly 5.5 by 3.0 micrometers, so I need to ensure the proportions match the original image where the width is significantly larger than the height.
+
+For the stadium polygon construction, I'll define the geometry using explicit points rather than relying on boolean operations. The radius of the end caps should be half the height, and the straight section length is the total width minus the height. I'll generate the polygon points by creating the top straight edge, then sweeping around the right semicircle with enough resolution for a smooth curve.
+
+After completing the right side, I'll add the bottom straight edge and trace back along the left semicircle to close the shape. Once I have the outer stadium boundary, I can create the inner stadium by reducing the radius by the ring thickness, which gives me the two polygons needed to define the ring geometry.
+
+Then I'll use a boolean "not" operation to subtract the inner polygon from the outer one, creating the actual ring structure. For the internal bars, I need to define their dimensions—a thickness of 0.4 and a length that extends 1.5 units beyond the straight section to reach into the curved regions. The top bar will be positioned at y = +0.5, and I'll construct it as a solid polygon that I can later add to the component.
+
+For the windows, I'm creating three openings in the top bar with a width of 0.5 and height of 0.36 (leaving a 0.16 frame margin). They'll be spaced 0.7 units apart and centered at y = +0.5, then subtracted from the bar using another boolean operation.
+
+Next, I need to construct the bottom bar at y = -0.5 with the same dimensions as the top bar, then add it to the component.
+
+For the bottom bar windows, I'm creating 2 window polygons spaced at regular intervals using the same win_spacing parameter. Each window is positioned at x = (i - 0.5) * win_spacing and defined by its width and height offsets from the center point. Finally, I apply a boolean "not" operation to subtract the windows from the solid bottom bar shape.
+
+Looking at the rendered output, the device appears cropped on the right side—only the left half is visible. Comparing this to the target image, I notice the structure should show a complete stadium outline with two horizontal bars inside. The top bar has 3 rectangular cells with gaps between them, while the bottom bar has 2 cells. Rather than windows cut from continuous bars, the geometry seems to represent segmented cell structures. The bars should be continuous with rectangular cutouts, not separate frames.
+
+The rendering issue suggests the stadium ring isn't fully closed or the geometry extends beyond expected bounds. I should verify the stadium is properly enclosed and consider using `gf.geometry.offset` to create the ring more reliably:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell  
+def chain_link_device():
+    c = gf.Component()
+    layer = (1,
+```
+np.cos(angle), R * np.sin(angle)))
+    
+    # Create outer stadium component
+    outer = gf.Component()
+    outer.add_polygon(pts, layer=layer)
+    
+    # Create inner stadium (smaller)
+    inner_R = R - ring_t
+    inner_pts = []
+    for angle in np.linspace(-np.pi/2, np.pi/2, n):
+        inner_pts.append((S/2 + inner_R * np.cos(angle), inner_R * np.sin(angle)))
+    for angle in np.linspace(np.pi/2, 3*np.pi/2, n):
+        inner_pts.append((-S/2 + inner_R * np.cos(angle), inner_R * np.sin(angle)))
+    
+    inner = gf.Component()
+    inner.add_polygon(inner_pts, layer=layer)
+```
+
+The stadium shape is constructed by combining two semicircles with a rectangular section. After defining the outer boundary using polygon points, I create the inner stadium by reducing the radius by the ring thickness, then subtract it to form the ring structure.
+
+Now I need to add the bar elements. The bars span across the inner width (approximately S plus extended semicircle portions), with a height of 0.35 units. The top bar is positioned at a vertical offset of 0.45 units from center and will contain three window cutouts.
+
+For the windows, each is 0.45 units wide and slightly narrower than the bar height to leave margins. They're spaced 0.6 units apart horizontally, centered at positions offset by -1, 0, and +1 times the spacing value. I'm creating these as separate polygon components that will be subtracted from the bar using boolean operations.
+
+After cutting the windows from the top bar, I add the result to the main component. Then I construct a similar bottom bar positioned at negative y-coordinates with only 2 window cutouts instead of 3, where the windows are offset by -0.5 and +0.5 times the spacing to center them differently.
+
+Looking at the rendered output, I notice only the left side of the device appears—the right curved section is completely absent. This indicates the stadium shape construction itself has a problem, likely in how the circles are being merged with the rectangle to form the rounded ends.
+
+I should switch to building the stadium shape using explicit polygon vertices instead of relying on boolean operations with circles.

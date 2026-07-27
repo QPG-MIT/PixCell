@@ -1,0 +1,51 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+
+    # Define cross section
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    # Parameters based on the target image
+    radius = 5.0
+    rect_width = 3.0
+    rect_height = 4.0  # Adjust as needed to match the overall shape
+
+    # Semicircle - using circular bend instead of arc (arc is not a standard component)
+    arc = c << gf.components.bend_circular(radius=radius, angle=180, layer=(1, 0))
+    arc.rotate(180) # Flip the arc
+    arc.movex(-radius) # Shift horizontally to start at 0,0
+
+    # Rectangle
+    rect = c << gf.components.rectangle(size=(rect_width, rect_height), layer=(1, 0))
+    rect.movex(0)
+    rect.movey(-rect_height/2)  # Center the rectangle vertically
+
+    # Smaller Rectangles on the sides
+    side_rect_width = 0.5 # width of the protruding rectangles
+    side_rect_height = 1.0 # height of the protruding rectangles
+    side_rect1 = c << gf.components.rectangle(size=(side_rect_width, side_rect_height), layer=(1, 0))
+    side_rect2 = c << gf.components.rectangle(size=(side_rect_width, side_rect_height), layer=(1, 0))
+
+    side_rect1.move(destination = (rect_width, -rect_height/2 - side_rect_height/2)) # move bottom
+    side_rect2.move(destination = (rect_width, -rect_height/2 + side_rect_height/2)) # move top
+
+    # The issue was using the tuple destination for .move(). It expects a (x,y) tuple
+    # so we change it to:
+    side_rect1.move(dx=rect_width, dy=-rect_height/2 - side_rect_height/2)
+    side_rect2.move(dx=rect_width, dy=-rect_height/2 + side_rect_height/2)
+
+
+    # Overall Footprint Rectangle (Important for constraint)
+    total_width = radius + rect_width + side_rect_width
+    total_height = rect_height
+    footprint = c << gf.components.rectangle(size=(total_width, total_height), layer=(1,0), centered=False)
+    footprint.movex(-radius)
+    footprint.movey(-total_height /2)
+    return c
+
+# Create and save
+device = my_device()
+device.write_gds("my_device.gds")
+device.show()

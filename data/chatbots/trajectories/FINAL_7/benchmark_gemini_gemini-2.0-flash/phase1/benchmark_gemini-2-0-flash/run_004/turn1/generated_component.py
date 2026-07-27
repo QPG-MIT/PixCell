@@ -1,0 +1,105 @@
+import gdsfactory as gf
+from gdsfactory.components import rectangle
+from gdsfactory.components import ellipse
+from gdsfactory.components import taper
+from gdsfactory.components import straight
+from gdsfactory.components import bend_euler
+#from gdsfactory.geometry import offset  # geometry module is not needed
+from gdsfactory.boolean import boolean
+from gdsfactory.cross_section import cross_section
+
+
+@gf.cell
+def my_device():
+    c = gf.Component("my_device")
+    
+    # Outer oval
+    oval = c << ellipse(radii=(1.5, 2.75), layer=(1, 0))
+
+    # Central structure (two blocks connected by waveguides)
+    block_width = 0.3  # Width of the blocks
+    block_length = 0.5  # Length of the blocks
+    wg_width = 0.15  # Waveguide width
+    wg_length = 0.3   # Length of the straight segment between block and oval
+
+    # Top block and waveguides
+    top_block = c << rectangle(size=(block_length, block_width), layer=(1, 0), centered=True)
+    top_block.movey(0.7)
+    
+    top_wg_left = c << straight(length=wg_length, cross_section=cross_section(width=wg_width, layer=(1,0)))
+    top_wg_left.connect("o2", top_block.ports["e3"])
+
+    top_wg_right = c << straight(length=wg_length, cross_section=cross_section(width=wg_width, layer=(1,0)))
+    top_wg_right.connect("o1", top_block.ports["e1"])
+    top_wg_right.movex(wg_length + block_length/2)
+
+    # Bottom block and waveguides
+    bottom_block = c << rectangle(size=(block_length, block_width), layer=(1, 0), centered=True)
+    bottom_block.movey(-0.7)
+    
+    bottom_wg_left = c << straight(length=wg_length, cross_section=cross_section(width=wg_width, layer=(1,0)))
+    bottom_wg_left.connect("o2", bottom_block.ports["e4"])
+    bottom_wg_left.movey(-0.7)
+
+    bottom_wg_right = c << straight(length=wg_length, cross_section=cross_section(width=wg_width, layer=(1,0)))
+    bottom_wg_right.connect("o1", bottom_block.ports["e2"])
+    bottom_wg_right.movey(-0.7)
+    bottom_wg_right.movex(wg_length + block_length/2)
+
+    # Connecting waveguides to oval
+    wg_to_oval_len = 0.1   # straight segment length before bend
+    bend_rad = 0.2
+
+    # Top left
+    top_wg_oval_left_straight = c << straight(length=wg_to_oval_len, cross_section=cross_section(width=wg_width, layer=(1,0)))
+    top_wg_oval_left_straight.connect("o2", top_wg_left.ports["o1"])
+    
+    top_wg_oval_left_bend = c << bend_euler(radius=bend_rad, angle=-45, cross_section=cross_section(width=wg_width, layer=(1,0)))
+    top_wg_oval_left_bend.connect("o1", top_wg_oval_left_straight.ports["o2"])
+    top_wg_oval_left_bend.movex(-1.2)
+    top_wg_oval_left_bend.movey(1.5)
+
+    # Top right
+    top_wg_oval_right_straight = c << straight(length=wg_to_oval_len, cross_section=cross_section(width=wg_width, layer=(1,0)))
+    top_wg_oval_right_straight.connect("o1", top_wg_right.ports["o2"])
+
+    top_wg_oval_right_bend = c << bend_euler(radius=bend_rad, angle=45, cross_section=cross_section(width=wg_width, layer=(1,0)))
+    top_wg_oval_right_bend.connect("o2", top_wg_oval_right_straight.ports["o1"])
+    top_wg_oval_right_bend.movex(1.2)
+    top_wg_oval_right_bend.movey(1.5)
+    
+    # Bottom left
+    bottom_wg_oval_left_straight = c << straight(length=wg_to_oval_len, cross_section=cross_section(width=wg_width, layer=(1,0)))
+    bottom_wg_oval_left_straight.connect("o2", bottom_wg_left.ports["o1"])
+
+    bottom_wg_oval_left_bend = c << bend_euler(radius=bend_rad, angle=45, cross_section=cross_section(width=wg_width, layer=(1,0)))
+    bottom_wg_oval_left_bend.connect("o1", bottom_wg_oval_left_straight.ports["o2"])
+    bottom_wg_oval_left_bend.movex(-1.2)
+    bottom_wg_oval_left_bend.movey(-1.5)
+
+    # Bottom right
+    bottom_wg_oval_right_straight = c << straight(length=wg_to_oval_len, cross_section=cross_section(width=wg_width, layer=(1,0)))
+    bottom_wg_oval_right_straight.connect("o1", bottom_wg_right.ports["o2"])
+
+    bottom_wg_oval_right_bend = c << bend_euler(radius=bend_rad, angle=-45, cross_section=cross_section(width=wg_width, layer=(1,0)))
+    bottom_wg_oval_right_bend.connect("o2", bottom_wg_oval_right_straight.ports["o1"])
+    bottom_wg_oval_right_bend.movex(1.2)
+    bottom_wg_oval_right_bend.movey(-1.5)
+
+    # Cut out inner geometry from outer oval
+    inner_shapes = [top_wg_oval_left_bend, top_wg_oval_right_bend, bottom_wg_oval_left_bend, bottom_wg_oval_right_bend, top_wg_oval_left_straight, top_wg_oval_right_straight, bottom_wg_oval_left_straight, bottom_wg_oval_right_straight, top_block, bottom_block, top_wg_left, top_wg_right, bottom_wg_left, bottom_wg_right]
+    
+    
+    # It's simpler to flatten each component and then perform the boolean operation
+    # This avoids issues with boolean not handling components directly
+
+    inner_polygons = []
+    for shape in inner_shapes:
+        inner_polygons.append(shape.flatten())  # Flatten the component
+
+    full_geometry = boolean(oval.flatten(), inner_polygons, operation="not", layer=(1, 0))
+
+    return full_geometry
+
+device = my_device()
+device.show(show_ports=True)

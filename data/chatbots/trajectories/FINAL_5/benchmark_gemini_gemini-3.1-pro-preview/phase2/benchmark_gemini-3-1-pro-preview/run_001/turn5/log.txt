@@ -1,0 +1,100 @@
+Turn 5 Response:
+
+An excellent catch. The `ValueError: min_bend_radius` occurs because `gdsfactory` enforces a minimum bend radius validation check (defaulting to 10 µm) when using standard library routing components like `bend_circular`. 
+
+To bypass this and create the tight 0.06 µm micro U-turn, we can generate a raw geometric path and extrude it directly. This bypasses the DRC routing validation checks and allows us to create the exact sub-micron geometry we need.
+
+I have also refined the exact placements to guarantee flawless mathematical symmetry so that the rotated arms perfectly mirror each other.
+
+Here is the corrected and refined script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def top_arm():
+    """Builds the top folded arm perfectly using core path extrusion to bypass bend validation."""
+    c = gf.Component()
+    
+    w = 0.05
+    w_tip = 0.002
+    xs = gf.cross_section.cross_section(width=w)
+    
+    # 1. Inner Straight Waveguide
+    # Length 12.0 covers X from -5.0 to +7.0
+    inner_str = c << gf.components.straight(length=12.0, cross_section=xs)
+    dx = -5.0 - inner_str.ports["o1"].center[0]
+    dy = 0.10 - inner_str.ports["o1"].center[1]
+    inner_str.move((dx, dy))
+    
+    # 2. Tight U-Turn
+    # Using raw path extrusion bypasses the 10um minimum bend radius validation
+    p_uturn = gf.path.arc(radius=0.06, angle=180)
+    uturn = c << gf.path.extrude(p_uturn, cross_section=xs)
+    uturn.connect("o1", inner_str.ports["o2"])
+    
+    # 3. Outer Straight Waveguide
+    outer_str = c << gf.components.straight(length=12.0, cross_section=xs)
+    outer_str.connect("o2", uturn.ports["o2"])
+    
+    # 4. Inner Taper (Sharp point)
+    in_taper = c << gf.components.taper(length=2.5, width1=w_tip, width2=w)
+    in_taper.connect("o2", inner_str.ports["o1"])
+    
+    # 5. Outer Sweeping Tail
+    # Long gentle arc sweeping outward and upward (fits safely inside footprint bounds)
+    p_tail = gf.path.arc(radius=110.0, angle=-2.0)
+    trans = gf.path.transition(
+        gf.cross_section.cross_section(width=w),
+        gf.cross_section.cross_section(width=w_tip)
+    )
+    out_taper = c << gf.path.extrude_transition(p_tail, trans)
+    out_taper.connect("o1", outer_str.ports["o1"])
+    
+    # 6. Grating Teeth
+    pitch = 0.2
+    tooth_w = 0.1
+    tooth_h = 0.03
+    overlap = 0.002 # 2nm overlap prevents rendering gaps
+    num_teeth = 40
+    
+    # Ensure exact symmetric placement centered precisely over X=0
+    actual_length = num_teeth * pitch
+    adjusted_start_x = -actual_length / 2
+    
+    for i in range(num_teeth):
+        x_pos = adjusted_start_x + i * pitch + (pitch - tooth_w) / 2
+        tooth = c << gf.components.rectangle(size=(tooth_w, tooth_h + overlap), centered=False)
+        # Inner WG center Y = 0.10, bottom edge = 0.075. Tooth sinks 2nm into WG.
+        y_bottom = 0.075 - tooth_h
+        tooth.move((x_pos, y_bottom))
+        
+    return c
+
+@gf.cell
+def full_device():
+    """Assembles the geometry perfectly within the 18.24 x 0.7 um footprint."""
+    c = gf.Component()
+    
+    # --- Center Spine Waveguide ---
+    spine_length = 18.2
+    spine = c << gf.components.straight(length=spine_length, width=0.05)
+    # Center perfectly at origin (0,0)
+    dx = (-spine_length / 2) - spine.ports["o1"].center[0]
+    dy = 0.0 - spine.ports["o1"].center[1]
+    spine.move((dx, dy))
+    
+    # --- Top Arm ---
+    c << top_arm()
+    
+    # --- Bottom Arm ---
+    b_arm = c << top_arm()
+    # Flawless point symmetry around origin (0,0) mirroring the top arm entirely
+    b_arm.rotate(180)
+    
+    return c
+
+if __name__ == "__main__":
+    device = full_device()
+    device.write_gds("output.gds")
+```

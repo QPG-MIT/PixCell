@@ -1,0 +1,53 @@
+{
+  "turn": 3,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:21:54.149573",
+      "api_duration_seconds": 50.379823207855225,
+      "usage": {
+        "input_tokens": 3864,
+        "output_tokens": 2146,
+        "total_tokens": 15368
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function arrow_cross.<lo...dth_func at 0x12a87cea0>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:22:45.826656",
+      "api_duration_seconds": 27.61183476448059,
+      "usage": {
+        "input_tokens": 6120,
+        "output_tokens": 1521,
+        "total_tokens": 12260
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: extrude() got an unexpected keyword argument 'width_function'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:23:14.603159",
+      "api_duration_seconds": 21.9933180809021,
+      "usage": {
+        "input_tokens": 7670,
+        "output_tokens": 1702,
+        "total_tokens": 12929
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function arrow_cross.<lo...dth_func at 0x12a37ce00>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 17654,
+    "output_tokens": 5369,
+    "total_tokens": 40557
+  }
+}

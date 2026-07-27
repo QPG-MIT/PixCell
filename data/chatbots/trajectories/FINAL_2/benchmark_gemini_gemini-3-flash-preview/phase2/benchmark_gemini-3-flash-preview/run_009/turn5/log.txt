@@ -1,0 +1,81 @@
+Turn 5 Response:
+
+This iteration focuses on three main refinements to better match the target silhouette:
+
+1.  **Elongated Bottom Tip:** The bottom "tail" in the target image is significantly longer and more tapered than the stubby version in v4. I've increased its height and sharpened the taper.
+2.  **Slender Pillars:** The pillars in the target are less "chunky." I have reduced both the base width and the neck width of the pillars to give them a more elegant, vertical look.
+3.  **Adjusted Proportions:** To maintain the 10µm total height, I've redistributed the vertical budget: increasing the tip height and slightly decreasing the body height to match the visual weight of the original.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def device_silhouette_v5():
+    """
+    Refined device geometry to match Turn 5 feedback.
+    - Elongated and sharper bottom tip.
+    - Slender pillars with thinner necks.
+    - Adjusted proportions to maintain 25um x 10um footprint.
+    """
+    c = gf.Component("device_v5")
+    layer = (1, 0)
+    
+    # --- Dimensions (Total height = 10.0um, Total width = 25.0um) ---
+    total_w = 25.0
+    
+    tip_h = 2.3       # Longer bottom tail
+    body_h = 4.3      # Central rectangular body
+    pillar_h = 3.4    # Top pillars (2.3 + 4.3 + 3.4 = 10.0)
+    
+    # --- 1. Main Rectangular Body ---
+    # Centered horizontally.
+    body = c << gf.components.rectangle(size=(total_w, body_h), layer=layer, centered=True)
+    # Move it so it sits above the tip
+    body.movey(tip_h + body_h / 2)
+    
+    # --- 2. Top Pillar Definition ---
+    pillar = gf.Component("pillar_unit")
+    pillar_taper_h = 2.2 
+    pillar_straight_h = 1.2 
+    w_base = 3.0          # Slimmer base
+    w_neck = 1.4          # Much thinner neck
+    
+    # Tapered section
+    p_taper = pillar << gf.components.taper(length=pillar_taper_h, width1=w_base, width2=w_neck, layer=layer)
+    p_taper.rotate(90)
+    
+    # Straight neck section
+    neck_xs = gf.cross_section.cross_section(width=w_neck, layer=layer)
+    p_neck = pillar << gf.components.straight(length=pillar_straight_h, cross_section=neck_xs)
+    p_neck.rotate(90)
+    p_neck.connect("o1", p_taper.ports["o2"])
+    
+    # --- 3. Placement of 4 Pillars ---
+    # Centered positions across the 25um width to create uniform gaps.
+    pillar_x_positions = [-9.375, -3.125, 3.125, 9.375]
+    for x in pillar_x_positions:
+        p_ref = c << pillar
+        # Move to top edge of the body (y = 2.3 + 4.3 = 6.6)
+        p_ref.move((x, tip_h + body_h))
+        
+    # --- 4. Bottom Central Tip (Tail) ---
+    # More pronounced taper for the bottom element
+    tip_w1 = 2.8  # Width at the body interface
+    tip_w2 = 1.0  # Narrow point at the bottom
+    tip = c << gf.components.taper(length=tip_h, width1=tip_w1, width2=tip_w2, layer=layer)
+    tip.rotate(-90)
+    # Move so the wider base (port o1) is at the bottom of the body (y=2.3)
+    tip.movey(tip_h)
+    
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    component = device_silhouette_v5()
+    
+    # Output the GDS file
+    component.write_gds("device_v5.gds")
+    
+    # Show the layout for verification
+    component.show()
+```

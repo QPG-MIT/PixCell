@@ -1,0 +1,69 @@
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler_refined():
+    """
+    Turn 3 (Fixed): Refined symmetric curved coupler to match the target visual.
+    Footprint constraint: 18um x 3um.
+    """
+    c = gf.Component("symmetric_coupler_v3")
+    
+    # 1. Geometric Parameters
+    total_length = 18.0
+    half_length = total_length / 2
+    
+    # Visual-matching parameters tuned for the target image
+    width = 0.7         # Increased thickness for visual match
+    target_gap = 0.08   # Very narrow coupling region
+    port_sep = 2.2      # Wider separation at ports to fill the 3um height
+    
+    # Calculate the vertical 'dip' required for each arm
+    # Center-to-center distance at middle should be (width + gap)
+    mid_sep = width + target_gap
+    dip_depth = (port_sep - mid_sep) / 2
+    
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+    
+    # 2. Top Arm (Starts high, dips to center, goes back high)
+    # Part 1: S-bend from x=0 to x=9, dipping down
+    t1_ref = c << gf.components.bend_s(size=(half_length, -dip_depth), cross_section=xs)
+    # Part 2: S-bend from x=9 to x=18, rising back up
+    t2_ref = c << gf.components.bend_s(size=(half_length, dip_depth), cross_section=xs)
+    t2_ref.connect("o1", t1_ref.ports["o2"])
+    
+    # 3. Bottom Arm (Starts low, dips up to center, goes back low)
+    # Part 1: S-bend from x=0 to x=9, rising up
+    b1_ref = c << gf.components.bend_s(size=(half_length, dip_depth), cross_section=xs)
+    # Part 2: S-bend from x=9 to x=18, dipping back down
+    b2_ref = c << gf.components.bend_s(size=(half_length, -dip_depth), cross_section=xs)
+    
+    # Position the bottom arm starting point
+    b1_ref.movey(-port_sep)
+    b2_ref.connect("o1", b1_ref.ports["o2"])
+    
+    # 4. Final Alignment and Port Definition
+    # Fix: center is a method that returns a DPoint. Use .y to get the coordinate.
+    current_center_y = c.dbbox().center().y
+    c.movey(-current_center_y)
+    
+    c.add_port("o1", port=t1_ref.ports["o1"])
+    c.add_port("o2", port=b1_ref.ports["o1"])
+    c.add_port("o3", port=t2_ref.ports["o2"])
+    c.add_port("o4", port=b2_ref.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    component = symmetric_coupler_refined()
+    
+    # Verify dimensions in microns
+    bbox = component.dbbox()
+    width_um = bbox.width()
+    height_um = bbox.height()
+    
+    print(f"Generated device dimensions: {width_um:.2f}um x {height_um:.2f}um")
+    
+    # Export and show
+    component.write_gds("symmetric_coupler_v3_fixed.gds")
+    component.show()

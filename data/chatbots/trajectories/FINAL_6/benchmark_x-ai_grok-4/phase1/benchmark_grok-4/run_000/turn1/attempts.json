@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:48:15.811621",
+      "api_duration_seconds": 518.0816431045532,
+      "usage": {
+        "input_tokens": 2769,
+        "output_tokens": 21177,
+        "total_tokens": 23946
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Cross section with width 0 is not allowed. [type=value_error, input_value={'width': 0, 'enclosure':...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:56:55.072171",
+      "api_duration_seconds": 322.76186513900757,
+      "usage": {
+        "input_tokens": 3667,
+        "output_tokens": 7306,
+        "total_tokens": 10973
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for SymmetricalCrossSection\n  Value error, Width of symmetrical cross sections must have be a multiple of 2 dbu. This could cause cross sections and extrusions to become unsymmetrical otherwise. [type=value_error, input_value={'width': 1, 'enclosure':...one, 'radius_min': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/value_error\n\nThe above exception was the direct cause of the followin",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T21:02:20.489729",
+      "api_duration_seconds": 145.2615180015564,
+      "usage": {
+        "input_tokens": 4562,
+        "output_tokens": 6022,
+        "total_tokens": 10584
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: UMGeometricObject.rotate() got an unexpected keyword argument 'origin'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 10998,
+    "output_tokens": 34505,
+    "total_tokens": 45503
+  }
+}

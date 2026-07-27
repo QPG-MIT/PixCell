@@ -1,0 +1,149 @@
+Turn 1 Response:
+
+The `ValueError` occurs because GDSFactory's default cross-section settings enforce a conservative minimum bend radius (usually 5.0 $\mu$m or 10.0 $\mu$m) to prevent manufacturing violations. Since your device is very compact ($3 \times 5.5 \mu$m) with a radius of $\sim 1.2 \mu$m, we must explicitly define a custom `CrossSection` with a smaller `radius_min`.
+
+Here is the corrected script. It defines a lenient cross-section to bypass the radius check and reconstructs the device to match the image and constraints.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def racetrack_mzi_reconstructed():
+    c = gf.Component()
+
+    # --- 1. Dimensions & Constraints ---
+    total_length = 5.5
+    total_height = 3.0
+    
+    # Geometries estimated from image
+    bend_width = 0.6            # Thicker bends
+    straight_width = 0.35       # Thinner inner arms
+    layer_main = (1, 0)
+
+    # Geometry Math
+    # Outer radius determines the height: 1.5um radius -> 3.0um height
+    radius_outer = total_height / 2
+    # GDSFactory bends are defined by center-line radius
+    radius_center = radius_outer - (bend_width / 2)  # 1.5 - 0.3 = 1.2um
+
+    # Straight section length
+    # Total Length = Left Radius + Straight + Right Radius
+    straight_len = total_length - (2 * radius_outer) # 5.5 - 3.0 = 2.5um
+
+    # --- 2. Define Custom CrossSection ---
+    # We set radius_min to 0.1 to prevent the ValueError
+    xs_bend = gf.cross_section.cross_section(
+        width=bend_width,
+        layer=layer_main,
+        radius_min=0.1 
+    )
+
+    # --- 3. Create Bends ---
+    # Left Bend (180 degrees)
+    bend_ref_l = c << gf.components.bend_circular(
+        radius=radius_center,
+        angle=180,
+        cross_section=xs_bend
+    )
+    # Right Bend (180 degrees)
+    bend_ref_r = c << gf.components.bend_circular(
+        radius=radius_center,
+        angle=180,
+        cross_section=xs_bend
+    )
+
+    # Place Bends
+    # Move Left Bend to left side. Default orientation starts at (0,0) facing East.
+    # We rotate it 180 to face West, creating a "C" shape opening to the right.
+    bend_ref_l.rotate(180)
+    bend_ref_l.center = (-straight_len/2, 0)
+
+    # Move Right Bend. Mirror it to create a "C" shape opening to the left.
+    bend_ref_r.mirror() 
+    bend_ref_r.center = (straight_len/2, 0)
+
+    # --- 4. Create Tapered Arms (Polygons) ---
+    # The arms connect the wide bend ports to the narrow straight section.
+    # We build this manually using polygons to achieve the specific sharp geometry in the image.
+
+    taper_len = 0.5
+    inner_gap = 0.8
+    y_straight_center = (inner_gap + straight_width) / 2
+    
+    # Bend ports are located at y = +/- radius_center
+    y_bend_port = radius_center
+
+    def create_arm_points(is_top=True):
+        """Generates points for the arm polygon."""
+        y_sign = 1 if is_top else -1
+        
+        # X coordinates
+        x_start = -straight_len/2
+        x_taper_end = -straight_len/2 + taper_len
+        x_taper_start_r = straight_len/2 - taper_len
+        x_end = straight_len/2
+
+        # Y coordinates (Upper and Lower edges of the waveguide)
+        # Note: 'Top' refers to the top edge of the specific waveguide arm
+        
+        # Bend Interface (Wide)
+        y_bend_outer = (y_bend_port + bend_width/2) * y_sign
+        y_bend_inner = (y_bend_port - bend_width/2) * y_sign
+        
+        # Straight Interface (Narrow)
+        y_st_outer = (y_straight_center + straight_width/2) * y_sign
+        y_st_inner = (y_straight_center - straight_width/2) * y_sign
+
+        return [
+            (x_start, y_bend_outer),        # Top-Left (at bend)
+            (x_taper_end, y_st_outer),      # Top-Left (start of straight)
+            (x_taper_start_r, y_st_outer),  # Top-Right (end of straight)
+            (x_end, y_bend_outer),          # Top-Right (at bend)
+            (x_end, y_bend_inner),          # Bottom-Right (at bend)
+            (x_taper_start_r, y_st_inner),  # Bottom-Right (end of straight)
+            (x_taper_end, y_st_inner),      # Bottom-Left (start of straight)
+            (x_start, y_bend_inner)         # Bottom-Left (at bend)
+        ]
+
+    c.add_polygon(create_arm_points(is_top=True), layer=layer_main)
+    c.add_polygon(create_arm_points(is_top=False), layer=layer_main)
+
+    # --- 5. Add Heater Pads ---
+    # Rectangles superimposed on the straight sections
+    pad_w = 0.65
+    pad_h = 0.6
+    pad_gap = 0.2
+    
+    # Define a helper to place pads
+    rect = gf.components.rectangle(size=(pad_w, pad_h), layer=layer_main, centered=True)
+    
+    # Positions relative to center (x offsets)
+    x_offset = pad_gap/2 + pad_w/2
+    
+    # Top Arm Pads
+    p1 = c << rect
+    p1.move(( -x_offset, y_straight_center ))
+    
+    p2 = c << rect
+    p2.move(( x_offset, y_straight_center ))
+
+    # Bottom Arm Pads
+    p3 = c << rect
+    p3.move(( -x_offset, -y_straight_center ))
+    
+    p4 = c << rect
+    p4.move(( x_offset, -y_straight_center ))
+
+    return c
+
+if __name__ == "__main__":
+    # Create the device
+    device = racetrack_mzi_reconstructed()
+    
+    # Verify dimensions
+    print(f"Device Footprint: {device.size_info.width:.3f} x {device.size_info.height:.3f} um")
+    
+    # Output
+    device.show()
+    device.write_gds("racetrack_corrected.gds")
+```

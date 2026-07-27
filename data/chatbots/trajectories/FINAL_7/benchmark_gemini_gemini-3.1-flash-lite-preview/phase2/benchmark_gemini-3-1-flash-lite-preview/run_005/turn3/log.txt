@@ -1,0 +1,79 @@
+Turn 3 Response:
+
+Based on the analysis of your target image and the current raster output, the issue is that your code currently creates the outer frame and the two inner "rung" rectangles, but it is missing the horizontal connecting "rails" (the bars that run top-to-bottom and connect the rungs to the outer frame).
+
+To match the target image, we need to add two horizontal bars that connect the inner edge of the stadium to the left rung, the two rungs to each other, and the right rung back to the inner edge of the stadium.
+
+Here is the corrected code that generates the full ladder-like structure:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def get_stadium_component(width, height):
+    """Creates a stadium shape (rectangle with semi-circles at ends)."""
+    c = gf.Component()
+    rect_w = width - height
+    
+    # Central rectangle
+    c << gf.components.rectangle(size=(rect_w, height), centered=True)
+    # Circular ends
+    c1 = c << gf.components.circle(radius=height / 2)
+    c1.movex(-rect_w / 2)
+    c2 = c << gf.components.circle(radius=height / 2)
+    c2.movex(rect_w / 2)
+    return c
+
+@gf.cell
+def custom_device():
+    c = gf.Component()
+    
+    # --- Dimensions ---
+    total_w, total_h = 5.5, 3.0
+    stroke = 0.4
+    
+    # Rung dimensions
+    rung_w, rung_h = 1.2, 1.8
+    rung_gap = 0.4
+    
+    # Rail dimensions (horizontal bars connecting rungs to frame)
+    rail_h = 0.4 # Same as stroke
+    # Calculate rail length to fit inside the inner stadium curve
+    rail_w = total_w - 2 * stroke
+    
+    # 1. Create Frame (Outer Stadium - Inner Stadium)
+    outer = get_stadium_component(width=total_w, height=total_h)
+    inner = get_stadium_component(width=total_w - 2 * stroke, height=total_h - 2 * stroke)
+    frame = gf.boolean(outer, inner, operation="not", layer=(1, 0))
+    c << frame
+    
+    # 2. Create Two Central Rungs
+    # We place these slightly offset from center to create the gap
+    r1 = c << gf.components.rectangle(size=(rung_w, rung_h), centered=True)
+    r1.movex(-(rung_gap / 2 + rung_w / 2))
+    
+    r2 = c << gf.components.rectangle(size=(rung_w, rung_h), centered=True)
+    r2.movex((rung_gap / 2 + rung_w / 2))
+    
+    # 3. Create Horizontal Rails (Top and Bottom)
+    # These create the "ladder" effect connecting the rungs to the outer frame
+    # Top rail
+    top_rail = c << gf.components.rectangle(size=(rail_w, rail_h), centered=True)
+    top_rail.movey(rung_h / 2 - rail_h / 2)
+    
+    # Bottom rail
+    bot_rail = c << gf.components.rectangle(size=(rail_w, rail_h), centered=True)
+    bot_rail.movey(-(rung_h / 2 - rail_h / 2))
+    
+    return c
+
+# Generate, save, and show
+device = custom_device()
+device.write_gds("device.gds")
+device.show()
+```
+
+### Key Changes Made:
+1.  **Horizontal Rails:** I added two horizontal bars (`top_rail` and `bot_rail`) using `gf.components.rectangle`.
+2.  **Geometry Alignment:** I set the y-position of these rails to align with the top and bottom edges of the central rungs (`rung_h / 2`).
+3.  **Unified Assembly:** I combined the frame, the rungs, and the rails into a single component. When the GDS viewer renders this, the overlapping geometry creates the continuous, cohesive "chain-link" shape you see in your target image.

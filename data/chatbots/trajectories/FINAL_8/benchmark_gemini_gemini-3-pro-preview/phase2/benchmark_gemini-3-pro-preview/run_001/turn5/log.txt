@@ -1,0 +1,152 @@
+Turn 5 Response:
+
+The following Python script generates a GDSII file using `gdsfactory` that reproduces the "tapered coupler array" design.
+
+This improved version addresses the specific geometric features observed in the target image:
+1.  **Central Bus:** Creates exactly 5 straight, parallel waveguides in the center.
+2.  **Horn-like Expansion:** Uses a higher-order polynomial profile ($y \propto x^{3.2}$) rather than a simple parabola. This ensures the waveguides remain relatively flat in the central "waist" region and curve sharply upwards at the ends ("horns").
+3.  **Expanding Blocks:** The solid outer blocks are calculated to expand in thickness towards the edges (thinner at waist, thicker at rim), matching the visual weight of the target design.
+4.  **Tuned Dimensions:** Parameters like waveguide width (`0.12um`) and gap (`0.08um`) are tuned to fit the dense array within the strict `4.0um` vertical footprint constraint while leaving room for the flared edges.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def tapered_coupler_array():
+    """
+    Creates a dense waveguide coupler array with a central bus and flared outer blocks.
+    Matches the 'horn' like appearance of the target with aggressive curvature at the edges.
+    """
+    c = gf.Component()
+    
+    # =========================================================================
+    # Parameters & Dimensions
+    # =========================================================================
+    L = 120.0       # Device Length
+    w = 0.12        # Waveguide width (tightly packed for high density)
+    g = 0.08        # Waveguide gap
+    pitch = w + g
+    
+    # Vertical Constraint: y must be within [-2.0, 2.0]
+    # We target hitting just inside this limit at the flared edges.
+    y_max_limit = 2.0
+    
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=w, layer=layer)
+
+    # =========================================================================
+    # 1. Central Bus (5 straight waveguides)
+    # =========================================================================
+    # Centered at y=0. Indices: -2, -1, 0, 1, 2
+    n_bus = 5
+    for i in range(-(n_bus//2), (n_bus//2) + 1):
+        wg = c << gf.components.straight(length=L, cross_section=xs)
+        wg.y = i * pitch
+        wg.x = 0
+        
+    # Y-coordinate of the top edge of the uppermost central bus waveguide
+    y_bus_top = (n_bus // 2) * pitch + w/2
+
+    # =========================================================================
+    # 2. Flank & Block Geometry Calculation
+    # =========================================================================
+    
+    # --- Waist Configuration (at x=0) ---
+    # Gap between the straight bus and the first curved waveguide
+    gap_waist = 0.15
+    n_flank = 3
+    
+    # Calculate starting y-positions (centers) for the 3 flank waveguides at the waist
+    y_f1_waist = y_bus_top + gap_waist + w/2
+    flank_waist_y = [y_f1_waist + i * pitch for i in range(n_flank)]
+    
+    # Block Inner Edge at Waist (starts after the last flank WG)
+    y_block_inner_waist = flank_waist_y[-1] + w/2 + g
+    
+    # Block Outer Edge at Waist (thin at the center)
+    block_thickness_waist = 0.12
+    y_block_outer_waist = y_block_inner_waist + block_thickness_waist
+    
+    # --- Rim Configuration (at x=L/2) ---
+    # We define where the curves should end to create the flare.
+    
+    # Outer edge hits near the boundary (2.0)
+    y_block_outer_rim = 1.95
+    
+    # Block becomes significantly thicker at the edges ("horn" shape)
+    block_thickness_rim = 0.6
+    y_block_inner_rim = y_block_outer_rim - block_thickness_rim
+    
+    # Calculate the vertical "rise" (sag) required for inner and outer curves
+    rise_inner = y_block_inner_rim - y_block_inner_waist
+    rise_outer = y_block_outer_rim - y_block_outer_waist
+    
+    # --- Profile Function ---
+    # We use a polynomial power > 2 (e.g., 3.2). 
+    # This keeps the center flatter and makes the edges rise more steeply than a parabola.
+    exponent = 3.2
+    
+    # Generate Path Points along Length
+    n_pts = 501
+    x_pts = np.linspace(-L/2, L/2, n_pts)
+    # Normalized coordinate u going from 0 (center) to 1 (edge)
+    u_pts = np.abs(x_pts) / (L/2)
+    
+    # =========================================================================
+    # 3. Geometry Generation
+    # =========================================================================
+    
+    # Helper loop to generate mirrored top (sign=1) and bottom (sign=-1) structures
+    for sign in [1, -1]:
+        
+        # A. Flank Waveguides (Curved)
+        for y_wc in flank_waist_y:
+            # Curve equation: y(x) = y_start + rise * u^exponent
+            # Flank waveguides follow the 'inner' rise profile to stay roughly parallel 
+            # to the block's inner edge.
+            curve = y_wc + rise_inner * (u_pts ** exponent)
+            
+            # Apply sign for mirroring (y -> -y)
+            y_final = sign * curve
+            
+            # Create and extrude path
+            pts = list(zip(x_pts, y_final))
+            p = gf.Path(pts)
+            c << gf.path.extrude(p, cross_section=xs)
+            
+        # B. Solid Block (Polygon)
+        # Calculate the positive (top) curves first
+        y_inner_curve = y_block_inner_waist + rise_inner * (u_pts ** exponent)
+        y_outer_curve = y_block_outer_waist + rise_outer * (u_pts ** exponent)
+        
+        if sign == 1:
+            # Top Block Construction
+            # Top edge: y_outer_curve (Left -> Right)
+            # Bot edge: y_inner_curve (Right -> Left)
+            verts_top_edge = list(zip(x_pts, y_outer_curve))
+            verts_bot_edge = list(zip(x_pts[::-1], y_inner_curve[::-1]))
+            c.add_polygon(verts_top_edge + verts_bot_edge, layer=layer)
+        else:
+            # Bottom Block Construction (Mirrored)
+            # The 'Top' visual edge of the bottom block is the one closest to y=0 (-y_inner)
+            # The 'Bottom' visual edge is the one furthest from y=0 (-y_outer)
+            
+            # To construct the polygon CCW:
+            # Trace the edge closest to axis (-y_inner) Left->Right
+            # Trace the edge furthest from axis (-y_outer) Right->Left
+            y_near_axis = -y_inner_curve
+            y_far_axis = -y_outer_curve
+            
+            verts_near = list(zip(x_pts, y_near_axis))
+            verts_far = list(zip(x_pts[::-1], y_far_axis[::-1]))
+            c.add_polygon(verts_near + verts_far, layer=layer)
+
+    return c
+
+# Generate and save
+if __name__ == "__main__":
+    device = tapered_coupler_array()
+    device.write_gds("tapered_coupler_array.gds")
+    device.show()
+```

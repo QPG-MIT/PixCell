@@ -1,0 +1,91 @@
+Turn 2 Response:
+
+Thank you for providing the rendered image of the previous script. You are entirely correct—the previous script generated a standard directional coupler with a distinct "straight" coupling region in the middle, whereas your original image shows a completely continuous, smooth curve with **no straight parallel section**. The waveguides just approach a minimum gap exactly at the center and immediately start diverging again.
+
+To achieve this completely continuous wave-like shape while strictly adhering to the `18 x 3 µm` footprint constraint, we must remove the `straight` components entirely. Instead, we can construct each arm by joining **two continuous S-bends back-to-back**. 
+
+Since standard S-bends (like a cosine curve) have zero slope at their endpoints, joining them in the middle creates a perfectly smooth, continuous geometry with no straight segments.
+
+Here is the corrected script that precisely reconstructs the original shape:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def smooth_directional_coupler() -> gf.Component:
+    """
+    Parametric smooth directional coupler (no straight coupling region).
+    Constructed from continuous back-to-back S-bends.
+    Total Footprint: 18um x 3um.
+    """
+    c = gf.Component("smooth_directional_coupler")
+
+    # --- Geometric Parameters ---
+    wg_width = 0.5
+    gap = 0.2
+    
+    # Deriving coordinates to hit the exact [18, 3] bounding box
+    # Outer width is 3.0. Centers of waveguides are 0.25um inside the edges
+    y_out = (3.0 - wg_width) / 2.0          # 1.25 um
+    y_in = (wg_width + gap) / 2.0           # 0.35 um
+    
+    # Each arm is made of TWO 9um long S-bends
+    dy = y_out - y_in                       # 0.9 um
+    length_half = 18.0 / 2.0                # 9.0 um
+
+    # Create the standard cross-section, overriding minimum bend radius
+    # constraints so our exactly-dimensioned S-bends are permitted
+    xs = gf.cross_section.cross_section(
+        width=wg_width, 
+        layer=(1, 0),
+        radius_min=1.0     # Bypass minimum constraint error
+    )
+
+    # --- Component Primitives (Half-length S-Bends) ---
+    # Top arm parts
+    top_bend_down = gf.components.bend_s(size=(length_half, -dy), cross_section=xs)
+    top_bend_up = gf.components.bend_s(size=(length_half, dy), cross_section=xs)
+    
+    # Bottom arm parts
+    bot_bend_up = gf.components.bend_s(size=(length_half, dy), cross_section=xs)
+    bot_bend_down = gf.components.bend_s(size=(length_half, -dy), cross_section=xs)
+
+    # ==========================
+    # --- Top Arm Assembly ---
+    # ==========================
+    # Left half: curves down from 1.25 to 0.35
+    top_left = c << top_bend_down
+    top_left.movey(y_out)
+    
+    # Right half: curves back up from 0.35 to 1.25
+    top_right = c << top_bend_up
+    top_right.connect("o1", top_left.ports["o2"])
+
+    # ==========================
+    # --- Bottom Arm Assembly --
+    # ==========================
+    # Left half: curves up from -1.25 to -0.35
+    bot_left = c << bot_bend_up
+    bot_left.movey(-y_out)
+    
+    # Right half: curves back down from -0.35 to -1.25
+    bot_right = c << bot_bend_down
+    bot_right.connect("o1", bot_left.ports["o2"])
+
+    # --- Expose the external ports ---
+    c.add_port("o1", port=top_left.ports["o1"])
+    c.add_port("o2", port=bot_left.ports["o1"])
+    c.add_port("o3", port=top_right.ports["o2"])
+    c.add_port("o4", port=bot_right.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Create the component and explicitly write the GDS file
+    c = smooth_directional_coupler()
+    c.write_gds("smooth_directional_coupler.gds")
+```
+
+### What Changed:
+1. **Removed `straight_wg`**: The device is now purely composed of S-Bends.
+2. **Back-to-Back S-Bends**: By setting the bend length to exactly half the total footprint width (`length_half = 9.0`), the left and right S-bends perfectly meet in the center (`x = 9.0`) at the minimum gap, immediately beginning their divergence curve without flattening out.

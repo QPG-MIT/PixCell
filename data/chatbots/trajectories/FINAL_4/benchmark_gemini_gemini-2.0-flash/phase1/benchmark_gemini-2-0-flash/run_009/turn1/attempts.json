@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.877491",
+      "api_duration_seconds": 8.897883892059326,
+      "usage": {
+        "input_tokens": 4407,
+        "output_tokens": 662,
+        "total_tokens": 5069
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "ImportError: cannot import name 'Component' from 'gdsfactory.typings' (/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/gdsfactory/typings.py). Did you mean: 'component'?",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:20.206629",
+      "api_duration_seconds": 6.930171966552734,
+      "usage": {
+        "input_tokens": 5141,
+        "output_tokens": 800,
+        "total_tokens": 5941
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoKCell.add_ports() missing 1 required positional argument: 'ports'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:28.524336",
+      "api_duration_seconds": 7.505887985229492,
+      "usage": {
+        "input_tokens": 5973,
+        "output_tokens": 897,
+        "total_tokens": 6870
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15521,
+    "output_tokens": 2359,
+    "total_tokens": 17880
+  }
+}

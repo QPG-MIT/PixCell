@@ -1,0 +1,76 @@
+The error is occurring because we're trying to move components that are locked. The issue is that when we create a component using `gf.components.rectangle()`, it returns a locked component, and we can't modify it directly with `.move()`.
+
+Instead, we need to either:
+1. Use references and position them
+2. Create the components and add them as references, then position the references
+3. Use the `movex`, `movey`, or `move()` methods on references, not components
+
+Let me rewrite the script to properly handle this:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def chain_link_device():
+    """Creates a chain-link structure within an elliptical border."""
+    c = gf.Component()
+    
+    # Dimensions based on footprint [3.0, 5.5] um (height, width)
+    total_width = 5.5
+    total_height = 3.0
+    
+    # Create outer ellipse ring
+    ring_thickness = 0.35
+    outer_ellipse = gf.components.ellipse(
+        radii=(total_width/2, total_height/2), 
+        layer=(1, 0)
+    )
+    inner_ellipse = gf.components.ellipse(
+        radii=(total_width/2 - ring_thickness, total_height/2 - ring_thickness),
+        layer=(1, 0)
+    )
+    ring = gf.boolean(outer_ellipse, inner_ellipse, operation="not", layer=(1, 0))
+    c << ring
+    
+    # Internal structure parameters
+    bar_length = 3.8
+    bar_thickness = 0.4
+    bar_offset = 0.53
+    
+    window_width = 1.15
+    window_height = 0.28
+    window_x_offset = 1.0
+    
+    connector_width = 0.55
+    connector_height = 2 * bar_offset
+    connector_x_offset = 0.35
+    
+    # Create top horizontal bar with windows
+    temp_top = gf.Component()
+    
+    window_left = gf.components.rectangle(
+        size=(window_width, window_height),
+        layer=(1, 0),
+        centered=True
+    )
+    wl_ref = temp_top << window_left
+    wl_ref.movex(-window_x_offset)
+    
+    window_right = gf.components.rectangle(
+        size=(window_width, window_height),
+        layer=(1, 0),
+        centered=True
+    )
+    wr_ref = temp_top << window_right
+    wr_ref.movex(window_x_offset)
+```
+
+I'm flattening the temporary component to merge the windows into a single shape, then creating the solid bar and using a boolean operation to cut out the window regions. The resulting bar with holes gets added to the main component.
+
+For the bottom bar, I'm following the same pattern—creating a temporary component, positioning two window rectangles at the specified offsets, and preparing to flatten them before the boolean subtraction.
+
+Then I'll create the solid bottom bar rectangle and use a boolean "not" operation to cut out the window shapes, positioning the result at the negative y-offset to mirror the top bar placement. Finally, I'm adding vertical connector rectangles between the bars, starting with the left connector positioned at the appropriate coordinates.
+
+Now I need to position the right connector symmetrically and return the completed component. The device is then instantiated and exported to a GDS file with a display option.
+
+The core issue is that rectangle components created directly can't be repositioned—they're immutable once generated. The solution involves creating intermediate container components, adding the rectangles as references within those containers, translating the references to the desired positions, then flattening everything into a single usable component for subsequent boolean operations.

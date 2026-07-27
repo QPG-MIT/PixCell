@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.208197",
+      "api_duration_seconds": 93.04615116119385,
+      "usage": {
+        "input_tokens": 2348,
+        "output_tokens": 3073,
+        "total_tokens": 24997
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for Section\nwidth\n  Input should be a valid number [type=float_type, input_value=<function custom_splitter...er_width at 0x16db78fe0>, input_type=function]\n    For further information visit https://errors.pydantic.dev/2.12/v/float_type",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:43.696840",
+      "api_duration_seconds": 47.12298011779785,
+      "usage": {
+        "input_tokens": 5528,
+        "output_tokens": 2583,
+        "total_tokens": 17275
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:32.306551",
+      "api_duration_seconds": 9.200605869293213,
+      "usage": {
+        "input_tokens": 8130,
+        "output_tokens": 2242,
+        "total_tokens": 10468
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 16006,
+    "output_tokens": 7898,
+    "total_tokens": 52740
+  }
+}

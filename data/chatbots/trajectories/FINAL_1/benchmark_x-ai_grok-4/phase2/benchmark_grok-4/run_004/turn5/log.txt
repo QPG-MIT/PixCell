@@ -1,0 +1,75 @@
+Turn 5 Response:
+
+```python
+import gdsfactory as gf
+import math
+
+@gf.cell
+def make_diamond(length, max_width, layer, min_width=0.002, width_type='linear'):
+    p1 = gf.path.straight(length=length/2)
+    p2 = gf.path.straight(length=length/2)
+    xs1 = gf.cross_section.cross_section(width=min_width, layer=layer)
+    xs2 = gf.cross_section.cross_section(width=max_width, layer=layer)
+    trans1 = gf.path.transition(xs1, xs2, width_type=width_type)
+    trans2 = gf.path.transition(xs2, xs1, width_type=width_type)
+    t1 = gf.path.extrude_transition(p1, trans1)
+    t2 = gf.path.extrude_transition(p2, trans2)
+    d = gf.Component()
+    r1 = d << t1
+    r2 = d << t2
+    r2.connect("o1", r1.ports["o2"])
+    d.add_port("o1", port=r1.ports["o1"])
+    d.add_port("o2", port=r2.ports["o2"])
+    return d
+
+@gf.cell
+def make_taper(length, start_width, end_width, layer, width_type='linear'):
+    p = gf.path.straight(length=length)
+    xs1 = gf.cross_section.cross_section(width=start_width, layer=layer)
+    xs2 = gf.cross_section.cross_section(width=end_width, layer=layer)
+    trans = gf.path.transition(xs1, xs2, width_type=width_type)
+    t = gf.path.extrude_transition(p, trans)
+    return t
+
+@gf.cell
+def make_arm(dy, dx, max_width, layer, min_width=0.002):
+    final_dy = dy
+    theta = math.atan2(final_dy, dx)
+    length_total = dx / math.cos(theta)
+    points = [(0.0, 0.0), (dx, final_dy)]
+    p = gf.Path(points)
+    xs1 = gf.cross_section.cross_section(width=max_width, layer=layer)
+    xs2 = gf.cross_section.cross_section(width=min_width, layer=layer)
+    trans = gf.path.transition(xs1, xs2, width_type='linear')
+    t = gf.path.extrude_transition(p, trans)
+    a = gf.Component()
+    a << t
+    return a
+
+@gf.cell
+def device():
+    c = gf.Component()
+    layer = (1, 0)
+    gap = 0.0
+    d1_length = 4.0
+    d1_width = 0.5
+    second_length = 5.0
+    d2_width = 0.6
+    right_dx = 31.0
+    right_dy = 0.85
+    right_width = 0.6
+    min_width = 0.002
+    d1 = c << make_diamond(d1_length, d1_width, layer, min_width)
+    d1.move((0, 0))
+    half_d2 = c << make_taper(second_length, min_width, d2_width, layer, 'linear')
+    half_d2.move((d1.xmax + gap, 0))
+    upper_arm = c << make_arm(right_dy, right_dx, right_width, layer, min_width)
+    lower_arm = c << make_arm(-right_dy, right_dx, right_width, layer, min_width)
+    split_pos = (half_d2.xmax, 0)
+    upper_arm.move((0, 0), split_pos)
+    lower_arm.move((0, 0), split_pos)
+    return c
+
+dev = device()
+dev.write_gds("my_device.gds")
+```

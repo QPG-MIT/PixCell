@@ -1,0 +1,11 @@
+{
+  "device": "FINAL_2", "type": "1x4 MMI splitter",
+  "baseline_best": {"model": "Grok 4", "IoU": 0.6290},
+  "tiers": {"parametric": {"attempt": 2, "IoU": 0.9938}, "reconstruction": {"attempt": 4, "IoU": 0.9941}},
+  "history": [
+    {"attempt": 1, "tier": "parametric", "IoU": 0.9914, "SSE": 12653},
+    {"attempt": 2, "tier": "parametric", "IoU": 0.9938, "SSE": 9123},
+    {"attempt": 3, "tier": "reconstruction", "IoU": 0.8326, "SSE": 269719, "note": "strips missed frame specks; y-centering broke"},
+    {"attempt": 4, "tier": "reconstruction", "IoU": 0.9941, "SSE": 8711}
+  ]
+}

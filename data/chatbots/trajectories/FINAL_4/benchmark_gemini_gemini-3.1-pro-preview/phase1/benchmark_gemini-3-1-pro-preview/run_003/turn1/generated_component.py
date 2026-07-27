@@ -1,0 +1,63 @@
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_coupler_device():
+    """Creates a symmetric coupler geometry with smooth S-bend transitions."""
+    c = gf.Component()
+    
+    # Cross-section setup with standard layer and inferred width
+    wg_width = 0.5
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    
+    # Derive segment dimensions from 18x3 footprint constraints
+    length = 18.0
+    half_length = length / 2
+    
+    # Align the outer tracks to reach exactly +/- 1.5um on the outer edges
+    port_y = 1.5 - (wg_width / 2) # 1.25
+    
+    # Gap at the closest approach in the center
+    center_gap = 0.2
+    
+    # Y-coordinate for the waveguide center at the closest approach point
+    center_y = (center_gap / 2) + (wg_width / 2) # 0.35
+    
+    # Calculate required vertical displacement (dy) for the S-bends
+    dy = port_y - center_y # 0.9
+    
+    # --- Top Arm ---
+    # Downward approach, then upward divergence
+    top_s1 = gf.components.bend_s(size=(half_length, -dy), cross_section=xs)
+    top_s2 = gf.components.bend_s(size=(half_length, dy), cross_section=xs)
+    
+    t1 = c << top_s1
+    t1.move((0, port_y))
+    
+    t2 = c << top_s2
+    t2.connect("o1", t1.ports["o2"])
+    
+    # --- Bottom Arm ---
+    # Upward approach, then downward divergence
+    bot_s1 = gf.components.bend_s(size=(half_length, dy), cross_section=xs)
+    bot_s2 = gf.components.bend_s(size=(half_length, -dy), cross_section=xs)
+    
+    b1 = c << bot_s1
+    b1.move((0, -port_y))
+    
+    b2 = c << bot_s2
+    b2.connect("o1", b1.ports["o2"])
+    
+    # Add standard ports to the device 
+    c.add_port("o1", port=t1.ports["o1"])
+    c.add_port("o2", port=b1.ports["o1"])
+    c.add_port("o3", port=t2.ports["o2"])
+    c.add_port("o4", port=b2.ports["o2"])
+    
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    device = symmetric_coupler_device()
+    
+    # Write the GDS file explicitly to disk so the checker can process it
+    device.write_gds("symmetric_coupler.gds")

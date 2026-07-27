@@ -1,0 +1,61 @@
+Turn 1 Response:
+
+Based on the provided GDSFactory catalog and the device geometry (which displays two waveguides mirroring each other in an S-bend wave pattern), we can construct this device by chaining two `bend_s` components for each waveguide.
+
+This approach creates the specific "S" curvature seen in the image without using raw polygon coordinates, strictly adhering to the parametric primitive catalog.
+
+### Python Script
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def wave_coupler():
+    """
+    Creates the symmetric waveguide wave structure.
+    Constructed using two 'bend_s' primitives per waveguide 
+    to create the wave curvature.
+    """
+    c = gf.Component()
+    
+    # Define a standard cross_section
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Waveguide Segment Lengths (Total length 18, so 9 per bend)
+    L = 9
+    # Vertical offset (Total footprint height 3, Y-amplitude of 1 gives sufficient clearance)
+    dy = 1.0
+
+    # --- Top Waveguide ---
+    # First half: Curves down
+    top1 = c << gf.components.bend_s(size=(L, -dy), cross_section=xs)
+    # Second half: Curves back up
+    top2 = c << gf.components.bend_s(size=(L, dy), cross_section=xs)
+    
+    # Align and connect
+    top1.movey(dy) # Position start at y=1.0
+    top2.connect("o1", top1.ports["o2"])
+
+    # --- Bottom Waveguide ---
+    # First half: Curves up
+    bot1 = c << gf.components.bend_s(size=(L, dy), cross_section=xs)
+    # Second half: Curves back down
+    bot2 = c << gf.components.bend_s(size=(L, -dy), cross_section=xs)
+    
+    # Align and connect
+    bot1.movey(-dy) # Position start at y=-1.0
+    bot2.connect("o1", bot1.ports["o2"])
+
+    return c
+
+# Generate and save the device
+if __name__ == "__main__":
+    device = wave_coupler()
+    device.write_gds("wave_device.gds")
+    # To view: device.show()
+```
+
+### Explanation of the Construction:
+1.  **Primitives (`bend_s`)**: We use `gf.components.bend_s` as the building block. By setting the `size` parameter to `(9, -1.0)` and `(9, 1.0)`, we create the specific curvature required to transition the waveguide up and down.
+2.  **Assembly**: We chain two `bend_s` components together for each waveguide. By placing the top waveguide starting at $Y=1.0$ and the bottom at $Y=-1.0$, the waveguides converge towards $Y=0$ in the center, perfectly matching the visual geometry.
+3.  **Footprint**: This assembly results in a total length of 18 $\mu m$ (9+9) and a vertical span that fits comfortably within the $3 \mu m$ height constraint (allowing for the waveguide width of 0.5 $\mu m$ plus the path modulation).

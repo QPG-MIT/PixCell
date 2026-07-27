@@ -1,0 +1,208 @@
+Looking at the image, I can see a device that appears to be:
+
+1. An outer rounded rectangle (stadium/racetrack shape) - like a pill or capsule shape
+2. Inside it, there's a white (hollow) area that forms the inner part of the outer ring
+3. In the center, there are two horizontal bars/waveguides with rectangular segments on them
+
+Let me analyze more carefully:
+- The outer shape is a rounded rectangle/stadium (pill shape) with thick black walls
+- Inside, there's a white cavity
+- Within that white cavity, there are two horizontal structures that look like waveguides with periodic rectangular segments (possibly representing some kind of coupled waveguide structure or resonator)
+
+The two horizontal structures appear to be:
+- Each has a horizontal bar with 3 rectangular segments (looks like windows or gaps)
+- They're stacked vertically (one above the other)
+
+Looking at the constraints: footprint should be 3.0 x 5.5 μm
+
+Wait, that seems very small for what's shown. Let me reconsider the scale.
+
+Actually, looking at the image again:
+- Outer rounded rectangle frame
+- Two horizontal waveguide-like structures inside with rectangular notches/windows
+
+The device looks like it could be:
+1. A ring/racetrack resonator outer frame
+2. Two coupled waveguides inside with periodic coupling regions (represented by the rectangles)
+
+Let me think about how to construct this:
+
+1. Create the outer stadium/pill shape (rounded rectangle)
+2. Create an inner cavity (smaller stadium shape) - boolean subtract to make a ring
+3. Add two horizontal bars with rectangular segments
+
+For the horizontal structures:
+- Each appears to be a horizontal bar with 2-3 white rectangular gaps (or segments)
+- Looking more carefully, it seems like the black parts form a connected structure
+
+Actually, I think I see:
+- Two horizontal waveguides
+- Each has 3 rectangular sections with gaps between them
+- The ends of each waveguide connect to the left and right curved portions
+
+
+- The rectangular segments appear to be outlined boxes rather than solid sections, with white rectangles inside them. Given the 3.0 x 5.5 μm footprint, I need to scale the design accordingly and construct the outer pill-shaped ring first, then add the two horizontal waveguide structures with their segmented rectangular frames.
+
+I'll implement this using boolean operations to create the layered geometry. The outer pill shape will be formed by subtracting an inner stadium from a larger one to create the border, then the horizontal bars with their three rectangular segments will be positioned inside. = c_outer << outer_rect
+    left_ref = c_outer << outer_circle_left
+    right_ref = c_outer << outer_circle_right
+    left_ref.move((-outer_straight/2, 0))
+    right_ref.move((outer_straight/2, 0))
+    
+    outer_shape = gf.boolean(c_outer, c_outer, operation="or", layer=layer)
+
+I'm realizing this approach is getting unwieldy with all the positioning and boolean operations. A cleaner path would be to leverage gdsfactory's built-in geometry tools like `gf.geometry.offset` for creating dilated or eroded versions, and use boolean operations more strategically to subtract the inner shape from the outer one.
+
+For the stadium shape itself, I should use a path-based approach. The footprint is 5.5 × 3.0 μm, so the straight section would be 5.5 - 3.0 = 2.5 μm with a radius of 1.5 μm for the semicircular ends. I can construct this by creating a straight path segment, then adding arc paths for the rounded caps.
+
+Actually, building a stadium this way creates a closed loop. A better approach would be to combine geometric primitives—a rectangle for the center section and two semicircles at the ends—then union them together. Alternatively, I could use gdsfactory's offset function on a simpler shape. Let me use component-based shapes with boolean operations instead, which gives more control over the final geometry.
+
+I'll define a stadium creation function that takes width and height parameters. The rectangular portion spans the width minus the height (which becomes the diameter of the semicircles), with radius equal to half the height. I can place a centered rectangle, then position circles at each end by offsetting them horizontally by half the rectangular width.
+
+Once I have the outer and inner stadium shapes, I'll use a boolean "not" operation to create the ring border. For the internal structures, I need to add two horizontal bars with rectangular segments—these appear to be outlined rectangles (not filled) arranged in a pattern with spacing between them.
+
+Looking at the proportions in the image, the two horizontal structures sit roughly in the middle third of the device. Each has 3 rectangular segments arranged in a row with white space inside, suggesting they're frames rather than solid bars. Based on the ~5.5 um width, I estimate each rectangle at about 0.9 um wide and 0.5 um tall, with roughly 0.1 um line width for the outlines and 0.3 um spacing between the top and bottom structures.
+
+For the implementation, I need to define the overall footprint dimensions and establish the outer ring with a border offset. The stadium shape helper function generates points by combining a rectangular section with semicircular ends—calculating the straight portion width and using polar coordinates to trace the curved sections smoothly. border
+    inner_points = stadium_points(inner_width, inner_height)
+    inner_stadium = gf.Component()
+    inner_stadium.add_polygon(inner_points, layer=layer)
+    
+    # Create outer ring
+    ring = gf.boolean(outer_stadium, inner_stadium, operation="not", layer=layer)
+    ring_ref = c << ring
+    
+    # Internal structure parameters
+    bar_width = 3.0  # width of each horizontal bar
+    bar_height = 0.4  # height of each bar
+    rect_width = 0.7  # width of each rectangular segment
+    rect_height = 0.25  # white space height inside rectangles
+    rect_spacing = 0.15  # gap between rectangles
+    line_width = 0.08  # thickness of the lines
+    
+    vertical
+
+I'm subtracting the inner stadium from the outer one to create the ring structure. Then I'm setting up the dimensions for the internal pattern—bars, rectangles, and spacing that will fill the ring. ()
+        for i in range(n_segments):
+            x_offset = (i - (n_segments - 1) / 2) * (rect_width + rect_spacing)
+            inner_rect = gf.components.rectangle(
+                size=(rect_width - 2 * line_width, bar_height - 2 * line_width), 
+                layer=layer, 
+                centered=True
+            )
+            ref = cutouts << inner_rect
+            ref.move((x_offset, 0))
+        
+        # Boolean subtract to create outlined rectangles
+        bar_frame = gf.boolean(outer_bar, cutouts, operation="not", layer=layer)
+        
+        ref = bar_comp << bar_frame
+        ref.move((0, y_pos))
+        
+        return bar_comp
+    
+    top_bar = create_bar_with_segments(top_y)
+    bottom_bar = create_bar_with_segments(bottom_y)
+
+For each segment, I calculate its horizontal position relative to the center, then create an inner rectangle with reduced dimensions to form the outline effect. The boolean "not" operation subtracts these cutouts from the outer bar, leaving the frame structure. Both top and bottom bars are generated using the same function with their respective y-coordinates. now - the inner white space creates a complex pattern with two horizontal bars spanning most of the width, each containing 3 rectangular segments with hollow centers. The ends of these bars appear to taper and connect with the curved sections. Looking at the black portions more carefully, there's an outer ring forming the thick border, and two horizontal bands with rectangular segments creating the internal structure. I should refine my approach to better capture this geometry in code, starting with defining the footprint constraints and building the component systematically. # Left arc (top to bottom)
+        for i in range(n_arc_points):
+            theta = np.pi/2 + np.pi * i / (n_arc_points - 1)
+            points.append((-rect_half_w + r * np.cos(theta), r * np.sin(theta)))
+        
+        return points
+
+Then I generate the outer stadium shape using the polygon function with full dimensions, add it to a component, and create an inner stadium with reduced dimensions accounting for the ring thickness to form the cutout.
+
+For the ring itself, I use a boolean "not" operation between the outer and inner polygons. Next, I set up the internal bar structures—two horizontal bars made from three rectangular segments each, with specific spacing and line thickness parameters to define their geometry.
+
+Now I need to create a helper function that builds individual segmented bars. For each segment in the bar, I calculate its horizontal offset to center the entire bar, then construct it by taking the boolean difference between an outer rectangle and a smaller inner rectangle to form the outlined frame effect.
+
+After positioning all segments, I add connecting lines between adjacent segments at the top and bottom to visually link them together, placing these lines at the gaps between segments.
+
+Once the segmented bar is complete, I create two instances of it—one for the top and one for the bottom—positioning each at their respective y-coordinates before returning the final component. The main execution then calls the chain_resonator function to generate the device.
+
+Looking at the image more carefully, I notice the outer boundary forms a pill shape with a thick border, and the two internal horizontal bars appear to span between the curved ends. The bars seem to taper where they meet the rounded portions of the outer ring, suggesting the geometry connects rather than simply overlapping. Each bar contains rectangular segments with hollow interiors, creating the segmented appearance visible in the design.
+
+I'm working on a more accurate representation. The structure should capture how the internal bars bridge across the stadium shape, with the geometry properly merging at the connection points. I'll define the stadium outline parametrically and then construct the internal bar segments with their hollow rectangular features, ensuring the dimensions match the footprint constraints. r*np.cos(theta), r*np.sin(theta)))
+        
+        return pts
+    
+    The outer stadium shape is created as a polygon component, then an inner stadium with reduced dimensions forms the hollow center. A boolean "not" operation between them produces the ring structure. After adding this to the component, internal bar structures are defined with each bar containing 3 rectangular segments and a specified height of 0.38 and segment width of 0.55.
+
+Wall thickness is set to 0.07 for each rectangle segment. With 3 segments and gaps between them, the total bar width is calculated. The bars are positioned vertically with a gap of 0.28 between them—one positioned above center and one below. The `make_bar` function then constructs each bar by iterating through the segments, calculating their x-positions, and creating outer rectangles for each one.
+
+For each segment, an inner rectangle is subtracted from the outer using a boolean "not" operation to form hollow frames. These frames are placed at their calculated positions. Between segments, horizontal connector lines are added at the top and bottom using thin rectangles with height equal to the wall thickness.
+
+The function returns the completed bar component. Two bars are then created—one for the top and one for the bottom—and positioned at their respective y-coordinates before returning the final component.
+
+For the main execution, the device is instantiated and exported to a GDS file. Looking at the structure more carefully, the outer boundary forms a stadium shape, with two internal horizontal bar structures positioned symmetrically. Each bar contains three outlined rectangular segments, and these internal structures span nearly the full width while connecting toward the curved ends of the outer ring. The overall aspect ratio appears wider than tall, approximately 1.8:1, fitting within a 3.0 × 5.5 footprint.
+
+The implementation uses gdsfactory to construct this geometry. The outer ring has a thickness of 0.35 micrometers, and the stadium shape is generated using a polygon with approximately 50 points to create smooth curves. The code defines a helper function to construct the stadium geometry, which forms the basis for the device structure. outer_stadium.add_polygon(outer_pts, layer=layer)
+
+Now I'll create the inner stadium by calculating its dimensions with the ring thickness subtracted, then use boolean operations to cut out the hollow center. The outer ring is formed by subtracting the inner stadium from the outer one. For the internal structure, I'm setting up bar parameters with a height of 0.4 and segment width of 0.65, separated by 0.15 unit gaps.
+
+The wall thickness is 0.08 with 3 segments per bar. I'm positioning two horizontal bars vertically with a 0.35 unit gap between them, centered at specific y-coordinates. A helper function creates each segmented bar by positioning rectangular outlines across the calculated total width, iterating through each segment to place them at the correct x-coordinates.
+
+For each segment, I create an outer rectangle at the specified dimensions, then subtract an inner rectangle (reduced by twice the wall thickness) using a boolean "not" operation to form hollow frames. Each frame is then positioned at its calculated x-coordinate within the bar. After all segments are placed, connecting lines are drawn between adjacent segments to unify the visual appearance. create_segmented_bar()
+    top_ref = c << top_bar
+    top_ref.move((0, bar_y_top))
+    
+    bottom_bar = create_segmented_bar()
+    bottom_ref = c << bottom_bar
+    bottom_ref.move((0, bar_y_bottom))
+    
+    return c
+
+I'm noticing the internal bars have tapered or pointed ends that seem to connect into the curved sections of the outer ring, suggesting they might be integrated into one continuous structure rather than separate elements. Need to examine the left side more carefully to understand the full geometry. H = 3.0
+    
+    # Parameters
+    ring_border = 0.35
+    bar_height = 0.40
+    wall = 0.08  # wall thickness
+    seg_width = 0.60
+    seg_gap = 0.12
+    n_segs = 3
+    bar_gap = 0.35  # gap between top and bottom bars
+    
+    # Create stadium shape helper
+    def stadium_pts(w, h, n=50):
+        pts = []
+        rect_w = max(0, w - h)
+        r = h / 2
+        
+        for a in np.linspace(-np.pi/2, np.pi/2, n):
+            pts.append((rect_w/2 + r*np.cos(a), r*np.sin(a)))
+        for a in np.linspace(np.pi/2, -np.pi/2, n):
+            pts.append((-rect_w/2 + r*np.cos(a), r*np.sin(a)))
+        return pts
+
+Setting up the stadium geometry with the specified dimensions and defining helper functions to generate the curved pill shape. The parameters control the ring thickness, internal bar dimensions, and spacing between segments.
+
+Building the outer and inner stadium shapes, then using a boolean operation to create the hollow ring. For the internal bars, I'm constructing rectangular segments with hollow frames using wall thickness, then connecting them with thin strips at the top and bottom to form a unified structure.
+
+Now adding tapered connectors to link the bar assembly to the ring walls—extending lines from the leftmost and rightmost segments outward to bridge the gap between the central bars and the stadium perimeter. 2, -bar_height/2 + wall/2))
+        
+        bar << right_ext
+        
+        return bar
+    
+    # Position bars
+    y_top = bar_gap/2 + bar_height/2
+    y_bot = -bar_gap/2 - bar_height/2
+    
+    top_bar = make_bar()
+    tb = c << top_bar
+    tb.move((0, y_top))
+    
+    bot_bar = make_bar()
+    bb = c << bot_bar
+    bb.move((0, y_bot))
+    
+    return c
+
+if __name__ == "__main__":
+    device = chain_link_device()
+    device.write_gds("chain_link_device.gds")
+```
+
+The structure places two bars vertically with proper spacing, positioning the top bar at y_top and bottom bar at y_bot. The main function exports the device to a GDS file for fabrication.

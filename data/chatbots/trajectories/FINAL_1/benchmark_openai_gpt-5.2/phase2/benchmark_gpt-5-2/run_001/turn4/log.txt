@@ -1,0 +1,162 @@
+Turn 4 Response:
+
+Key mismatch vs the target: in your current raster all **three** guides taper the same way at the input, so the **gaps stay constant**. In the target image, the **outer guides “wedge” in** toward the center guide (the gaps clearly change), which happens naturally if **only the outer guides taper in width** while the **center guide stays constant-width**. Also, the center guide should end a bit earlier (a more visible “stub” before the fan-out starts), and the fan-out shape looks closer to a standard **S-bend** than a hand-bezier.
+
+Below is an updated “Turn 4” script implementing those changes:
+
+- **Outer guides:** long taper (narrow → full width), then parallel straight, then `bend_s`, then output straight.  
+- **Center guide:** **no taper**, constant width, ends early (`center_end_offset` increased).
+- **Fan-out:** use `gf.components.bend_s` for a cleaner, more “library-like” shape.
+
+```python
+import gdsfactory as gf
+
+LAYER = (1, 0)
+
+
+@gf.cell
+def taper_transition(
+    length: float = 10.0,
+    width1: float = 0.06,
+    width2: float = 0.18,
+    layer=LAYER,
+    width_type: str = "sine",
+) -> gf.Component:
+    """Parametric taper using Path + extrude_transition."""
+    xs1 = gf.cross_section.strip(width=width1, layer=layer)
+    xs2 = gf.cross_section.strip(width=width2, layer=layer)
+    trans = gf.path.transition(xs1, xs2, width_type=width_type)
+    p = gf.path.straight(length=length)
+    return gf.path.extrude_transition(p, trans)
+
+
+@gf.cell
+def three_waveguides_split_like_png_v4(
+    # Footprint target
+    length_total: float = 40.0,
+    height_total: float = 1.7,
+    layer=LAYER,
+    # Widths (IMPORTANT CHANGE: middle is constant-width, outer tapers only)
+    w_mid: float = 0.18,
+    w_outer: float = 0.18,
+    w_outer_start: float = 0.06,
+    # Length partition (outer path)
+    ltaper_outer: float = 18.0,   # longer taper to create the "wedge/gap change" look
+    lcpl: float = 10.0,           # parallel constant-width region after taper
+    lfan_dx: float = 6.0,         # S-bend horizontal span
+    # Placement
+    y_cpl: float = 0.40,          # outer guides y in parallel region
+    y_out: float = 0.72,          # outer guides y at outputs
+    # Middle termination (IMPORTANT CHANGE: end earlier than fan-out start)
+    center_end_offset: float = 1.2,
+) -> gf.Component:
+    """
+    Matches the target better by:
+    - Tapering ONLY the outer waveguides (center stays constant-width),
+      which makes the gaps change along the input region like the target.
+    - Using bend_s for the fan-out.
+    - Ending the center guide earlier (larger visible stub gap before fan-out).
+    """
+    c = gf.Component()
+
+    # Cross-sections
+    xs_mid = gf.cross_section.strip(width=w_mid, layer=layer)
+    xs_outer = gf.cross_section.strip(width=w_outer, layer=layer)
+
+    # --- footprint sanity checks ---
+    half_h = height_total / 2
+    w_max = max(w_mid, w_outer)
+
+    if abs(y_out) + w_max / 2 > half_h + 1e-6:
+        raise ValueError("y_out/w exceed the requested height_total footprint.")
+
+    if abs(y_cpl) + w_max / 2 > half_h + 1e-6:
+        raise ValueError("y_cpl/w exceed the requested height_total footprint.")
+
+    dy_fan = y_out - y_cpl
+    if dy_fan <= 0:
+        raise ValueError("Need y_out > y_cpl for outward fan-out.")
+
+    # Outer total length budgeting
+    lout = length_total - (ltaper_outer + lcpl + lfan_dx)
+    if lout <= 0:
+        raise ValueError("Invalid lengths: need length_total > ltaper_outer + lcpl + lfan_dx.")
+
+    x_fan_start = ltaper_outer + lcpl
+    x_mid_end = x_fan_start - center_end_offset
+    if x_mid_end <= 0:
+        raise ValueError("center_end_offset too large; center waveguide would be non-positive length.")
+
+    # Shared fan-out bend (top); bottom will be mirrored
+    bend_top = gf.components.bend_s(size=(lfan_dx, dy_fan), cross_section=xs_outer)
+
+    # -------------------------
+    # TOP waveguide: taper -> parallel -> S-bend -> straight out
+    # -------------------------
+    top_taper = c << taper_transition(
+        length=ltaper_outer,
+        width1=w_outer_start,
+        width2=w_outer,
+        layer=layer,
+        width_type="sine",
+    )
+    top_taper.move((0, y_cpl))
+
+    top_cpl = c << gf.components.straight(length=lcpl, cross_section=xs_outer)
+    top_cpl.connect("o1", top_taper.ports["o2"])
+
+    top_bend = c << bend_top
+    top_bend.connect("o1", top_cpl.ports["o2"])
+
+    top_out = c << gf.components.straight(length=lout, cross_section=xs_outer)
+    top_out.connect("o1", top_bend.ports["o2"])
+
+    # -------------------------
+    # BOTTOM waveguide: taper -> parallel -> mirrored S-bend -> straight out
+    # -------------------------
+    bot_taper = c << taper_transition(
+        length=ltaper_outer,
+        width1=w_outer_start,
+        width2=w_outer,
+        layer=layer,
+        width_type="sine",
+    )
+    bot_taper.move((0, -y_cpl))
+
+    bot_cpl = c << gf.components.straight(length=lcpl, cross_section=xs_outer)
+    bot_cpl.connect("o1", bot_taper.ports["o2"])
+
+    bot_bend = c << bend_top
+    # Mirror across X-axis (y -> -y) to get the downward fan-out
+    bot_bend.mirror(p1=(0, 0), p2=(1, 0))
+    bot_bend.connect("o1", bot_cpl.ports["o2"])
+
+    bot_out = c << gf.components.straight(length=lout, cross_section=xs_outer)
+    bot_out.connect("o1", bot_bend.ports["o2"])
+
+    # -------------------------
+    # CENTER waveguide: constant width, ends early (NO taper)
+    # -------------------------
+    mid = c << gf.components.straight(length=x_mid_end, cross_section=xs_mid)
+    mid.move((0, 0))
+
+    # External ports (keep your prior naming pattern)
+    c.add_port("o1", port=top_taper.ports["o1"])   # top input
+    c.add_port("o2", port=mid.ports["o1"])         # mid input
+    c.add_port("o3", port=bot_taper.ports["o1"])   # bottom input
+    c.add_port("o4", port=top_out.ports["o2"])     # top output
+    c.add_port("o5", port=bot_out.ports["o2"])     # bottom output
+
+    return c
+
+
+if __name__ == "__main__":
+    c = three_waveguides_split_like_png_v4()
+    c.write_gds("recreated_device_v4.gds")
+```
+
+If you share the target raster again (or the exact pixel-to-micron mapping you’re using), I can tune the three parameters that most strongly control the visual match:
+
+- `ltaper_outer` (how long the “wedge/gap-change” region is)
+- `center_end_offset` (how early the center stub stops)
+- `lfan_dx` (how “gentle” vs “tight” the fan-out looks)

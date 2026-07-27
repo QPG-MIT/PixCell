@@ -1,0 +1,77 @@
+Turn 1 Response:
+
+The error `RuntimeError: Cell ... cannot be modified as it is locked` occurs because you are attempting to transform (rotate/move) component references *after* they have been added to the parent component, or because you are using `gf.components` that are already cached and immutable.
+
+In GDSFactory, the most robust way to handle this—and to perform Boolean operations cleanly—is to build the geometry in separate, isolated `Component` objects first, and then perform the Boolean subtraction on those entire components. This avoids "locking" issues because you aren't trying to manipulate coordinates of a live reference.
+
+Here is the corrected, robust script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def get_solid_body():
+    """Builds the solid flared block as an isolated component."""
+    c = gf.Component()
+    
+    # 1. Central body
+    c << gf.components.rectangle(size=(100, 2.0), layer=(1, 0), centered=True)
+    
+    # 2. Flares (using tapers)
+    # We create the top and bottom flares
+    # Using 'taper' to approximate the flare shape
+    top_flare = c << gf.components.taper(length=1.5, width1=100, width2=120, layer=(1, 0))
+    top_flare.rotate(90)
+    top_flare.movey(1.75) # Position slightly above center
+    
+    bot_flare = c << gf.components.taper(length=1.5, width1=100, width2=120, layer=(1, 0))
+    bot_flare.rotate(-90)
+    bot_flare.movey(-1.75) # Position slightly below center
+    
+    return c
+
+@gf.cell
+def get_gaps():
+    """Builds the gaps as an isolated component."""
+    c = gf.Component()
+    
+    # Create 4 gaps (which creates 5 lines/bars)
+    for i in range(4):
+        # Calculate Y position for the gaps
+        y_offset = (i - 1.5) * 0.4
+        c << gf.components.rectangle(size=(130, 0.2), layer=(1, 0), centered=True).movey(y_offset)
+        
+    return c
+
+@gf.cell
+def create_device():
+    """Main function to compose and subtract geometries."""
+    c = gf.Component()
+    
+    # Create the two source components
+    solid = get_solid_body()
+    gaps = get_gaps()
+    
+    # Perform Boolean NOT (Solid - Gaps = Final Geometry)
+    # This creates a new geometry based on the two input components
+    final_geo = gf.boolean(solid, gaps, operation="not", layer=(1, 0))
+    
+    # Add the result to the main component
+    c.add_ref(final_geo)
+    
+    return c
+
+if __name__ == "__main__":
+    # Generate the component
+    device = create_device()
+    
+    # Write the file
+    device.write_gds("symmetric_device.gds")
+    print("Success! 'symmetric_device.gds' generated.")
+```
+
+### Why this works:
+1.  **Isolation:** `get_solid_body` and `get_gaps` return `Component` objects. They do not share a parent hierarchy, so they are not "locked."
+2.  **Boolean Logic:** We pass these completed components to `gf.boolean`. This function calculates the resulting geometry from the polygons without needing to manipulate references.
+3.  **No Transforms in Boolean:** We perform the transforms (rotate/move) *before* the boolean operation inside the helper functions, which is safe.
+4.  **No Mutating References:** We do not attempt to move or rotate anything after it has been added to the final `c` (other than the final result itself).

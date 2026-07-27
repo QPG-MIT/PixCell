@@ -1,0 +1,104 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_120_4():
+    """
+    Recreation of the symmetric waveguide structure with tapered gratings.
+    Footprint: 120um x 4um.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions & Parameters ---
+    total_width = 120.0
+    total_height = 4.0
+    layer_core = (1, 0)
+    
+    # Center Bus Parameters (5 lines)
+    wg_width = 0.2
+    wg_gap = 0.2
+    n_wgs = 5
+    
+    # 1. Central Bus Construction
+    # Calculate the vertical span of the central bus
+    center_span = n_wgs * wg_width + (n_wgs - 1) * wg_gap
+    
+    # Define the cross-section for the central waveguides
+    xs_bus = gf.cross_section.cross_section(width=wg_width, layer=layer_core)
+    
+    # Create the straight waveguide component
+    # FIX: Pass cross_section instead of width/layer directly
+    wg_straight = gf.components.straight(length=total_width, cross_section=xs_bus)
+    
+    # Array placement of the central waveguides
+    # Center position of the bottom-most waveguide
+    y_start = -center_span / 2 + wg_width / 2
+    
+    for i in range(n_wgs):
+        ref = c << wg_straight
+        ref.x = 0
+        ref.y = y_start + i * (wg_width + wg_gap)
+
+    # 2. Tapered Wing Construction
+    # The wings are located above and below the central bus.
+    wing_to_bus_gap = 0.2
+    # Calculate available height for one wing
+    wing_height = (total_height - center_span - 2 * wing_to_bus_gap) / 2
+
+    # A. Create the solid tapered body
+    # We define a vertical path (along Y) and extrude a width transition (along X)
+    # This creates a shape that narrows as it moves away from the center.
+    p = gf.Path([(0, 0), (0, wing_height)])
+    
+    # Define CrossSections for the start and end of the transition
+    # Base (near center): Full width
+    xs_base = gf.cross_section.cross_section(width=total_width, layer=layer_core)
+    # Tip (outer edge): Slightly narrower to create the curved profile
+    xs_tip = gf.cross_section.cross_section(width=total_width * 0.94, layer=layer_core)
+    
+    # Create a smooth sine transition
+    transition = gf.path.transition(xs_base, xs_tip, width_type='sine')
+    
+    # Extrude the transition along the path
+    wing_solid = gf.path.extrude_transition(p, transition)
+    
+    # B. Create Slots (Negative space)
+    # Horizontal cuts inside the wing
+    n_slots = 3
+    slot_height = 0.12
+    slot_pitch = 0.25
+    slot_margin = 0.15 # Distance from the bottom of the wing (inner edge)
+    
+    # Create a container for slots
+    slots_layer = gf.Component()
+    # Rectangle for the slot (wider than the wing to ensure full cut)
+    slot_rect = gf.components.rectangle(size=(total_width + 5.0, slot_height), layer=layer_core, centered=True)
+    
+    for i in range(n_slots):
+        s = slots_layer << slot_rect
+        s.x = 0
+        # Position slots relative to the bottom of the wing
+        s.y = slot_margin + i * slot_pitch + slot_height / 2
+        
+    # C. Boolean Operation: Solid Wing - Slots
+    wing_final = gf.boolean(wing_solid, slots_layer, operation="not", layer=layer_core)
+    
+    # 3. Final Assembly
+    
+    # Place Top Wing
+    top_ref = c << wing_final
+    # Position: ymin of wing aligns with the gap above the central bus
+    top_ref.ymin = center_span / 2 + wing_to_bus_gap
+    top_ref.x = 0
+    
+    # Place Bottom Wing (Mirrored)
+    bot_ref = c << wing_final
+    bot_ref.mirror(p1=(0,0), p2=(1,0)) # Mirror vertically across X-axis
+    # Position: ymax of mirrored wing aligns with the gap below the central bus
+    bot_ref.ymax = -(center_span / 2 + wing_to_bus_gap)
+    bot_ref.x = 0
+    
+    return c
+
+# Generate and Save
+device = device_120_4()
+device.write_gds("device_120_4.gds")

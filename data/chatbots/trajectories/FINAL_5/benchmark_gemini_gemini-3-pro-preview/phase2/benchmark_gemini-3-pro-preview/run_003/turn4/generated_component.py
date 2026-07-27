@@ -1,0 +1,163 @@
+import gdsfactory as gf
+
+@gf.cell
+def contra_directional_coupler_fixed():
+    """
+    Parametric recreation of a Contra-Directional Coupler with loopback paths.
+    Matches the visual topology of input flares, grating teeth, and hairpin return loops.
+    """
+    c = gf.Component()
+
+    # --- 1. Parameters ---
+    # Dimensions tuned for ~18um length and visual match
+    # Constraint Note: 0.7um likely refers to the coupling gap region width.
+    wg_width = 0.35
+    gap = 0.1               # Gap between the tips of opposing teeth
+    teeth_depth = 0.15      # Length of the teeth protruding from the core
+    period = 0.3            # Pitch of the grating
+    duty_cycle = 0.5        # 50% fill factor
+    
+    L_grating = 13.5        # Length of the coupling region
+    bend_radius = 1.8       # Radius for the return loops
+    
+    # Overlap strategy: Teeth are anchored at the waveguide centerline 
+    # to ensure perfect boolean union and no rendering gaps.
+    overlap = wg_width / 2.0 
+
+    # Layer definition
+    layer_wg = (1, 0)
+    
+    # Cross-section
+    xs = gf.cross_section.cross_section(
+        width=wg_width, 
+        layer=layer_wg, 
+        radius=bend_radius
+    )
+
+    # --- 2. Helper Components ---
+
+    # Tooth Primitive
+    # Height = part sticking out (depth) + part inside core (overlap)
+    tooth_height = teeth_depth + overlap
+    tooth = gf.components.rectangle(
+        size=(period * duty_cycle, tooth_height), 
+        layer=layer_wg, 
+        centered=False
+    )
+
+    # Taper Primitive (Long taper as seen in target)
+    taper_tip = gf.components.taper(
+        length=2.0, 
+        width1=wg_width, 
+        width2=0.05, 
+        cross_section=xs
+    )
+
+    # Input/Output Flare Bend
+    # A gentle bend to bring ports away from the central axis
+    bend_flare = gf.components.bend_euler(radius=4.0, angle=20, cross_section=xs)
+
+    def make_grated_arm(length, y_pos, teeth_direction):
+        """
+        Creates a straight waveguide with periodic teeth.
+        teeth_direction: -1 (Down), 1 (Up)
+        """
+        arm = gf.Component()
+        
+        # 1. Main waveguide core
+        core = arm << gf.components.straight(length=length, cross_section=xs)
+        core.movey(y_pos)
+        
+        # Expose ports
+        arm.add_port("o1", port=core.ports["o1"])
+        arm.add_port("o2", port=core.ports["o2"])
+        
+        # 2. Add periodic teeth
+        n_teeth = int(length / period)
+        
+        # Calculate Y position for the teeth logic
+        # We anchor teeth so they overlap half the waveguide width (reaching the center).
+        if teeth_direction == -1: # Pointing Down
+            # Rect Top needs to be at y_pos (Center).
+            # Rect Bottom = y_pos - tooth_height.
+            y_rect_bottom = y_pos - tooth_height
+        else: # Pointing Up
+            # Rect Bottom needs to be at y_pos (Center).
+            # Rect Top = y_pos + tooth_height.
+            y_rect_bottom = y_pos
+
+        for i in range(n_teeth):
+            t = arm << tooth
+            t.move((i * period, y_rect_bottom))
+                
+        return arm
+
+    # --- 3. Construct Geometry ---
+
+    # Calculate Vertical Offsets
+    # We derived: Center_Y = gap/2 + tooth_height (to achieve specific gap between tips)
+    # Check: Tip_Y = Center_Y - tooth_height = gap/2. Correct.
+    y_center_offset = (gap / 2.0) + tooth_height
+
+    # Create Top and Bottom Grating Arms
+    top_grating = c << make_grated_arm(L_grating, y_center_offset, teeth_direction=-1)
+    bot_grating = c << make_grated_arm(L_grating, -y_center_offset, teeth_direction=1)
+
+    # Return Path Waveguide (longer than grating to reach back to input)
+    # Length = Grating Length + approx X-offset of flare
+    wg_return = gf.components.straight(length=L_grating + 1.5, cross_section=xs)
+
+    # -- Top Loop Assembly --
+    # 1. Input Flare (Left side)
+    # Curves Up and Left. 
+    # Attach mirrored bend to o1.
+    ti = c << bend_flare
+    ti.mirror() # Flips Y. Turns Right (CW).
+    # Connect start of bend to grating input. 
+    # Result: Extension curves UP and LEFT.
+    ti.connect("o2", top_grating.ports["o1"]) 
+    
+    # 2. Loop Back (Right side) - Circular "U" Turn
+    tl = c << gf.components.bend_circular(radius=bend_radius, angle=180, cross_section=xs)
+    tl.connect("o1", top_grating.ports["o2"])
+    
+    # 3. Return Path (Top)
+    tr = c << wg_return
+    tr.connect("o1", tl.ports["o2"])
+    
+    # 4. Taper Termination
+    tt = c << taper_tip
+    tt.connect("o1", tr.ports["o2"])
+
+    # -- Bottom Loop Assembly --
+    # 1. Input Flare (Left side)
+    # Curves Down and Left.
+    # Attach standard bend (Left/CCW) to o1.
+    bi = c << bend_flare
+    # Connect end of bend to grating input.
+    # Since bend turns Left, connecting its end (North-ish) to a West port 
+    # makes the start come from South-West.
+    # Correct: Curves DOWN and LEFT.
+    bi.connect("o2", bot_grating.ports["o1"])
+    
+    # 2. Loop Back (Right side)
+    bl = c << gf.components.bend_circular(radius=bend_radius, angle=180, cross_section=xs)
+    bl.mirror() # Flip to turn Downwards
+    bl.connect("o1", bot_grating.ports["o2"])
+    
+    # 3. Return Path (Bottom)
+    br = c << wg_return
+    br.connect("o1", bl.ports["o2"])
+    
+    # 4. Taper Termination
+    bt = c << taper_tip
+    bt.connect("o1", br.ports["o2"])
+
+    # --- 4. Finalization ---
+    c.flatten()
+    return c
+
+if __name__ == "__main__":
+    device = contra_directional_coupler_fixed()
+    device.write_gds("cdc_fixed.gds")
+    device.show()

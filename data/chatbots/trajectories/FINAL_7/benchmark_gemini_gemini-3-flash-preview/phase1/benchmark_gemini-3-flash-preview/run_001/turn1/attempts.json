@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.855984",
+      "api_duration_seconds": 95.1273181438446,
+      "usage": {
+        "input_tokens": 3170,
+        "output_tokens": 1304,
+        "total_tokens": 15533
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "RuntimeError: Cell 'circle_gdsfactorypcomponentspshapespcircle_R1p5_AR2p5_L1_0' cannot be modified as it is locked in Cell.transform",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:46.513210",
+      "api_duration_seconds": 21.632097959518433,
+      "usage": {
+        "input_tokens": 4532,
+        "output_tokens": 1150,
+        "total_tokens": 7210
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: cross_section() got an unexpected keyword argument 'line_cap'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:09.507553",
+      "api_duration_seconds": 49.11226272583008,
+      "usage": {
+        "input_tokens": 5712,
+        "output_tokens": 1244,
+        "total_tokens": 12500
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13414,
+    "output_tokens": 3698,
+    "total_tokens": 35243
+  }
+}

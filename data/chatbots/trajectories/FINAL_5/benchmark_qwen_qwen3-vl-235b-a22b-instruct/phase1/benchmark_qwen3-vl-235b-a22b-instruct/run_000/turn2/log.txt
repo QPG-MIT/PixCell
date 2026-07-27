@@ -1,0 +1,189 @@
+Turn 2 Response:
+
+I see the issue now. The `bend_s` component is trying to create a bend with a radius that's too small for the cross-section's minimum radius requirement. Let me fix this by using a larger radius or by using a different approach.
+
+Looking at the error, the cross-section has a minimum radius of 10.0, but the S-bend is trying to use a much smaller radius. Let me adjust the S-bend parameters to use a larger radius:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_with_grating():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides with appropriate minimum radius
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0), radius=10.0)
+    
+    # Create the two waveguides with S-bends
+    # First waveguide (top)
+    wg1_taper_in = c << gf.components.taper(length=2.0, width1=0.5, width2=0.1)
+    wg1_s_bend = c << gf.components.bend_s(size=(20.0, 20.0), cross_section=xs)
+    wg1_taper_out = c << gf.components.taper(length=2.0, width1=0.5, width2=0.1)
+    
+    # Second waveguide (bottom)
+    wg2_taper_in = c << gf.components.taper(length=2.0, width1=0.5, width2=0.1)
+    wg2_s_bend = c << gf.components.bend_s(size=(20.0, 20.0), cross_section=xs)
+    wg2_taper_out = c << gf.components.taper(length=2.0, width1=0.5, width2=0.1)
+    
+    # Position the first waveguide
+    wg1_taper_in.move((0, 0.35))
+    wg1_s_bend.move((2.0, 0.35))
+    wg1_taper_out.move((22.0, -0.35))
+    
+    # Position the second waveguide
+    wg2_taper_in.move((0, -0.35))
+    wg2_s_bend.move((2.0, -0.35))
+    wg2_taper_out.move((22.0, 0.35))
+    
+    # Create the grating pattern in the middle region
+    grating_period = 0.5
+    num_grating_elements = int(20.0 / grating_period)
+    
+    for i in range(num_grating_elements):
+        x_pos = 2.0 + i * grating_period  # Start after taper
+        
+        # Create small rectangles to represent grating elements
+        grating_element_top = c << gf.components.rectangle(size=(0.3, 0.1), layer=(1, 0))
+        grating_element_bottom = c << gf.components.rectangle(size=(0.3, 0.1), layer=(1, 0))
+        
+        grating_element_top.move((x_pos, 0.35))
+        grating_element_bottom.move((x_pos, -0.35))
+    
+    # Add ports for connectivity
+    c.add_port("o1", port=wg1_taper_in.ports["o1"])
+    c.add_port("o2", port=wg1_taper_out.ports["o2"])
+    c.add_port("o3", port=wg2_taper_in.ports["o1"])
+    c.add_port("o4", port=wg2_taper_out.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = directional_coupler_with_grating()
+device.write_gds("directional_coupler_with_grating.gds")
+```
+
+Wait, I need to reconsider this. The error suggests that the cross-section has a minimum radius of 10.0, but we're trying to use a smaller radius in the S-bend. Let me use a different approach with a larger radius:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_with_grating():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides with appropriate minimum radius
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0), radius=10.0)
+    
+    # Create the two waveguides with S-bends using larger size
+    # First waveguide (top)
+    wg1_taper_in = c << gf.components.taper(length=2.0, width1=0.5, width2=0.1)
+    wg1_s_bend = c << gf.components.bend_s(size=(20.0, 20.0), cross_section=xs)
+    wg1_taper_out = c << gf.components.taper(length=2.0, width1=0.5, width2=0.1)
+    
+    # Second waveguide (bottom)
+    wg2_taper_in = c << gf.components.taper(length=2.0, width1=0.5, width2=0.1)
+    wg2_s_bend = c << gf.components.bend_s(size=(20.0, 20.0), cross_section=xs)
+    wg2_taper_out = c << gf.components.taper(length=2.0, width1=0.5, width2=0.1)
+    
+    # Position the first waveguide
+    wg1_taper_in.move((0, 0.35))
+    wg1_s_bend.move((2.0, 0.35))
+    wg1_taper_out.move((22.0, -0.35))
+    
+    # Position the second waveguide
+    wg2_taper_in.move((0, -0.35))
+    wg2_s_bend.move((2.0, -0.35))
+    wg2_taper_out.move((22.0, 0.35))
+    
+    # Create the grating pattern in the middle region
+    grating_period = 0.5
+    num_grating_elements = int(20.0 / grating_period)
+    
+    for i in range(num_grating_elements):
+        x_pos = 2.0 + i * grating_period  # Start after taper
+        
+        # Create small rectangles to represent grating elements
+        grating_element_top = c << gf.components.rectangle(size=(0.3, 0.1), layer=(1, 0))
+        grating_element_bottom = c << gf.components.rectangle(size=(0.3, 0.1), layer=(1, 0))
+        
+        grating_element_top.move((x_pos, 0.35))
+        grating_element_bottom.move((x_pos, -0.35))
+    
+    # Add ports for connectivity
+    c.add_port("o1", port=wg1_taper_in.ports["o1"])
+    c.add_port("o2", port=wg1_taper_out.ports["o2"])
+    c.add_port("o3", port=wg2_taper_in.ports["o1"])
+    c.add_port("o4", port=wg2_taper_out.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = directional_coupler_with_grating()
+device.write_gds("directional_coupler_with_grating.gds")
+```
+
+I'm still seeing the same issue. Let me try a different approach using the path system with a larger radius:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_with_grating():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides with appropriate minimum radius
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0), radius=10.0)
+    
+    # Create the two waveguides with S-bends using path system
+    # First waveguide (top)
+    path1 = gf.Path()
+    path1.append(gf.path.straight(length=2.0))  # Taper section
+    path1.append(gf.path.straight(length=10.0))  # Straight section
+    path1.append(gf.path.euler(radius=10.0, angle=180))  # Half circle for S-bend
+    path1.append(gf.path.straight(length=10.0))  # Straight section
+    path1.append(gf.path.straight(length=2.0))  # Taper section
+    
+    # Second waveguide (bottom)
+    path2 = gf.Path()
+    path2.append(gf.path.straight(length=2.0))  # Taper section
+    path2.append(gf.path.straight(length=10.0))  # Straight section
+    path2.append(gf.path.euler(radius=10.0, angle=-180))  # Half circle for S-bend
+    path2.append(gf.path.straight(length=10.0))  # Straight section
+    path2.append(gf.path.straight(length=2.0))  # Taper section
+    
+    # Extrude paths to create waveguides
+    wg1 = c << gf.path.extrude(path1, cross_section=xs)
+    wg2 = c << gf.path.extrude(path2, cross_section=xs)
+    
+    # Position the waveguides
+    wg1.move((0, 0.35))
+    wg2.move((0, -0.35))
+    
+    # Create the grating pattern in the middle region
+    grating_period = 0.5
+    num_grating_elements = int(10.0 / grating_period)
+    
+    for i in range(num_grating_elements):
+        x_pos = 2.0 + i * grating_period  # Start after taper
+        
+        # Create small rectangles to represent grating elements
+        grating_element_top = c << gf.components.rectangle(size=(0.3, 0.1), layer=(1, 0))
+        grating_element_bottom = c << gf.components.rectangle(size=(0.3, 0.1), layer=(1, 0))
+        
+        grating_element_top.move((x_pos, 0.35))
+        grating_element_bottom.move((x_pos, -0.35))
+    
+    # Add ports for connectivity
+    c.add_port("o1", port=wg1.ports["o1"])
+    c.add_port("o2", port=wg1.ports["o2"])
+    c.add_port("o3", port=wg2.ports["o1"])
+    c.add_port("o4", port=wg2.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = directional_coupler_with_grating()
+device.write_gds("directional_coupler_with_grating.gds")
+```
+
+This should work because I'm using a radius of 10.0, which matches the cross-section's minimum radius requirement.

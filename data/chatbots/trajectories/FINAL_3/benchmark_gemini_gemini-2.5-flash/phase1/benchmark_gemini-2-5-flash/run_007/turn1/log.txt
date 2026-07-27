@@ -1,0 +1,132 @@
+Turn 1 Response:
+
+To recreate the provided geometry using GDSFactory, we need to break down the complex shape into its parametric primitives. The image shows two parallel straight waveguides in the center, flanked by two symmetrical S-bends on both the left and right sides.
+
+The GDSFactory catalog provides:
+*   `gf.components.straight`: For the central straight waveguide segments.
+*   `gf.components.bend_s`: Ideal for creating the S-shaped curves that connect the central parallel waveguides to the outer, more separated input/output ports.
+*   `gf.cross_section.cross_section`: To define the width and layer of the waveguides.
+
+**Footprint Analysis:**
+The device footprint is `[120, 4]` um. This means the total length is 120 um, and the total height is 4 um.
+
+**Parameter Derivation:**
+
+1.  **Waveguide Cross-section (`xs`):**
+    *   A standard waveguide width of `0.5 um` is reasonable.
+    *   We'll use `layer=(1, 0)`.
+
+2.  **Vertical Dimensions (`dy_s_bend`):**
+    *   The total height is 4 um. This means the top edge of the device is at `y = 2.0` um and the bottom edge is at `y = -2.0` um (if centered vertically).
+    *   With a waveguide width of `0.5 um`, the centerline of the outermost points of the top waveguide will be at `y = 2.0 - 0.5/2 = 1.75` um.
+    *   Similarly, the centerline of the outermost points of the bottom waveguide will be at `y = -2.0 + 0.5/2 = -1.75` um.
+    *   In the central straight section, the two waveguides are closer. Visually, the gap between them appears to be similar to the waveguide width. Let's assume a gap of `0.5 um`.
+    *   If the entire device is centered, the centerline of the top central waveguide will be at `y = 0.5/2 + 0.5/2 = 0.5` um.
+    *   The centerline of the bottom central waveguide will be at `y = -0.5/2 - 0.5/2 = -0.5` um.
+    *   The vertical displacement (`dy`) that each `bend_s` component needs to achieve is the difference between the outer centerline and the inner centerline: `dy_s_bend = 1.75 - 0.5 = 1.25` um.
+
+3.  **Horizontal Dimensions (`dx_s_bend`, `length_straight_center`):**
+    *   The total length is 120 um.
+    *   The image suggests that the S-bends occupy a significant portion of the total length. Let's make an educated guess. If the central straight section is `30 um`, then the remaining `120 - 30 = 90 um` is split equally between the two S-bend pairs (`45 um` for each side).
+    *   So, `dx_s_bend = 45` um (horizontal extent of a single S-bend).
+    *   `length_straight_center = 30` um (length of each central straight waveguide).
+
+**Assembly Strategy:**
+
+1.  Create the two central straight waveguides and position them symmetrically around the x-axis, such that their collective center is at (0,0) and they are offset vertically by `+/- 0.5` um.
+2.  Create the four `bend_s` components.
+3.  Connect the `bend_s` components to the `o1` (left) and `o2` (right) ports of the central straight waveguides, using the `connect` method to automatically align and place them. The `dy` parameter for `bend_s` will be `+1.25` or `-1.25` depending on the direction of the bend.
+4.  Add ports to the main component to expose the device's inputs and outputs.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def my_device() -> gf.Component:
+    """
+    Recreates the geometry from the provided image using GDSFactory parametric functions.
+
+    The device consists of two parallel central waveguides connected to four
+    S-bends at its ends, fitting within a [120, 4] um footprint.
+    """
+    c = gf.Component("s_bend_waveguide_splitter")
+
+    # Define the waveguide cross-section
+    # Assuming a standard width of 0.5 um on layer (1, 0)
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    # --- Derived Parameters from Footprint [120, 4] um ---
+    total_length = 120  # Total horizontal length of the device
+    total_height = 4    # Total vertical height of the device
+
+    # Horizontal extent (dx) of each S-bend
+    # Estimated such that the central straight section has a reasonable length.
+    dx_s_bend = 45  # um
+
+    # Length of the central straight waveguide segments
+    length_straight_center = total_length - (2 * dx_s_bend)  # 120 - (2 * 45) = 30 um
+
+    # Vertical displacement (dy) for each S-bend
+    # (Total height / 2) - (waveguide_width / 2) = centerline of outer path
+    # (Waveguide_gap / 2) + (waveguide_width / 2) = centerline of inner path
+    # dy_s_bend = (2 - 0.5/2) - (0.5/2 + 0.5/2) = 1.75 - 0.5 = 1.25 um
+    dy_s_bend = 1.25  # um
+
+    # 1. Create the two central straight waveguides
+    # Position them symmetrically around the x-axis.
+    # The 'o1' port of the straight_top_ref will be at (-length_straight_center/2, 0.5)
+    straight_top_ref = c << gf.components.straight(length=length_straight_center, cross_section=xs)
+    straight_top_ref.move((-length_straight_center / 2, 0.5))
+
+    # The 'o1' port of the straight_bottom_ref will be at (-length_straight_center/2, -0.5)
+    straight_bottom_ref = c << gf.components.straight(length=length_straight_center, cross_section=xs)
+    straight_bottom_ref.move((-length_straight_center / 2, -0.5))
+
+    # 2. Create and connect the left S-bends
+    # Top-left S-bend: Connects an outer-Y input port to the inner-Y 'o1' of the top straight.
+    # The 'dy' parameter needs to be negative because the waveguide goes from a higher Y to a lower Y.
+    bend_s_TL_ref = c << gf.components.bend_s(size=(dx_s_bend, -dy_s_bend), cross_section=xs)
+    bend_s_TL_ref.connect("o2", straight_top_ref.ports["o1"])
+
+    # Bottom-left S-bend: Connects an outer-Y input port to the inner-Y 'o1' of the bottom straight.
+    # The 'dy' parameter needs to be positive because the waveguide goes from a lower Y to a higher Y.
+    bend_s_BL_ref = c << gf.components.bend_s(size=(dx_s_bend, dy_s_bend), cross_section=xs)
+    bend_s_BL_ref.connect("o2", straight_bottom_ref.ports["o1"])
+
+    # 3. Create and connect the right S-bends
+    # Top-right S-bend: Connects the inner-Y 'o2' of the top straight to an outer-Y output port.
+    # The 'dy' parameter needs to be positive.
+    bend_s_TR_ref = c << gf.components.bend_s(size=(dx_s_bend, dy_s_bend), cross_section=xs)
+    bend_s_TR_ref.connect("o1", straight_top_ref.ports["o2"])
+
+    # Bottom-right S-bend: Connects the inner-Y 'o2' of the bottom straight to an outer-Y output port.
+    # The 'dy' parameter needs to be negative.
+    bend_s_BR_ref = c << gf.components.bend_s(size=(dx_s_bend, -dy_s_bend), cross_section=xs)
+    bend_s_BR_ref.connect("o1", straight_bottom_ref.ports["o2"])
+
+    # 4. Add external ports to the main component for device interface
+    c.add_port("o1_top", port=bend_s_TL_ref.ports["o1"])
+    c.add_port("o1_bottom", port=bend_s_BL_ref.ports["o1"])
+    c.add_port("o2_top", port=bend_s_TR_ref.ports["o2"])
+    c.add_port("o2_bottom", port=bend_s_BR_ref.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Create the device component
+    device = my_device()
+
+    # Write the GDS file for the device
+    device.write_gds("my_device.gds")
+
+    # Optional: Display the component in KLayout or other GDS viewer
+    # device.show()
+
+    # Optional: Print bounding box to verify footprint
+    # bbox = device.bbox()
+    # print(f"Device Bounding Box: {bbox}")
+    # x_span = bbox[1][0] - bbox[0][0]
+    # y_span = bbox[1][1] - bbox[0][1]
+    # print(f"Calculated X span: {x_span} um (Expected: 120 um)") # Should be 120
+    # print(f"Calculated Y span: {y_span} um (Expected: 4 um)")   # Should be 4
+```

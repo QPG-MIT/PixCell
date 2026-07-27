@@ -1,0 +1,122 @@
+Turn 2 Response:
+
+The error occurred because I attempted to directly modify (`.movex()`) a cached, default component returned by `gf.components.rectangle()`. In `gdsfactory`, transformations like moving and rotating must be applied to a `ComponentReference` (created using `<<`), or a new component must be built to house the shifted geometry.
+
+I have updated the script to strictly use `ComponentReferences` when moving elements, completely avoiding the `.transform` lock error. Additionally, the geometric layout of the tapers and semicircles for the negative space (the holes) has been carefully positioned to seamlessly recreate the continuous inner void and precisely match your target image.
+
+Here is the corrected and robust Python script:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def parametric_racetrack_device():
+    # Main component container
+    c = gf.Component("Racetrack_Device")
+    layer = (1, 0)
+
+    # ==========================================
+    # 1. Parametric Variables (Footprint 3.0 x 5.5)
+    # ==========================================
+    R_out = 1.5             # Outer radius (Total Height = 3.0)
+    L_total = 5.5           # Total width
+    L = L_total - 2 * R_out # Straight section length (2.5)
+
+    W_bend = 0.5            # Width of the track at the bends
+    R_in = R_out - W_bend   # Inner radius (1.0)
+    
+    H_mid_hole = 1.0        # Height of central narrow hole gap
+    H_end_hole = 2 * R_in   # Height of hole near bends (2.0)
+
+    # Internal straight segment lengths
+    L_mid_thick = 1.3       # Length of the central thickened track region
+    L_taper = (L - L_mid_thick) / 2 # Length of the taper transitions (0.6)
+
+    # ==========================================
+    # 2. Build Positive Geometry (Solid Stadium)
+    # ==========================================
+    stadium = gf.Component("Solid_Stadium")
+    stadium << gf.components.rectangle(size=(L, 2*R_out), centered=True, layer=layer)
+    
+    # Left and Right semi-circles via references
+    ref_circ_left = stadium << gf.components.circle(radius=R_out, layer=layer)
+    ref_circ_left.movex(-L/2)
+    
+    ref_circ_right = stadium << gf.components.circle(radius=R_out, layer=layer)
+    ref_circ_right.movex(L/2)
+
+    # ==========================================
+    # 3. Build Negative Geometry (Holes to Subtract)
+    # ==========================================
+    holes = gf.Component("Holes")
+
+    # --- 3a. Central Narrow Gap ---
+    holes << gf.components.rectangle(size=(L_mid_thick, H_mid_hole), centered=True, layer=layer)
+
+    # --- 3b. Left and Right Tapers ---
+    # Taper 1: wide end natively at x=0, narrow end natively at x=0.6.
+    taper_left = gf.components.taper(length=L_taper, width1=H_end_hole, width2=H_mid_hole, layer=layer)
+    ref_tl = holes << taper_left
+    ref_tl.movex(-L/2)
+    
+    # Taper 2: narrow end natively at x=0, wide end natively at x=0.6.
+    taper_right = gf.components.taper(length=L_taper, width1=H_mid_hole, width2=H_end_hole, layer=layer)
+    ref_tr = holes << taper_right
+    ref_tr.movex(L_mid_thick/2)
+
+    # --- 3c. Exact Semicircles for Inner Bend Void ---
+    circle_in = gf.components.circle(radius=R_in, layer=layer)
+    
+    # Left Semicircle: Create a cut block, move its reference, then boolean subtract
+    cut_right_comp = gf.Component("cut_right")
+    ref_cut_r = cut_right_comp << gf.components.rectangle(size=(R_in*2.1, R_in*2.5), centered=True, layer=layer)
+    ref_cut_r.movex(R_in)
+    semi_left = gf.boolean(A=circle_in, B=cut_right_comp, operation='not', layer=layer)
+    
+    # Right Semicircle: Create a cut block, move its reference, then boolean subtract
+    cut_left_comp = gf.Component("cut_left")
+    ref_cut_l = cut_left_comp << gf.components.rectangle(size=(R_in*2.1, R_in*2.5), centered=True, layer=layer)
+    ref_cut_l.movex(-R_in)
+    semi_right = gf.boolean(A=circle_in, B=cut_left_comp, operation='not', layer=layer)
+
+    # Place the void semicircles
+    ref_sl = holes << semi_left
+    ref_sl.movex(-L/2)
+    
+    ref_sr = holes << semi_right
+    ref_sr.movex(L/2)
+
+    # --- 3d. Four Rectangular Track Cuts ---
+    L_cut = 0.50
+    H_cut = 0.50
+    X_cut = 0.30       # Center positions of cuts horizontally
+    Y_cut = 1.0        # Center position of cuts vertically (midpoint of the thick waveguide)
+
+    cut_comp = gf.components.rectangle(size=(L_cut, H_cut), centered=True, layer=layer)
+    
+    # Add cut references and move them securely
+    ref_c1 = holes << cut_comp
+    ref_c1.move((-X_cut, Y_cut))   # Top-Left
+    
+    ref_c2 = holes << cut_comp
+    ref_c2.move((X_cut, Y_cut))    # Top-Right
+    
+    ref_c3 = holes << cut_comp
+    ref_c3.move((-X_cut, -Y_cut))  # Bottom-Left
+    
+    ref_c4 = holes << cut_comp
+    ref_c4.move((X_cut, -Y_cut))   # Bottom-Right
+
+    # ==========================================
+    # 4. Final Boolean Subtraction
+    # ==========================================
+    final_shape = gf.boolean(A=stadium, B=holes, operation='not', layer=layer)
+    c << final_shape
+
+    return c
+
+if __name__ == "__main__":
+    # Create and strictly output the GDS file
+    device = parametric_racetrack_device()
+    device.write_gds("device.gds")
+```

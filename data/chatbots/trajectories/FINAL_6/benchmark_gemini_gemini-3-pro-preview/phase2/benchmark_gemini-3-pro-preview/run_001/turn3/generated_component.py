@@ -1,0 +1,87 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_design():
+    """
+    Generates a 4-petal device based on visual target.
+    Target features:
+    - 4-fold symmetry (cross shape).
+    - Petals have a "leaf" or "lens" shape, tapering towards the center and the tip.
+    - Center connection is sharp/pointed (wedges meeting), not blunt.
+    - Tips are thin, straight rectangular protrusions.
+    - Footprint is constrained to 4.7um x 4.7um.
+    """
+    c = gf.Component()
+
+    # 1. Define Dimensions
+    # The device fits in a 4.7um box, so the radius from center to tip is 2.35um.
+    R_total = 2.35
+    
+    # Parameters estimated from the target image
+    L_tip = 0.60          # Length of the straight tip section
+    W_tip = 0.16          # Width of the straight tip
+    W_petal_max = 0.88    # Maximum width of the petal body
+    
+    # The petal curve covers the rest of the radius
+    L_petal = R_total - L_tip
+
+    # 2. Generate Custom Petal Geometry
+    # We use a mathematical profile (truncated sine wave) to generate a "leaf" shape.
+    # The shape starts at (0,0) [center of device] and ends at (L_petal, 0).
+    # It must taper from 0 width at the center, to W_petal_max, and back down to W_tip.
+    
+    # Model: y(x) = A * sin(k * x)
+    # A = W_petal_max / 2
+    # We find k such that at x = L_petal, the width matches the tip width (W_tip).
+    # We select the solution on the 'falling edge' of the sine wave (angle > pi/2)
+    # so the petal bulges out and then tapers in.
+    
+    ratio = W_tip / W_petal_max
+    # Clip ratio to avoid domain errors if params are tweaked
+    if ratio >= 1.0: ratio = 0.99
+        
+    # arcsin gives the rising edge angle; pi - arcsin gives the symmetric falling edge angle.
+    angle_end = np.pi - np.arcsin(ratio)
+    k = angle_end / L_petal
+    
+    # Generate points
+    N_points = 200
+    x = np.linspace(0, L_petal, N_points)
+    y = (W_petal_max / 2) * np.sin(k * x)
+    
+    # Build polygon coordinates
+    pts_top = np.column_stack((x, y))
+    pts_bot = np.column_stack((x, -y))
+    # Combine top and bottom (reversing bottom to form a closed loop)
+    pts = np.vstack((pts_top, pts_bot[::-1]))
+    
+    # Create the petal component
+    petal = gf.Component("petal_primitive")
+    petal.add_polygon(pts, layer=(1, 0))
+
+    # 3. Create the Tip Geometry
+    xs_tip = gf.cross_section.cross_section(width=W_tip, layer=(1, 0))
+    tip = gf.components.straight(length=L_tip, cross_section=xs_tip)
+
+    # 4. Assemble one Arm (Petal + Tip)
+    arm = gf.Component("arm")
+    
+    # Add petal (starts at 0,0)
+    arm << petal
+    
+    # Add tip (starts where petal ends)
+    t_ref = arm << tip
+    t_ref.move((L_petal, 0))
+
+    # 5. Arrange 4 Arms into the Device
+    for angle in [0, 90, 180, 270]:
+        ref = c << arm
+        ref.rotate(angle)
+
+    return c
+
+if __name__ == "__main__":
+    component = device_design()
+    component.write_gds("device_design.gds")
+    component.show()

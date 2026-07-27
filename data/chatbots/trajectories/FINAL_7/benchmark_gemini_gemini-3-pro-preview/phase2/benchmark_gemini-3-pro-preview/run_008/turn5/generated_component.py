@@ -1,0 +1,161 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_generator():
+    """
+    Racetrack Resonator with Split "Dogbone" Heaters with Windows.
+    
+    Constructed to match the target geometry:
+    1. Outer Racetrack Ring.
+    2. Inner Heater Geometry divided into 4 quadrants (split vertically and horizontally).
+    3. Each quadrant features:
+       - A rectangular "Pad" section with a central window (making it a frame).
+       - A solid "Ear" section that fills the curved end of the racetrack.
+       - A narrowed "Neck" connecting the Pad and Ear.
+       - The narrowing is achieved by cutting material from the inner edge (facing the center line).
+    """
+    c = gf.Component("Racetrack_Heater_Final")
+    layer = (1, 0)
+
+    # --- Parameters ---
+    # Outer Ring Geometry
+    straight_len = 2.6   # Length of the straight section
+    r_outer = 1.6        # Outer radius of the ring
+    width_ring = 0.6     # Width of the ring waveguide
+    
+    # Inner Heater Base Calculation
+    # The heater fits inside the ring with a specific clearance gap
+    gap_ring_to_heater = 0.15
+    r_heater_outer_edge = r_outer - width_ring - gap_ring_to_heater 
+    # r_heater_outer_edge is approx 1.6 - 0.6 - 0.15 = 0.85
+    
+    # Separation Gaps
+    gap_center_h = 0.2   # Horizontal split between top and bottom heaters
+    gap_center_v = 0.2   # Vertical split between left and right pads
+    
+    # Longitudinal (X) Dimensions (Center is x=0)
+    # Pad starts after the vertical gap
+    x_pad_start = gap_center_v / 2 
+    # Pad ends before the neck starts
+    x_pad_end = 0.8 
+    # Ear starts where the straight section ends (at the tangent point of the arc)
+    x_ear_start = straight_len / 2 
+    
+    # Neck Geometry
+    # The neck is formed by cutting a notch from the inner side (y=0 side)
+    # The cut extends from y=0 up to 'neck_cut_height'
+    neck_cut_height = 0.45 
+    taper_len = 0.15 # Length of the tapered transition for the cut
+    
+    # Window (Pad Hole) Geometry
+    # Defined by an inset/margin from the pad edges
+    window_inset = 0.18
+
+    # --- 1. Construct Outer Ring ---
+    # Path: Straight -> Arc -> Straight -> Arc
+    p = gf.Path()
+    p.append(gf.path.straight(length=straight_len))
+    p.append(gf.path.arc(radius=r_outer - width_ring/2, angle=180))
+    p.append(gf.path.straight(length=straight_len))
+    p.append(gf.path.arc(radius=r_outer - width_ring/2, angle=180))
+    
+    ring = c << gf.path.extrude(p, cross_section=gf.cross_section.cross_section(width=width_ring, layer=layer))
+    ring.move(ring.center, (0, 0))
+
+    # --- 2. Construct Base Heater "Pill" ---
+    # A solid pill shape representing the maximum extent of the heater material
+    # We will carve the final shape out of this base using a boolean mask.
+    base = gf.Component("Base")
+    
+    # Central rectangle block
+    base.add_polygon(
+        [(-straight_len/2, -r_heater_outer_edge), (straight_len/2, -r_heater_outer_edge), 
+         (straight_len/2, r_heater_outer_edge), (-straight_len/2, r_heater_outer_edge)], 
+        layer=layer
+    )
+    # End circles (Ears)
+    c_right = base << gf.components.circle(radius=r_heater_outer_edge, layer=layer)
+    c_right.move((straight_len/2, 0))
+    c_left = base << gf.components.circle(radius=r_heater_outer_edge, layer=layer)
+    c_left.move((-straight_len/2, 0))
+
+    # --- 3. Construct Cutting Mask ---
+    # Everything in this component will be subtracted from the Base
+    mask = gf.Component("Mask")
+    
+    # A. Central Separation Cuts
+    # Horizontal Cut (Splits Top/Bottom)
+    mask << gf.components.rectangle(
+        size=(straight_len + 2*r_outer + 2.0, gap_center_h), 
+        layer=layer, centered=True
+    )
+    # Vertical Cut (Splits Left/Right)
+    mask << gf.components.rectangle(
+        size=(gap_center_v, 2*r_heater_outer_edge + 2.0), 
+        layer=layer, centered=True
+    )
+    
+    # B. Neck Notches
+    # We create a polygon that cuts away the material to form the neck.
+    # The cut is defined for the Top-Right quadrant, then mirrored.
+    # It cuts from the horizontal centerline (y=0) upwards to 'neck_cut_height'.
+    # It spans longitudinally from the pad end to the ear start.
+    notch_pts = [
+        (x_pad_end, 0),                                 # Start at centerline, end of pad
+        (x_pad_end + taper_len, neck_cut_height),       # Taper up to cut depth
+        (x_ear_start - taper_len, neck_cut_height),     # Straight cut section
+        (x_ear_start, 0)                                # Taper down to centerline, start of ear
+    ]
+    notch_poly = gf.Component("Notch_Poly")
+    notch_poly.add_polygon(notch_pts, layer=layer)
+    
+    # Instantiate Notch in all 4 quadrants
+    # Top Right
+    mask << notch_poly
+    # Top Left (Mirror X)
+    ntl = mask << notch_poly
+    ntl.mirror_x()
+    # Bottom Right (Mirror Y)
+    # Note: Mirroring Y flips the polygon to negative Y coordinates, 
+    # which correctly cuts the bottom heater from the center line downwards.
+    nbr = mask << notch_poly
+    nbr.mirror_y()
+    # Bottom Left (Mirror XY)
+    nbl = mask << notch_poly
+    nbl.mirror_x()
+    nbl.mirror_y()
+    
+    # C. Pad Windows (Frames)
+    # Calculate the available pad area
+    pad_min_x = x_pad_start
+    pad_max_x = x_pad_end
+    pad_min_y = gap_center_h / 2
+    pad_max_y = r_heater_outer_edge
+    
+    # Calculate window size with inset
+    win_w = (pad_max_x - pad_min_x) - 2*window_inset
+    win_h = (pad_max_y - pad_min_y) - 2*window_inset
+    
+    if win_w > 0 and win_h > 0:
+        window = gf.components.rectangle(size=(win_w, win_h), layer=layer, centered=True)
+        # Center coordinates for Top-Right window
+        win_center_x = (pad_min_x + pad_max_x) / 2
+        win_center_y = (pad_min_y + pad_max_y) / 2
+        
+        # Place window in all 4 quadrants
+        for sx in [1, -1]:      # Sign X
+            for sy in [1, -1]:  # Sign Y
+                w_ref = mask << window
+                w_ref.move((sx * win_center_x, sy * win_center_y))
+
+    # --- 4. Final Boolean Operation ---
+    # Subtract Mask from Base to get the final heater geometry
+    heaters = gf.boolean(base, mask, operation="not", layer=layer)
+    c << heaters
+
+    return c
+
+if __name__ == "__main__":
+    device = device_generator()
+    device.write_gds("racetrack_heater_final.gds")
+    device.show()

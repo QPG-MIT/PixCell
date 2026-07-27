@@ -1,0 +1,96 @@
+import gdsfactory as gf
+
+@gf.cell
+def directional_coupler_120x4():
+    """
+    Recreates the directional coupler from the image based on the
+    120um x 4um footprint constraint.
+    """
+    c = gf.Component()
+
+    # 1. Define Cross Section
+    # Standard silicon waveguide width is typically 500nm (0.5um)
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+
+    # 2. Geometric Constraints
+    total_length = 120.0
+    total_height = 4.0
+    
+    # Internal design parameters
+    coupling_length = 40.0  # Assumed approx 1/3rd of total length based on image
+    gap = 0.2               # Standard coupling gap
+    wg_width = 0.5
+    
+    # Calculate bend dimensions
+    # Total length = bend + straight + bend
+    bend_length = (total_length - coupling_length) / 2
+    
+    # Calculate vertical offsets (dy) for the S-bends
+    # y_inner: Center Y of waveguide in the coupling region
+    y_inner = (gap / 2) + (wg_width / 2)
+    
+    # y_outer: Center Y of waveguide at the edge ports
+    # We place the ports at the very vertical limits of the 4um footprint
+    y_outer = (total_height / 2) - (wg_width / 2)
+    
+    dy = y_outer - y_inner
+
+    # 3. Define Primitives from Catalog
+    # Straight section for the coupling region
+    straight_coupling = gf.components.straight(
+        length=coupling_length, 
+        cross_section=xs
+    )
+    
+    # S-bend for the input/output transitions
+    # size = (length_x, height_y)
+    s_bend = gf.components.bend_s(
+        size=(bend_length, dy), 
+        cross_section=xs
+    )
+
+    # 4. Assembly - Top Arm
+    # Place coupling straight
+    top_str = c << straight_coupling
+    top_str.movey(y_inner)
+    
+    # Connect Input S-bend (Left)
+    # We connect the 'o2' (end) of the bend to the 'o1' (start) of the straight
+    # This automatically orients the bend to flare outwards
+    top_in = c << s_bend
+    top_in.connect("o2", top_str.ports["o1"])
+    
+    # Connect Output S-bend (Right)
+    # Connect 'o1' (start) of bend to 'o2' (end) of straight
+    top_out = c << s_bend
+    top_out.connect("o1", top_str.ports["o2"])
+
+    # 5. Assembly - Bottom Arm
+    # We mirror the top logic for the bottom arm
+    bot_str = c << straight_coupling
+    bot_str.movey(-y_inner)
+    
+    # Bottom Input
+    bot_in = c << s_bend
+    bot_in.mirror() # Flip vertically
+    bot_in.connect("o2", bot_str.ports["o1"])
+    
+    # Bottom Output
+    bot_out = c << s_bend
+    bot_out.mirror() # Flip vertically
+    bot_out.connect("o1", bot_str.ports["o2"])
+
+    # 6. Add Ports
+    c.add_port("o1", port=top_in.ports["o1"])
+    c.add_port("o2", port=bot_in.ports["o1"])
+    c.add_port("o3", port=top_out.ports["o2"])
+    c.add_port("o4", port=bot_out.ports["o2"])
+
+    return c
+
+# Create and write the GDS file
+device = directional_coupler_120x4()
+device.write_gds("directional_coupler.gds")
+
+# Optional: verify footprint matches constraint
+print(f"Device size: {device.size_info.width} x {device.size_info.height}")

@@ -1,0 +1,61 @@
+import gdsfactory as gf
+
+@gf.cell
+def interlaced_lines(width=1, line_spacing=0.2, num_lines=5):
+    """
+    Creates an interlaced pattern of horizontal lines.
+
+    Args:
+        width (float): Width of the lines.
+        line_spacing (float): Spacing between the lines.
+        num_lines (int): Number of lines in each interlaced section.
+    """
+    c = gf.Component("interlaced_lines")
+
+    # Define parameters
+    line_length = 120 # From Footprint constraint.  Adjust if needed
+    vertical_gap = 4  # From Footprint constraint.  Adjust if needed
+    section_width = line_spacing * (num_lines - 1) + width * num_lines
+
+
+    # Create the top section
+    top_section = gf.Component("top_section")
+    for i in range(num_lines):
+        y = i * (width + line_spacing)
+        line = top_section << gf.components.rectangle(size=(line_length/2, width), layer=(1, 0), centered=False) # Start rectangle from (0,0)
+        line.movey(y)
+        line.movex(10)
+    top_section_ref = c << top_section
+    top_section_ref.move((0, vertical_gap/2 + section_width/2))
+
+
+    # Create the bottom section (mirrored)
+    bottom_section = gf.Component("bottom_section")
+    for i in range(num_lines):
+        y = i * (width + line_spacing)
+        line = bottom_section << gf.components.rectangle(size=(line_length/2, width), layer=(1, 0), centered=False)
+        line.movey(y)
+        line.movex(10)
+    bottom_section_ref = c << bottom_section
+    bottom_section_ref.move((0, -vertical_gap/2 - section_width/2))
+    bottom_section_ref.mirror()  # Mirror the bottom section
+
+
+    # Create the middle section
+    middle_section = gf.Component("middle_section")
+    for i in range(num_lines):
+        y = i * (width + line_spacing)
+        line = middle_section << gf.components.rectangle(size=(line_length/2, width), layer=(1, 0), centered=False)
+        line.movey(y)
+        line.movex(30)
+    middle_section_ref = c << middle_section
+    middle_section_ref.move((0,0))
+
+
+    return c
+
+
+if __name__ == "__main__":
+    c = interlaced_lines()
+    c.show() # Remove show_ports argument
+    c.write_gds("interlaced_lines.gds") # optional write GDS

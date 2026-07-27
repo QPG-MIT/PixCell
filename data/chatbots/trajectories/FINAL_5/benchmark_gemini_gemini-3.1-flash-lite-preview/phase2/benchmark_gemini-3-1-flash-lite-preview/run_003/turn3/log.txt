@@ -1,0 +1,93 @@
+Turn 3 Response:
+
+The error occurs because the `radius_min` of the cross-section is set to `10.0` by default or by a previous setting, which conflicts with the `5.0` radius you are trying to use for the bends.
+
+To fix this, we must explicitly define the `cross_section` with a `radius_min` that is equal to or smaller than the radius we intend to use for our bends (e.g., `radius_min=2.0`).
+
+Here is the corrected, fully functional code:
+
+```python
+import gdsfactory as gf
+
+# 1. Define the CrossSection with an appropriate radius_min
+# This fixes the ValueError because 2.0 <= 5.0 (our bend radius)
+xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0), radius_min=2.0)
+
+@gf.cell
+def grating_arm(length=20, side="bottom", radius=5.0):
+    """
+    Creates one arm of the coupler with gratings facing the gap.
+    """
+    c = gf.Component()
+    
+    # Straight Section
+    wg = c << gf.components.straight(length=length, cross_section=xs)
+    
+    # Grating Parameters
+    tooth_w = 0.2
+    tooth_l = 0.3
+    period = 0.5
+    num_teeth = int(length / period)
+    
+    # Place teeth on the side facing the gap
+    # If side="bottom", teeth are at negative y (bottom of top waveguide)
+    # If side="top", teeth are at positive y (top of bottom waveguide)
+    y_offset = -(0.5/2 + tooth_l/2) if side == "bottom" else (0.5/2 + tooth_l/2)
+    
+    for i in range(num_teeth):
+        x = (i * period) - (length / 2) + (period/2)
+        tooth = c << gf.components.rectangle(size=(tooth_w, tooth_l), layer=(1, 0))
+        tooth.center = (x, y_offset)
+
+    # 2. Add Bends
+    if side == "bottom":
+        # TOP ARM: U-bend on the RIGHT, Curve on the LEFT
+        u_bend = c << gf.components.bend_euler(radius=radius, angle=180, cross_section=xs)
+        u_bend.connect("o1", wg.ports["o2"])
+        
+        # Curve away from gap (outward)
+        in_bend = c << gf.components.bend_euler(radius=radius, angle=-45, cross_section=xs)
+        in_bend.connect("o1", wg.ports["o1"])
+        
+        c.add_port("o1", port=in_bend.ports["o2"]) 
+        c.add_port("o2", port=u_bend.ports["o2"])
+    else:
+        # BOTTOM ARM: U-bend on the LEFT, Curve on the RIGHT
+        u_bend = c << gf.components.bend_euler(radius=radius, angle=-180, cross_section=xs)
+        u_bend.connect("o1", wg.ports["o1"])
+        
+        # Curve away from gap (outward)
+        in_bend = c << gf.components.bend_euler(radius=radius, angle=45, cross_section=xs)
+        in_bend.connect("o1", wg.ports["o2"])
+        
+        c.add_port("o1", port=u_bend.ports["o2"])
+        c.add_port("o2", port=in_bend.ports["o2"])
+
+    return c
+
+@gf.cell
+def device():
+    c = gf.Component()
+    gap = 0.4
+    arm_len = 15
+    
+    # Add Top Arm
+    top = c << grating_arm(length=arm_len, side="bottom", radius=5.0)
+    top.movey(gap / 2 + 0.25)
+    
+    # Add Bottom Arm
+    bot = c << grating_arm(length=arm_len, side="top", radius=5.0)
+    bot.movey(-(gap / 2 + 0.25))
+    
+    return c
+
+if __name__ == "__main__":
+    c = device()
+    c.show()
+    c.write_gds("device.gds")
+    print("Geometry generated successfully.")
+```
+
+### Key Changes Made:
+1.  **`radius_min` Specification:** Updated `xs` to include `radius_min=2.0`. This tells `gdsfactory` that the cross-section is allowed to make turns as tight as 2.0 microns, resolving the `ValueError` when using `radius=5.0`.
+2.  **Port Handling:** Maintained the symmetrical arm logic so that the input and output ports are aligned correctly to form the parallel structure seen in your reference image.

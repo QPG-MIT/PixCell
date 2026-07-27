@@ -1,0 +1,89 @@
+Turn 2 Response:
+
+Thank you for the feedback. Looking at the rendered image versus the original target, I can see that my previous approach created a cross with separate elliptical "petals" at the ends, but the original image shows a more integrated, continuous shape where the "petals" are actually formed by the merging of curved elements, not separate ellipses.
+
+The key insight is that the original image shows a symmetric shape where each "petal" is essentially a rounded, elongated form that connects seamlessly to the center. The shape appears to be created by the intersection or union of four curved elements oriented in the cardinal directions.
+
+Let me revise the approach:
+
+1. Instead of using separate ellipses for petals, I'll create four identical curved shapes (using the `gf.components.ellipse` function) positioned at 0°, 90°, 180°, and 270°
+2. These ellipses will be positioned so that they overlap at the center, creating the desired cross-petal shape
+3. I'll use boolean operations to combine them into a single shape
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def create_cross_petal_device_v2():
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Define the size parameters based on the 4.7μm footprint
+    total_size = 4.7  # μm
+    
+    # Create the four curved "petal" shapes using ellipses
+    # Each ellipse will be elongated along one axis
+    ellipse_width = total_size * 0.6  # Width along the petal direction
+    ellipse_height = total_size * 0.3  # Height perpendicular to petal direction
+    
+    # Create a single ellipse component
+    ellipse_component = gf.components.ellipse(radii=(ellipse_width/2, ellipse_height/2), layer=layer)
+    
+    # Create four references of the ellipse, rotated appropriately
+    # Top petal (0° rotation - elongated vertically)
+    top_ellipse = c << ellipse_component
+    top_ellipse.rotate(90)  # Rotate 90° to make it vertical
+    
+    # Right petal (90° rotation - elongated horizontally)
+    right_ellipse = c << ellipse_component
+    right_ellipse.rotate(0)  # Already horizontal
+    
+    # Bottom petal (180° rotation - elongated vertically, pointing down)
+    bottom_ellipse = c << ellipse_component
+    bottom_ellipse.rotate(270)  # Rotate 270° to make it vertical, pointing down
+    
+    # Left petal (270° rotation - elongated horizontally, pointing left)
+    left_ellipse = c << ellipse_component
+    left_ellipse.rotate(180)  # Rotate 180° to make it horizontal, pointing left
+    
+    # Position the ellipses so they overlap at the center
+    # The ellipses are already centered, so we just need to ensure they're positioned correctly
+    
+    # Combine all four ellipses using boolean OR operation
+    # Start with the top ellipse
+    combined = top_ellipse
+    
+    # Add the right ellipse
+    combined = c << gf.boolean(combined, right_ellipse, operation="or", layer=layer)
+    
+    # Add the bottom ellipse
+    combined = c << gf.boolean(combined, bottom_ellipse, operation="or", layer=layer)
+    
+    # Add the left ellipse
+    combined = c << gf.boolean(combined, left_ellipse, operation="or", layer=layer)
+    
+    # Add ports at the ends of each petal for connectivity
+    # Top port
+    c.add_port("o1", center=(0, ellipse_width/2), width=0.5, orientation=90, layer=layer)
+    # Bottom port
+    c.add_port("o2", center=(0, -ellipse_width/2), width=0.5, orientation=270, layer=layer)
+    # Right port
+    c.add_port("o3", center=(ellipse_width/2, 0), width=0.5, orientation=0, layer=layer)
+    # Left port
+    c.add_port("o4", center=(-ellipse_width/2, 0), width=0.5, orientation=180, layer=layer)
+    
+    return c
+
+# Create and save the device
+device = create_cross_petal_device_v2()
+device.write_gds("cross_petal_device_v2.gds")
+```
+
+This revised approach should create a more integrated shape that better matches the original image. The key changes are:
+
+1. I'm using four identical ellipses positioned at 90° intervals
+2. Each ellipse is rotated to be elongated in the direction of its respective petal
+3. The ellipses are positioned to overlap at the center, creating the continuous cross-petal shape
+4. I'm using boolean OR operations to combine them into a single shape
+
+This should result in a more seamless integration of the petals with the center, matching the original image more closely.

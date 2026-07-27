@@ -1,0 +1,85 @@
+Turn 4 Response:
+
+```python
+import gdsfactory as gf
+
+def grated_taper(length, narrow_width, wide_width, n_slits, period, slit_width, layer, y_center=0):
+    taper = gf.components.taper(length=length, width1=narrow_width, width2=wide_width, layer=layer)
+    taper_shifted = gf.Component()
+    ref = taper_shifted << taper
+    ref.move((0, y_center))
+    margin = (length - (n_slits - 1) * period - slit_width) / 2
+    first_x = margin + slit_width / 2
+    slits = gf.Component()
+    slit_height = wide_width + 0.1
+    for i in range(n_slits):
+        slit = gf.components.rectangle(size=(slit_width, slit_height), layer=layer, centered=True)
+        slit_ref = slits << slit
+        slit_ref.move((first_x + i * period, y_center))
+    grated = gf.boolean(taper_shifted, slits, operation="not", layer=layer)
+    return grated
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+    width = 0.3
+    narrow_width = 0.01
+    slit_width = 0.05
+    period = 0.3
+    n_slits = 26
+    left_length = 8.0
+    middle_length = 2.0
+    right_length = 8.24
+    dy = 0.125
+    bend_radius = 7.0
+
+    # Left grated tapers (two separate)
+    grated_left_top = grated_taper(left_length, narrow_width, width, n_slits, period, slit_width, layer, 0.225)
+    top_ref = c << grated_left_top
+    top_ref.move((0, 0), (-left_length, 0))
+
+    grated_left_bottom = grated_taper(left_length, narrow_width, width, n_slits, period, slit_width, layer, -0.225)
+    bottom_ref = c << grated_left_bottom
+    bottom_ref.move((0, 0), (-left_length, 0))
+
+    # Middle solid
+    middle = gf.components.rectangle(size=(middle_length, 0.7), layer=layer, centered=True)
+    middle_ref = c << middle
+    middle_ref.move((middle_length / 2, 0))
+
+    # Right arms (three tapering with curve for top and bottom)
+    # Middle straight taper
+    middle_path = gf.path.straight(length=right_length)
+    middle_xs1 = gf.cross_section.cross_section(width=width, layer=layer)
+    middle_xs2 = gf.cross_section.cross_section(width=narrow_width, layer=layer)
+    middle_transition = gf.path.transition(middle_xs1, middle_xs2, width_type='linear')
+    middle_arm = gf.path.extrude_transition(middle_path, middle_transition)
+    middle_arm_ref = c << middle_arm
+    middle_arm_ref.move(middle_arm_ref.ports["o1"].center, (middle_length, 0))
+
+    # Top curving taper
+    points_top = [(0, 0), (right_length, dy)]
+    p_top = gf.Path(points_top)
+    top_xs1 = gf.cross_section.cross_section(width=width, layer=layer)
+    top_xs2 = gf.cross_section.cross_section(width=narrow_width, layer=layer)
+    top_transition = gf.path.transition(top_xs1, top_xs2, width_type='linear')
+    top_arm = gf.path.extrude_transition(p_top, top_transition)
+    top_arm_ref = c << top_arm
+    top_arm_ref.move(top_arm_ref.ports["o1"].center, (middle_length, 0.225))
+
+    # Bottom curving taper
+    points_bottom = [(0, 0), (right_length, -dy)]
+    p_bottom = gf.Path(points_bottom)
+    bottom_xs1 = gf.cross_section.cross_section(width=width, layer=layer)
+    bottom_xs2 = gf.cross_section.cross_section(width=narrow_width, layer=layer)
+    bottom_transition = gf.path.transition(bottom_xs1, bottom_xs2, width_type='linear')
+    bottom_arm = gf.path.extrude_transition(p_bottom, bottom_transition)
+    bottom_arm_ref = c << bottom_arm
+    bottom_arm_ref.move(bottom_arm_ref.ports["o1"].center, (middle_length, -0.225))
+
+    return c
+
+device = my_device()
+device.write_gds("my_device.gds")
+```

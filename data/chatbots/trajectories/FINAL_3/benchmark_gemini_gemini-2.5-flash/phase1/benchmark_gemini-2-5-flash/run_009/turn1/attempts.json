@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:07.912599",
+      "api_duration_seconds": 47.7990140914917,
+      "usage": {
+        "input_tokens": 2345,
+        "output_tokens": 3029,
+        "total_tokens": 12874
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'LayerSpec'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:57.364113",
+      "api_duration_seconds": 10.391942739486694,
+      "usage": {
+        "input_tokens": 5404,
+        "output_tokens": 2022,
+        "total_tokens": 7524
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "No GDS file produced",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:19:09.393999",
+      "api_duration_seconds": 10.374107837677002,
+      "usage": {
+        "input_tokens": 7445,
+        "output_tokens": 1986,
+        "total_tokens": 9564
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 15194,
+    "output_tokens": 7037,
+    "total_tokens": 29962
+  }
+}

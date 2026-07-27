@@ -1,0 +1,68 @@
+import gdsfactory as gf
+import numpy as np  # Import the numpy library
+
+@gf.cell
+def create_wavy_shape(width=3.0, amplitude=0.5, period=6.0, num_periods=3):
+    """
+    Creates a component with two wavy lines as in the reference image.
+
+    Args:
+        width: Width of the wavy shape.
+        amplitude: Amplitude of the sine wave.
+        period: Period of the sine wave.
+        num_periods: Number of periods to create.
+    """
+
+    c = gf.Component()
+    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))
+
+    # Define the path parameters
+    length = period * num_periods
+
+    # Create top and bottom paths using sine curves
+    straight_path = gf.path.straight(length=length)
+
+    # Create sine wave distortion
+    def sine_function(x):
+        return amplitude * np.sin(2 * np.pi * x / period)
+
+    # Modify the paths with the sine wave
+    points_top = []
+    points_bottom = []
+
+    num_points = 1000
+    for i in range(num_points):
+        x = i * length / num_points
+        y_top = sine_function(x)
+        y_bottom = -sine_function(x)
+
+        points_top.append((x, y_top + amplitude))
+        points_bottom.append((x, y_bottom - amplitude))
+
+    path_top = gf.Path(points_top)
+    path_bottom = gf.Path(points_bottom)
+
+    # Extrude the paths to create the wavy lines
+    wavy_top = c << path_top.extrude(cross_section=xs)
+    wavy_bottom = c << path_bottom.extrude(cross_section=xs)
+
+    # Align the components vertically
+    y_offset = 0 #  Adjust as needed. Depends on the cross_section settings if we want to use them or not
+    wavy_bottom.movey(y_offset)
+
+    # Center the device horizontally
+    device_width = length
+    wavy_top.movex(-device_width / 2)
+    wavy_bottom.movex(-device_width / 2)
+
+    c.add_ports(wavy_top.ports, prefix="top_")
+    c.add_ports(wavy_bottom.ports, prefix="bottom_")
+
+    return c
+
+
+if __name__ == "__main__":
+    # Example Usage
+    wavy_device = create_wavy_shape(width=3.0, amplitude=0.5, period=6.0, num_periods=3)
+    wavy_device.show(show_ports=True)
+    wavy_device.write_gds("wavy_shape.gds")

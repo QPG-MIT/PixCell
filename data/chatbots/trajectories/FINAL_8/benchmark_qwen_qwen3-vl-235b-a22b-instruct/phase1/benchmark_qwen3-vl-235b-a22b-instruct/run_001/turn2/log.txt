@@ -1,0 +1,180 @@
+Turn 2 Response:
+
+Looking at the rendered image and comparing it to the original, I can see that my previous approach was incorrect. The device in the original image appears to be a single continuous structure with multiple parallel waveguides that curve together, rather than separate S-bends.
+
+The key insight is that this looks like a multi-mode interference (MMI) coupler or a similar device where multiple waveguides are coupled together in a curved structure. The device has:
+1. A central region with 5 parallel straight waveguides
+2. Two large curved sections (top and bottom) that appear to be continuous with the central waveguides
+3. The curved sections are symmetric and connect to the straight waveguides
+
+Let me revise the approach:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreate_device():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create the central region with 5 parallel straight waveguides
+    central_length = 120.0  # Total footprint width
+    waveguide_width = 0.5
+    gap = 0.5
+    num_waveguides = 5
+    
+    # Create each straight waveguide in the central region
+    for i in range(num_waveguides):
+        y_offset = i * (waveguide_width + gap) - (num_waveguides - 1) * (waveguide_width + gap) / 2
+        wg = c << gf.components.straight(length=central_length, cross_section=xs)
+        wg.move((0, y_offset))
+    
+    # Create top curved section
+    # Instead of separate S-bends, create a single curved structure that connects to the top waveguides
+    # We'll create a large bend that follows the contour of the top waveguides
+    top_bend = c << gf.components.bend_euler(radius=30, angle=90, cross_section=xs)
+    top_bend.move((central_length/2, (num_waveguides - 1) * (waveguide_width + gap) / 2 + waveguide_width/2))
+    top_bend.rotate(90)
+    
+    # Create bottom curved section
+    # Similarly, create a large bend that connects to the bottom waveguides
+    bottom_bend = c << gf.components.bend_euler(radius=30, angle=90, cross_section=xs)
+    bottom_bend.move((central_length/2, -(num_waveguides - 1) * (waveguide_width + gap) / 2 - waveguide_width/2))
+    bottom_bend.rotate(-90)
+    
+    # Add additional curved sections to complete the device shape
+    # These are additional bends to create the full curved structure
+    
+    # Top additional curves
+    for i in range(2):
+        top_curve = c << gf.components.bend_euler(radius=30, angle=90, cross_section=xs)
+        top_curve.move((central_length/2, (num_waveguides - 1) * (waveguide_width + gap) / 2 + waveguide_width/2 + (i+1)*2))
+        top_curve.rotate(90)
+    
+    # Bottom additional curves
+    for i in range(2):
+        bottom_curve = c << gf.components.bend_euler(radius=30, angle=90, cross_section=xs)
+        bottom_curve.move((central_length/2, -(num_waveguides - 1) * (waveguide_width + gap) / 2 - waveguide_width/2 - (i+1)*2))
+        bottom_curve.rotate(-90)
+    
+    # Add ports for connectivity
+    c.add_port("o1", port=top_bend.ports["o1"])
+    c.add_port("o2", port=bottom_bend.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = recreate_device()
+device.write_gds("recreated_device.gds")
+```
+
+Wait, I'm still not getting the structure right. Let me think about this differently. Looking at the original image again, it appears to be a device with multiple parallel waveguides that are curved together in a symmetric fashion, with the central region being straight and the top and bottom regions being curved.
+
+Let me try a different approach using the path system:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreate_device():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create the central region with 5 parallel straight waveguides
+    central_length = 120.0  # Total footprint width
+    waveguide_width = 0.5
+    gap = 0.5
+    num_waveguides = 5
+    
+    # Create each straight waveguide in the central region
+    for i in range(num_waveguides):
+        y_offset = i * (waveguide_width + gap) - (num_waveguides - 1) * (waveguide_width + gap) / 2
+        wg = c << gf.components.straight(length=central_length, cross_section=xs)
+        wg.move((0, y_offset))
+    
+    # Create top curved section
+    # Create a path for the top curved section
+    top_path = gf.Path()
+    top_path.append(gf.path.straight(length=central_length/2))
+    top_path.append(gf.path.euler(radius=20, angle=90))
+    top_path.append(gf.path.straight(length=20))
+    
+    # Extrude the top path
+    top_curve = c << gf.path.extrude(top_path, cross_section=xs)
+    top_curve.move((central_length/2, (num_waveguides - 1) * (waveguide_width + gap) / 2 + waveguide_width/2))
+    top_curve.rotate(90)
+    
+    # Create bottom curved section
+    # Create a path for the bottom curved section
+    bottom_path = gf.Path()
+    bottom_path.append(gf.path.straight(length=central_length/2))
+    bottom_path.append(gf.path.euler(radius=20, angle=90))
+    bottom_path.append(gf.path.straight(length=20))
+    
+    # Extrude the bottom path
+    bottom_curve = c << gf.path.extrude(bottom_path, cross_section=xs)
+    bottom_curve.move((central_length/2, -(num_waveguides - 1) * (waveguide_width + gap) / 2 - waveguide_width/2))
+    bottom_curve.rotate(-90)
+    
+    # Add ports for connectivity
+    c.add_port("o1", port=top_curve.ports["o1"])
+    c.add_port("o2", port=bottom_curve.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = recreate_device()
+device.write_gds("recreated_device.gds")
+```
+
+I'm still not getting the structure right. Let me reconsider the original image. It appears to be a device with multiple parallel waveguides that are curved together in a symmetric fashion, with the central region being straight and the top and bottom regions being curved.
+
+Let me try one more approach:
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def recreate_device():
+    c = gf.Component()
+    
+    # Define cross-section for waveguides
+    xs = gf.cross_section.cross_section(width=0.5, layer=(1, 0))
+    
+    # Create the central region with 5 parallel straight waveguides
+    central_length = 120.0  # Total footprint width
+    waveguide_width = 0.5
+    gap = 0.5
+    num_waveguides = 5
+    
+    # Create each straight waveguide in the central region
+    for i in range(num_waveguides):
+        y_offset = i * (waveguide_width + gap) - (num_waveguides - 1) * (waveguide_width + gap) / 2
+        wg = c << gf.components.straight(length=central_length, cross_section=xs)
+        wg.move((0, y_offset))
+    
+    # Create top curved section
+    # Create a large S-bend for the top section
+    top_s_bend = c << gf.components.bend_s(size=(60, 20), cross_section=xs)
+    top_s_bend.move((central_length/2, (num_waveguides - 1) * (waveguide_width + gap) / 2 + waveguide_width/2))
+    top_s_bend.rotate(180)
+    
+    # Create bottom curved section
+    # Create a large S-bend for the bottom section
+    bottom_s_bend = c << gf.components.bend_s(size=(60, 20), cross_section=xs)
+    bottom_s_bend.move((central_length/2, -(num_waveguides - 1) * (waveguide_width + gap) / 2 - waveguide_width/2))
+    
+    # Add ports for connectivity
+    c.add_port("o1", port=top_s_bend.ports["o1"])
+    c.add_port("o2", port=bottom_s_bend.ports["o2"])
+    
+    return c
+
+# Create and save the device
+device = recreate_device()
+device.write_gds("recreated_device.gds")
+```

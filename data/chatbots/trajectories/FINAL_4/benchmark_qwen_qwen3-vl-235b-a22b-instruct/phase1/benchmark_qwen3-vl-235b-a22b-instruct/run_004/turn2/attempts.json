@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T20:27:34.764078",
+      "api_duration_seconds": 55.94119215011597,
+      "usage": {
+        "input_tokens": 4575,
+        "output_tokens": 2229,
+        "total_tokens": 6804
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_4/benchmark_qwen_qwen3-vl-235b-a22b-instruct/phase1/benchmark_qwen3-vl-235b-a22b-instruct/run_004/turn2/generated_component.py\", line 42, in <module>\n    device = s_bend_coupler()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T20:28:31.923481",
+      "api_duration_seconds": 81.94431686401367,
+      "usage": {
+        "input_tokens": 7307,
+        "output_tokens": 1979,
+        "total_tokens": 9286
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\"Must specify layer or cross_section\")\nValueError: Must specify layer or cross_section",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T20:29:57.166533",
+      "api_duration_seconds": 46.09917211532593,
+      "usage": {
+        "input_tokens": 9326,
+        "output_tokens": 1096,
+        "total_tokens": 10422
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'DPort' object has no attribute 'move'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 21208,
+    "output_tokens": 5304,
+    "total_tokens": 26512
+  }
+}

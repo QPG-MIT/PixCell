@@ -1,0 +1,85 @@
+import gdsfactory as gf
+
+@gf.cell
+def create_device():
+    """
+    Creates the device geometry by composing parametric primitives and
+    using boolean union operations.
+    """
+    # 1. Define Dimensions based on the 25x10 um footprint and image proportions
+    main_body_width = 22.0
+    main_body_height = 4.5
+    
+    prong_pitch = 6.0
+    prong_top_width = 1.5
+    prong_base_width = 4.0
+    prong_taper_height = 1.75
+    prong_straight_height = 2.25
+    
+    bottom_taper_height = 1.5
+    bottom_taper_width_top = 3.0
+    bottom_taper_width_bottom = 1.0
+
+    # A list to hold all the component parts for the final boolean union
+    parts_to_union = []
+
+    # 2. Create the main body, centered at the origin
+    body = gf.components.rectangle(size=(main_body_width, main_body_height), centered=True)
+    parts_to_union.append(body)
+
+    # 3. Create a prototype for a single prong (horizontally first)
+    prong_proto_h = gf.Component("prong_horizontal_prototype")
+    taper = prong_proto_h << gf.components.taper(
+        length=prong_taper_height, width1=prong_base_width, width2=prong_top_width
+    )
+    rect = prong_proto_h << gf.components.rectangle(
+        size=(prong_straight_height, prong_top_width)
+    )
+    # FIX: Changed port name from 'o1' to 'e3' for the rectangle component.
+    # 'e3' corresponds to the west (left) port.
+    rect.connect('e3', taper.ports['o2'])
+
+    # 4. Create and place the four vertical prongs on top of the main body
+    prong_x_positions = [-1.5, -0.5, 0.5, 1.5]
+    prong_y_pos = main_body_height / 2.0
+    
+    for x_mult in prong_x_positions:
+        x_pos = x_mult * prong_pitch
+        
+        # Create a temporary component to hold one placed prong
+        placed_prong = gf.Component(f"placed_prong_at_{x_pos}")
+        pr = placed_prong << prong_proto_h
+        pr.rotate(90)  # Rotate to be vertical with base at the bottom
+        pr.move((x_pos, prong_y_pos))
+        parts_to_union.append(placed_prong)
+
+    # 5. Create and place the bottom taper
+    bottom_taper_proto_h = gf.components.taper(
+        length=bottom_taper_height,
+        width1=bottom_taper_width_top,
+        width2=bottom_taper_width_bottom
+    )
+    
+    # Create a temporary component to hold the placed bottom taper
+    placed_taper = gf.Component("placed_bottom_taper")
+    bt = placed_taper << bottom_taper_proto_h
+    bt.rotate(-90)  # Rotate to be vertical and point down
+    bt.movey(-main_body_height / 2.0)
+    parts_to_union.append(placed_taper)
+    
+    # 6. Perform a chained boolean 'or' (union) operation on all parts
+    # Start with the first part as the base
+    final_shape = parts_to_union[0]
+    
+    # Iteratively union the rest of the parts
+    for part in parts_to_union[1:]:
+        final_shape = gf.boolean(A=final_shape, B=part, operation="or")
+        
+    return final_shape
+
+# Instantiate the component to generate the geometry
+device = create_device()
+
+# You can uncomment the following lines to view the device or save it
+# device.show()
+# device.write_gds("output.gds")

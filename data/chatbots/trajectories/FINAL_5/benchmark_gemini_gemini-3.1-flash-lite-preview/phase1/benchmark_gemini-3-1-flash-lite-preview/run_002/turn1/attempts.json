@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:10:15.133891",
+      "api_duration_seconds": 46.961376905441284,
+      "usage": {
+        "input_tokens": 3171,
+        "output_tokens": 1231,
+        "total_tokens": 7857
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 2.0 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:11:03.547909",
+      "api_duration_seconds": 16.316653966903687,
+      "usage": {
+        "input_tokens": 4447,
+        "output_tokens": 1169,
+        "total_tokens": 7521
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: cross_section() got an unexpected keyword argument 'min_bend_radius'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:11:21.170473",
+      "api_duration_seconds": 16.43435502052307,
+      "usage": {
+        "input_tokens": 5648,
+        "output_tokens": 1136,
+        "total_tokens": 8528
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for CrossSection\nmin_bend_radius\n  Instance is frozen [type=frozen_instance, input_value=2.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/frozen_instance",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13266,
+    "output_tokens": 3536,
+    "total_tokens": 23906
+  }
+}

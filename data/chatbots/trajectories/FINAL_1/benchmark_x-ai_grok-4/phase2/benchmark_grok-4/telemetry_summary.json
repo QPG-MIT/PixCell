@@ -1,0 +1,89 @@
+{
+  "phase": "phase2_extended_iteration",
+  "model": "x-ai/grok-4",
+  "timestamp": {
+    "start_iso": "2026-01-26T19:47:26.312317",
+    "end_iso": "2026-01-26T20:26:51.395313",
+    "duration_seconds": 2365.082659
+  },
+  "runs": {
+    "total": 1,
+    "completed": 1,
+    "with_telemetry": 1
+  },
+  "aggregate_usage": {
+    "total_input_tokens": 12342,
+    "total_output_tokens": 62618,
+    "total_tokens": 74960
+  },
+  "aggregate_attempts": {
+    "total_api_calls": 4,
+    "total_failed_attempts": 0,
+    "total_successful_attempts": 0,
+    "failure_rate": 0.0
+  },
+  "thinking_content": {
+    "total_turns": 0,
+    "turns_with_thinking": 0,
+    "thinking_rate": 0
+  },
+  "per_run_telemetry": [
+    {
+      "run_id": 4,
+      "seed": 1335,
+      "model": "x-ai/grok-4",
+      "provider": "openrouter",
+      "phase1_sse": 265608.0,
+      "phase1_iou": 0.28163962979591173,
+      "run_duration_seconds": 2365.082,
+      "turns": [
+        {
+          "turn": 3,
+          "success": true,
+          "attempts": 1,
+          "usage": {
+            "input_tokens": 3760,
+            "output_tokens": 31559,
+            "total_tokens": 35319
+          },
+          "duration_seconds": 825.664,
+          "sse": 325579.0,
+          "iou": 0.19090504698073305
+        },
+        {
+          "turn": 4,
+          "success": true,
+          "attempts": 2,
+          "usage": {
+            "input_tokens": 4726,
+            "output_tokens": 6749,
+            "total_tokens": 11475
+          },
+          "duration_seconds": 953.376,
+          "sse": 179642.0,
+          "iou": 0.4408240003486251
+        },
+        {
+          "turn": 5,
+          "success": true,
+          "attempts": 1,
+          "usage": {
+            "input_tokens": 3856,
+            "output_tokens": 24310,
+            "total_tokens": 28166
+          },
+          "duration_seconds": 586.039,
+          "sse": 200368.0,
+          "iou": 0.4022256033891226
+        }
+      ],
+      "cumulative_usage": {
+        "input_tokens": 12342,
+        "output_tokens": 62618,
+        "total_tokens": 74960
+      },
+      "total_api_calls": 4,
+      "total_successful_turns": 3
+    }
+  ]
+}

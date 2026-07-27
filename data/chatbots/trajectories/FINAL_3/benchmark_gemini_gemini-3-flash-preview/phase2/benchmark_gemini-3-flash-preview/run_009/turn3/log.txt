@@ -1,0 +1,78 @@
+Turn 3 Response:
+
+To fix the `TypeError`, we simply need to remove the `use_euler` keyword argument. In GDSFactory, the `gf.path.smooth` function uses Euler bends (adiabatic curvature transitions) by default, and it passes any extra keyword arguments directly to the underlying `euler` function, which does not recognize `use_euler` as a valid parameter.
+
+The following script corrects this and maintains the perfect 120µm x 4µm footprint with the smooth, organic transitions seen in your target image.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def symmetric_directional_coupler():
+    """
+    Symmetric directional coupler.
+    Uses waypoint-based path smoothing for high-quality adiabatic transitions.
+    
+    Footprint: 120um x 4um
+    """
+    c = gf.Component("directional_coupler")
+    
+    # 1. Design Parameters
+    # To fit exactly within a 4um height using 0.6um wide waveguides:
+    # Outer centerlines at +/- (2.0 - 0.3) = +/- 1.7
+    # For a 0.2um gap, inner centerlines at +/- (0.1 + 0.3) = +/- 0.4
+    width = 0.6
+    layer = (1, 0)
+    xs = gf.cross_section.strip(width=width, layer=layer)
+    
+    # X-coordinates to fit the 120um total length:
+    # [10um Tail] | [25um Transition] | [50um Coupler] | [25um Transition] | [10um Tail]
+    x0, x1, x2, x3, x4, x5 = 0, 10, 35, 85, 110, 120
+    
+    # 2. Define the top waveguide path using waypoints
+    # The 'smooth' function will automatically fit Euler curves at the corners.
+    top_points = [
+        (x0, 1.7),  # Start left tail
+        (x1, 1.7),  # End left tail / Start curve down
+        (x2, 0.4),  # End curve down / Start coupling region
+        (x3, 0.4),  # End coupling region / Start curve up
+        (x4, 1.7),  # End curve up / Start right tail
+        (x5, 1.7)   # End right tail
+    ]
+    
+    # Create a smooth path. 'radius' controls the sharpness of the S-bend.
+    # We removed 'use_euler' as it is redundant/invalid here.
+    path_top = gf.path.smooth(points=top_points, radius=10.0)
+    
+    # 3. Create and add waveguide references
+    # Extrude top path
+    top_wg = c << gf.path.extrude(path_top, cross_section=xs)
+    
+    # Mirror the top waveguide to create the bottom half for perfect vertical symmetry
+    bot_wg = c << gf.path.extrude(path_top, cross_section=xs)
+    bot_wg.mirror_y()
+    
+    # 4. Define external ports
+    # Naming convention: o1=bot-left, o2=top-left, o3=top-right, o4=bot-right
+    c.add_port("o1", port=bot_wg.ports["o1"])
+    c.add_port("o2", port=top_wg.ports["o1"])
+    c.add_port("o3", port=top_wg.ports["o2"])
+    c.add_port("o4", port=bot_wg.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Create the component
+    dc = symmetric_directional_coupler()
+    
+    # Save GDS file
+    dc.write_gds("symmetric_directional_coupler.gds")
+    
+    # Verify footprint dimensions in the terminal
+    bbox = dc.dbbox()
+    print(f"GDS saved: symmetric_directional_coupler.gds")
+    print(f"Footprint: {bbox.width():.2f} um x {bbox.height():.2f} um")
+    
+    # Open in layout viewer (if configured)
+    dc.show()
+```

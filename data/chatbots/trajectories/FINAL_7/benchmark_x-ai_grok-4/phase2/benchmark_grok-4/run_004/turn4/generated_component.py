@@ -1,0 +1,45 @@
+import gdsfactory as gf
+
+@gf.cell
+def my_device():
+    c = gf.Component()
+    layer = (1, 0)
+    width = 0.5
+    xs = gf.cross_section.cross_section(width=width, layer=layer)
+
+    # Adjusted parameters to fit footprint
+    L = 3.0
+    R = 2.5
+
+    # Outer U-shaped using path extrusion, open on left initially
+    p = gf.Path()
+    p.append(gf.path.straight(length=L))
+    p.append(gf.path.arc(radius=R, angle=180))
+    p.append(gf.path.straight(length=L))
+    ring = gf.path.extrude(p, xs)
+    ring.move((-L / 2, -R))
+    c << ring
+
+    # Inner structure: only the "right" coupler (will be left after mirror)
+    length_inner = 1.2
+    gap_inner = 0.3
+    horizontal_gap = 0.2
+    right_center_x = (length_inner + horizontal_gap) / 2
+    y_center = (gap_inner + width) / 2
+
+    cpl_right = c << gf.components.coupler_straight(
+        length=length_inner, gap=gap_inner, cross_section=xs
+    )
+    cpl_right.move(
+        origin=(length_inner / 2, y_center),
+        destination=(right_center_x, 0)
+    )
+
+    # Mirror the entire component to have bend on left, open on right
+    c.mirror(p1=(0, 0), p2=(0, 1))
+
+    return c
+
+# Create and save
+device = my_device()
+device.write_gds("my_device.gds")

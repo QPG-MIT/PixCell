@@ -1,0 +1,139 @@
+Looking at the image, I see two black curved shapes that appear to be waveguides or bands. Let me analyze this more carefully:
+
+1. There are two horizontal bands/waveguides
+2. The top band curves downward in the middle (pinching inward)
+3. The bottom band curves upward in the middle (pinching inward)
+4. Together they form a shape that looks like two waveguides approaching each other in the center and then separating - this is characteristic of a directional coupler
+
+The footprint constraint is [18, 3] μm, meaning 18 μm wide by 3 μm tall.
+
+Looking more closely at the shape:
+- Two parallel waveguides that curve toward each other in the middle
+- They get closest in the center and then curve back apart
+- This creates a coupling region in the center
+
+This looks like a directional coupler where two waveguides approach each other, run close together for a coupling length, and then separate again. The S-bend shape on each side brings the waveguides together and apart.
+
+Let me think about how to construct this:
+
+Option 1: Use two S-bends and straights
+- Top waveguide: S-bend (going down), straight coupling section, S-bend (going up)
+- Bottom waveguide: S-bend (going up), straight coupling section, S-bend (going down)
+
+Option 2: Use path functions to create curved paths
+
+Looking at the shape more carefully:
+- The waveguides are relatively thick bands
+- They curve smoothly toward each other
+- At the narrowest point in the middle, they nearly touch but don't quite
+
+Given the 18 μm x 3 μm footprint, I need to design this appropriately.
+
+Let me estimate the geometry:
+- Total width: 18 μm
+- Total height: 3 μm
+- Each waveguide appears to be about 0.5-0.7 μm thick
+- The gap between them in the middle is very small
+
+
+- The image aspect ratio suggests the length spans most of the 18 μm width, with the waveguides starting separated at roughly 1.5 μm center-to-center and converging to a gap of about 0.2 μm at the coupling region
+
+I'm setting up the component with a total length of 18 μm and height of 3 μm. The waveguide width is 0.5 μm, with a coupling gap of 0.2 μm in the middle section. Each S-bend transition takes up about 7 μm, leaving 4 μm for the straight coupling region. The outer separation between waveguides at the edges is 1.2 μm, and I need to calculate the vertical displacement required for the waveguides to converge properly through the S-bends.
+
+The vertical movement for each waveguide is half the difference between the outer separation and the coupling gap. I'm using gdsfactory's cross-section to define the waveguide geometry. The top waveguide will start high on the left, curve downward through an S-bend to approach the bottom waveguide in the coupling region, then curve back up on the right side. The bottom waveguide follows the inverse path, starting low and rising to meet the top waveguide before separating again.
+
+Looking more carefully at the proportions, the bands appear quite substantial relative to the overall height—roughly 20-25% each. With an 18 × 3 µm footprint, I should use a waveguide width around 0.5-0.7 µm, with the waveguides starting far apart and converging to a small gap in the middle before diverging again. The outer y-positions should be around 1.0 µm from center, while the inner coupling positions should be closer to 0.2 µm from center.
+
+I'm setting up a path-based approach using cosine functions to create smooth transitions. The gap at the center needs to be larger than the waveguide width to avoid overlap—so with a 0.15 µm gap and 0.5 µm waveguide width, the inner y-position should be around 0.325 µm, while the outer position is approximately 1.25 µm. Using 100 points along the 18 µm length, I can define the top waveguide's y-coordinates with a cosine curve that starts at y_outer, dips to y_inner at the midpoint, then returns to y_outer. 2 * cos(2*pi*x/length)
+    # At x=0: y = (y_outer + y_inner)/2 + (y_outer - y_inner)/2 = y_outer ✓
+    # At x=length/2: y = (y_outer + y_inner)/2 - (y_outer - y_inner)/2 = y_inner ✓
+    # This works - the cosine term oscillates between +1 and -1, creating the dip in the middle
+
+I'm setting up a cosine function that smoothly transitions from the outer edge to the inner edge and back. The midpoint should reach the inner value while the endpoints stay at the outer value, which this formula achieves by using the average as the baseline and the half-difference as the amplitude. = y_mean + y_amp * np.cos(2 * np.pi * x / length)
+    y_bottom = -y_top
+
+Then I create path objects from the coordinate pairs and extrude them using a cross-section with the specified waveguide width. The top and bottom waveguides are mirrored around the x-axis, and both are added to the component.
+
+For the parameters, I need to work within the 18 × 3 μm footprint. A waveguide width of 0.5 μm is standard for silicon photonics, with the outer waveguide positions around 1.1 μm from center and inner positions closer to 0.3 μm to create the coupling region.
+
+The gap at the narrowest point would be approximately 2 × 0.28 - 0.5 = 0.06 μm, which matches the tight pinch visible in the image. Checking the vertical constraint: placing waveguides at ±1.1 μm leaves adequate margin within the 3 μm height.
+
+Now I'll write out the complete implementation, starting with the core parameters: 18 μm length, 0.5 μm waveguide width, outer positions at ±1.1 μm, and inner positions at ±0.28 μm to achieve the desired coupling behavior.
+
+The curved paths use a cosine profile across 200 points to smoothly transition the waveguides from their separated outer positions to the tightly coupled inner region and back. This creates symmetric top and bottom paths that mirror each other around the centerline.
+
+I then define a cross-section with the specified waveguide width and layer, extrude both paths using this profile, and add the resulting waveguide components to the device. Finally, the completed structure is written to a GDS file for fabrication.
+
+Looking more closely at the geometry, the waveguide bands appear quite thick relative to the overall height and curve smoothly inward with what looks like a sinusoidal profile. The spacing suggests each waveguide occupies roughly 15-20% of the 3 μm total height, implying widths around 0.45-0.6 μm, while the gap between them narrows to perhaps 5-10% of the waveguide width at the closest point.
+
+The symmetric curvature—starting separated on the left, converging smoothly toward the center, then diverging again on the right—fits well with a cosine-based profile. I'll use wg_width = 0.5 μm with y_outer = 1.0 μm and y_inner = 0.27 μm to achieve the observed spacing and near-contact behavior in the middle region.
+
+The waveguides appear quite substantial in the image, which is consistent with the chosen dimensions. I don't see any additional structural features beyond the two curved bands, so the implementation focuses on these core elements with the cosine profile generating the smooth symmetric trajectory.
+
+For the path generation, I'm using 200 points along the 18 micrometer length to create a smooth cosine curve that brings the waveguides from their outer separation down to the tight coupling region and back out. The top waveguide follows this curved trajectory while the bottom one mirrors it symmetrically across the x-axis. Then I'll apply a standard waveguide cross-section to both paths to complete the structure. The top waveguide should curve inward toward the center, reaching its closest point to the bottom waveguide at the middle of the device, then curve back outward. The bottom waveguide mirrors this behavior in the opposite direction. My cosine parameterization captures this: at the edges (x=0 and x=length), the waveguides are at their maximum separation, while at x=length/2, they reach minimum separation as the cosine term flips sign. The bottom path simply inverts the top path's y-coordinates to create the symmetric mirror image.
+
+At the center, the gap between waveguides is 2*y_inner - wg_width = 0.04 μm, which represents a tight coupling region. The overall device height spans from -1.0 to 1.0 μm, giving a total vertical extent of 2.0 μm.
+
+Now I'll implement this with a Python function that generates the curved directional coupler geometry using gdsfactory, parameterized by length, waveguide width, outer displacement, and number of points for smooth curves. y_top = y_mean + y_amp * np.cos(2 * np.pi * x / length)
+    y_bottom = -y_top
+    
+    # Create paths
+    path_top = gf.Path(list(zip(x, y_top)))
+    path_bottom = gf.Path(list(zip(x, y_bottom)))
+    
+    # Cross-section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    
+    # Extrude paths
+    wg_top = gf.path.extrude(path_top, cross_section=xs)
+    wg_bottom = gf.path.extrude(path_bottom, cross_section=xs)
+    
+    # Add to component
+    c << wg_top
+    c << wg_bottom
+    
+    return c
+
+I'm computing the vertical positions using the cosine profile to create symmetric waveguides that mirror around the center. Then I construct path objects from the coordinate pairs and extrude them with the specified cross-section to form the actual waveguide geometry. Finally, both waveguides get added to the component and returned.
+
+Looking more carefully at the image, the thick curved bands suggest the waveguides occupy roughly 25-30% of the vertical space each, with an extremely tight gap at the center pinch point—maybe only 2-5% of the waveguide width. This means I need to recalibrate the amplitude and width parameters to match those proportions within the 3 μm footprint.
+
+Setting a very small gap at the coupling region (around 50 nm) while keeping the outer edges well-separated to span the full height makes sense. The waveguide width should be closer to 0.4-0.5 μm rather than wider, and the outer displacement needs adjustment to properly fill the available space while creating that dramatic narrowing effect in the middle.
+
+The device footprint is 18 × 3 μm. I'll define the coupling geometry with the small center gap and position the waveguides at the edges, then use a smooth sinusoidal profile to transition between these states. The amplitude of the curve determines how much the waveguides approach each other as they move along the length.
+
+I'm creating the paths by generating coordinate arrays with 200 points distributed across the device length, then using a cosine function to modulate the vertical positions symmetrically. After defining the waveguide cross-section with the specified width, I'll extrude both the top and bottom paths to form the actual waveguide geometry.
+
+The component combines both extruded waveguides and returns the final structure. When executed, it generates the device and exports it to a GDS file for fabrication. I'm verifying the geometry makes sense—with the given parameters, the top waveguide centerline sits at 0.275 μm with edges spanning from 0.025 to 0.525 μm, while the bottom waveguide mirrors this positioning below the x-axis.
+
+At the coupler's center, the gap between waveguide edges is exactly 0.05 μm as intended. Moving toward the ends, the waveguides separate further, with the top reaching 1.1 μm and the bottom at -1.1 μm, creating a total vertical span of 2.7 μm that comfortably fits within the 18 × 3 μm footprint. The path calculation uses the average of the outer and inner y-positions to determine the curved trajectory, ensuring smooth transitions between the straight and curved sections. forming a directional coupler pattern. Looking more carefully at the image, the waveguides appear to approach each other quite closely at the center point. The gap seems extremely tight - nearly touching - so I should reduce it to 0.02 um (20 nm), which is realistic for silicon photonics. This changes the inner position calculation to y_inner = (0.02 + 0.5) / 2 = 0.26.
+
+Actually, that's not significantly different from 0.05 um, so I'll stick with 0.05 um as a practical value that matches the visual appearance without being unrealistic. Now I need to set up the complete structure with proper port definitions and finalize the code implementation. _inner) / 2
+    y_top = y_mean + y_amp * np.cos(2 * np.pi * x / length)
+    y_bottom = -y_top
+    
+    # Create path objects
+    points_top = [(xi, yi) for xi, yi in zip(x, y_top)]
+    points_bottom = [(xi, yi) for xi, yi in zip(x, y_bottom)]
+    
+    path_top = gf.Path(points_top)
+    path_bottom = gf.Path(points_bottom)
+    
+    # Waveguide cross-section
+    xs = gf.cross_section.cross_section(width=wg_width, layer=(1, 0))
+    
+    # Extrude paths to create waveguides
+    wg_top = gf.path.extrude(path_top, cross_section=xs)
+    wg_bottom = gf.path.extrude(path_bottom, cross_section=xs)
+
+The cosine function creates a smooth oscillation between the inner and outer positions across the device length. I'm converting these y-coordinates into path objects for both the top and bottom waveguides, then defining a cross-section with the specified width and layer. Finally, extruding both paths with this cross-section to generate the actual waveguide geometries. pler.gds")
+
+I need to verify that `gf.path.extrude` actually generates ports with those names. It should create ports at the path endpoints, but I should double-check the naming convention. If the ports don't exist or have different names, the code will fail when trying to reference them.
+
+Let me refactor to be more robust—I can either handle missing ports gracefully or skip port assignment if it's not essential. The core geometry is what matters most here. I'll restructure the function to focus on creating the two curved waveguides and ensure they're properly positioned before worrying about port connectivity.
+
+Setting up the parameters: the coupler spans 18 micrometers horizontally with 0.5 micrometer wide waveguides. At the center, they approach to a 0.05 micrometer gap, while at the edges they're separated by about 1.1 micrometers vertically. I'll use a cosine profile to create smooth, symmetric curves for both the top and bottom waveguides across the full length.
+
+The bottom waveguide mirrors the top one's trajectory. I then define the paths using the calculated coordinates and apply a cross-section with the specified width. Extruding both paths through this cross-section generates the actual waveguide components, which get added to the main layout.
+
+Finally, the device is generated and exported to a GDS file. The design captures the essential features: two waveguides following cosine profiles that converge at the center with a 50 nm gap, then diverge again, all contained within the 18 x 3 μm footprint.

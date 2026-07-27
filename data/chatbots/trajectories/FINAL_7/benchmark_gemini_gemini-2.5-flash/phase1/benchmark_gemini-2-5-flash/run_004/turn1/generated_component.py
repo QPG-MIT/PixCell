@@ -1,0 +1,136 @@
+import gdsfactory as gf
+
+# Define a default layer for all geometries
+LAYER = (1, 0)
+
+@gf.cell
+def custom_chain_segment_geometry(
+    block_length_x: float = 0.7,
+    block_width_y: float = 0.5,
+    link_length_x: float = 0.3,
+    link_width_y: float = 0.2,
+    taper_length: float = 0.4,
+    taper_end_width_y: float = 0.3,
+    layer: tuple = LAYER
+) -> gf.Component:
+    """
+    Creates a single horizontal chain segment as a combined GDSFactory component.
+    This segment consists of two blocks, a central connecting link, and two tapers
+    on the ends.
+    """
+    
+    # Create a temporary component to hold all parts before boolean merging
+    # This component's internal origin will be used for positioning
+    segment_parts_container = gf.Component("single_chain_segment_parts")
+
+    # 1. Central thin link using Path extrusion
+    xs_link = gf.cross_section.cross_section(width=link_width_y, layer=layer)
+    link = gf.path.extrude(gf.path.straight(length=link_length_x), cross_section=xs_link)
+    link_ref = segment_parts_container.add_ref(link)
+    link_ref.center = (0, 0) # Center the link at the container's origin
+
+    # 2. Left rectangular block
+    block_left = gf.components.rectangle(size=(block_length_x, block_width_y), layer=layer, centered=True)
+    block_left_ref = segment_parts_container.add_ref(block_left)
+    block_left_ref.xmax = link_ref.xmin # Align right edge of block with left edge of link
+    block_left_ref.y = 0 # Vertically centered
+
+    # 3. Right rectangular block
+    block_right = gf.components.rectangle(size=(block_length_x, block_width_y), layer=layer, centered=True)
+    block_right_ref = segment_parts_container.add_ref(block_right)
+    block_right_ref.xmin = link_ref.xmax # Align left edge of block with right edge of link
+    block_right_ref.y = 0 # Vertically centered
+
+    # 4. Left taper
+    # Taper from wider outer end (width1) to narrower inner end (width2)
+    taper_left = gf.components.taper(
+        length=taper_length,
+        width1=taper_end_width_y, # Wider width, at the 'o1' (left) port by default
+        width2=block_width_y,    # Narrower width, at the 'o2' (right) port by default
+        layer=layer
+    )
+    taper_left_ref = segment_parts_container.add_ref(taper_left)
+    # Position the taper such that its 'o2' (narrower) end aligns with block_left's 'xmin'
+    taper_left_ref.xmax = block_left_ref.xmin
+    taper_left_ref.y = 0 # Vertically centered
+
+    # 5. Right taper
+    # Taper from narrower inner end (width1) to wider outer end (width2)
+    taper_right = gf.components.taper(
+        length=taper_length,
+        width1=block_width_y,    # Narrower width, at the 'o1' (left) port by default
+        width2=taper_end_width_y, # Wider width, at the 'o2' (right) port by default
+        layer=layer
+    )
+    taper_right_ref = segment_parts_container.add_ref(taper_right)
+    # Position the taper such that its 'o1' (narrower) end aligns with block_right's 'xmax'
+    taper_right_ref.xmin = block_right_ref.xmax
+    taper_right_ref.y = 0 # Vertically centered
+    
+    # Collect all component references for boolean OR operations
+    all_parts_refs = [link_ref, block_left_ref, block_right_ref, taper_left_ref, taper_right_ref]
+    
+    # Perform chained boolean OR operations to merge all parts into a single component
+    # Start with the first part, then sequentially OR with the rest
+    merged_segment = all_parts_refs[0] # Initialize with the first component
+    for i in range(1, len(all_parts_refs)):
+        # Each gf.boolean call returns a new Component, which becomes the input for the next
+        merged_segment = gf.boolean(merged_segment, all_parts_refs[i], operation="or", layer=layer)
+    
+    return merged_segment
+
+@gf.cell
+def custom_device(
+    overall_width: float = 3.0,
+    overall_height: float = 5.5,
+    chain_vertical_offset: float = 0.5,
+    layer: tuple = LAYER
+) -> gf.Component:
+    """
+    Recreates the device geometry based on the provided image and footprint.
+    """
+    c = gf.Component("chain_link_device")
+
+    # 1. Create the outer elliptical shape
+    outer_ellipse = c << gf.components.ellipse(
+        radii=(overall_width / 2, overall_height / 2), # Calculate radii from total width/height
+        layer=layer
+    )
+    outer_ellipse.center = (0, 0) # Center the ellipse at the origin of the device
+
+    # 2. Create the horizontal chain segments using the helper function
+    chain_segment_comp = custom_chain_segment_geometry(layer=layer)
+    
+    # 3. Add and position the two chain segments
+    # Top chain segment
+    chain_top_ref = c << chain_segment_comp
+    chain_top_ref.y = chain_vertical_offset # Position above center
+    chain_top_ref.x = 0 # Keep horizontally centered
+
+    # Bottom chain segment
+    chain_bottom_ref = c << chain_segment_comp
+    chain_bottom_ref.y = -chain_vertical_offset # Position below center
+    chain_bottom_ref.x = 0 # Keep horizontally centered
+
+    # 4. Perform final boolean OR operations to merge all shapes
+    # Start with the outer ellipse, then add the two chain structures
+    final_geometry = gf.boolean(outer_ellipse, chain_top_ref, operation="or", layer=layer)
+    final_geometry = gf.boolean(final_geometry, chain_bottom_ref, operation="or", layer=layer)
+    
+    # Return the final combined component
+    return final_geometry
+
+# Create the device
+device = custom_device()
+
+# Save the device to a GDS file
+device.write_gds("custom_chain_device.gds")
+
+# Print the computed footprint to verify against the constraint
+# Use .xsize and .ysize for the width and height of the component
+computed_width = device.xsize
+computed_height = device.ysize
+
+print(f"Computed device width: {computed_width:.3f} um")
+print(f"Computed device height: {computed_height:.3f} um")
+print(f"Expected footprint_um: [3.0, 5.5]")

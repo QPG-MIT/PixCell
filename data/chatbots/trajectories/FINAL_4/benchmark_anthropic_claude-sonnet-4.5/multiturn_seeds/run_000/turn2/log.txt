@@ -1,0 +1,98 @@
+Turn 2 Response:
+
+Looking at the comparison, I can see the key difference: in the target image, the waveguides have **varying width** - they're thicker at the peaks and valleys of the waves, and thinner in the middle. This creates a more organic, flowing appearance rather than constant-width waveguides.
+
+Here's the improved version:
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def wavy_waveguides():
+    """
+    Creates two parallel waveguides with sinusoidal undulations and varying width.
+    The width modulates with the wave amplitude to match the target geometry.
+    Matches the 18 x 3 μm footprint constraint.
+    """
+    c = gf.Component()
+    
+    # Parameters
+    length = 18.0  # μm - horizontal extent
+    total_height = 3.0  # μm - vertical extent
+    num_waves = 2.0  # number of complete oscillations
+    
+    # Waveguide parameters - width varies with position
+    min_width = 0.35  # minimum width at centerline crossings
+    max_width = 0.85  # maximum width at peaks/troughs
+    
+    # Vertical positioning
+    upper_y_center = 0.75  # center position of upper waveguide
+    lower_y_center = 2.25  # center position of lower waveguide
+    
+    # Wave amplitude
+    amplitude = 0.35  # amplitude of sinusoidal centerline
+    
+    # Number of points for smooth curves
+    npoints = 500
+    
+    # Create x coordinates
+    x = np.linspace(0, length, npoints)
+    
+    # Angular frequency for the sine wave
+    omega = 2 * np.pi * num_waves / length
+    
+    # Function to create a wavy band with varying width
+    def create_wavy_band(y_center):
+        # Centerline of the waveguide
+        y_center_line = y_center + amplitude * np.sin(omega * x)
+        
+        # Width varies with the absolute value of displacement
+        # Wider at peaks/troughs, narrower at center crossings
+        displacement = np.abs(amplitude * np.sin(omega * x))
+        width = min_width + (max_width - min_width) * (displacement / amplitude)
+        
+        # Calculate top and bottom edges
+        y_top = y_center_line + width / 2
+        y_bottom = y_center_line - width / 2
+        
+        # Create polygon points (top edge left-to-right, then bottom edge right-to-left)
+        points_top = [(x[i], y_top[i]) for i in range(npoints)]
+        points_bottom = [(x[i], y_bottom[i]) for i in range(npoints-1, -1, -1)]
+        
+        # Combine to form closed polygon
+        polygon_points = points_top + points_bottom
+        
+        return polygon_points
+    
+    # Create upper waveguide
+    upper_points = create_wavy_band(upper_y_center)
+    upper_polygon = c.add_polygon(upper_points, layer=(1, 0))
+    
+    # Create lower waveguide
+    lower_points = create_wavy_band(lower_y_center)
+    lower_polygon = c.add_polygon(lower_points, layer=(1, 0))
+    
+    return c
+
+# Create the device
+device = wavy_waveguides()
+
+# Save to GDS file
+device.write_gds("wavy_waveguides.gds")
+
+# Display (optional)
+device.show()
+```
+
+Key improvements:
+
+1. **Variable width**: The waveguide width now varies along its length, being widest at the peaks/troughs of the sine wave and narrowest at the centerline crossings
+
+2. **Direct polygon creation**: Instead of using path extrusion with constant width, I'm creating polygons directly with calculated top and bottom edges
+
+3. **Width modulation formula**: `width = min_width + (max_width - min_width) * (displacement / amplitude)` ensures the width scales with how far the waveguide is from its center position
+
+4. **Better parameter tuning**: Adjusted the amplitude, center positions, and width parameters to better match the target appearance
+
+This creates the smooth, flowing appearance with width modulation that matches the target image much more closely.

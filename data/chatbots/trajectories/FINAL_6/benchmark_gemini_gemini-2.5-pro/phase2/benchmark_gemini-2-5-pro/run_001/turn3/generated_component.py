@@ -1,0 +1,87 @@
+import gdsfactory as gf
+
+@gf.cell
+def create_new_device():
+    """
+    Creates the target shape using a central circle and boolean subtractions
+    to form the petals, then adds rectangular stems. This method accurately
+    creates the concave curvature between the petals.
+    """
+    target_layer = (1, 0)
+
+    # 1. Define parameters based on the 4.7x4.7um footprint.
+    # The total extent from the center to the tip of a stem is 4.7 / 2 = 2.35 um.
+    
+    # Stem dimensions (longer than wide, as seen in the target)
+    stem_length = 0.5
+    stem_width = 0.3
+    
+    # The main body is a circle whose radius defines the petal tips.
+    # Its radius is the total extent minus the stem length.
+    main_radius = 2.35 - stem_length  # This will be 1.85 um
+
+    # Four "cutter" circles are subtracted to create the inward curves.
+    # cutter_offset is the x/y distance of the cutter's center from the origin.
+    # cutter_radius is the radius of the cutting circles.
+    # These values are tuned to match the visual appearance of the target's curves.
+    cutter_offset = 1.2
+    cutter_radius = 1.6
+
+    # 2. Create the main component for assembly.
+    c = gf.Component("petal_cross_v3")
+
+    # 3. Create the petal body using boolean subtraction.
+    
+    # The base shape
+    main_disk = gf.components.circle(radius=main_radius, layer=target_layer)
+    
+    # A single cutter disk to be replicated
+    cutter_disk = gf.components.circle(radius=cutter_radius, layer=target_layer)
+    
+    # A component to hold the four cutters for the boolean operation
+    cutters_group = gf.Component()
+    cutters_group.add_ref(cutter_disk).move((cutter_offset, cutter_offset))
+    cutters_group.add_ref(cutter_disk).move((-cutter_offset, cutter_offset))
+    cutters_group.add_ref(cutter_disk).move((-cutter_offset, -cutter_offset))
+    cutters_group.add_ref(cutter_disk).move((cutter_offset, -cutter_offset))
+
+    # Perform the boolean subtraction
+    petal_body = gf.boolean(
+        A=main_disk, B=cutters_group, operation="not", layer=target_layer
+    )
+    
+    # Add the resulting shape to our main component
+    c.add_ref(petal_body)
+
+    # 4. Add the four rectangular stems.
+    
+    # Create centered stems for easier placement.
+    # One for horizontal placement (long in x-dim)
+    stem_h = gf.components.rectangle(
+        size=(stem_length, stem_width), layer=target_layer, centered=True
+    )
+    # One for vertical placement (long in y-dim)
+    stem_v = gf.components.rectangle(
+        size=(stem_width, stem_length), layer=target_layer, centered=True
+    )
+
+    # Calculate the position for the center of the stems so their inner
+    # edge touches the tip of the petals (at main_radius).
+    stem_center_offset = main_radius + (stem_length / 2)
+
+    # Add and position the four stems
+    c.add_ref(stem_h).movex(stem_center_offset)
+    c.add_ref(stem_h).movex(-stem_center_offset)
+    c.add_ref(stem_v).movey(stem_center_offset)
+    c.add_ref(stem_v).movey(-stem_center_offset)
+    
+    # 5. Flatten the component to merge all shapes into a single polygon.
+    c.flatten()
+
+    return c
+
+# Instantiate the component
+device = create_new_device()
+
+# Write the component to a GDS file for output
+device.write_gds("device.gds")

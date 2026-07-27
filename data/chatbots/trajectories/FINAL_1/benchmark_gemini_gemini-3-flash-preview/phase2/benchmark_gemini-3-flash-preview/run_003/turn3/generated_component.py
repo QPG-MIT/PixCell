@@ -1,0 +1,71 @@
+import gdsfactory as gf
+
+@gf.cell
+def tapered_coupler_final():
+    """
+    Final refinement of the tapered coupler to match target image.
+    Footprint Constraint: 40.0um x 1.7um
+    
+    Features:
+    - Linear core taper to a 50nm tip.
+    - Side arms follow a smooth trajectory: parallel -> curve in -> curve out -> parallel.
+    - Side arms widen from 180nm to 480nm using a sine-width transition.
+    """
+    c = gf.Component("tapered_coupler_v3")
+    
+    # --- 1. Design Parameters ---
+    l_total = 40.0
+    l_core = 29.0    # Length of the central tapered core
+    
+    w_core_in = 0.52
+    w_core_tip = 0.05
+    w_side_in = 0.18
+    w_side_out = 0.48
+    
+    # Calculated Y-coordinates for centerlines
+    # Target outer-to-outer width = 1.7um
+    # y_final = (TotalWidth / 2) - (ArmWidth / 2) = 0.85 - 0.24 = 0.61
+    y_final = 0.61
+    y_start = 0.46   # Initial offset
+    y_mid = 0.28     # Point of closest approach near the core tip
+    
+    # --- 2. Central Core (Taper) ---
+    # Taper is centered at y=0 by default
+    c << gf.components.taper(length=l_core, width1=w_core_in, width2=w_core_tip, layer=(1, 0))
+    
+    # --- 3. Side Arm Path Construction ---
+    # We define waypoints to create the characteristic 'waist' and flare
+    points_top = [
+        (0, y_start),
+        (4, y_start),          # Initial parallel section
+        (l_core - 4, y_mid),   # Gradual inward curve to follow core taper
+        (l_core + 6, y_final), # S-bend flare outward
+        (l_total, y_final)     # Final parallel section
+    ]
+    
+    # Create smooth paths for top and bottom arms
+    # A radius of 12-15um works well for these subtle vertical shifts over long distances
+    path_top = gf.path.smooth(points=points_top, radius=12.0)
+    path_bot = gf.path.smooth(points=[(x, -y) for x, y in points_top], radius=12.0)
+    
+    # --- 4. Extrusion with Width Transition ---
+    # Use a 'sine' width transition for a smooth increase in arm thickness
+    xs_start = gf.cross_section.cross_section(width=w_side_in, layer=(1, 0))
+    xs_end = gf.cross_section.cross_section(width=w_side_out, layer=(1, 0))
+    trans = gf.path.transition(xs_start, xs_end, width_type='sine')
+    
+    # Extrude the paths into component geometry
+    c << gf.path.extrude_transition(path_top, trans)
+    c << gf.path.extrude_transition(path_bot, trans)
+    
+    return c
+
+if __name__ == "__main__":
+    # Create the device
+    device = tapered_coupler_final()
+    
+    # Visualize the result
+    device.show()
+    
+    # Save the GDS file
+    device.write_gds("tapered_coupler_v3.gds")

@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.227754",
+      "api_duration_seconds": 7.056789875030518,
+      "usage": {
+        "input_tokens": 3894,
+        "output_tokens": 815,
+        "total_tokens": 4709
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(f\"Expected a Component, got {type(cell)}\")\nValueError: Expected a Component, got <class 'kfactory.instance.DInstance'>",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:18:17.711531",
+      "api_duration_seconds": 5.725819110870361,
+      "usage": {
+        "input_tokens": 4756,
+        "output_tokens": 807,
+        "total_tokens": 5563
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: ellipse_gdsfactorypcomponentspshapespellipse_R2p0500000_ab90524d_0_0_A44p99999999999999, Cell name: ellipse_gdsfactorypcomponentspshapespellipse_R2p0500000_ab90524d\nInstance name: ellipse_gdsfactorypcomponentspshapespellipse_R2p0500000_ab90524d_0_0_A",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:18:24.811140",
+      "api_duration_seconds": 6.186446905136108,
+      "usage": {
+        "input_tokens": 6073,
+        "output_tokens": 934,
+        "total_tokens": 7007
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: ProtoTKCell.show() got an unexpected keyword argument 'show_ports'",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 14723,
+    "output_tokens": 2556,
+    "total_tokens": 17279
+  }
+}

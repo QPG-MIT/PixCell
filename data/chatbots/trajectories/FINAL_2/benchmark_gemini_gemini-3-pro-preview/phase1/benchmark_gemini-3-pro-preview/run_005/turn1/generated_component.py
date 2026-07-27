@@ -1,0 +1,98 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_mmi_1x4():
+    """
+    Recreates the 1x4 splitter/combiner geometry from the image.
+    Footprint constraint [25, 10] is interpreted as Height=25um, Width=10um.
+    """
+    c = gf.Component()
+    
+    # --- Dimensions ---
+    device_width = 10.0
+    device_height = 25.0
+    
+    # Sub-component heights
+    mmi_height = 12.0
+    top_taper_length = 5.0
+    top_straight_length = 4.0
+    bot_taper_length = 4.0
+    
+    # Widths
+    mmi_width = 10.0
+    num_ports = 4
+    pitch = mmi_width / num_ports  # 2.5 um spacing
+    
+    taper_width_base = 2.0 
+    wg_width = 0.8
+    
+    # Layer definition
+    layer = (1, 0)
+    
+    # Define Cross Section for straight waveguides
+    # This encapsulates the width and layer information
+    xs = gf.cross_section.cross_section(width=wg_width, layer=layer)
+
+    # --- 1. Main MMI Body ---
+    # Rectangles accept 'layer' directly
+    mmi = c << gf.components.rectangle(size=(mmi_width, mmi_height), layer=layer)
+    mmi.center = (0, 0)
+    
+    # --- 2. Top Fingers (4x) ---
+    # Create the primitive references
+    
+    # Tapers usually accept 'layer' directly or infer it. 
+    # We define it explicitly here.
+    taper_top_ref = gf.components.taper(
+        length=top_taper_length,
+        width1=taper_width_base,
+        width2=wg_width,
+        layer=layer
+    )
+    
+    # Straight waveguide uses the cross_section 'xs' defined above
+    straight_top_ref = gf.components.straight(
+        length=top_straight_length,
+        cross_section=xs
+    )
+    
+    # Calculate x-positions for the ports
+    x_offsets = np.linspace(
+        -mmi_width/2 + pitch/2, 
+        mmi_width/2 - pitch/2, 
+        num_ports
+    )
+    y_top_edge = mmi_height / 2
+    
+    for x in x_offsets:
+        # Add Taper
+        t = c << taper_top_ref
+        t.rotate(90) # Rotate to point up
+        # Position the wide end (width1) at the MMI edge
+        t.move((x, y_top_edge))
+        
+        # Add Straight extension
+        s = c << straight_top_ref
+        # Connect the start of straight wg (o1) to the narrow end of taper (o2)
+        s.connect("o1", t.ports["o2"])
+        
+    # --- 3. Bottom Finger (1x) ---
+    taper_bot_ref = gf.components.taper(
+        length=bot_taper_length,
+        width1=taper_width_base, 
+        width2=wg_width,         
+        layer=layer
+    )
+    
+    b = c << taper_bot_ref
+    b.rotate(-90) # Rotate to point down
+    # Position the wide end at the bottom MMI edge
+    b.move((0, -mmi_height / 2))
+
+    return c
+
+if __name__ == "__main__":
+    device = device_mmi_1x4()
+    device.show()
+    device.write_gds("mmi_1x4_recreation.gds")

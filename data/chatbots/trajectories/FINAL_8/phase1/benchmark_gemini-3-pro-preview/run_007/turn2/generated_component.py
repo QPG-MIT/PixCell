@@ -1,0 +1,133 @@
+import gdsfactory as gf
+
+@gf.cell
+def swg_coupler_corrected():
+    """
+    Recreation of the SWG/Multi-waveguide coupler.
+    Fixed: Uses valid widths on dummy layers for composite cross-sections to avoid validation errors.
+    Footprint constraint: 120um x 4um.
+    """
+    c = gf.Component()
+
+    # ==========================================
+    # 1. Parameters & Geometry
+    # ==========================================
+    # Lengths
+    l_total = 120
+    l_interaction = 60
+    l_bend = (l_total - l_interaction) / 2  # 30.0
+
+    # Feature Sizes (Fine structure estimation)
+    w_ridge = 0.15       # Width of waveguide material
+    gap_ridge = 0.12     # Gap between ridges
+    pitch = w_ridge + gap_ridge # 0.27um
+
+    # Vertical Layout
+    # Center Grating (5 lines) -> Height ~ 1.23um
+    center_height = 4 * pitch + w_ridge 
+    
+    # Main Bundles (4 lines) -> Height ~ 0.96um
+    bundle_height = 3 * pitch + w_ridge 
+    
+    # Spacing
+    gap_main_to_center = 0.2
+    
+    # Y-Coordinates
+    # Center Interaction Region Y (Center of the Top Bundle)
+    # This places the inner bundles just outside the center grating
+    y_int_offset = (center_height / 2) + gap_main_to_center + (bundle_height / 2)
+    
+    # I/O Region Y (Ports) -> target outer edge near 2.0um (Total height 4um)
+    # We leave a small margin (0.1) from the absolute edge
+    y_io_offset = 2.0 - (bundle_height / 2) - 0.1
+    
+    # Bend Offset (dy)
+    dy = y_io_offset - y_int_offset
+
+    # ==========================================
+    # 2. Define Composite Cross-Sections
+    # ==========================================
+    
+    # -- Top/Bottom Bundle Cross-Section (4 lines) --
+    # Even number of lines -> No line at center (offset 0).
+    # FIX: Set main width to w_ridge but put it on a DUMMY layer (100, 0).
+    # This satisfies the "width > 0" check without drawing geometry we don't want on the main layer.
+    
+    bundle_offsets = [1.5*pitch, 0.5*pitch, -0.5*pitch, -1.5*pitch]
+    sections_bundle = []
+    for off in bundle_offsets:
+        sections_bundle.append(gf.Section(width=w_ridge, offset=off, layer=(1, 0)))
+    
+    xs_bundle = gf.cross_section.cross_section(
+        width=w_ridge, 
+        layer=(100, 0),  # Dummy layer, not visible in final mask usually
+        sections=sections_bundle
+    )
+
+    # -- Center Grating Cross-Section (5 lines) --
+    # Odd number of lines -> One line at center (offset 0).
+    # We use the main width for the center line on the real layer (1, 0).
+    
+    center_outer_offsets = [2*pitch, 1*pitch, -1*pitch, -2*pitch]
+    sections_center = []
+    for off in center_outer_offsets:
+        sections_center.append(gf.Section(width=w_ridge, offset=off, layer=(1, 0)))
+        
+    xs_center = gf.cross_section.cross_section(
+        width=w_ridge,
+        layer=(1, 0), # Main layer
+        sections=sections_center
+    )
+
+    # ==========================================
+    # 3. Build Component
+    # ==========================================
+
+    # --- Center Floating Region ---
+    # Placed in the middle of the device
+    center_wg = c << gf.components.straight(length=l_interaction, cross_section=xs_center)
+    center_wg.movex(l_bend) # Move past the input bend section
+
+    # --- Top Arm ---
+    # 1. Input Bend (Top Left)
+    # Starts High, moves Down (-dy) to interaction region
+    bend_tl = c << gf.components.bend_s(size=(l_bend, -dy), cross_section=xs_bundle)
+    bend_tl.movey(y_io_offset)
+
+    # 2. Straight Interaction Section
+    wg_top = c << gf.components.straight(length=l_interaction, cross_section=xs_bundle)
+    wg_top.connect("o1", bend_tl.ports["o2"])
+
+    # 3. Output Bend (Top Right)
+    # Moves Up (+dy) from interaction to output
+    bend_tr = c << gf.components.bend_s(size=(l_bend, dy), cross_section=xs_bundle)
+    bend_tr.connect("o1", wg_top.ports["o2"])
+
+    # --- Bottom Arm ---
+    # 1. Input Bend (Bottom Left)
+    # Starts Low (-y), moves Up (+dy) to interaction region
+    bend_bl = c << gf.components.bend_s(size=(l_bend, dy), cross_section=xs_bundle)
+    bend_bl.movey(-y_io_offset)
+
+    # 2. Straight Interaction Section
+    wg_bot = c << gf.components.straight(length=l_interaction, cross_section=xs_bundle)
+    wg_bot.connect("o1", bend_bl.ports["o2"])
+
+    # 3. Output Bend (Bottom Right)
+    # Moves Down (-dy) from interaction to output
+    bend_br = c << gf.components.bend_s(size=(l_bend, -dy), cross_section=xs_bundle)
+    bend_br.connect("o1", wg_bot.ports["o2"])
+
+    # ==========================================
+    # 4. Expose Ports
+    # ==========================================
+    c.add_port("o1", port=bend_tl.ports["o1"])
+    c.add_port("o2", port=bend_bl.ports["o1"])
+    c.add_port("o3", port=bend_tr.ports["o2"])
+    c.add_port("o4", port=bend_br.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    device = swg_coupler_corrected()
+    device.write_gds("swg_coupler_corrected.gds")

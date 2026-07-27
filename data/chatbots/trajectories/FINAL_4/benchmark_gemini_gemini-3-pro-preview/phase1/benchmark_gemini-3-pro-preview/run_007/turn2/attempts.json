@@ -1,0 +1,39 @@
+{
+  "turn": 2,
+  "successful_attempt": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:57:35.191087",
+      "api_duration_seconds": 121.1869843006134,
+      "usage": {
+        "input_tokens": 5155,
+        "output_tokens": 1069,
+        "total_tokens": 16658
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/projects/gemini_images_run/FINAL_4/benchmark_gemini_gemini-3-pro-preview/phase1/benchmark_gemini-3-pro-preview/run_007/turn2/generated_component.py\", line 78, in <module>\n    device = symmetric_coupler_fixed()\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.1",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:59:37.674603",
+      "api_duration_seconds": 163.5679669380188,
+      "usage": {
+        "input_tokens": 6760,
+        "output_tokens": 929,
+        "total_tokens": 12115
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11915,
+    "output_tokens": 1998,
+    "total_tokens": 28773
+  }
+}

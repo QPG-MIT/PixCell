@@ -1,0 +1,88 @@
+import gdsfactory as gf
+
+@gf.cell
+def device_1x4_splitter():
+    """
+    Recreation of the 1x4 splitter geometry using GDSFactory parametric primitives.
+    Fits within a 25um x 10um footprint.
+    """
+    c = gf.Component()
+
+    # --- Parameters ---
+    # Layer definition
+    layer = (1, 0)
+
+    # Main MMI Body Dimensions
+    mmi_width = 15.0
+    mmi_height = 5.0
+
+    # Taper Dimensions
+    taper_width_wide = 2.0  # At the junction with the body
+    taper_width_tip = 0.6   # At the port end
+    
+    top_taper_length = 3.5  # Longer output tapers
+    bot_taper_length = 1.5  # Shorter input taper
+
+    # Output Port Configuration
+    num_ports = 4
+    port_pitch = 3.2        # Spacing between output ports
+
+    # --- 1. Main Body ---
+    # Create the central rectangle using the basic shape primitive
+    # centered=True places the center of the rectangle at (0,0)
+    body = c << gf.components.rectangle(
+        size=(mmi_width, mmi_height), 
+        layer=layer, 
+        centered=True
+    )
+
+    # --- 2. Bottom Input Port ---
+    # Create the bottom taper primitive
+    taper_bot = gf.components.taper(
+        length=bot_taper_length,
+        width1=taper_width_wide,
+        width2=taper_width_tip,
+        layer=layer
+    )
+    
+    # Add reference, rotate, and move into position
+    ref_bot = c << taper_bot
+    ref_bot.rotate(-90)  # Rotate -90 degrees to point downwards
+    # Move to the center of the bottom edge of the rectangle
+    ref_bot.move((0, -mmi_height / 2))
+
+
+    # --- 3. Top Output Ports ---
+    # Create the top taper primitive
+    taper_top = gf.components.taper(
+        length=top_taper_length,
+        width1=taper_width_wide,
+        width2=taper_width_tip,
+        layer=layer
+    )
+
+    # Calculate offset multipliers to center the array of 4 ports
+    # For N=4, multipliers are [-1.5, -0.5, 0.5, 1.5]
+    offsets = [i - (num_ports - 1) / 2 for i in range(num_ports)]
+
+    for offset in offsets:
+        ref_top = c << taper_top
+        ref_top.rotate(90)  # Rotate 90 degrees to point upwards
+        
+        # Calculate position
+        x_pos = offset * port_pitch
+        y_pos = mmi_height / 2
+        
+        # Move to position on the top edge
+        ref_top.move((x_pos, y_pos))
+
+    return c
+
+# Create the device
+component = device_1x4_splitter()
+
+# Save to GDS file
+component.write_gds("device_1x4_splitter.gds")
+
+# Optional: Visualize if running in a supported environment
+# component.show()

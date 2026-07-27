@@ -1,0 +1,95 @@
+Turn 1 Response:
+
+Here is the corrected Python script using GDSFactory. This script defines the 1x4 MMI splitter using parametric components (`rectangle` and `taper`), assembles them to match the visual proportions and the **25 µm x 10 µm** footprint constraint, and explicitly saves the result to a GDS file.
+
+```python
+import gdsfactory as gf
+
+@gf.cell
+def mmi_1x4_splitter():
+    """
+    Creates a 1x4 MMI splitter based on the provided image geometry.
+    Footprint constraint: 25um (width) x 10um (height).
+    """
+    c = gf.Component("MMI_1x4")
+    
+    # --- Dimensions ---
+    # Total width is fixed at 25.0um.
+    # Total height is fixed at 10.0um.
+    # Based on visual analysis:
+    # - The central mixing body is the largest vertical section (~55%).
+    # - Top output tapers are elongated (~30%).
+    # - Bottom input taper is short (~15%).
+    
+    mmi_width = 25.0
+    mmi_height = 5.5
+    taper_top_len = 3.0
+    taper_bot_len = 1.5
+    
+    # Check total height: 5.5 + 3.0 + 1.5 = 10.0 um.
+    
+    # Widths
+    width_wg = 0.5        # Standard single-mode waveguide width
+    width_taper_max = 2.0 # Width of taper at the MMI interface
+    
+    # Layer definition
+    layer = (1, 0)
+
+    # --- 1. Central Body ---
+    # Create the multimode interference region
+    body = c << gf.components.rectangle(
+        size=(mmi_width, mmi_height), 
+        layer=layer, 
+        centered=True
+    )
+
+    # --- 2. Input Taper (Bottom) ---
+    # Create the taper primitive
+    # width1 connects to MMI, width2 is the port
+    taper_in = gf.components.taper(
+        length=taper_bot_len,
+        width1=width_taper_max,
+        width2=width_wg,
+        layer=layer
+    )
+    
+    # Add reference, rotate to point down, and position at bottom center
+    ref_in = c << taper_in
+    ref_in.rotate(-90)
+    ref_in.move((0, -mmi_height / 2))
+    
+    # Expose input port
+    c.add_port("o1", port=ref_in.ports["o2"])
+
+    # --- 3. Output Tapers (Top) ---
+    # Create the taper primitive for outputs (longer than input)
+    taper_out = gf.components.taper(
+        length=taper_top_len,
+        width1=width_taper_max,
+        width2=width_wg,
+        layer=layer
+    )
+    
+    # Calculate positions
+    # 4 ports distributed across 25um width. 
+    # A pitch of 5.0um creates clean symmetry: -7.5, -2.5, 2.5, 7.5
+    x_positions = [-7.5, -2.5, 2.5, 7.5]
+    
+    for i, x in enumerate(x_positions):
+        ref_out = c << taper_out
+        ref_out.rotate(90) # Point up
+        ref_out.move((x, mmi_height / 2))
+        
+        # Expose output ports (o2, o3, o4, o5)
+        c.add_port(f"o{i+2}", port=ref_out.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Generate the device
+    device = mmi_1x4_splitter()
+    
+    # Save to GDS file
+    device.write_gds("mmi_1x4_splitter.gds")
+    print("GDS file 'mmi_1x4_splitter.gds' generated successfully.")
+```

@@ -1,0 +1,63 @@
+import gdsfactory as gf
+
+@gf.cell
+def star_petal_device() -> gf.Component:
+    """
+    Creates a symmetrical 4-petal star geometry using overlapping 
+    shifted ellipses and a central cross, merged via boolean operations.
+    """
+    # Define footprint and layers
+    footprint = 4.7
+    layer = (1, 0)
+    
+    # Proportional parameters for the "petals"
+    ellipse_a = 1.05     # Major radius (length-wise)
+    ellipse_b = 0.70     # Minor radius (width-wise)
+    shift = 0.98         # Displacement from center
+    
+    # Parameter for the straight tips 
+    tip_width = 0.16
+    
+    # 1. Generate base primitives
+    # The cross will define the exact [4.7, 4.7] footprint and the thin straight ends
+    cross = gf.components.cross(length=footprint, width=tip_width, layer=layer)
+    
+    # Base horizontal and vertical ellipses for the petals
+    e_h = gf.components.ellipse(radii=(ellipse_a, ellipse_b), layer=layer)
+    e_v = gf.components.ellipse(radii=(ellipse_b, ellipse_a), layer=layer)
+    
+    # 2. Create individual shifted petals inside temporary components 
+    # (gf.boolean requires Components as inputs, not just instances)
+    c_right = gf.Component("petal_right")
+    c_right.add_ref(e_h).movex(shift)
+    
+    c_left = gf.Component("petal_left")
+    c_left.add_ref(e_h).movex(-shift)
+    
+    c_top = gf.Component("petal_top")
+    c_top.add_ref(e_v).movey(shift)
+    
+    c_bot = gf.Component("petal_bot")
+    c_bot.add_ref(e_v).movey(-shift)
+    
+    # 3. Perform boolean operations to fuse everything into a single polygon
+    # First, unite the horizontal petals
+    u_h = gf.boolean(c_right, c_left, operation="or", layer=layer)
+    
+    # Second, unite the vertical petals
+    u_v = gf.boolean(c_top, c_bot, operation="or", layer=layer)
+    
+    # Third, unite all petals together
+    u_all_petals = gf.boolean(u_h, u_v, operation="or", layer=layer)
+    
+    # Finally, unite the petals with the central cross to expose the straight tips
+    final_geom = gf.boolean(u_all_petals, cross, operation="or", layer=layer)
+    
+    return final_geom
+
+if __name__ == "__main__":
+    # Create the component
+    c = star_petal_device()
+    
+    # Explicitly write to GDS file
+    c.write_gds("star_petal_device.gds")

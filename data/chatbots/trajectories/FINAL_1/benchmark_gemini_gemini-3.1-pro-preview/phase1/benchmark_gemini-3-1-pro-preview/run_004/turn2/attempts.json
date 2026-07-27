@@ -1,0 +1,53 @@
+{
+  "turn": 2,
+  "successful_attempt": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-03-30T16:14:41.739199",
+      "api_duration_seconds": 232.84720301628113,
+      "usage": {
+        "input_tokens": 6874,
+        "output_tokens": 1578,
+        "total_tokens": 32639
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: Value cannot be converted to an integer for argument #1 ('index') in Layout.get_info",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-03-30T16:18:35.831493",
+      "api_duration_seconds": 103.79345631599426,
+      "usage": {
+        "input_tokens": 8488,
+        "output_tokens": 1369,
+        "total_tokens": 18621
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: module 'gdsfactory' has no attribute 'geometry'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-03-30T16:20:20.880457",
+      "api_duration_seconds": 67.47710800170898,
+      "usage": {
+        "input_tokens": 9886,
+        "output_tokens": 1311,
+        "total_tokens": 16851
+      },
+      "success": true,
+      "failure_type": null,
+      "error_message": null,
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 25248,
+    "output_tokens": 4258,
+    "total_tokens": 68111
+  }
+}

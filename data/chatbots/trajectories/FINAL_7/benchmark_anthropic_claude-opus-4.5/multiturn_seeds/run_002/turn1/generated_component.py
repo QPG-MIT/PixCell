@@ -1,0 +1,143 @@
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def chain_link_device():
+    """
+    Chain-link shaped device with stadium outer ring and 
+    two internal bars with rectangular holes.
+    """
+    c = gf.Component()
+    layer = (1, 0)
+    
+    # Main dimensions to fit footprint [3.0, 5.5] (height x width)
+    total_width = 5.5
+    total_height = 3.0
+    
+    # Ring parameters
+    ring_thickness = 0.45
+    
+    # Stadium geometry
+    radius_outer = total_height / 2
+    radius_inner = radius_outer - ring_thickness
+    straight_section = total_width - total_height
+    
+    # Create stadium shapes using polygon vertices
+    n_points = 80
+    theta_right = np.linspace(-np.pi/2, np.pi/2, n_points//2)
+    theta_left = np.linspace(np.pi/2, 3*np.pi/2, n_points//2)
+    
+    # Outer stadium vertices
+    outer_x = np.concatenate([
+        straight_section/2 + radius_outer * np.cos(theta_right),
+        -straight_section/2 + radius_outer * np.cos(theta_left)
+    ])
+    outer_y = np.concatenate([
+        radius_outer * np.sin(theta_right),
+        radius_outer * np.sin(theta_left)
+    ])
+    outer_vertices = list(zip(outer_x, outer_y))
+    
+    # Inner stadium vertices
+    inner_x = np.concatenate([
+        straight_section/2 + radius_inner * np.cos(theta_right),
+        -straight_section/2 + radius_inner * np.cos(theta_left)
+    ])
+    inner_y = np.concatenate([
+        radius_inner * np.sin(theta_right),
+        radius_inner * np.sin(theta_left)
+    ])
+    inner_vertices = list(zip(inner_x, inner_y))
+    
+    # Create ring via boolean subtraction
+    outer_shape = gf.Component()
+    outer_shape.add_polygon(outer_vertices, layer=layer)
+    
+    inner_shape = gf.Component()
+    inner_shape.add_polygon(inner_vertices, layer=layer)
+    
+    ring = gf.boolean(outer_shape, inner_shape, operation="not", layer=layer)
+    c << ring
+    
+    # Bar parameters
+    bar_height = 0.52
+    frame_thickness = 0.08
+    pillar_width = 0.12
+    hole_height = bar_height - 2 * frame_thickness
+    
+    # === Top bar: 3 holes ===
+    top_y = 0.45
+    top_hole_width = 0.45
+    top_n_holes = 3
+    
+    # Calculate bar length to span inner cavity
+    x_extent_top = straight_section/2 + np.sqrt(max(0, radius_inner**2 - top_y**2))
+    top_bar_length = 2 * x_extent_top - 0.06
+    
+    # Create solid bar
+    top_bar_solid = gf.Component()
+    top_bar_solid.add_polygon([
+        (-top_bar_length/2, -bar_height/2),
+        (top_bar_length/2, -bar_height/2),
+        (top_bar_length/2, bar_height/2),
+        (-top_bar_length/2, bar_height/2)
+    ], layer=layer)
+    
+    # Create holes
+    top_holes = gf.Component()
+    total_holes_width = top_n_holes * top_hole_width + (top_n_holes - 1) * pillar_width
+    for i in range(top_n_holes):
+        x = -total_holes_width/2 + top_hole_width/2 + i * (top_hole_width + pillar_width)
+        top_holes.add_polygon([
+            (x - top_hole_width/2, -hole_height/2),
+            (x + top_hole_width/2, -hole_height/2),
+            (x + top_hole_width/2, hole_height/2),
+            (x - top_hole_width/2, hole_height/2)
+        ], layer=layer)
+    
+    # Boolean subtract holes from bar
+    top_bar = gf.boolean(top_bar_solid, top_holes, operation="not", layer=layer)
+    top_ref = c << top_bar
+    top_ref.move((0, top_y))
+    
+    # === Bottom bar: 2 holes ===
+    bot_y = -0.45
+    bot_hole_width = 0.65
+    bot_n_holes = 2
+    
+    # Calculate bar length
+    x_extent_bot = straight_section/2 + np.sqrt(max(0, radius_inner**2 - bot_y**2))
+    bot_bar_length = 2 * x_extent_bot - 0.06
+    
+    # Create solid bar
+    bot_bar_solid = gf.Component()
+    bot_bar_solid.add_polygon([
+        (-bot_bar_length/2, -bar_height/2),
+        (bot_bar_length/2, -bar_height/2),
+        (bot_bar_length/2, bar_height/2),
+        (-bot_bar_length/2, bar_height/2)
+    ], layer=layer)
+    
+    # Create holes
+    bot_holes = gf.Component()
+    total_holes_width = bot_n_holes * bot_hole_width + (bot_n_holes - 1) * pillar_width
+    for i in range(bot_n_holes):
+        x = -total_holes_width/2 + bot_hole_width/2 + i * (bot_hole_width + pillar_width)
+        bot_holes.add_polygon([
+            (x - bot_hole_width/2, -hole_height/2),
+            (x + bot_hole_width/2, -hole_height/2),
+            (x + bot_hole_width/2, hole_height/2),
+            (x - bot_hole_width/2, hole_height/2)
+        ], layer=layer)
+    
+    # Boolean subtract holes from bar
+    bot_bar = gf.boolean(bot_bar_solid, bot_holes, operation="not", layer=layer)
+    bot_ref = c << bot_bar
+    bot_ref.move((0, bot_y))
+    
+    return c
+
+
+if __name__ == "__main__":
+    device = chain_link_device()
+    device.write_gds("chain_link_device.gds")

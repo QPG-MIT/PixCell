@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.909069",
+      "api_duration_seconds": 116.81524562835693,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 1524,
+        "total_tokens": 13822
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: straight() got an unexpected keyword argument 'layer'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:20:08.097766",
+      "api_duration_seconds": 20.565990209579468,
+      "usage": {
+        "input_tokens": 3899,
+        "output_tokens": 1467,
+        "total_tokens": 6030
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 2 validation errors for CrossSection\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0.1, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nlayer\n  Extra inputs are not permitted [type=extra_forbidden, input_value=(1, 0), input_type=tuple]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:30.334383",
+      "api_duration_seconds": 23.37936496734619,
+      "usage": {
+        "input_tokens": 5514,
+        "output_tokens": 1464,
+        "total_tokens": 7756
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.1 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 11762,
+    "output_tokens": 4455,
+    "total_tokens": 27608
+  }
+}

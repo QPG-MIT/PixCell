@@ -1,0 +1,113 @@
+Turn 1 Response:
+
+The error `ValueError: Found off-grid instances` occurs because the calculated coordinates for the S-bend path and its placement resulted in floating-point values that did not align perfectly with the manufacturing grid (typically 1nm). As suggested by the error message, calling `c.flatten()` allows GDSFactory to snap all polygon vertices to the grid and resolve the instance placement errors.
+
+Here is the corrected script including the `flatten()` call and grid-snapping for the path points to ensure robust geometry generation.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def device_inverse_taper():
+    c = gf.Component()
+
+    # --- Dimensions & Parameters ---
+    length_total = 40.0
+    height_footprint = 1.7
+    
+    # Longitudinal segments
+    l_straight = 15.0
+    l_bend = length_total - l_straight  # 25.0
+    l_center_taper = 25.0
+    
+    # Transverse dimensions (widths)
+    w_center_in = 0.5
+    w_center_tip = 0.05
+    w_side_in = 0.2
+    w_side_out = 0.35
+    gap_in = 0.15
+    
+    # Layer definition
+    layer_wg = (1, 0)
+    
+    # --- Y-Coordinate Calculations ---
+    # Center axis is y=0.
+    # Calculate Y center for side waveguides at input (straight section)
+    # y = (center_width/2) + gap + (side_width/2)
+    y_side_in = (w_center_in / 2) + gap_in + (w_side_in / 2)
+    
+    # Calculate Y center for side waveguides at output
+    # Total height is 1.7, so top boundary is y = 0.85
+    y_max = height_footprint / 2
+    y_side_out = y_max - (w_side_out / 2)
+    
+    # The vertical shift required for the S-bend
+    dy_shift = y_side_out - y_side_in
+
+    # --- 1. Central Taper ---
+    # Taper from 0.5 to 0.05 over 25um
+    taper = c << gf.components.taper(
+        length=l_center_taper,
+        width1=w_center_in,
+        width2=w_center_tip,
+        layer=layer_wg
+    )
+    taper.move((0, 0))
+
+    # --- 2. Side Arms Configuration ---
+    xs_in = gf.cross_section.cross_section(width=w_side_in, layer=layer_wg)
+    xs_out = gf.cross_section.cross_section(width=w_side_out, layer=layer_wg)
+
+    # --- Straight Sections ---
+    # Top Straight
+    straight_top = c << gf.components.straight(length=l_straight, cross_section=xs_in)
+    straight_top.move((0, y_side_in))
+    
+    # Bottom Straight
+    straight_bot = c << gf.components.straight(length=l_straight, cross_section=xs_in)
+    straight_bot.move((0, -y_side_in))
+
+    # --- S-Bend Paths with Width Transition ---
+    # Generate points for a smooth cosine S-bend
+    # We round points to 3 decimal places (1nm grid) to minimize floating point errors
+    num_points = 200 
+    x_pts = np.linspace(0, l_bend, num_points)
+    
+    # Cosine S-bend function: y(x) = dy * (1 - cos(pi * x / L)) / 2
+    curve_shape = (1 - np.cos(np.pi * x_pts / l_bend)) / 2
+    
+    # Top Path (moves +dy)
+    y_pts_top = dy_shift * curve_shape
+    pts_top = np.column_stack((x_pts, y_pts_top))
+    pts_top = np.round(pts_top, 4) # Snap path points
+    path_top = gf.Path(pts_top)
+    
+    # Bottom Path (moves -dy)
+    y_pts_bot = -dy_shift * curve_shape
+    pts_bot = np.column_stack((x_pts, y_pts_bot))
+    pts_bot = np.round(pts_bot, 4) # Snap path points
+    path_bot = gf.Path(pts_bot)
+    
+    # Create transition object (sine width transition 0.2 -> 0.35)
+    transition = gf.path.transition(xs_in, xs_out, width_type='sine')
+
+    # Extrude Top Bend
+    bend_top = c << gf.path.extrude_transition(path_top, transition)
+    bend_top.connect("o1", straight_top.ports["o2"])
+    
+    # Extrude Bottom Bend
+    bend_bot = c << gf.path.extrude_transition(path_bot, transition)
+    bend_bot.connect("o1", straight_bot.ports["o2"])
+
+    # --- FIX: Flatten ---
+    # Flattens the component hierarchy, merging polygons and snapping vertices to the grid.
+    # This resolves the "off-grid instances" error.
+    c.flatten()
+
+    return c
+
+# Generate and save
+device = device_inverse_taper()
+device.write_gds("inverse_taper_coupler.gds")
+```

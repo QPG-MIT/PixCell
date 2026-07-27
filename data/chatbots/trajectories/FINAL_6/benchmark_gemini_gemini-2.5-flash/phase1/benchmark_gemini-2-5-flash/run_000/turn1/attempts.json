@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:09.888218",
+      "api_duration_seconds": 88.63181328773499,
+      "usage": {
+        "input_tokens": 2347,
+        "output_tokens": 2128,
+        "total_tokens": 21381
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "TypeError: cross_section() got an unexpected keyword argument 'width_function'",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:19:40.698368",
+      "api_duration_seconds": 19.110068798065186,
+      "usage": {
+        "input_tokens": 4505,
+        "output_tokens": 1779,
+        "total_tokens": 9132
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 3 validation errors for CrossSection\nwidth\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nlayer\n  Extra inputs are not permitted [type=extra_forbidden, input_value=(1, 0), input_type=tuple]\n    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden\nwidth_function\n  Extra inputs are not permitted [t",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:20:02.425897",
+      "api_duration_seconds": 17.800963163375854,
+      "usage": {
+        "input_tokens": 6509,
+        "output_tokens": 1575,
+        "total_tokens": 10332
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "pydantic_core._pydantic_core.ValidationError: 1 validation error for CrossSection\nlayer\n  Instance is frozen [type=frozen_instance, input_value=(1, 0), input_type=tuple]\n    For further information visit https://errors.pydantic.dev/2.12/v/frozen_instance",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 13361,
+    "output_tokens": 5482,
+    "total_tokens": 40845
+  }
+}

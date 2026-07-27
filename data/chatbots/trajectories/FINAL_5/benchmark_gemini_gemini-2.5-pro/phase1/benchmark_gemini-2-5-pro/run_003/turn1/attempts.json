@@ -1,0 +1,53 @@
+{
+  "turn": 1,
+  "successful_attempt": 0,
+  "attempts": [
+    {
+      "attempt": 1,
+      "timestamp_iso": "2026-01-26T19:18:10.007583",
+      "api_duration_seconds": 177.4097089767456,
+      "usage": {
+        "input_tokens": 2349,
+        "output_tokens": 1859,
+        "total_tokens": 21240
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(message)\nValueError: min_bend_radius 0.15 < CrossSection.radius_min 10.0.",
+      "code_extracted": true
+    },
+    {
+      "attempt": 2,
+      "timestamp_iso": "2026-01-26T19:21:08.996518",
+      "api_duration_seconds": 24.892518043518066,
+      "usage": {
+        "input_tokens": 4254,
+        "output_tokens": 1703,
+        "total_tokens": 6922
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "    raise ValueError(\n    ...<5 lines>...\n    )\nValueError: Found off-grid instances, which is not allowed in most foundries.\nPlease run c.flatten() before returning or add use @cell(check_instances=False).\nInstances affected by this:\nInstance name: straight_gdsfactorypcomponentspwaveguidespstraight_L15p_5a687c49_63_-14_A335, Cell name: straight_gdsfactorypcomponentspwaveguidespstraight_L15p_5a687c49\nInstance name: bend_euler_gdsfactorypcomponentspbendspbend_euler_R0p2__ef25820a_14201_-6607_A335",
+      "code_extracted": true
+    },
+    {
+      "attempt": 3,
+      "timestamp_iso": "2026-01-26T19:21:35.319225",
+      "api_duration_seconds": 29.65962314605713,
+      "usage": {
+        "input_tokens": 6377,
+        "output_tokens": 1701,
+        "total_tokens": 9427
+      },
+      "success": false,
+      "failure_type": "execution_error",
+      "error_message": "AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/kfactory/kcell.py\", line 432, in __getattr__\n    return super().__getattr__(name)  # type: ignore[misc]\n           ~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/Users/aadarwal/Desktop/HOMI/.venv/lib/python3.13/site-packages/pydantic/main.py\",",
+      "code_extracted": true
+    }
+  ],
+  "cumulative_usage": {
+    "input_tokens": 12980,
+    "output_tokens": 5263,
+    "total_tokens": 37589
+  }
+}

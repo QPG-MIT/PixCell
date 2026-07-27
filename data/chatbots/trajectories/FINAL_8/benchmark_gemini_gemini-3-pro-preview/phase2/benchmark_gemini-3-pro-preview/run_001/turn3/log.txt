@@ -1,0 +1,140 @@
+Turn 3 Response:
+
+Based on the analysis of the target image and the shortcomings of the previous attempt, here is the improved GDSFactory script. 
+
+**Key Improvements:**
+1.  **Refined Stack Geometry:** Adjusted the waveguide counts to match the target. The device consists of a central bus of 5 waveguides, separated by a larger gap from two outer "flank" groups. Each flank group consists of 3 straight waveguides and 1 larger, custom-shaped tapered block.
+2.  **Custom Polygon for Curvature:** Replaced the boolean subtraction method with explicit polygon generation. This creates the correct "concave" flare (thinner in the middle, thicker at the ends) using a parabolic profile, matching the visual style of the target.
+3.  **Tuned Dimensions:** Reduced waveguide width to `0.15um` and gap to `0.1um` to allow the dense feature set to fit within the `4.0um` vertical footprint while maintaining the necessary flare curvature at the boundaries.
+
+```python
+import gdsfactory as gf
+import numpy as np
+
+@gf.cell
+def tapered_coupler_array():
+    """
+    Creates a dense waveguide coupler array with a central bus and flared outer blocks.
+    Matches the specific 120x4um footprint and geometry of the target image.
+    """
+    c = gf.Component()
+    
+    # =========================================================================
+    # Parameters
+    # =========================================================================
+    L = 120.0       # Device Length
+    w = 0.15        # Waveguide width (tuned for density)
+    g = 0.1         # Standard gap between waveguides
+    pitch = w + g
+    g_sep = 0.2     # Larger separation gap between central bus and flank groups
+    
+    # Vertical Constraint: The device must fit within y = +/- 2.0um
+    y_max_limit = 2.0
+    
+    layer = (1, 0)
+    xs = gf.cross_section.cross_section(width=w, layer=layer)
+
+    # =========================================================================
+    # 1. Central Bus (5 straight waveguides)
+    # =========================================================================
+    # Centered at y=0. Indices -2, -1, 0, 1, 2
+    for i in range(-2, 3):
+        wg = c << gf.components.straight(length=L, cross_section=xs)
+        wg.y = i * pitch
+        wg.x = 0
+        
+    # Calculate Y-coordinate of the top edge of this central group
+    # Top WG center is at 2*pitch. Top edge is center + w/2.
+    y_center_top_edge = 2 * pitch + w / 2
+
+    # =========================================================================
+    # 2. Top Flank Structure
+    # =========================================================================
+    # Starts after the separation gap
+    y_start_top = y_center_top_edge + g_sep
+    
+    # A. 3 Straight Waveguides
+    # We maintain the pitch relative to the start position
+    # Variable to track the bottom coordinate of the next element
+    y_current_bot = y_start_top
+    
+    for i in range(3):
+        # Place waveguide centered based on current bottom
+        y_center = y_current_bot + w/2
+        wg = c << gf.components.straight(length=L, cross_section=xs)
+        wg.y = y_center
+        wg.x = 0
+        # Advance bottom pointer by width + gap for the next element
+        y_current_bot += w + g
+        
+    # B. Flared Top Block (Polygon)
+    # The last loop increment positioned y_current_bot exactly where the flared block should start.
+    y_flare_bot = y_current_bot
+    
+    # Define the curve geometry
+    # The block has a straight inner edge and a curved outer edge.
+    # At the waist (x=0), the block is thinnest. At ends (x=+/- L/2), it is thickest.
+    # The outer edge touches the y_max_limit at the ends.
+    
+    y_waist_inner = y_flare_bot
+    y_waist_outer = y_flare_bot + w # Minimum thickness matches waveguides
+    
+    # Generate points for the top curve (Parabolic profile)
+    n_points = 201
+    x_pts = np.linspace(-L/2, L/2, n_points)
+    
+    # Calculate curvature constant k for parabola y = y_waist + k*x^2
+    # At x = L/2, y = y_max_limit
+    delta_y = y_max_limit - y_waist_outer
+    if delta_y < 0:
+        print("Warning: Geometry exceeds footprint constraints.")
+        
+    k = delta_y / (L/2)**2
+    y_curve_pts = y_waist_outer + k * x_pts**2
+    
+    # Construct Polygon Vertices (Counter-Clockwise)
+    # 1. Bottom Edge (Straight): Left to Right
+    verts_bot = [(-L/2, y_waist_inner), (L/2, y_waist_inner)]
+    # 2. Top Edge (Curved): Right to Left
+    verts_top = list(zip(x_pts[::-1], y_curve_pts[::-1]))
+    
+    c.add_polygon(verts_bot + verts_top, layer=layer)
+
+    # =========================================================================
+    # 3. Bottom Flank Structure (Mirror)
+    # =========================================================================
+    # Mirror the geometry logic for perfect symmetry
+    
+    # A. 3 Straight Waveguides
+    # Their centers are at negative the top ones
+    for i in range(3):
+        # Calculate top counterpart center, then negate
+        # Top counterpart bottom was: y_start_top + i*(w+g)
+        # Top counterpart center: (y_start_top + i*(w+g)) + w/2
+        y_center_top_ref = y_start_top + i*pitch + w/2
+        
+        wg = c << gf.components.straight(length=L, cross_section=xs)
+        wg.y = -y_center_top_ref
+        wg.x = 0
+        
+    # B. Bottom Flared Block (Polygon)
+    # Mirror of the top polygon across X-axis (y -> -y)
+    # Top Edge (Inner/Straight): y = -y_waist_inner
+    # Bottom Edge (Outer/Curved): y = -y_curve_pts
+    
+    # Construct Polygon Vertices
+    # 1. Top Edge (Straight): Left to Right
+    verts_bot_straight = [(-L/2, -y_waist_inner), (L/2, -y_waist_inner)]
+    # 2. Bottom Edge (Curved): Right to Left
+    y_curve_bot_pts = -(y_waist_outer + k * x_pts**2)
+    verts_bot_curved = list(zip(x_pts[::-1], y_curve_bot_pts[::-1]))
+    
+    c.add_polygon(verts_bot_straight + verts_bot_curved, layer=layer)
+
+    return c
+
+# Generate and save
+device = tapered_coupler_array()
+device.write_gds("tapered_coupler_array.gds")
+device.show()
+```

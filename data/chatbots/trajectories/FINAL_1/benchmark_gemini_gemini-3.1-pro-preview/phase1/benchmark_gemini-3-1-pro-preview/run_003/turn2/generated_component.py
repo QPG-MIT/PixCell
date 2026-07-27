@@ -1,0 +1,75 @@
+import gdsfactory as gf
+
+@gf.cell
+def outer_arm(dy_sign=1):
+    """
+    Creates one of the outer arms consisting of a sharp taper, an s-bend, and a straight section.
+    dy_sign controls whether the S-bend curves upwards (+1) or downwards (-1).
+    """
+    c = gf.Component()
+    
+    # Parametric definitions refined for visual matching
+    L_taper = 23.0
+    w1 = 0.02  # Corrected to a sharp tip
+    w2 = 0.35  # Final width of outer arm
+    L_sbend = 8.0
+    L_straight = 7.0
+    
+    # Calculate vertical displacement for S-bend to hit the footprint exactly
+    # Total footprint height is 1.7 -> bounds are +/- 0.85
+    # Center of final 0.35 width straight section is at +/- 0.675
+    final_y = 0.675 * dy_sign
+    taper_y = 0.225 * dy_sign
+    dy = final_y - taper_y
+
+    # 1. Outer arm taper
+    taper = c << gf.components.taper(length=L_taper, width1=w1, width2=w2)
+    
+    # 2. S-bend transition
+    xs = gf.cross_section.cross_section(width=w2)
+    sbend = c << gf.components.bend_s(size=(L_sbend, dy), cross_section=xs)
+    sbend.connect("o1", taper.ports["o2"])
+
+    # 3. Final straight waveguide
+    straight = c << gf.components.straight(length=L_straight, cross_section=xs)
+    straight.connect("o1", sbend.ports["o2"])
+
+    c.add_port("o1", port=taper.ports["o1"])
+    c.add_port("o2", port=straight.ports["o2"])
+    
+    return c
+
+@gf.cell
+def multi_tip_edge_coupler():
+    """
+    Main assembly cell. The widths and placements are mathematically aligned
+    to ensure the gaps between the tapers remain perfectly parallel.
+    """
+    c = gf.Component()
+
+    # --- Central Prong ---
+    # Width of 0.38 ensures its edge slope matches the outer arm's inner edge slope
+    center_taper = c << gf.components.taper(length=25.0, width1=0.38, width2=0.02)
+
+    # --- Top Prong ---
+    top_arm = c << outer_arm(dy_sign=1)
+    # Starts at x=2.0 to overlap taper slopes perfectly yielding a constant ~0.04um gap
+    top_arm.move((2.0, 0.225))
+
+    # --- Bottom Prong ---
+    bot_arm = c << outer_arm(dy_sign=-1)
+    bot_arm.move((2.0, -0.225))
+
+    # Expose routing ports
+    c.add_port("o1_center", port=center_taper.ports["o1"])
+    c.add_port("o2_top", port=top_arm.ports["o2"])
+    c.add_port("o3_bot", port=bot_arm.ports["o2"])
+
+    return c
+
+if __name__ == "__main__":
+    # Generate the refined geometry component
+    device = multi_tip_edge_coupler()
+    
+    # Write the GDS file to disk
+    device.write_gds("multi_tip_edge_coupler.gds")
