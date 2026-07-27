@@ -325,9 +325,9 @@ def load_telemetry_data(base_path: str) -> pd.DataFrame:
 
 if __name__ == "__main__":
     # Test aggregation
-    from homi.paths import projects_dir
+    from homi.paths import repo_root
 
-    df = aggregate_benchmark_data(str(projects_dir() / "gemini_images_run"))
+    df = aggregate_benchmark_data(str((repo_root() or Path.cwd()) / "data" / "chatbots" / "trajectories"))
     print(f"Aggregated {len(df)} benchmark results")
     print(df.head(20))
     print("\nModel families found:", df['model_family'].unique())

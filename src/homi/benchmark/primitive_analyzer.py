@@ -360,8 +360,8 @@ USER_PRIMITIVE_DATA = pd.DataFrame([
 
 if __name__ == "__main__":
     # Test analysis
-    from homi.paths import projects_dir
+    from homi.paths import repo_root
 
-    df = analyze_all_primitives(str(projects_dir() / "gemini_images_run"))
+    df = analyze_all_primitives(str((repo_root() or Path.cwd()) / "data" / "chatbots" / "trajectories"))
     print("\nPrimitive Analysis Results:")
     print(df[['model_name', 'total_scripts', 'primitive_percentage', 'polygon_percentage']].to_string())

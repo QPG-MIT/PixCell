@@ -1,7 +1,7 @@
 """Figures for the agents-not-chatbots emergence paper.
 
 Data sources:
-- June 2026 API-harness leaderboard: main worktree benchmark_results/real_success_data.json
+- June 2026 API-harness leaderboard: main worktree data/chatbots/aggregates/real_success_data.json
   (metric: expected_usable_iou = primitive_rate x avg IoU of primitive runs)
 - July 2026 agent sweep: data/agents/paper_swap/sweep_results.json (this worktree)
 - Per-cell run metrics: data/agents/paper_swap/sweep_metrics.json
@@ -25,7 +25,7 @@ FIG = REPO / "arxiv/figures"
 ARXIV = REPO / "arxiv/figures"
 FIG.mkdir(parents=True, exist_ok=True)
 
-JUNE = json.loads((REPO / "benchmark_results/real_success_data.json").read_text())
+JUNE = json.loads((REPO / "data/chatbots/aggregates/real_success_data.json").read_text())
 SWEEP = json.loads((REPO / "data/agents/paper_swap/sweep_results.json").read_text())["cells"]
 try:
     METRICS = json.loads((REPO / "data/agents/paper_swap/sweep_metrics.json").read_text())["cells"]
