@@ -10,9 +10,13 @@ Provides HTTP endpoints for:
 - PDK migration
 
 Start with:
-    uvicorn homi.api:app --host 0.0.0.0 --port 8000
-    # or
     homi api
+    # or
+    uvicorn homi.api:app --host 127.0.0.1 --port 8000
+
+Local use only by default: the server has no authentication, trusts its
+caller, and uses the machine's own API keys — bind beyond 127.0.0.1 only
+behind auth you provide.
 """
 
 from __future__ import annotations
