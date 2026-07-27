@@ -14,6 +14,7 @@
 \usepackage{placeins}
 \usepackage{needspace}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{xcolor}
 \usepackage{amsthm}
 \usepackage{hyperref}
@@ -279,50 +280,14 @@ representation, the deterministic geometric verifier, and the model
 harness used to construct and revise candidate programs.
 
 \begin{table*}[!t]
-\centering\footnotesize
-\setlength{\tabcolsep}{4pt}
-\caption{The permitted primitive vocabulary and corresponding GDSFactory
-calls. The table shows the principal parameters of each operation.
-Candidate programs must keep function-relevant dimensions named and
-editable.}
+\centering
+\caption{\textbf{The PixCell geometric language under GDSFactory 9.20.7.}
+Left: permitted region and port-bearing constructors. Right: cross-section,
+path, extrusion, Boolean, composition, and routing operators. Entries show
+the permitted callable surface and principal live arguments.
+Function-relevant dimensions must remain named and editable.}
 \label{tab:primitives}
-\begin{ruledtabular}
-\begin{tabular}{@{}p{0.23\textwidth}p{0.73\textwidth}@{}}
-Primitive & GDSFactory call (key parameters) \\
-\hline
-\multicolumn{2}{l}{\emph{Basic shapes}} \\
-rectangle & \texttt{rectangle(size=(10,5))} \\
-circle & \texttt{circle(radius=10)} \\
-ring & \texttt{ring(radius=10, width=0.5)} \\
-cross & \texttt{cross(length=10, width=3)} \\
-triangle & \texttt{triangle(x=10, y=20)} \\
-ellipse & \texttt{ellipse(radii=(10,5))} \\
-regular\_polygon & \texttt{regular\_polygon(sides=6, side\_length=10)} \\
-L & \texttt{L(width=10, size=(20,30))} \\
-\hline
-\multicolumn{2}{l}{\emph{Waveguide elements}} \\
-straight & \texttt{straight(length=10, width=0.5)} \\
-bend\_euler & \texttt{bend\_euler(radius=10, angle=90, p=0.5)} \\
-bend\_circular & \texttt{bend\_circular(radius=10, angle=90)} \\
-bend\_s & \texttt{bend\_s(size=(10,10))} \\
-taper & \texttt{taper(length=10, width1=0.5, width2=1.0)} \\
-coupler\_straight & \texttt{coupler\_straight(length=10, gap=0.2)} \\
-\hline
-\multicolumn{2}{l}{\emph{Path system} (skeleton $\to$ body)} \\
-explicit path & \texttt{gf.Path(points)} \\
-straight path & \texttt{gf.path.straight(length=10)} \\
-arc & \texttt{gf.path.arc(radius=10, angle=90)} \\
-euler & \texttt{gf.path.euler(radius=10, angle=90, p=0.5)} \\
-smooth & \texttt{gf.path.smooth(points, radius=4)} \\
-spiral & \texttt{gf.path.spiral\_archimedean(r, sep, n)} \\
-extrude & \texttt{gf.path.extrude(path, cross\_section)} \\
-transition & \texttt{gf.path.transition(xs1, xs2, 'sine')} \\
-extrude transition & \texttt{gf.path.extrude\_transition(path, transition)} \\
-\hline
-\multicolumn{2}{l}{\emph{Boolean algebra}} \\
-boolean & \texttt{gf.boolean(A, B, operation=or/and/not/xor)} \\
-\end{tabular}
-\end{ruledtabular}
+\input{table_primitives.tex}
 \end{table*}
 
 \subsection{Geometric primitive representation}\label{sec:representation}
@@ -330,12 +295,15 @@ boolean & \texttt{gf.boolean(A, B, operation=or/and/not/xor)} \\
 The output of the task is a Python program, not a fitted image or an
 unstructured polygon file. Each program constructs a GDSFactory component
 from the restricted vocabulary in Fig.~\ref{fig:primitives} and
-Table~\ref{tab:primitives}~\cite{gdsfactory}. The vocabulary contains four
-families. Basic shapes provide simple geometric regions. Waveguide elements
-provide port-bearing straights, bends, tapers, and parallel guides. The path
-system separates a centerline from its cross-section so that path geometry
-and guide width remain independently editable. Boolean operations combine
-or subtract regions when direct composition is insufficient.
+Table~\ref{tab:primitives}~\cite{gdsfactory}. The language contains
+geometric-region and port-bearing constructors together with cross-section,
+path, Boolean, and component-composition operators. Basic shapes provide
+simple geometric regions. Waveguide elements provide port-bearing straights,
+bends, tapers, and parallel guides. The path system separates a centerline
+from its cross-section so that path geometry and guide width remain
+independently editable. Boolean operations combine or subtract regions when
+direct composition is insufficient; component and reference methods position
+and connect the resulting geometry.
 
 Candidate programs may position references, connect compatible ports, and
 extrude parameterized paths. They must expose the dimensions that define
