@@ -17,7 +17,7 @@ tags:
   - synthetic
   - curriculum-learning
 size_categories:
-  - n<1K
+  - 1K<n<10K
 configs:
   - config_name: all
     default: true
@@ -58,41 +58,53 @@ configs:
     data_files:
       - split: train
         path: data/l4/train-*.parquet
+  - config_name: depth-v1
+    data_files:
+      - split: train
+        path: depth-v1/data/train-*.parquet
+      - split: validation
+        path: depth-v1/data/validation-*.parquet
 ---
 
 # PixCell Dataset
 
-`core-v1` is a 738-row image-to-code training dataset for photonic component
-reconstruction. It pairs exact high-visibility model inputs with physical
-footprint and display-scale context, plus verified primitive-only GDSFactory
-programs. The examples cover 547 representation grammars across five
-curriculum levels, from primitives (L0) to complete components (L4).
+PixCell pairs high-visibility photonic component images and physical footprint
+context with verified primitive-only GDSFactory programs. It is published in
+two complementary configurations:
 
-| Release | Rows | Representations | Split | License |
-|---|---:|---:|---|---|
-| `core-v1` | 738 | 547 | `train` | MIT |
+| Configuration | Rows | Representations | Splits |
+|---|---:|---:|---|
+| `core-v1` | 738 | 547 | `train`: 738 |
+| `depth-v1` | 4,560 | 547 | `train`: 3,468 · `validation`: 1,092 |
 
-[Complete gallery](galleries/all.png) · [L0](galleries/l0.png) ·
+[Core gallery](galleries/all.png) · [L0](galleries/l0.png) ·
 [L1](galleries/l1.png) · [L2](galleries/l2.png) ·
-[L3](galleries/l3.png) · [L4](galleries/l4.png)
+[L3](galleries/l3.png) · [L4](galleries/l4.png) ·
+[Depth overview](depth-v1/galleries/overview.png)
 
 ## Load from Hugging Face
 
 ```bash
-pip install datasets
+pip install "datasets[vision]"
 ```
 
 ```python
 from datasets import load_dataset
 
-dataset = load_dataset(
+core = load_dataset(
     "qpaig-mit/pixcell",
     "core-v1",
     revision="core-v1",
     split="train",
 )
 
-row = dataset[0]
+depth = load_dataset(
+    "qpaig-mit/pixcell",
+    "depth-v1",
+    revision="depth-v1",
+)
+
+row = core[0]
 row["image"]          # exact model input
 row["instruction"]    # footprint and display-scale context
 row["code"]           # supervised program
@@ -120,10 +132,15 @@ components.
 Use both the `core-v1` configuration and `revision="core-v1"` to pin this
 release.
 
-All rows are training data. The paper's held-out evaluation figures are not
-included. If creating a downstream validation split, keep every
-`leakage_group_id` together rather than randomly separating related
-realizations or poses.
+`depth-v1` retains all 738 core rows. It adds seven controlled, model-visible
+geometry realizations to 546 of the 547 approved representation anchors; one
+anchor remains anchor-only because its sole exposed literal changes global
+placement rather than visible shape. Its validation split holds out parameter
+settings, not representation classes: every representation remains present in
+training. Use the `depth-v1`
+configuration and `revision="depth-v1"` together to pin it. The repository
+revision selects the published release, while the configuration selects its
+Parquet files.
 
 ## Row contract
 
@@ -145,6 +162,8 @@ physical aspect.
 
 The full schema and release inventory are in
 [`metadata/catalog.json`](metadata/catalog.json).
+The additional `depth-v1` lineage and controlled-variation fields are
+documented in [`depth-v1/README.md`](depth-v1/README.md).
 
 ## Admission
 
@@ -153,10 +172,12 @@ failed builds, private benchmark figures, and RL rollouts are excluded.
 
 Admission checks compilation and execution, primitive-only source purity,
 declared ports and connectivity, structural witnesses, calibrated geometry,
-footprint agreement, and artifact hashes. The exact policy is in
-[`factory/admission_policy.json`](factory/admission_policy.json).
+footprint agreement, and artifact hashes. The core policy is in
+[`factory/admission_policy.json`](factory/admission_policy.json); the depth
+release binds its accepted rows and evidence in
+[`depth-v1/factory/accepted_manifest.json`](depth-v1/factory/accepted_manifest.json).
 
-The release reports five exact duplicate groups and 41
+The frozen `core-v1` release reports five exact duplicate groups and 41
 rotation/reflection-equivalent silhouette groups. They are retained as
 declared API aliases, pose examples, or calibration cases and are bound by
 `leakage_group_id`.
@@ -164,22 +185,30 @@ declared API aliases, pose examples, or calibration cases and are bound by
 ## Reproduce
 
 The accepted-source capsule under `factory/core-v1/` makes the dataset
-self-contained:
+self-contained. From a clean PixCell checkout:
 
 ```bash
+cd dataset
 python3.13 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-lock.txt
 
 python scripts/build_all.py
 python scripts/validate_release.py --root . --execute-programs
+python depth-v1/scripts/build.py --dataset-root . --output depth-v1
+python depth-v1/scripts/validate.py \
+  --release-root depth-v1 \
+  --dataset-root . \
+  --execute-programs
 python -m unittest discover -s tests -v
+python -m pytest depth-v1/tests -q
 ```
 
-The rebuild must reproduce this logical release digest:
+The rebuilds must reproduce these frozen logical release digests:
 
 ```text
-e1c509dca337ce485efcb2b35101a052e06b12331b63a2f21a36c93b3682ea89
+core-v1   e1c509dca337ce485efcb2b35101a052e06b12331b63a2f21a36c93b3682ea89
+depth-v1  676c49134d4d044c7d84426cf8eeecf09302e74ca4aa548956f14b7631a4d80b
 ```
 
 The capsule contains accepted programs, explicit grammar assignments, image
@@ -187,9 +216,10 @@ evidence, and admission sidecars. It excludes historical proposal generators,
 rejected candidates, private benchmarks, and RL runs. See
 [`factory/README.md`](factory/README.md) for the replay contract.
 
-The rows contain executable Python. The validator runs programs in a temporary
-working directory, not a security sandbox; inspect code from any untrusted
-revision before executing it.
+The rows contain executable Python. Core replay uses isolated temporary
+working directories; depth replay executes verified rows in-process for
+speed. Neither is a security sandbox. Inspect code from any untrusted revision
+before executing it.
 
 ## Export
 

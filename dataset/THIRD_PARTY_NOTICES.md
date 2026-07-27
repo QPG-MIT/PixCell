@@ -20,6 +20,7 @@ package remains governed by its own license.
 | Hugging Face Datasets | 5.0.0 | Apache-2.0 |
 | Apache Arrow / PyArrow | 24.0.0 | Apache-2.0 |
 | huggingface_hub | 1.22.0 | Apache-2.0 |
+| pytest | 9.1.1 | MIT |
 
 This summary is provided for convenience and is not a replacement for the
 license text shipped by each dependency. A local installation made from
