@@ -8,7 +8,7 @@ New in v0.2.0:
 - parse_pdk_document: Parse foundry PDK PDF documents into structured definitions
 - list_pdk_layers_full: List layers with complete material properties
 - get_layer_material_properties: Get Tidy3D-ready material properties for simulation
-- load_builtin_pdk: Load pre-defined PDKs (Lightium TFLN, HyperLight, etc.)
+- load_builtin_pdk: Load pre-defined PDKs (see list_available_pdks)
 """
 
 from __future__ import annotations
@@ -368,14 +368,14 @@ class PDKServer(BaseMCPServer):
             Tool(
                 name="load_builtin_pdk",
                 description=(
-                    "Load a pre-defined builtin PDK. Available: lightium_tfln, hyperlight_active, generic_si220."
+                    "Load a pre-defined builtin PDK by name; discover names with list_available_pdks."
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "pdk_name": {
                             "type": "string",
-                            "description": "Name of builtin PDK (lightium_tfln, hyperlight_active, generic_si220)"
+                            "description": "Name of a builtin PDK (e.g. generic_si220; see list_available_pdks)"
                         }
                     },
                     "required": ["pdk_name"]

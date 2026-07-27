@@ -19,7 +19,7 @@ def load_builtin_pdk(name: str) -> PDKDefinition:
     Load a builtin PDK definition by name.
 
     Args:
-        name: PDK name (e.g., "lightium_tfln", "hyperlight_active")
+        name: PDK name (e.g., "generic_si220")
 
     Returns:
         PDKDefinition object
@@ -53,6 +53,4 @@ def list_builtin_pdks() -> Dict[str, str]:
 
 
 # Convenience aliases
-LIGHTIUM_TFLN = "lightium_tfln"
-HYPERLIGHT_ACTIVE = "hyperlight_active"
 GENERIC_SI220 = "generic_si220"
