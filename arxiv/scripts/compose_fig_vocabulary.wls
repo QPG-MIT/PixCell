@@ -791,7 +791,7 @@ Do[
     fig2Prims,
     reliefComponent[
       f2["primitives"][[1]],
-      {{3.3, 14.2}, {32.66 - 0.98 i, 33.34 - 0.98 i}},
+      {{3.3, 14.2}, {31.16 - 0.98 i, 31.84 - 0.98 i}},
       diffBlue,
       True,
       {0.12, -0.10},
@@ -828,7 +828,7 @@ AppendTo[
   fig2Prims,
   reliefOrientedComponent[
     f2["primitives"][[2]],
-    {{3.3, 8.30}, {25.95, 27.35}},
+    {{3.3, 8.30}, {24.75, 26.15}},
     crimson,
     "o2",
     {0.12, -0.11},
@@ -839,7 +839,7 @@ AppendTo[
   fig2Prims,
   reliefOrientedComponent[
     f2["primitives"][[2, "negative"]],
-    {{3.3, 8.30}, {22.65, 24.05}},
+    {{3.3, 8.30}, {21.45, 22.85}},
     crimson,
     "o2",
     {0.12, -0.11},
@@ -850,7 +850,7 @@ AppendTo[
   fig2Prims,
   reliefOrientedComponent[
     f2["primitives"][[2]],
-    {{9.10, 14.10}, {25.95, 27.35}},
+    {{9.10, 14.10}, {24.75, 26.15}},
     crimson,
     "o1",
     {0.12, -0.11},
@@ -861,7 +861,7 @@ AppendTo[
   fig2Prims,
   reliefOrientedComponent[
     f2["primitives"][[2, "negative"]],
-    {{9.10, 14.10}, {22.65, 24.05}},
+    {{9.10, 14.10}, {21.45, 22.85}},
     crimson,
     "o1",
     {0.12, -0.11},
@@ -898,7 +898,7 @@ AppendTo[
 couplerPrimitive = f2["primitives"][[3]];
 couplerPrimitiveSpec = specFor[
   couplerPrimitive["polygons"],
-  {{3.3, 14.2}, {18.05, 20.55}},
+  {{3.3, 14.2}, {15.85, 18.35}},
   True
 ];
 AppendTo[
