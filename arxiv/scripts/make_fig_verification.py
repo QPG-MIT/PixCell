@@ -464,7 +464,7 @@ def _feedback_operator(
             arrowstyle="-|>",
             mutation_scale=11,
             linewidth=1.0,
-            color=VERIFIED,
+            color=INK,
             shrinkA=0,
             shrinkB=0,
         )
