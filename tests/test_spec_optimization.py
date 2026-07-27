@@ -232,6 +232,7 @@ def test_measured_delta_length_rejects_three_arms(tmp_path):
         so.measured_delta_length(script)
 
 
+@_needs_tidy3d
 def test_footprint_constraint_reported(tmp_path):
     """spec constraints.max_footprint_um gates passes on the measured bbox."""
     import textwrap
