@@ -693,6 +693,7 @@ async def run_baseline(
                 arm_id: WandbMetricsMirror(
                     store=store,
                     project=protocol["tracking"]["project"],
+                    source_git_sha=expected_source_sha,
                     entity=protocol["tracking"].get("entity"),
                     group=protocol["tracking"].get("group"),
                 )

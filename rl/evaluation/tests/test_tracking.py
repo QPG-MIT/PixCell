@@ -15,6 +15,8 @@ from rl.evaluation.tracking import (
     validate_wandb_access,
 )
 
+SOURCE_GIT_SHA = "a" * 40
+
 
 class FakeSettings:
     def __init__(self, **kwargs: object) -> None:
@@ -89,6 +91,24 @@ def _key() -> AttemptKey:
     return AttemptKey("study-v1", "H-QWEN-ZERO", "off-4k", "F1", 1)
 
 
+def test_wandb_run_id_is_bound_to_the_exact_source_commit() -> None:
+    first = deterministic_wandb_run_id(
+        _key().run_key,
+        source_git_sha="a" * 40,
+    )
+    second = deterministic_wandb_run_id(
+        _key().run_key,
+        source_git_sha="b" * 40,
+    )
+
+    assert first != second
+    with pytest.raises(TrackingContractError, match="Git object SHA"):
+        deterministic_wandb_run_id(
+            _key().run_key,
+            source_git_sha="not-a-sha",
+        )
+
+
 def test_wandb_access_preflight_binds_the_expected_entity() -> None:
     class FakeAccess:
         @staticmethod
@@ -132,6 +152,7 @@ def test_tracking_refuses_to_run_before_local_record_exists(
     mirror = WandbMetricsMirror(
         store=store,
         project="pixcell",
+        source_git_sha=SOURCE_GIT_SHA,
         wandb_module=fake,
     )
 
@@ -161,6 +182,7 @@ def test_metrics_only_mirror_uses_resumable_id_and_disables_source_upload(
     mirror = WandbMetricsMirror(
         store=store,
         project="pixcell-baselines",
+        source_git_sha=SOURCE_GIT_SHA,
         entity="qpaig-mit",
         group="phase1-zero-shot",
         wandb_module=fake,
@@ -174,7 +196,10 @@ def test_metrics_only_mirror_uses_resumable_id_and_disables_source_upload(
     )
 
     assert result.mirrored is True
-    assert result.wandb_run_id == deterministic_wandb_run_id(key.run_key)
+    assert result.wandb_run_id == deterministic_wandb_run_id(
+        key.run_key,
+        source_git_sha=SOURCE_GIT_SHA,
+    )
     assert fake.logs == [
         ({"output_tokens": 10, "latency_seconds": 1.25}, 3, True)
     ]
@@ -222,6 +247,7 @@ def test_persistent_arm_session_initializes_once_and_finishes_once(
     mirror = WandbMetricsMirror(
         store=store,
         project="pixcell-baselines",
+        source_git_sha=SOURCE_GIT_SHA,
         wandb_module=fake,
     )
 
@@ -260,6 +286,7 @@ def test_tracking_failure_is_a_local_error_and_keeps_saved_sample(
     mirror = WandbMetricsMirror(
         store=store,
         project="pixcell-baselines",
+        source_git_sha=SOURCE_GIT_SHA,
         wandb_module=FakeWandb(fail=True),
     )
 
@@ -303,6 +330,7 @@ def test_log_and_finish_failures_each_create_local_error_records(
     mirror = WandbMetricsMirror(
         store=store,
         project="pixcell-baselines",
+        source_git_sha=SOURCE_GIT_SHA,
         wandb_module=fake,
     )
 
@@ -333,6 +361,7 @@ def test_tracking_contract_rejects_bad_metrics_and_repo_wandb_dir(
         WandbMetricsMirror(
             store=store,
             project="pixcell",
+            source_git_sha=SOURCE_GIT_SHA,
             wandb_dir=store.repo_root / "wandb",
             wandb_module=FakeWandb(),
         )
@@ -341,6 +370,7 @@ def test_tracking_contract_rejects_bad_metrics_and_repo_wandb_dir(
     mirror = WandbMetricsMirror(
         store=store,
         project="pixcell",
+        source_git_sha=SOURCE_GIT_SHA,
         wandb_module=FakeWandb(),
     )
     with pytest.raises(TrackingContractError):
