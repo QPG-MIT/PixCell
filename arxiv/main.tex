@@ -1230,7 +1230,20 @@ remain unresolved.
 
 \FloatBarrier
 \Needspace{12\baselineskip}
-\section{Conclusions and Outlook}\label{sec:conclusion}
+\section{Research Contracts}\label{sec:conclusion}
+
+A closing section conventionally summarizes the evidence and sketches an
+outlook. This section keeps the summary and issues the outlook in a
+different form. Every result above entered the record through a gate that
+recomputed declared artifacts under terms fixed before the work ran. The
+directions that follow from those results are stated here the same way:
+as research contracts, bounded units of work whose objective, acceptance
+tests, required evidence, and review procedure are frozen before any work
+begins, and which settle only after the retained evidence is
+independently recomputed. This reflects a position on how follow-on research should be
+written. A direction stated as a contract can be claimed by any
+researcher or agent, executed against its declared gate, and audited
+without appeal to the claimant's narrative.
 
 PixCell formulates visual photonic-component authoring as program synthesis
 under deterministic verification. Given a calibrated silhouette, a physical
@@ -1305,18 +1318,81 @@ an estimated sampling distribution. Because the physical footprint is part
 of the model input and covaries with parameters in the tracking probe, the
 study also does not isolate pixel-only perception.
 
-The next steps follow directly from these boundaries. Reconstruction should
-be evaluated with replicated runs, broader component families, and function-
-aware rewards. Physical evaluation should incorporate enforced design rules,
-anisotropic materials, process-dependent fabrication models, and
-higher-fidelity loss calculations. Training studies should use untouched
-held-out evaluations and controlled ablations across models, corpora, and
-optimization methods. At circuit scale, the verifier must expand beyond
-pixel overlap to typed ports, connectivity, and behavior. The same
-lift-and-refit interface can also be tested on legacy GDS archives, where
-recovering editable programs from fixed masks could support cross-process
-migration, and it can be coupled to search over geometry, material stack, and
-fabrication variables.
+The next steps follow directly from these boundaries. Reconstruction needs
+replicated runs, broader component families, and function-aware rewards.
+Physical evaluation needs enforced design rules, anisotropic materials,
+process-dependent fabrication models, and higher-fidelity loss
+calculations. Training needs untouched held-out evaluations and controlled
+ablations across models, corpora, and optimization methods. Four of these
+steps are mature enough for their acceptance tests to be frozen now, and
+each is therefore issued as a numbered research contract, RC-01 through RC-04.
+A contract fixes five elements before any work begins: a question that
+evidence can settle; acceptance tests that any submission must pass; the
+evidence bundle that must be retained; a review procedure in which every
+reported number is recomputed from that bundle; and a statement of what
+success does not establish. The full terms and fixtures of each
+contract are versioned under \texttt{research-contracts/} in the released
+repository, and the contracts are published as funded, claimable bounties
+through the project page. The paragraphs below state each contract's
+question, gate, and boundary.
+
+\paragraph*{RC-01: Shape-aware visual verification.}
+What deterministic metric reflects structural agreement without rewarding
+area-filling shortcuts? The gate freezes an evaluation suite of calibrated
+perturbations, topology and port errors, and adversarial block
+constructions. A submitted metric must be a pure deterministic function on
+calibrated rasters, must order the suite better than IoU and the current
+boundary baseline under blinded judgments and a locked optimization
+comparison, must score every adversarial construction below its honest
+counterpart, and must reproduce all raw scores from the shipped corpus and
+code. Success establishes better ordering on the declared corpus; optical
+equivalence and fabrication validity remain outside the contract.
+
+\paragraph*{RC-02: Process-faithful 2D-to-3D retargeting.}
+Can one editable program be retargeted across four process models when its
+three-dimensional realization is explicit? The gate requires one
+parametric program whose topology is identical across four versioned stack
+manifests, explicit three-dimensional geometry for every retarget,
+functional, footprint, process, and convergence gates committed before any
+simulation, mesh-refinement and energy-conservation audits recomputed from
+shipped field data, a fixed-geometry cross-stack control, and an
+independent rerun of at least one stack that matches the reported
+S-parameters within a stated tolerance. Success concerns simulation-backed
+retargeting on the declared models; foundry signoff, tape-out readiness,
+and measured hardware remain outside the contract.
+
+\paragraph*{RC-03: Representation and scale dataset.}
+Should topology recognition, evidence-backed physical scale, and
+executable reconstruction be learned jointly or as separately supervised
+problems? The gate requires a versioned, licensed corpus with per-item
+provenance and three separable annotation layers; in-family,
+held-out-topology, and held-out-paper splits published as salted
+membership hashes with a shipped leakage audit; abstention scored as the
+only correct behavior where scale evidence is absent, since physical size
+is not identifiable from an unscaled silhouette; and a comparison of joint
+and staged supervision at matched, logged compute. Results remain bounded
+to the released families and protected splits.
+
+\paragraph*{RC-04: Smallest qualifying open model.}
+What is the smallest open-weight model, counted in active parameters, that
+remains effective across the five PixCell task tiers and untouched paper
+figures? The gate freezes the candidate registry, per-tier floors, and
+identical inference and verifier budgets before any evaluation; requires
+all attempts, including failures, to ship raw; recomputes confidence
+bounds independently from the shipped programs and scores; reruns the
+conductor purity gate on a sample of generated programs; and requires the
+qualifying model to ship with weights, license, model and data cards,
+training lineage, and total and active parameter accounting. The claim is
+scoped to the dated registry under this protocol.
+
+Two further directions from the same boundaries are stated without
+contracts because their acceptance tests cannot yet be frozen: extension
+of the verifier beyond pixel overlap to typed ports, connectivity, and
+behavior at circuit scale, and recovery of editable programs from legacy
+GDS archives in support of cross-process migration, coupled where useful
+to search over geometry, material stack, and fabrication variables.
+Contracts for both will be issued once their gates can be written in the
+form above.
 
 The accompanying release preserves the programs, geometric scores, worker
 transcripts, simulation records, evaluation fixtures, and training artifacts
@@ -1324,7 +1400,8 @@ needed to inspect and reproduce the reported measurements. PixCell therefore
 does not establish that automated photonic design is solved. It establishes
 that, within the tested scope, visual component geometry can be converted
 into an auditable parametric program and evaluated at successively stronger
-levels of physical fidelity.
+levels of physical fidelity, and it leaves its continuation in a form that
+can be claimed, executed, and verified.
 
 \paragraph*{Data and code availability.} The PixCell system, the
 benchmark fixtures (silhouettes, footprints, calibrations), the complete
