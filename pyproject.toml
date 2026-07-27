@@ -66,6 +66,17 @@ dependencies = [
     "trimesh>=4.10.1",
 ]
 
+[dependency-groups]
+# Synced by default (`uv sync`), so a fresh clone can run the suite and the
+# workbench without extra flags. CI additionally uses `--extra all`.
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "marimo>=0.23",
+    "anywidget>=0.9",
+]
+
 [project.optional-dependencies]
 dev = [
     "pytest",

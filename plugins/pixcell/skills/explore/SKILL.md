@@ -14,7 +14,7 @@ crosshair readout), knobs over the program's live DOF (function-defining
 first), **live IoU against the target on every knob change** (the same
 calibrated-raster math the conductor gate uses), the gate provenance, and
 handoffs to the agent stages. Design spec (in the PixCell repo):
-`docs/superpowers/specs/2026-07-06-device-workbench-design.md`.
+`the design notes (kept with the lab record)`.
 
 ## Generate
 

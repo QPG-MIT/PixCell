@@ -122,7 +122,7 @@ Every number in the paper's Results, mapped to its backing file.
 
 ### Sec VIII — the RL study
 
-See `rl/README.md`: `rl/reports/benchmark_eval_bridge2_g.json` (the paper's k=8 table,
+See the RL study's own record (`rl/`, not yet in this tree): `rl/reports/benchmark_eval_bridge2_g.json` (the paper's k=8 table,
 Table `tab:rl`: 0.254 / 0.466; the first draw `benchmark_eval_bridge2.json`, 0.2395 /
 0.4433, is retained as the variance reference),
 `benchmark_attempts_bridge2.jsonl` (per-attempt record), `rl/reports/runs_ledger/`

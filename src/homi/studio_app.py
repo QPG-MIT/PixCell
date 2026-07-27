@@ -1,5 +1,5 @@
 # PixCell studio — chat-first: a conversation with the conductor, the light
-# table beside it. Spec: docs/superpowers/specs/2026-07-06-device-workbench-design.md
+# table beside it. Spec: the design notes (kept with the lab record)
 # (studio addendum). Run: `homi studio` (marimo run on this file).
 #
 # The chat IS the driver: drop a PDF, ask for extraction/recreation/retarget;
