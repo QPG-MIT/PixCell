@@ -11,7 +11,7 @@ stored artifacts, and you can recompute any of them yourself (below).
 | Path | Mode / campaign | What it holds |
 |---|---|---|
 | `chatbots/` | models as API chatbots | benchmark aggregates (`analysis/`, `aggregates/`), the frozen Sec III.A statistics + figure panels (`figure_panels/`), curated reference runs (`june_finals/`), raw trajectories (`trajectories/`), the paper-10 figure run (`paper_10/`), manifests, result decks |
-| `agents/paper_swap/` | models as blind coding agents | the 104-cell matrix (8 devices × 13 configs), briefs, access audit, per-cell records |
+| `agents/paper_swap/` | models as blind coding agents | the 104-cell matrix (8 devices × 13 configs), briefs, access audit, transcripts, per-cell records |
 | `agents/catalog_swap/` | models as blind coding agents | the primitives-vs-stencil ladder: 16 recreation cells + the 20-cell two-arm Phase-B game |
 | `agents/pdk_swap/` | models as blind coding agents | the MZI one-drawing→three-fabs proof + MMI craft transfer + tier-2 validation |
 | `benchmark/` | — | the 8 device input fixtures (silhouette + footprint + calibration + meta), each `meta.json` naming its source panel in `benchmark/source_panels/` |
@@ -84,8 +84,8 @@ Every number in the paper's Results, mapped to its backing file.
 | 104 cells (13 configs × 8 devices), per-cell verified IoU + violation flags | `agents/paper_swap/sweep_results.json` |
 | per-cell tokens / wall-clock (feeds Table `tab:cost`) | `agents/paper_swap/sweep_metrics.json`; USD conversion + bootstrap CIs computed in `arxiv/scripts/make_figures.py` → `arxiv/scripts/agent_table.json` |
 | conductor re-verification of every cell | `agents/paper_swap/sweep_verdicts.txt`, `SWEEP_STATE.md` |
-| access audit over staged sessions | `agents/paper_swap/ACCESS_AUDIT_SWEEP.md` (the transcript INDEX + SHA256SUMS live with the private archive) |
-| worker transcripts | retained privately, available on request (180 archived; the audit froze at 167 on 2026-07-03 — some cells produced two sessions); release decision pending |
+| access audit over staged sessions | `agents/paper_swap/ACCESS_AUDIT_SWEEP.md` + `transcripts/phaseA/INDEX.json` + `SHA256SUMS` |
+| worker transcripts | `agents/paper_swap/transcripts/phaseA/*.gz` (180 archived; the audit froze at 167 — some cells produced two sessions) |
 | worker briefs (hint-linted, verbatim) | `agents/paper_swap/briefs/` |
 | per-cell record (program, topology log, iterations, knob check) | `agents/paper_swap/final<N>/output/recreation_<config>/{device.py, recreation_log.json, metrics*.json}` |
 | device provenance (source papers, footprints, stacks) | `agents/paper_swap/curation_manifest.json`, `papers_report_codex.md`, `papers_fom_codex.md` |
@@ -156,11 +156,14 @@ Table `tab:rl`: 0.254 / 0.466; the first draw `benchmark_eval_bridge2.json`, 0.2
    `output/jee_refine/` + `mode_cache/` but was not frozen as a standalone metrics JSON
    (`output/validation_findings.md` #6).
 
-9. **Session transcripts** (218 archived worker sessions across the three
-   campaigns, plus their index and checksum files) are retained privately
-   pending a release decision. The access-audit session counts in this tree
-   refer to that private archive; the transcript index and checksums live
-   with it.
+9. **Session transcripts are redacted for machine identity.** The 218
+   archived worker sessions ship in full except for host-identity strings:
+   tailnet addresses, DHCP/mDNS hostnames, and machine names are replaced by
+   `[REDACTED-IP]` / `[REDACTED-HOST]` (119 of 218 archives carry at least one
+   marker). Nothing else was altered — no reasoning, tool call, program, or
+   result — and every `SHA256SUMS` was re-frozen over the redacted archives, so
+   the shipped checksums verify against what you download. An independent sweep
+   of the redacted set for credentials, tokens, and private keys returns clean.
 
 ## The external bundle
 
