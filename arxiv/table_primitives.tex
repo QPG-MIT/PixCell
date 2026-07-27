@@ -31,7 +31,7 @@
 \midrule
 \multicolumn{2}{@{}l}{\emph{Component container and instances}} \\
 \texttt{gf.Component} & \texttt{()} \\
-\texttt{c.add\_ref} & \texttt{component, columns, rows, column\_pitch, row\_pitch} \\
+\texttt{c.add\_ref}$^{\dagger}$ & \texttt{component, columns, rows, column\_pitch, row\_pitch} \\
 \texttt{c.add\_port} & \texttt{name, port} \\
 \bottomrule
 \end{tabular}
@@ -68,16 +68,21 @@
 \texttt{mirror} & \texttt{p1, p2} \\
 \midrule
 \multicolumn{2}{@{}l}{\emph{Routing} (\texttt{gf.routing.*})} \\
-\texttt{route\_single} & \texttt{component, port1, port2, cross\_section} \\
+\texttt{route\_single}$^{\ddagger}$ & \texttt{component, port1, port2, cross\_section} \\
 \bottomrule
 \end{tabular}
 \end{minipage}
 
 \vspace{3pt}
-\parbox{\textwidth}{\raggedright\scriptsize
-\textit{Semantics.} \texttt{add\_ref} creates a single reference by default
-and an array when \texttt{columns} or \texttt{rows} exceed one.
-\texttt{route\_single} adds
-route geometry directly to its parent \texttt{Component} and returns a
-\texttt{ManhattanRoute}.}
+\begin{minipage}[t]{0.485\textwidth}
+\raggedright\scriptsize
+$^{\dagger}$\,\texttt{add\_ref} creates a single reference by default and an
+array when \texttt{columns} or \texttt{rows} exceed one.
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\raggedright\scriptsize
+$^{\ddagger}$\,\texttt{route\_single} adds route geometry directly to its
+parent \texttt{Component} and returns a \texttt{ManhattanRoute}.
+\end{minipage}
 \endgroup
