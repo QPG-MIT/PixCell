@@ -16,7 +16,7 @@ from pathlib import Path
 
 import numpy as np
 
-from homi.conductor.source_policy import ALLOWED_COMPONENTS, purity_violations
+from homi.conductor.source_policy import ALLOWED_COMPONENTS, strict_purity_violations
 from rl.common.contracts import (
     observation_from_row,
     reference_from_row,
@@ -280,7 +280,7 @@ def run(args: argparse.Namespace) -> dict:
     for row in [*train, *validation]:
         level_counts[str(row["level"])] += 1
         representation_ids.add(str(row["representation_id"]))
-        violations = purity_violations(str(row["code"]))
+        violations = strict_purity_violations(str(row["code"]))
         if violations:
             source_failures.append(f"{row['id']}: {violations[0]}")
         try:

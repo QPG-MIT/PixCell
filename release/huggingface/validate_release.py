@@ -325,7 +325,7 @@ def _load_purity_checker(path: Path, *, module_name: str):
         raise ReleaseValidationError(f"cannot import source policy from {path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.purity_violations
+    return getattr(module, "strict_purity_violations", module.purity_violations)
 
 
 def _purity_checkers(dataset_root: Path) -> dict[str, Any]:

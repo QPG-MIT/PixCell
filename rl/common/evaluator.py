@@ -31,7 +31,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from homi.conductor.source_policy import purity_violations
+from homi.conductor.source_policy import strict_purity_violations
 from michaelangelo.core.compare_absolute import (
     compute_metrics,
     extract_polygons,
@@ -692,7 +692,7 @@ class PixCellEvaluator:
                 latency_seconds=time.monotonic() - started,
             )
 
-        violations = tuple(purity_violations(source))
+        violations = tuple(strict_purity_violations(source))
         if violations:
             return EvaluationResult(
                 EvaluationStatus.SOURCE_REJECTED,
