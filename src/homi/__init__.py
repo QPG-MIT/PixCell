@@ -21,13 +21,7 @@ _SUBMODULES = frozenset(
         "gds_generation",
         "projects",
         "weber_integration",
-        "visualization",
-        "explorer_ui",
         "flex_integration",
-        "simulation_ui",
-        "theme",
-        "viewer_3d",
-        "webgl_viewer",
     }
 )
 
