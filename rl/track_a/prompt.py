@@ -1,4 +1,4 @@
-"""Compatibility imports for the shared blind Phase-A prompt."""
+"""Compatibility imports for the shared direct Phase-A prompt."""
 
 from rl.common.prompt import (
     CONTRACT_VERSION,

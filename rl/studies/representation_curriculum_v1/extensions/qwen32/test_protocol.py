@@ -8,6 +8,7 @@ from rl.evaluation.protocol import (
     _require_protocol_at_head,
     deterministic_seed,
     jobs_for_wave,
+    load_archived_protocol,
     load_protocol,
 )
 from rl.evaluation.tasks import load_task_manifest
@@ -29,9 +30,12 @@ def _benchmark_task_ids() -> list[str]:
 
 
 def test_extension_is_one_fixed_quality_first_arm():
-    protocol = load_protocol(REPO_ROOT, protocol_file=EXTENSION_PROTOCOL)
+    protocol = load_archived_protocol(
+        REPO_ROOT,
+        protocol_file=EXTENSION_PROTOCOL,
+    )
     assert protocol["study_id"] == "representation-curriculum-v1-qwen32"
-    assert protocol["base_study"]["protocol_sha256"] == load_protocol(
+    assert protocol["base_study"]["protocol_sha256"] == load_archived_protocol(
         REPO_ROOT,
         protocol_file=BASE_PROTOCOL,
     )["logical_sha256"]
@@ -49,7 +53,10 @@ def test_extension_is_one_fixed_quality_first_arm():
 
 
 def test_extension_smoke_and_complete_are_exact_f1_f8_g4_jobs():
-    protocol = load_protocol(REPO_ROOT, protocol_file=EXTENSION_PROTOCOL)
+    protocol = load_archived_protocol(
+        REPO_ROOT,
+        protocol_file=EXTENSION_PROTOCOL,
+    )
     task_ids = _benchmark_task_ids()
     smoke = jobs_for_wave(
         protocol,
@@ -71,8 +78,11 @@ def test_extension_smoke_and_complete_are_exact_f1_f8_g4_jobs():
 
 
 def test_extension_keeps_base_seed_pairing():
-    base = load_protocol(REPO_ROOT, protocol_file=BASE_PROTOCOL)
-    extension = load_protocol(REPO_ROOT, protocol_file=EXTENSION_PROTOCOL)
+    base = load_archived_protocol(REPO_ROOT, protocol_file=BASE_PROTOCOL)
+    extension = load_archived_protocol(
+        REPO_ROOT,
+        protocol_file=EXTENSION_PROTOCOL,
+    )
     for task_id in _benchmark_task_ids():
         for attempt_index in range(1, 5):
             assert deterministic_seed(

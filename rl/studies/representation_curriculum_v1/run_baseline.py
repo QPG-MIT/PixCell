@@ -13,6 +13,7 @@ from rl.evaluation.runner import run_baseline
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+PROTOCOL_FILE = Path(__file__).with_name("protocol.json")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -47,6 +48,7 @@ def main() -> None:
     report = asyncio.run(
         run_baseline(
             repo_root=REPO_ROOT,
+            protocol_file=PROTOCOL_FILE,
             hypothesis_id=args.hypothesis,
             wave_name=args.wave,
             expected_source_sha=args.expected_source_sha,

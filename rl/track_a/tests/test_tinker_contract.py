@@ -24,6 +24,13 @@ def test_tinker_sft_uses_the_same_blind_prompt_and_assistant_only_loss(core_row)
     assert message["role"] == "user"
     assert len(message["content"]) == 2
     assert message["content"][1]["text"] == build_prompt_text(task.observation)
+    prompt = message["content"][1]["text"]
+    assert "GDSFactory 9.20.7" in prompt
+    assert 'if __name__ == "__main__":' in prompt
+    assert '.write_gds("device.gds")' in prompt
+    assert "calibration" not in prompt.casefold()
+    assert "magnification" not in prompt.casefold()
+    assert "target raster" not in prompt.casefold()
 
     dataset = TrackASupervisedDataset(
         [task],

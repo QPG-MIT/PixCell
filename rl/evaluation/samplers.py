@@ -351,6 +351,33 @@ class _InklingCodec:
     def stop_sequences(self) -> list[int]:
         return list(self._renderer.stop())
 
+    @staticmethod
+    def _raw_decode_fallback(raw_text: str, *, reason: str) -> _DecodedCompletion:
+        """Keep truncated TML output evaluable without inventing channel facts.
+
+        A capped Inkling response can end inside TML framing. Depending on the
+        exact boundary, the native parser either raises or returns no textual
+        channel at all. The historical TML shim preserved the tokenizer's raw
+        decode in both cases, allowing downstream code extraction a best-effort
+        recovery path. The channel partition is unknowable in that state, so
+        channel-specific text/counts remain unset and the parse is incomplete.
+        """
+
+        return _DecodedCompletion(
+            raw_text=raw_text,
+            completion_text=raw_text,
+            reasoning_text=None,
+            answer_text="",
+            reasoning_tokens_exact=None,
+            answer_tokens_exact=None,
+            reasoning_tokens_estimate=None,
+            answer_tokens_estimate=None,
+            channel_token_count_basis=(
+                f"tml_{reason}_raw_decode_fallback_channel_partition_unknown"
+            ),
+            channel_parse_complete=False,
+        )
+
     def decode(self, tokens: Sequence[int]) -> _DecodedCompletion:
         from tml_renderers import chat as tml_chat
 
@@ -360,17 +387,9 @@ class _InklingCodec:
         try:
             parsed = list(parser.parse_tokens(sampled))
         except Exception:
-            return _DecodedCompletion(
-                raw_text=raw_text,
-                completion_text=raw_text,
-                reasoning_text=None,
-                answer_text="",
-                reasoning_tokens_exact=None,
-                answer_tokens_exact=None,
-                reasoning_tokens_estimate=None,
-                answer_tokens_estimate=None,
-                channel_token_count_basis=("tml_parse_failed_no_channel_token_estimate"),
-                channel_parse_complete=False,
+            return self._raw_decode_fallback(
+                raw_text,
+                reason="parse_failed",
             )
 
         reasoning_parts: list[str] = []
@@ -398,6 +417,11 @@ class _InklingCodec:
         completion_text = (
             "".join(f"<think>{part}</think>\n" for part in reasoning_parts) + answer_text
         )
+        if not any(part.strip() for part in (*reasoning_parts, *answer_parts)):
+            return self._raw_decode_fallback(
+                raw_text,
+                reason="parse_had_no_usable_channel_text",
+            )
         return _DecodedCompletion(
             raw_text=raw_text,
             completion_text=completion_text,

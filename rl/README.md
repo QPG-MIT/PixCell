@@ -36,10 +36,12 @@ Track A is the only implemented training path. Its exact model-visible
 contract, dataset inputs, SFT schedule, RL recipe, spend locks, and commands
 are documented in [`track_a/README.md`](track_a/README.md).
 
-The first frozen baseline protocol is
+The first diagnostic baseline protocol is
 [`representation_curriculum_v1`](studies/representation_curriculum_v1/README.md).
-It compares zero-shot Qwen operating points, then measures Qwen and Inkling on
-F1–F8. It performs no SFT or RL.
+It compared zero-shot Qwen operating points, then measured Qwen and Inkling on
+F1–F8. Its v1 prompt contract is superseded, its measurements are not
+canonical baselines, and the current paid loader rejects it. The files remain
+available as an auditable historical record. It performed no SFT or RL.
 
 Paid entry points require their explicit confirmation token and a successful
 local preflight. Sample receipts and working state stay outside the repository.

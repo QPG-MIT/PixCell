@@ -1,7 +1,14 @@
 # Representation curriculum v1
 
-This study establishes new zero-shot baselines before any curriculum training
-begins. It has two merge boundaries:
+> **Superseded diagnostic record.** This study and its Qwen 32k/60k
+> extensions used the `pixcell-blind-phase-a-direct-v1` prompt contract. That
+> one-shot contract did not state the output-file requirement enforced by the
+> evaluator, so its measurements are not canonical baselines or paper
+> results. The protocol JSON and study files remain unchanged for provenance.
+> Current paid launch code rejects this prompt contract.
+
+This archived study recorded preliminary zero-shot measurements before any
+curriculum training began. It had two merge boundaries:
 
 1. Phase 0 freezes and validates the protocol, task manifest, prompt, sampling
    adapters, evaluator, result schema, and source SHA without creating a
@@ -42,7 +49,11 @@ task, and tracking settings are sealed in
 [`protocol.json`](protocol.json). [`task_manifest.json`](task_manifest.json)
 binds the exact tasks and source digests.
 
-## Resumable launch order
+## Historical launch order
+
+The commands below document how the superseded record was produced. They are
+not runnable against the current prompt contract and must not be used to spend
+or report a canonical baseline.
 
 The launch must come from a clean checkout at the exact Phase 0 merge SHA.
 Mutable output must be outside the repository. Build the committed evaluator

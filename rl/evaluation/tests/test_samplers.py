@@ -321,3 +321,130 @@ def test_tml_renderer_uses_instance_effort_and_channel_estimates() -> None:
     assert decoded.channel_token_count_basis.startswith("estimate_")
     assert "excludes_tml_framing" in decoded.channel_token_count_basis
     assert decoded.channel_parse_complete is True
+
+
+class _FakeTmlTokenizer:
+    def __init__(self, raw_text: str) -> None:
+        self.raw_text = raw_text
+
+    def decode(self, tokens):
+        assert list(tokens) == [11, 12]
+        return self.raw_text
+
+    def encode_ordinary(self, text):
+        return list(text.encode("utf-8"))
+
+
+class _FakeTmlParser:
+    def __init__(self, parsed=None, error: Exception | None = None) -> None:
+        self.parsed = [] if parsed is None else parsed
+        self.error = error
+
+    def parse_tokens(self, tokens):
+        assert list(tokens) == [11, 12]
+        if self.error is not None:
+            raise self.error
+        return self.parsed
+
+
+class _FakeTmlRenderer:
+    def __init__(self, parser: _FakeTmlParser) -> None:
+        self.parser = parser
+
+    def render_for_completion(self, messages):
+        assert messages == []
+        return [], self.parser
+
+
+@pytest.mark.parametrize(
+    ("parsed", "error", "expected_basis"),
+    [
+        (
+            None,
+            ValueError("truncated TML object"),
+            "tml_parse_failed_raw_decode_fallback_channel_partition_unknown",
+        ),
+        (
+            [],
+            None,
+            (
+                "tml_parse_had_no_usable_channel_text_raw_decode_fallback_"
+                "channel_partition_unknown"
+            ),
+        ),
+    ],
+)
+def test_inkling_raw_decode_fallback_preserves_unparseable_completion(
+    parsed,
+    error,
+    expected_basis,
+) -> None:
+    pytest.importorskip("tml_renderers")
+    raw = "partial framing followed by ```python\nprint('recover me')\n```"
+    codec = samplers._InklingCodec(
+        _FakeTmlRenderer(_FakeTmlParser(parsed=parsed, error=error)),
+        _FakeTmlTokenizer(raw),
+        0.9,
+    )
+
+    decoded = codec.decode([11, 12])
+
+    assert decoded.raw_text == raw
+    assert decoded.completion_text == raw
+    assert decoded.reasoning_text is None
+    assert decoded.answer_text == ""
+    assert decoded.reasoning_tokens_exact is None
+    assert decoded.answer_tokens_exact is None
+    assert decoded.reasoning_tokens_estimate is None
+    assert decoded.answer_tokens_estimate is None
+    assert decoded.channel_token_count_basis == expected_basis
+    assert decoded.channel_parse_complete is False
+
+
+def test_inkling_raw_decode_fallback_rejects_terminal_or_whitespace_as_usable() -> None:
+    pytest.importorskip("tml_renderers")
+    from tml_renderers import chat as tml_chat
+
+    model = tml_chat.Author(tml_chat.AuthorKind.Model)
+    parsed = [
+        tml_chat.Message(tml_chat.Thinking(" \n\t"), model),
+        tml_chat.Message(tml_chat.Text("   "), model),
+        tml_chat.Message(tml_chat.ModelEndSampling(), model),
+    ]
+    raw = "```python\nprint('raw survives')\n```"
+    codec = samplers._InklingCodec(
+        _FakeTmlRenderer(_FakeTmlParser(parsed=parsed)),
+        _FakeTmlTokenizer(raw),
+        0.9,
+    )
+
+    decoded = codec.decode([11, 12])
+
+    assert decoded.completion_text == raw
+    assert decoded.channel_parse_complete is False
+    assert "parse_had_no_usable_channel_text" in decoded.channel_token_count_basis
+
+
+def test_inkling_preserves_usable_parsed_channels_without_terminal_marker() -> None:
+    pytest.importorskip("tml_renderers")
+    from tml_renderers import chat as tml_chat
+
+    model = tml_chat.Author(tml_chat.AuthorKind.Model)
+    parsed = [
+        tml_chat.Message(tml_chat.Thinking("inspect"), model),
+        tml_chat.Message(tml_chat.Text("```python\npass\n```"), model),
+    ]
+    codec = samplers._InklingCodec(
+        _FakeTmlRenderer(_FakeTmlParser(parsed=parsed)),
+        _FakeTmlTokenizer("raw TML serialization"),
+        0.9,
+    )
+
+    decoded = codec.decode([11, 12])
+
+    assert decoded.completion_text == "<think>inspect</think>\n```python\npass\n```"
+    assert decoded.reasoning_text == "inspect"
+    assert decoded.answer_text == "```python\npass\n```"
+    assert decoded.reasoning_tokens_estimate == len("inspect".encode("utf-8"))
+    assert decoded.answer_tokens_estimate == len("```python\npass\n```".encode("utf-8"))
+    assert decoded.channel_parse_complete is False

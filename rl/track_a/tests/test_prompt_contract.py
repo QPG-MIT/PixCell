@@ -16,6 +16,8 @@ from rl.track_a.prompt import (
     build_prompt_text,
     catalog_text,
     openai_sft_messages,
+    prompt_asset_hashes,
+    task_text,
 )
 
 
@@ -31,13 +33,18 @@ def test_prompt_is_one_blind_image_first_turn(core_row):
         "text",
     ]
     prompt = messages[0]["content"][1]["text"]
-    assert "GDSFactory Function Catalog" in prompt
+    assert "Exact GDSFactory Extended Primitive Catalogue" in prompt
     assert '"footprint_um": [' in prompt
     assert messages[1]["content"][0]["text"] == core_row["code"]
     forbidden = (
         "DISPLAY NOTE",
         "magnification x:y",
         "px/um",
+        "target_image",
+        "target raster",
+        "candidate raster",
+        "IoU",
+        "calibration",
         core_row["id"],
         core_row["representation_id"],
         core_row["family"],
@@ -77,6 +84,52 @@ def test_prompt_builder_accepts_no_verifier_or_label_state(core_row):
     assert core_row["code"] not in build_prompt_text(observation)
 
 
+def test_direct_phase_a_contract_states_every_execution_obligation(core_row):
+    prompt = build_prompt_text(observation_from_row(core_row))
+    normalized = " ".join(prompt.split())
+    required = (
+        "BLACK is",
+        "material on layer `(1, 0)`",
+        "`footprint_um` is `[x-length, y-width]`",
+        "GDSFactory 9.20.7",
+        "Exact GDSFactory Extended Primitive Catalogue",
+        "Ordinary GDSFactory assembly",
+        "prebuilt device-level stencils",
+        "raw polygon",
+        "raster tracing",
+        "runtime image reads",
+        "live top-level",
+        "@gf.cell",
+        "reason internally about the topology",
+        "Do not output the reasoning",
+        'if __name__ == "__main__":',
+        "complete executable program",
+        "`device.gds`",
+        '.write_gds("device.gds")',
+        "filename in the catalogue's assembly example is illustrative",
+        "Output only the complete Python program",
+    )
+    assert not [value for value in required if value not in normalized]
+
+
+def test_direct_phase_a_asset_is_rl_owned_and_has_no_verifier_hints():
+    task = task_text()
+    forbidden = (
+        "calibration",
+        "magnification",
+        "px/um",
+        "target raster",
+        "candidate raster",
+        "IoU",
+        "Dice",
+        "metadata",
+    )
+    assert not [value for value in forbidden if value.casefold() in task.casefold()]
+    hashes = prompt_asset_hashes()
+    assert set(hashes) == {"catalog_sha256", "task_sha256"}
+    assert all(re.fullmatch(r"[0-9a-f]{64}", value) for value in hashes.values())
+
+
 def test_catalog_dataset_and_runtime_whitelists_are_identical():
     shared_path = REPO_ROOT / "dataset" / "scripts" / "_shared.py"
     spec = importlib.util.spec_from_file_location("dataset_shared_test", shared_path)
@@ -94,6 +147,7 @@ def test_committed_config_binds_contract_and_is_spend_locked():
     path = REPO_ROOT / "rl" / "track_a" / "config.json"
     config = json.loads(path.read_text())
     assert config["contract_version"] == CONTRACT_VERSION
+    assert CONTRACT_VERSION == "pixcell-direct-reconstruction-v2"
     assert config["model"]["name"] == "Qwen/Qwen3.6-35B-A3B"
     assert config["model"]["renderer"] == "qwen3_5_disable_thinking"
     assert config["model"]["lora_rank"] == 32

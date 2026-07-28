@@ -42,6 +42,9 @@ from rl.evaluation.tasks import (
 from rl.evaluation.tracking import deterministic_wandb_run_id
 
 
+PROTOCOL_FILE = Path(__file__).with_name("protocol.json")
+
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PHASE1_RELATIVE_ROOT = Path(
     "data/training/representation-curriculum-v1/phase1"
@@ -668,7 +671,7 @@ def _collect_bundle(
         )
     if _git_head(repo_root) != expected_source_sha:
         raise Phase1FreezeError("current source HEAD differs from the launch SHA")
-    protocol = load_protocol(repo_root)
+    protocol = load_protocol(repo_root, protocol_file=PROTOCOL_FILE)
     manifest = load_task_manifest(task_manifest_path(repo_root), repo_root=repo_root)
     prompt_binding, prompt_sha = _prompt_binding()
     runtime = validate_runtime_stack(repo_root)

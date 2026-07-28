@@ -151,15 +151,10 @@ def load_protocol(
     *,
     protocol_file: Path | None = None,
 ) -> dict[str, Any]:
+    """Load a protocol only when it matches the active paid-launch contract."""
+
     root = repo_root.expanduser().resolve()
-    document = json.loads(
-        protocol_path(root, protocol_file).read_text(encoding="utf-8")
-    )
-    if document.get("schema_version") != PROTOCOL_SCHEMA:
-        raise ValueError("unsupported representation-curriculum protocol schema")
-    observed = canonical_json_sha256(_logical_document(document))
-    if document.get("logical_sha256") != observed:
-        raise ValueError("protocol logical SHA-256 mismatch")
+    document = load_archived_protocol(root, protocol_file=protocol_file)
     if document.get("contract_version") != CONTRACT_VERSION:
         raise ValueError("protocol prompt contract does not match the runtime")
     arms = {
@@ -201,6 +196,30 @@ def load_protocol(
         != document["dataset"]["logical_release_sha256"]
     ):
         raise ValueError("protocol does not bind the local depth release")
+    return document
+
+
+def load_archived_protocol(
+    repo_root: Path,
+    *,
+    protocol_file: Path | None = None,
+) -> dict[str, Any]:
+    """Inspect a sealed historical protocol without making it launchable.
+
+    This validates repository containment, schema, and the protocol's own
+    logical digest. Paid entry points must use :func:`load_protocol`, which
+    additionally requires the active model-visible contract.
+    """
+
+    root = repo_root.expanduser().resolve()
+    document = json.loads(
+        protocol_path(root, protocol_file).read_text(encoding="utf-8")
+    )
+    if document.get("schema_version") != PROTOCOL_SCHEMA:
+        raise ValueError("unsupported representation-curriculum protocol schema")
+    observed = canonical_json_sha256(_logical_document(document))
+    if document.get("logical_sha256") != observed:
+        raise ValueError("protocol logical SHA-256 mismatch")
     return document
 
 

@@ -1,4 +1,4 @@
-"""The versioned blind Phase-A prompt shared by training and evaluation."""
+"""The versioned direct Phase-A prompt shared by training and evaluation."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Any
 from rl.common.contracts import ModelObservation
 
 
-CONTRACT_VERSION = "pixcell-blind-phase-a-direct-v1"
+CONTRACT_VERSION = "pixcell-direct-reconstruction-v2"
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _CATALOG_PATH = (
     _REPO_ROOT
@@ -19,7 +19,9 @@ _CATALOG_PATH = (
     / "reference"
     / "gds_factory_function_catalogue_extended.md"
 )
-_TASK_PATH = _REPO_ROOT / "src" / "michaelangelo" / "templates" / "prompt.md"
+_TASK_PATH = (
+    _REPO_ROOT / "rl" / "common" / "assets" / "phase_a_direct_v2.md"
+)
 
 
 def catalog_text() -> str:
@@ -44,19 +46,24 @@ def build_prompt_text(observation: ModelObservation) -> str:
         {"footprint_um": list(observation.footprint_um)},
         indent=2,
     )
-    return f"""## GDSFactory Function Catalog (Reference)
+    return f"""## Phase-A Device Input
 
-{catalog_text()}
+The attached image is a device-only black-and-white silhouette. BLACK is
+material on layer `(1, 0)` and WHITE is background.
 
----
-
-## Device Footprint Constraint
+Physical footprint, where `footprint_um` is `[x-length, y-width]`:
 
 {footprint_text}
 
 ---
 
-## Task
+## Exact GDSFactory Extended Primitive Catalogue
+
+{catalog_text()}
+
+---
+
+## Direct Phase-A Programming Contract
 
 {task_text()}"""
 

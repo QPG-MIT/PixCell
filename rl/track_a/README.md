@@ -7,16 +7,28 @@ paper benchmarks, historical rollouts, or model checkpoints.
 
 ## What the model receives
 
-The `pixcell-blind-phase-a-direct-v1` contract has one user turn:
+The `pixcell-direct-reconstruction-v2` contract is a one-shot adaptation of
+the blind Phase-A reconstruction task. It has one user turn:
 
 1. the row's maximum-visibility `image`;
 2. its physical `footprint_um`, formatted as the historical footprint JSON;
-3. the existing PixCell GDSFactory primitive catalogue;
-4. the existing Phase-A recreation task.
+3. the exact PixCell GDSFactory extended primitive catalogue;
+4. the direct Phase-A programming contract used by both training and
+   evaluation.
 
 There is no system turn. The model does not receive the dataset's stored
 `instruction`, display calibration, `target_image`, row ID, class name,
 representation metadata, ports, structural witnesses, or expected code.
+The programming contract states the required construction and serialization
+rules: GDSFactory 9.20.7, material on layer `(1,0)`, catalogue-only primitive
+constructors, top-level live function tunables, an `@gf.cell` device, complete
+executable Python, and the exact output file `device.gds`.
+
+This is not the full tool-using HOMI Phase-A loop. That system lets an agent
+derive calibration, inspect deterministic diffs, and revise its program. The
+direct contract deliberately presents the same blind device inputs without
+those tools or verifier feedback so it can be used consistently for SFT,
+one-shot RL rollouts, and direct-policy evaluation.
 
 For SFT, the assistant label is the row's complete `code`. In other words, an
 SFT example is still an image-and-code pair: the image and fixed task context

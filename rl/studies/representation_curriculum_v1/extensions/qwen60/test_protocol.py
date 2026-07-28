@@ -9,14 +9,12 @@ import pytest
 
 from rl.evaluation.protocol import (
     _require_protocol_at_head,
-    arm_spec,
     deterministic_seed,
     jobs_for_wave,
+    load_archived_protocol,
     load_protocol,
     task_manifest_path,
 )
-from rl.evaluation.runner import _messages, _sampler_target
-from rl.evaluation.samplers import TinkerSampler
 from rl.evaluation.tasks import load_task_manifest, load_task_set
 from rl.studies.representation_curriculum_v1.extensions.qwen60 import (
     run_baseline as fixed_runner,
@@ -45,8 +43,14 @@ def _benchmark_tasks():
 
 
 def test_extension_is_one_fixed_near_context_limit_arm():
-    protocol = load_protocol(REPO_ROOT, protocol_file=EXTENSION_PROTOCOL)
-    qwen32 = load_protocol(REPO_ROOT, protocol_file=QWEN32_PROTOCOL)
+    protocol = load_archived_protocol(
+        REPO_ROOT,
+        protocol_file=EXTENSION_PROTOCOL,
+    )
+    qwen32 = load_archived_protocol(
+        REPO_ROOT,
+        protocol_file=QWEN32_PROTOCOL,
+    )
     assert protocol["study_id"] == "representation-curriculum-v1-qwen60"
     assert protocol["base_study"] == {
         "arm_id": "qwen-on-32768",
@@ -114,7 +118,10 @@ def test_qwen32_base_commit_contains_the_bound_protocol_and_pr_merge():
 
 
 def test_extension_smoke_and_complete_are_exact_f1_f8_g4_jobs():
-    protocol = load_protocol(REPO_ROOT, protocol_file=EXTENSION_PROTOCOL)
+    protocol = load_archived_protocol(
+        REPO_ROOT,
+        protocol_file=EXTENSION_PROTOCOL,
+    )
     task_ids = [task.task_id for task in _benchmark_tasks()]
     smoke = jobs_for_wave(
         protocol,
@@ -136,8 +143,11 @@ def test_extension_smoke_and_complete_are_exact_f1_f8_g4_jobs():
 
 
 def test_extension_keeps_base_seed_pairing():
-    base = load_protocol(REPO_ROOT, protocol_file=BASE_PROTOCOL)
-    extension = load_protocol(REPO_ROOT, protocol_file=EXTENSION_PROTOCOL)
+    base = load_archived_protocol(REPO_ROOT, protocol_file=BASE_PROTOCOL)
+    extension = load_archived_protocol(
+        REPO_ROOT,
+        protocol_file=EXTENSION_PROTOCOL,
+    )
     for task in _benchmark_tasks():
         for attempt_index in range(1, 5):
             assert deterministic_seed(
@@ -151,35 +161,25 @@ def test_extension_keeps_base_seed_pairing():
             )
 
 
-def test_every_f1_f8_prompt_fits_the_60k_cap_without_a_remote_client():
-    protocol = load_protocol(REPO_ROOT, protocol_file=EXTENSION_PROTOCOL)
-    arm = arm_spec(protocol, "qwen-on-60000")
-
-    def no_remote_client():
-        raise AssertionError("context preflight must not construct a remote client")
-
-    sampler = TinkerSampler(
-        _sampler_target(arm),
-        service_client_factory=no_remote_client,
+def test_archived_60k_context_arithmetic_is_internally_consistent():
+    protocol = load_archived_protocol(
+        REPO_ROOT,
+        protocol_file=EXTENSION_PROTOCOL,
     )
-    lengths = {
-        task.task_id: int(sampler.build_prompt(_messages(task, arm)).length)
-        for task in _benchmark_tasks()
-    }
+    arm = protocol["arms"]["qwen-on-60000"]
     context_fit = protocol["decision"]["context_fit"]
-    largest_prompt = max(lengths.values())
-    minimum_reserve = arm.context_tokens - largest_prompt - arm.max_output_tokens
-    assert largest_prompt == context_fit["largest_frozen_f1_f8_prompt_tokens"]
-    assert arm.context_tokens - largest_prompt == context_fit[
+    largest_prompt = context_fit["largest_frozen_f1_f8_prompt_tokens"]
+    context_tokens = arm["context_tokens"]
+    max_output_tokens = arm["max_output_tokens"]
+    minimum_reserve = context_tokens - largest_prompt - max_output_tokens
+    assert context_tokens - largest_prompt == context_fit[
         "minimum_f1_f8_completion_capacity_tokens"
     ]
     assert minimum_reserve == context_fit["minimum_context_reserve_tokens"]
     assert minimum_reserve >= 0
-    assert largest_prompt + 64_000 > arm.context_tokens
-    assert all(
-        prompt_tokens + arm.max_output_tokens <= arm.context_tokens
-        for prompt_tokens in lengths.values()
-    )
+    assert context_fit["selected_max_output_tokens"] == max_output_tokens
+    assert largest_prompt + 64_000 > context_tokens
+    assert largest_prompt + max_output_tokens <= context_tokens
 
 
 def test_protocol_override_must_be_source_controlled(tmp_path: Path):

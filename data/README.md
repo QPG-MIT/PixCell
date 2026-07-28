@@ -29,10 +29,10 @@ The benchmark input fixtures (silhouette + footprint per device) are
 `trajectories/` (cohort-pinned to the audited model set; `--all` widens to
 later runs the trajectories also carry).
 
-`training/representation-curriculum-v1/` is the record location for the new
-Qwen and Inkling zero-shot F1–F8 baselines. Phase 0 contains no model results;
-Phase 1 adds the frozen evidence after the external attempt record validates.
-W&B is a metrics mirror and is never the source of record.
+`training/representation-curriculum-v1/` preserves superseded Qwen and Inkling
+diagnostic runs. Those runs used the retired v1 direct prompt contract and are
+not canonical baselines or paper results. Their protocol and artifacts remain
+for provenance. W&B is a metrics mirror and is never the source of record.
 
 ## Verify any cell yourself
 

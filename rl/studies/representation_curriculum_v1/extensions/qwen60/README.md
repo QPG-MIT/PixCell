@@ -1,5 +1,10 @@
 # Qwen 60k F1-F8 extension
 
+> **Superseded diagnostic record.** This extension used the retired v1 prompt
+> contract. Its measurements are not canonical baselines or paper results,
+> and current paid launch code rejects the protocol. The files are retained
+> for provenance.
+
 This is the near-context-limit extension to the frozen Phase 1 baseline study.
 It follows the accepted Qwen 32k extension in pull request 7 and records the
 user's quality-first decision to test the strongest practical setting for a
@@ -16,7 +21,7 @@ changed model setting relative to `RC-H03` is the output cap. It has its own
 study ID, W&B run identity, external ledger, and tracked evidence directory,
 so it cannot overwrite the 16k or 32k records.
 
-Run the eight-sample smoke wave first:
+The historical launch command was:
 
 ```bash
 python -m rl.studies.representation_curriculum_v1.extensions.qwen60.run_baseline \

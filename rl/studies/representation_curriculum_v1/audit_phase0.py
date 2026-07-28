@@ -31,6 +31,9 @@ from rl.evaluation.tasks import (
 )
 
 
+PROTOCOL_FILE = Path(__file__).with_name("protocol.json")
+
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 AUDIT_SCHEMA = "pixcell-representation-curriculum-phase0-audit-v1"
 
@@ -204,7 +207,7 @@ def run_audit(
         if not clean:
             raise ValueError("source worktree must be clean for the sealed audit")
 
-    protocol = load_protocol(root)
+    protocol = load_protocol(root, protocol_file=PROTOCOL_FILE)
     manifest = load_task_manifest(task_manifest_path(root), repo_root=root)
     task_sets = {
         name: load_task_set(repo_root=root, manifest=manifest, task_set=name)

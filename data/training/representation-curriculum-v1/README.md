@@ -1,8 +1,12 @@
 # Representation curriculum v1 record
 
-This directory receives the validated evidence release for the
-`representation-curriculum-v1` study. The frozen protocol and task manifest
-live in
+This is a superseded diagnostic record, not a canonical baseline or paper
+result. Its runs used the `pixcell-blind-phase-a-direct-v1` prompt contract,
+which did not state the output-file requirement enforced by the evaluator.
+The historical artifacts and protocol bindings are retained for provenance;
+current paid launch code rejects that contract.
+
+The frozen protocol and task manifest live in
 [`rl/studies/representation_curriculum_v1/`](../../../rl/studies/representation_curriculum_v1/).
 
 Phase 0 defines the record contract and contains no measured model result.
@@ -11,8 +15,5 @@ During that run, immutable candidate receipts and mutable working state live in
 the external path named by `PIXCELL_STUDY_ROOT`. W&B mirrors saved metrics for
 monitoring but does not certify or replace the local record.
 
-The Phase 1 PR will add only the validated evidence needed to reproduce the
-reported baseline: bound source, protocol and task digests; attempt and
-evaluator records; aggregate summaries; the Qwen operating-point selection;
-and release checksums. Credentials, W&B working files, model caches,
-checkpoints, and unvalidated partial exports do not belong here.
+Credentials, W&B working files, model caches, checkpoints, and unvalidated
+partial exports do not belong here.

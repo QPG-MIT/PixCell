@@ -349,7 +349,11 @@ def _prepare(
         "validate_runtime_stack",
         lambda _root: RUNTIME,
     )
-    monkeypatch.setattr(freezer, "load_protocol", lambda _root: protocol)
+    monkeypatch.setattr(
+        freezer,
+        "load_protocol",
+        lambda *_args, **_kwargs: protocol,
+    )
     monkeypatch.setattr(
         freezer,
         "load_task_manifest",
