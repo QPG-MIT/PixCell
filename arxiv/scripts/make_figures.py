@@ -49,14 +49,38 @@ def save(fig, stem):
     print(f"wrote {ARXIV / (stem + '.pdf')}")
 
 AGENT_LABEL = {
+    # --- original generation ---
     "haiku45m": "Haiku 4.5 (med)", "haiku45h": "Haiku 4.5 (high)",
     "sonnet45m": "Sonnet 4.5", "sonnet5m": "Sonnet 5",
     "opus45m": "Opus 4.5", "opus48m": "Opus 4.8 (med)", "opus48max": "Opus 4.8 (max)",
     "codexspark": "GPT-5.3 spark", "codex54mini": "GPT-5.4-mini", "codex54m": "GPT-5.4",
     "codex55m": "GPT-5.5 (med)", "codex55h": "GPT-5.5 (high)", "codex55x": "GPT-5.5 (xhigh)",
+    # --- extension: the newer generation, same protocol ---
+    "opus5m": "Opus 5 (med)", "opus5max": "Opus 5 (max)",
+    "fable5m": "Fable 5 (med)", "fable5max": "Fable 5 (max)",
+    "codex56lunam": "GPT-5.6 luna (med)", "codex56lunax": "GPT-5.6 luna (xhigh)",
+    "codex56lunau": "GPT-5.6 luna (ultra)",
+    "codex56terram": "GPT-5.6 terra (med)", "codex56terrax": "GPT-5.6 terra (xhigh)",
+    "codex56terrau": "GPT-5.6 terra (ultra)",
+    "codex56solm": "GPT-5.6 sol (med)", "codex56solx": "GPT-5.6 sol (xhigh)",
+    "codex56solu": "GPT-5.6 sol (ultra)",
 }
-VENDOR = {c: ("anthropic" if c.startswith(("haiku", "sonnet", "opus")) else "openai")
-          for c in AGENT_LABEL}
+# Vendor is read from the rate card rather than inferred from a name prefix:
+# the prefix rule silently mislabels any configuration whose name does not
+# begin with a known family (it had no branch for "fable" at all).
+_RATE_CARD = json.loads(
+    (REPO / "data/agents/paper_swap/rate_card.json").read_text()
+)
+VENDOR = {
+    cfg: _RATE_CARD["models"][_RATE_CARD["config_to_model"][cfg]]["vendor"]
+    for cfg in AGENT_LABEL
+}
+EXTENSION = {
+    "opus5m", "opus5max", "fable5m", "fable5max",
+    "codex56lunam", "codex56lunax", "codex56lunau",
+    "codex56terram", "codex56terrax", "codex56terrau",
+    "codex56solm", "codex56solx", "codex56solu",
+}
 C_ANTH, C_OAI, C_JUNE, INK = "#c15f3c", "#3c7ec1", "#8a8a8a", "#16161d"
 
 
@@ -260,58 +284,51 @@ def fig4():
 
 
 # --------------------------------------------------- table: cost/compute per config
-CLAUDE_RATES = {  # $/MTok (in, cache-read, out) — Anthropic list prices
-    "opus": (15, 1.5, 75), "sonnet": (3, 0.3, 15), "haiku": (1, 0.1, 5),
-}
+# Cost is NOT recomputed here. data/agents/paper_swap/compilation.json is the
+# single source of truth: it applies each vendor's own token accounting (the
+# buckets are disjoint for Anthropic and nested for OpenAI) against published
+# list prices recorded with their sources in rate_card.json. The former local
+# model hardcoded one Anthropic price triple, applied it by name prefix, and
+# had no branch for configurations outside that convention.
+COMPILATION = json.loads(
+    (REPO / "data/agents/paper_swap/compilation.json").read_text()
+)
 
 
 def table():
-    out = FIG / "agent_table.json"
-    # OpenAI costs were computed out-of-band (Codex session accounting) and
-    # live only in the archived table — preserve them instead of clobbering
-    # with null when this script cannot recompute a config's cost.
-    try:
-        prev_cost = {r["config"]: r.get("median_api_equiv_cost_usd")
-                     for r in json.loads(out.read_text())}
-    except FileNotFoundError:
-        prev_cost = {}
+    # One canonical location, beside the generator: the emergence manifest pins
+    # it as ../agent_table.json and make_fig_pareto3d.py reads it by name. It
+    # used to be written into figures/ instead, leaving two divergent copies.
+    out = Path(__file__).resolve().with_name("agent_table.json")
+    by_config = {row["config"]: row for row in COMPILATION["by_configuration"]}
     rows = []
     for cfg in AGENT_LABEL:
         cells = config_cells(cfg)
         if not cells:
             continue
-        mcells = [m for m in METRICS if m["config"] == cfg]
-        med_wall = median([m["wall_minutes"] for m in mcells]) if mcells else None
-        med_out = median([m["output_tokens"] for m in mcells if m.get("output_tokens")]) if mcells else None
-        cost = None
-        if VENDOR[cfg] == "anthropic" and mcells:
-            fam = next(k for k in CLAUDE_RATES if cfg.startswith(k))
-            rin, rcache, rout = CLAUDE_RATES[fam]
-            costs = []
-            for m in mcells:
-                if not m.get("output_tokens"):
-                    continue
-                c = (m.get("input_tokens_uncached", 0) * rin
-                     + m.get("cache_read_tokens", 0) * rcache
-                     + m["output_tokens"] * rout) / 1e6
-                costs.append(c)
-            cost = median(costs) if costs else None
+        summary = by_config.get(cfg, {})
         rows.append({
             "config": cfg, "label": AGENT_LABEL[cfg], "vendor": VENDOR[cfg],
+            "generation": "extension" if cfg in EXTENSION else "original",
             "mean_iou": round(mean_iou(cfg), 3), "usable_iou": round(usable_iou(cfg), 3),
             "violations": sum(1 for c in cells if c["purity_violation"]),
-            "n": len(cells), "median_wall_min": med_wall,
-            "median_output_tokens": med_out,
-            "median_api_equiv_cost_usd": (round(cost, 2) if cost
-                                          else prev_cost.get(cfg)),
+            "n": len(cells),
+            "median_wall_min": summary.get("median_wall_min"),
+            "wall_comparable": summary.get("wall_comparable"),
+            "median_iterations": summary.get("median_iterations"),
+            "median_output_tokens": summary.get("median_output_tokens"),
+            "median_api_equiv_cost_usd": summary.get("median_cost_usd"),
+            "cost_cells_priced": summary.get("cost_cells_priced"),
         })
     rows.sort(key=lambda r: r["mean_iou"], reverse=True)
     out.write_text(json.dumps(rows, indent=1))
     print(f"table -> {out}")
     for r in rows:
-        print(f'{r["label"]:<18} IoU {r["mean_iou"]:.3f} usable {r["usable_iou"]:.3f} '
+        cost = r["median_api_equiv_cost_usd"]
+        cost_s = f"${cost:.2f}" if cost is not None else "unpriced"
+        print(f'{r["label"]:<22} IoU {r["mean_iou"]:.3f} usable {r["usable_iou"]:.3f} '
               f'viol {r["violations"]} wall {r["median_wall_min"]}m '
-              f'tok {r["median_output_tokens"]} cost ${r["median_api_equiv_cost_usd"]}')
+              f'tok {r["median_output_tokens"]} cost {cost_s}')
 
 
 if __name__ == "__main__":

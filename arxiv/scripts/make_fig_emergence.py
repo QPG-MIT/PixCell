@@ -42,15 +42,22 @@ PROVIDER_COLORS = {
     "openai": DIFF_BLUE,
     "anthropic": CRIMSON,
 }
+# Left-gutter geometry, in axis-fraction units of the score axis.
+FAMILY_LABEL_X = -0.62
+EFFORT_LABEL_X = -0.085
+GENERATION_TICK_X = -0.038
+
+# A single-hue sequential ramp: IoU is one ordered quantity, so a multi-hue
+# scale would imply categories that do not exist and reads as decoration.
 MATRIX_CMAP = LinearSegmentedColormap.from_list(
-    "pixcell_rgb",
+    "pixcell_score",
     (
-        (0.00, "#f5dadd"),
-        (0.22, "#d78a99"),
-        (0.50, "#8ea9cc"),
-        (0.68, DIFF_BLUE),
-        (0.84, "#5e9a80"),
-        (1.00, "#174f3b"),
+        (0.00, "#f7f4f2"),
+        (0.30, "#dee6e1"),
+        (0.55, "#b6cbc0"),
+        (0.75, "#87ab98"),
+        (0.88, "#548a6f"),
+        (1.00, "#1d5240"),
     ),
 )
 
@@ -73,22 +80,39 @@ plt.rcParams.update(
 )
 
 
-# Base model names appear once in the hierarchical row labels. Effort labels
-# distinguish repeated configurations without repeating the full model name.
+# Base model names appear once in the hierarchical row labels; effort labels
+# distinguish repeated configurations without repeating the model name. Families
+# are ordered by their best configuration, and configurations within a family by
+# score, so the vertical axis reads as a capability ranking. The fifth field
+# marks the generation: "original" for the first sweep, "extension" for the
+# later one run under the same protocol.
 BENCHMARK_CONFIGS = [
-    ("GPT-5.5", "xhigh", "codex55x", "openai"),
-    ("GPT-5.5", "high", "codex55h", "openai"),
-    ("GPT-5.5", "med", "codex55m", "openai"),
-    ("Opus 4.8", "med", "opus48m", "anthropic"),
-    ("Opus 4.8", "max", "opus48max", "anthropic"),
-    ("GPT-5.4", "", "codex54m", "openai"),
-    ("Sonnet 5", "", "sonnet5m", "anthropic"),
-    ("GPT-5.3 spark", "", "codexspark", "openai"),
-    ("GPT-5.4-mini", "", "codex54mini", "openai"),
-    ("Opus 4.5", "", "opus45m", "anthropic"),
-    ("Haiku 4.5", "high", "haiku45h", "anthropic"),
-    ("Haiku 4.5", "med", "haiku45m", "anthropic"),
-    ("Sonnet 4.5", "", "sonnet45m", "anthropic"),
+    ("Fable 5", "max", "fable5max", "anthropic", "extension"),
+    ("Fable 5", "med", "fable5m", "anthropic", "extension"),
+    ("Opus 5", "max", "opus5max", "anthropic", "extension"),
+    ("Opus 5", "med", "opus5m", "anthropic", "extension"),
+    ("GPT-5.6 sol", "ultra", "codex56solu", "openai", "extension"),
+    ("GPT-5.6 sol", "xhigh", "codex56solx", "openai", "extension"),
+    ("GPT-5.6 sol", "med", "codex56solm", "openai", "extension"),
+    ("GPT-5.5", "xhigh", "codex55x", "openai", "original"),
+    ("GPT-5.5", "high", "codex55h", "openai", "original"),
+    ("GPT-5.5", "med", "codex55m", "openai", "original"),
+    ("Opus 4.8", "med", "opus48m", "anthropic", "original"),
+    ("Opus 4.8", "max", "opus48max", "anthropic", "original"),
+    ("GPT-5.6 terra", "xhigh", "codex56terrax", "openai", "extension"),
+    ("GPT-5.6 terra", "ultra", "codex56terrau", "openai", "extension"),
+    ("GPT-5.6 terra", "med", "codex56terram", "openai", "extension"),
+    ("GPT-5.6 luna", "ultra", "codex56lunau", "openai", "extension"),
+    ("GPT-5.6 luna", "xhigh", "codex56lunax", "openai", "extension"),
+    ("GPT-5.6 luna", "med", "codex56lunam", "openai", "extension"),
+    ("GPT-5.4", "", "codex54m", "openai", "original"),
+    ("Sonnet 5", "", "sonnet5m", "anthropic", "original"),
+    ("GPT-5.3 spark", "", "codexspark", "openai", "original"),
+    ("GPT-5.4-mini", "", "codex54mini", "openai", "original"),
+    ("Opus 4.5", "", "opus45m", "anthropic", "original"),
+    ("Haiku 4.5", "high", "haiku45h", "anthropic", "original"),
+    ("Haiku 4.5", "med", "haiku45m", "anthropic", "original"),
+    ("Sonnet 4.5", "", "sonnet45m", "anthropic", "original"),
 ]
 
 
@@ -125,7 +149,7 @@ def _load_benchmark() -> list[dict]:
         row["config"]: row for row in economics_source
     }
     expected_configurations = {
-        configuration for _, _, configuration, _ in BENCHMARK_CONFIGS
+        configuration for _, _, configuration, _, _ in BENCHMARK_CONFIGS
     }
     if set(economics_by_configuration) != expected_configurations:
         raise ValueError(
@@ -134,7 +158,7 @@ def _load_benchmark() -> list[dict]:
         )
 
     benchmark = []
-    for model, effort, configuration, provider in BENCHMARK_CONFIGS:
+    for model, effort, configuration, provider, generation in BENCHMARK_CONFIGS:
         cells = [cell for cell in sweep_source if cell["config"] == configuration]
         if len(cells) != expected_targets:
             raise ValueError(
@@ -176,8 +200,12 @@ def _load_benchmark() -> list[dict]:
             atol=5.1e-4,
         ):
             raise ValueError(f"Usable IoU does not reconcile for {configuration}.")
-        cost = float(economics["median_api_equiv_cost_usd"])
-        if not np.isfinite(cost) or cost <= 0:
+        raw_cost = economics.get("median_api_equiv_cost_usd")
+        # A configuration whose model has no published per-token price carries
+        # no cost. That is recorded as an absence and drawn as one, never as a
+        # zero and never as an estimate.
+        cost = float(raw_cost) if raw_cost is not None else float("nan")
+        if raw_cost is not None and (not np.isfinite(cost) or cost <= 0):
             raise ValueError(f"Invalid median cost for {configuration}: {cost}.")
 
         benchmark.append(
@@ -186,6 +214,7 @@ def _load_benchmark() -> list[dict]:
                 "effort": effort,
                 "configuration": configuration,
                 "provider": provider,
+                "generation": generation,
                 "values": values,
                 "violations": violations,
                 "raw_score": raw_score,
@@ -220,7 +249,7 @@ def _panel_heading(
 ) -> None:
     figure.text(
         x,
-        0.965,
+        0.972,
         letter,
         ha="left",
         va="center",
@@ -229,7 +258,7 @@ def _panel_heading(
     )
     figure.text(
         x + 0.035,
-        0.965,
+        0.972,
         title,
         ha="left",
         va="center",
@@ -239,7 +268,7 @@ def _panel_heading(
     figure.add_artist(
         Line2D(
             [x, rule_end],
-            [0.925, 0.925],
+            [0.949, 0.949],
             transform=figure.transFigure,
             color=RULE,
             linewidth=0.68,
@@ -248,31 +277,28 @@ def _panel_heading(
 
 
 def _provider_legend(figure: plt.Figure) -> None:
+    """Vendor colour and the generation mark, explained in one row."""
     handles = [
-        Line2D(
-            [],
-            [],
-            marker="o",
-            linestyle="none",
-            markersize=4.0,
-            markerfacecolor=color,
-            markeredgecolor=color,
-            label=label,
-        )
+        Line2D([], [], marker="o", linestyle="none", markersize=4.0,
+               markerfacecolor=color, markeredgecolor=color, label=label)
         for label, color in (
             ("OpenAI", PROVIDER_COLORS["openai"]),
             ("Anthropic", PROVIDER_COLORS["anthropic"]),
         )
+    ] + [
+        Line2D([], [], marker="o", linestyle="none", markersize=4.0,
+               markerfacecolor="white", markeredgecolor=SOFT_INK,
+               markeredgewidth=0.75, label="first sweep"),
     ]
     figure.legend(
         handles=handles,
         loc="upper right",
-        bbox_to_anchor=(0.592, 0.988),
-        ncol=2,
+        bbox_to_anchor=(0.600, 0.995),
+        ncol=3,
         frameon=False,
         fontsize=5.9,
         handletextpad=0.35,
-        columnspacing=0.8,
+        columnspacing=0.9,
         borderaxespad=0,
     )
 
@@ -305,17 +331,24 @@ def _draw_model_labels(
     axes: plt.Axes,
     benchmark: list[dict],
 ) -> list[float]:
+    """Family names and effort labels occupy separate, non-overlapping columns.
+
+    The family name is left-aligned in its own gutter and the effort label sits
+    in a narrow column immediately left of the axis, so a long family name can
+    never run into the effort of the row beside it.
+    """
     separators = []
+    transform = axes.get_yaxis_transform()
     for model, start, end in _groups(benchmark):
         center = 0.5 * (start + end)
         axes.text(
-            -0.340,
+            FAMILY_LABEL_X,
             center,
             model,
-            transform=axes.get_yaxis_transform(),
+            transform=transform,
             ha="left",
             va="center",
-            fontsize=6.3,
+            fontsize=6.4,
             color=INK,
             clip_on=False,
         )
@@ -323,13 +356,13 @@ def _draw_model_labels(
             effort = benchmark[row_index]["effort"]
             if effort:
                 axes.text(
-                    -0.034,
+                    EFFORT_LABEL_X,
                     row_index,
                     effort,
-                    transform=axes.get_yaxis_transform(),
+                    transform=transform,
                     ha="right",
                     va="center",
-                    fontsize=5.75,
+                    fontsize=5.6,
                     color=SOFT_INK,
                     clip_on=False,
                 )
@@ -345,52 +378,68 @@ def _draw_model_evaluation(
 ) -> list[float]:
     rows = np.arange(len(benchmark))
     colors = [PROVIDER_COLORS[row["provider"]] for row in benchmark]
+
+    # Generation is carried by the marker itself rather than by a separate
+    # column of symbols: filled for the later sweep, open for the first.
+    filled = [row["generation"] == "extension" for row in benchmark]
     score_axes.scatter(
         [row["usable_score"] for row in benchmark],
         rows,
-        s=25,
-        facecolor=colors,
-        edgecolor="white",
-        linewidth=0.35,
+        s=20,
+        facecolor=[c if f else "white" for c, f in zip(colors, filled)],
+        edgecolor=colors,
+        linewidth=0.75,
         zorder=3,
     )
+
+    priced = [(index, row) for index, row in enumerate(benchmark)
+              if np.isfinite(row["cost"])]
     cost_axes.scatter(
-        [row["cost"] for row in benchmark],
-        rows,
-        s=25,
-        facecolor=colors,
-        edgecolor="white",
-        linewidth=0.35,
+        [row["cost"] for _, row in priced],
+        [index for index, _ in priced],
+        s=20,
+        facecolor=[PROVIDER_COLORS[row["provider"]] if row["generation"] == "extension"
+                   else "white" for _, row in priced],
+        edgecolor=[PROVIDER_COLORS[row["provider"]] for _, row in priced],
+        linewidth=0.75,
         zorder=3,
     )
+    # A model with no published per-token price is drawn as an explicit absence,
+    # never as a zero and never as an estimate.
+    for index, row in enumerate(benchmark):
+        if np.isfinite(row["cost"]):
+            continue
+        cost_axes.text(
+            0.5,
+            index,
+            "no published rate",
+            transform=cost_axes.get_yaxis_transform(),
+            ha="center",
+            va="center",
+            fontsize=5.0,
+            style="italic",
+            color=SOFT_INK,
+            zorder=4,
+        )
 
     _style_evaluation_axis(score_axes, row_count=len(benchmark))
     _style_evaluation_axis(cost_axes, row_count=len(benchmark))
-    score_axes.set_xlim(0, 1.01)
+    score_axes.set_xlim(0, 1.04)
     score_axes.set_xticks([0, 0.5, 1.0])
     score_axes.set_xticklabels(["0", "0.5", "1.0"])
-    score_axes.set_title(
-        r"Visual score $U$",
-        fontsize=7.25,
-        color=INK,
-        pad=5,
-    )
+    score_axes.set_title(r"Visual score $U$", fontsize=7.25, color=INK, pad=6)
     cost_axes.set_xscale("log")
-    cost_axes.set_xlim(0.65, 100)
+    cost_axes.set_xlim(0.2, 130)
     cost_axes.set_xticks([1, 10, 100])
     cost_axes.set_xticklabels(["$1", "$10", "$100"])
     cost_axes.minorticks_off()
-    cost_axes.set_title(
-        "Median cost",
-        fontsize=7.25,
-        color=INK,
-        pad=5,
-    )
+    cost_axes.set_title("Median cost per target", fontsize=7.25, color=INK, pad=6)
+
 
     separators = _draw_model_labels(score_axes, benchmark)
     for separator in separators:
-        score_axes.axhline(separator, color=GROUP_RULE, linewidth=0.55, zorder=1)
-        cost_axes.axhline(separator, color=GROUP_RULE, linewidth=0.55, zorder=1)
+        score_axes.axhline(separator, color=GROUP_RULE, linewidth=0.45, zorder=1)
+        cost_axes.axhline(separator, color=GROUP_RULE, linewidth=0.45, zorder=1)
     return separators
 
 
@@ -454,17 +503,17 @@ def _draw_benchmark_matrix(
 def main() -> None:
     benchmark = _load_benchmark()
 
-    figure = plt.figure(figsize=(7.40, 3.30), facecolor="white")
+    figure = plt.figure(figsize=(7.40, 6.30), facecolor="white")
     # Model names begin on the same left anchor as panel A. The two
     # quantitative axes then use the remaining panel width instead of being
     # compressed behind a large invisible label gutter.
-    score_axes = figure.add_axes((0.120, 0.145, 0.295, 0.715))
-    cost_axes = figure.add_axes((0.438, 0.145, 0.142, 0.715))
+    score_axes = figure.add_axes((0.205, 0.075, 0.235, 0.845))
+    cost_axes = figure.add_axes((0.478, 0.075, 0.112, 0.845))
     # Panel B starts at the same horizontal anchor as its heading. Give the
     # benchmark cells the full panel width and reserve only a narrow outer
     # strip for the IoU scale.
-    matrix_axes = figure.add_axes((0.615, 0.145, 0.330, 0.715))
-    colorbar_axes = figure.add_axes((0.958, 0.145, 0.010, 0.715))
+    matrix_axes = figure.add_axes((0.632, 0.075, 0.315, 0.845))
+    colorbar_axes = figure.add_axes((0.958, 0.075, 0.009, 0.845))
 
     separators = _draw_model_evaluation(
         score_axes,

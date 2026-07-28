@@ -1,16 +1,16 @@
 {
-  "description": "Frozen inputs for Figure 9. The cell-level sweep supplies target IoU and source-compliance state for every current configuration; the economics record supplies the corresponding median API-equivalent cost. The iterative API record is retained here as provenance for the historical comparison in the surrounding prose but is no longer rendered in Figure 9.",
-  "iterative_api_record": {
-    "asset": "iterative_api_record.json",
-    "sha256": "5af69ca2672999fbb8fc14ec432bb90908840302397a92a3f35dade01f65a409"
-  },
-  "coding_agent_sweep": {
-    "asset": "coding_agent_sweep.json",
-    "sha256": "2f33300d1ce677dfb9b40b52f9ba2fc437499b804af9903d370f1820f757b2bb",
-    "expected_targets_per_configuration": 8
-  },
-  "configuration_economics": {
-    "asset": "../agent_table.json",
-    "sha256": "5c82ec34319ff8887706c80e8f5b586bfe38ad80b8738f72f349cd21469a05a1"
-  }
+ "description": "Frozen inputs for the model-evaluation and benchmark-matrix figure. The cell-level sweep supplies target IoU and source-compliance state for every configuration in the matrix \u2014 the original generation and the later extension run under the same protocol. The economics record supplies the corresponding median API-list-price-equivalent cost, computed by data/agents/paper_swap/build_compilation.py against the sourced rate card. The iterative API record is retained as provenance for the historical comparison in the surrounding prose and is not rendered here.",
+ "iterative_api_record": {
+  "asset": "iterative_api_record.json",
+  "sha256": "5af69ca2672999fbb8fc14ec432bb90908840302397a92a3f35dade01f65a409"
+ },
+ "coding_agent_sweep": {
+  "asset": "coding_agent_sweep.json",
+  "sha256": "334a4334d96c49e5001205095f713b13b35264ace0e7c00e8b96ad8c188a625e",
+  "expected_targets_per_configuration": 8
+ },
+ "configuration_economics": {
+  "asset": "../agent_table.json",
+  "sha256": "ba93012fd59545cfbe35adb1bb7b96642b2c9419162760161dc46a2c74c7fb69"
+ }
 }
