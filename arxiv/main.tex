@@ -97,7 +97,9 @@ endpoints. Boolean operations combine constructed regions through an
 explicit set operation, with red and blue denoting operand-exclusive
 regions and purple their intersection. The operator names match the
 GDSFactory 9.20.7 interface used by the source gate, and every
-function-relevant dimension must remain a named variable.}
+function-relevant dimension must remain a named variable. The allowed
+\texttt{ring} is a geometric annulus, not a pre-built resonator. Pre-built
+device cells and raw polygon or pixel traces are outside the language.}
 \label{fig:primitives}
 \end{figure*}
 
@@ -212,17 +214,15 @@ representation language.
 PixCell receives a frozen binary target mask, its physical footprint, and a
 catalog of permitted geometric operations. It must produce an executable
 program whose rasterized geometry matches the target at fixed physical
-calibration and whose declared design parameters remain active. The
-experimental setup therefore specifies three elements: the program
-representation, the deterministic geometric verifier, and the model
-harness used to construct and revise candidate programs.
+calibration. Function-relevant dimensions must remain named and editable.
+The experimental setup specifies the program representation, benchmark
+inputs, deterministic verifier, and two model harnesses used to construct
+and revise candidates.
 
 \begin{table*}[!t]
 \centering
-\caption{\textbf{The PixCell geometric language under GDSFactory 9.20.7.}
-Left: permitted region and port-bearing constructors. Right: cross-section,
-path, extrusion, Boolean, composition, and routing operators. Entries show
-the permitted callable surface and principal live arguments.
+\caption{\textbf{The PixCell geometric language.}
+Permitted constructors and operators under GDSFactory 9.20.7.
 Function-relevant dimensions must remain named and editable.}
 \label{tab:primitives}
 \input{table_primitives.tex}
@@ -230,57 +230,34 @@ Function-relevant dimensions must remain named and editable.}
 
 \subsection{Geometric primitive representation}\label{sec:representation}
 
-The output of the task is a Python program, not a fitted image or an
-unstructured polygon file. Each program constructs a GDSFactory component
-from the restricted vocabulary in Fig.~\ref{fig:primitives} and
-Table~\ref{tab:primitives}~\cite{gdsfactory}. The language contains
-geometric-region and port-bearing constructors together with cross-section,
-path, Boolean, and component-composition operators. Basic shapes provide
-simple geometric regions. Waveguide elements provide port-bearing straights,
-bends, tapers, and parallel guides. The path system separates a centerline
-from its cross-section so that path geometry and guide width remain
-independently editable. Boolean operations combine or subtract regions when
-direct composition is insufficient; component and reference methods position
-and connect the resulting geometry.
+Each output is a Python program that constructs a GDSFactory component from
+the vocabulary in Fig.~\ref{fig:primitives} and
+Table~\ref{tab:primitives}~\cite{gdsfactory}. The language contains geometric
+regions, port-bearing waveguide elements, parameterized paths and
+cross-sections, Boolean operations, and reference-based composition. Its path
+system keeps the centerline and cross-section independently editable, while
+ports define how instantiated elements connect. Dimensions such as widths,
+gaps, radii, taper lengths, and coupling lengths appear as named top-level
+variables. The result is a small geometric domain-specific
+language~\cite{chaudhuri} whose programs can be executed by standard layout
+tools and audited directly from source.
 
-Candidate programs may position references, connect compatible ports, and
-extrude parameterized paths. They must expose the dimensions that define
-the device's geometry, such as gaps, radii, widths, taper lengths, and
-coupling lengths, as named top-level variables. The restricted Python
-interface therefore functions as a small geometric domain-specific
-language~\cite{chaudhuri}: programs remain executable with standard layout
-tools, while their permitted operations and declared parameters can be
-audited from source. Figure~\ref{fig:composition} illustrates this mapping
-directly: named dimensions instantiate catalog components, compatible ports
-define the composition graph, and re-execution with a new parameter vector
-changes the geometry without changing that graph.
-
-The representation contract excludes two shortcuts. First, candidates may
-not reproduce the mask through raw polygon or vertex emission. Such a trace
-can obtain high pixel overlap without identifying reusable geometric
-parameters. Second, candidates may not call pre-built device cells outside
-the primitive vocabulary. A library cell is useful when its existing
-parameter space covers a design, but retrieving one does not test whether a
-model can author a new component representation. A program satisfies the
-\emph{source contract} when it uses only the permitted operations and keeps
-its function-relevant dimensions named and editable. Source compliance is
-evaluated separately from geometric agreement
-(Sec.~\ref{sec:parametricity}).
-
-The task also differs from visual recognition. Device names and source
-captions are withheld, and success cannot be obtained by assigning a class
-label. The required output must reconstruct the observed geometry as a
-composition of permitted operations. This protocol measures component
-authoring rather than classification or device-level retrieval.
+The source contract rejects raw polygon or vertex emission and pre-built
+device cells outside the permitted vocabulary. A pixel trace may overlap the
+target without recovering constructive parameters, while a pre-built cell
+substitutes retrieval for component authoring. Candidates may instead
+instantiate primitives, extrude paths, apply Boolean operations, position
+references, and connect compatible ports. Figure~\ref{fig:composition}
+illustrates the resulting program structure: named dimensions instantiate
+the component graph, and changing those dimensions changes the executed
+geometry.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_targets.pdf}
-\caption{\textbf{Benchmark targets.} Each of the eight devices, F1--F8,
-is presented to the model as a device-only binary silhouette and a physical
-footprint. The varied set spans smooth, multiport, compact, resonant, and
-fine-feature geometry; panels are not shown at a common physical scale.
-Archived source attributions are: F1, 3-dB adiabatic
+\caption{\textbf{Benchmark targets.} Each device, F1--F8, is presented as a
+binary silhouette and physical footprint; panels are not shown at a common
+scale. Source attributions are: F1, 3-dB adiabatic
 splitter~\cite{splitter2020}; F2, $1\times4$ MMI
 splitter~\cite{malka2016}; F3, adiabatic $2\times2$
 coupler~\cite{mao2019}; F4, thin-film lithium niobate directional
@@ -288,57 +265,54 @@ coupler~\cite{huang2023}; F5, standing-wave nanobeam resonator
 pair~\cite{nanobeam}; F6, ultra-compact waveguide
 crossing~\cite{crossing2020}; F7, ring-based WDM filter
 section~\cite{wdmfilter}; F8 is retained as a provenance-incomplete target
-because its bibliographic source could not be recovered; its extraction
-record is included in the release metadata.}
+with its extraction record included in the release metadata.}
 \label{fig:targets}
 \end{figure*}
 
-\paragraph{The target set.} The benchmark is eight passive photonic
-devices, F1--F8 (Fig.~\ref{fig:targets}). It includes adiabatic and
-directional couplers, a multimode-interference splitter, a four-port
-crossing, a ring-based filter section, and grating-like fine structure.
-Physical footprints range from a $4.7\,\mu$m square to a
-$120\,\mu$m-long bus. The targets come from published component figures;
-the caption records the available source attributions. F1 is also used in
-the full-wave case study of Sec.~\ref{sec:third}. In every reconstruction
-trial, the worker receives only the frozen silhouette and footprint. Device
-identity, source text, and captions are withheld.
+\subsection{Targets and calibration}
 
-\begin{figure}[H]
+The benchmark contains eight passive photonic components, F1--F8
+(Fig.~\ref{fig:targets}), spanning smooth adiabatic paths, compact multiport
+regions, resonant loops, crossings, and repeated fine features. Physical
+footprints range from a $4.7\,\mu$m square to a $120\,\mu$m-long bus. Each
+worker receives only the frozen silhouette and footprint. Device identity,
+source text, captions, and the other benchmark cells remain hidden.
+
+Published panels may include annotations, field overlays, or surrounding
+page content. Each selected panel is isolated and converted once into a
+device-only binary mask, with dark pixels denoting material on the
+waveguiding layer. Gemini~3 Pro Image produces this canonical
+rendering~\cite{gemini3image}, and a separate vision pass extracts the
+physical footprint from the source text or scale annotations~\cite{gemini3}.
+The masks, footprints, and calibration records are then frozen and reused
+across every configuration (Fig.~\ref{fig:extraction}). The reported
+campaigns use GDSFactory 9.20.7 and Python 3.13; dependency locks, worker
+briefs, inputs, and grading code are included in the release.
+
+\begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{fig_extraction.pdf}
 \caption{\textbf{Preparation of target devices.} Source figure
-panels (left) are standardized once into frozen masks and physical footprints
-(right). F5 tests isolating panel (c) from a compound figure; F2 tests
-removing schematic annotations while preserving topology. Inputs are reused
-across model configurations.}
+panels are standardized once into frozen masks and physical footprints.
+F5 shows panel isolation from a compound figure; F2 shows annotation removal
+while preserving topology. The resulting inputs are fixed before model
+evaluation.}
 \label{fig:extraction}
 \end{figure}
-
-\paragraph{Target preparation.} Published panels contain annotations,
-labels, field overlays, and surrounding page content. Each selected panel
-is therefore converted once into a device-only binary mask, with dark pixels
-representing material on the waveguiding layer. Gemini~3 Pro Image is
-instructed to redraw the panel in this canonical form~\cite{gemini3image},
-and a separate vision pass reads the physical footprint from the source
-text or scale annotations~\cite{gemini3}. This preparation stage is
-generative; it is not part of the deterministic verifier. The resulting
-masks, footprints, and calibrations are frozen before model evaluation, so
-every configuration is scored against identical references. Figure
-\ref{fig:extraction} shows two examples.
-
-\paragraph{Software environment.} The reported evaluations use GDSFactory
-9.20.7 and Python 3.13. The repository archives the dependency lockfiles,
-worker briefs, calibration records, and grading code used in the campaigns.
 
 \subsection{Verification}\label{sec:verifier}
 
 The geometric verifier executes each candidate program, renders its output
-at a target-derived physical calibration, and compares the resulting mask
-with the frozen reference. A candidate is represented as $(p,\theta)$,
-where $p$ denotes the program structure and
-$\theta\in\mathbb{R}^{k(p)}$ denotes its named dimensions. Given the stored
-pixel-to-micron calibration $\kappa$, the rendered candidate is
+at target-derived physical calibration, and compares the result with the
+frozen reference. For each target, the foreground bounding box and stated
+footprint define separate horizontal and vertical pixel-per-micron scales
+$\kappa$. Rendering preserves those scales, aligns the candidate's left edge
+with the target, and centers it vertically using its own bounds. Candidate
+geometry is never rescaled to fit the target.
+
+A candidate is represented as $(p,\theta)$, where $p$ is the program
+structure and $\theta\in\mathbb{R}^{k(p)}$ contains its named dimensions.
+The rendered candidate is
 \begin{equation}\label{eq:render}
 \hat y(p,\theta)\;=\;R_{\kappa}\!\bigl(\Exec(p,\theta)\bigr)
 \;\in\;\{0,1\}^{H\times W},
@@ -350,45 +324,20 @@ and its geometric agreement with target $y$ is
 where intersection and union are evaluated over foreground pixels. IoU is
 the geometric acceptance metric used throughout the reconstruction
 experiments. The verifier also reports Dice overlap and binary sum of
-squared errors (SSE), which equals the number of mismatched pixels and is
-used by the optional numerical-polish stage. A signed difference image
-marks spurious and missing material and is returned as feedback during
-iterative runs.
+squared errors (SSE). A signed difference image localizes spurious and
+missing material for revision.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_verification.pdf}
 \caption{\textbf{Geometric verification for one benchmark cell.} The
-example is F4 ($18\times3\,\mu$m), reconstructed by a GPT-5.5 worker.
-(a)~The target bounding box and stated footprint define a fixed
-calibration for each axis: $1584\,\mathrm{px}/18\,\mu\mathrm{m}=88$ and
-$447\,\mathrm{px}/3\,\mu\mathrm{m}=149\,\mathrm{px}/\mu$m. The first
-candidate is rendered at this calibration without fit-to-target rescaling.
-(b)~Pixelwise comparison separates overlap (black), spurious material
-(candidate only, red), and missing material (target only, blue). The initial
-score is $\iou=0.708$; one feedback-guided revision reduces the signed
-residual and increases the score to $\iou=0.921$. The values are reproduced
-by rescoring the archived artifacts with the grading code.}
+F4 target has footprint $18\times3\,\mu$m and fixed axis calibrations of
+$88$ and $149\,\mathrm{px}/\mu$m. The candidate is rendered without
+fit-to-target rescaling. Black marks overlap, red candidate-only material,
+and blue target-only material. One feedback-guided revision raises IoU from
+$0.708$ to $0.921$.}
 \label{fig:verification}
 \end{figure*}
-
-\Needspace{15\baselineskip}
-Calibration is fixed once for each target. The bounding box of foreground
-pixels is divided by the stated physical footprint separately along each
-axis, producing the stored pixels-per-micron scale $\kappa$. This rule
-retains any anisotropy in the standardized figure; the most anisotropic
-target differs by a factor of 26 between axes. During rendering, the
-candidate's left edge is aligned with the target bounding box and the
-candidate is vertically centered using its own bounds. Its geometry is not
-rescaled to fit the target. The score is therefore insensitive to global
-translation in the source GDS but remains sensitive to physical width,
-height, and shape.
-
-The verifier returns the candidate raster, an overlay, the signed
-difference image, IoU, Dice, and SSE (Fig.~\ref{fig:verification}).
-These artifacts provide spatial feedback for revision. In the example of
-Fig.~\ref{fig:verification}, one revision increases IoU from $0.708$ to
-$0.921$.
 
 For a configuration with $n$ cells, source-compliant geometric performance
 is reported as usable IoU,
@@ -400,94 +349,55 @@ where $s_i=1$ when the program passes the source contract and zero otherwise.
 Thus every source violation contributes zero without hiding its raw geometric
 score.
 
+\subsection{Acceptance gates and evaluation harnesses}
+\label{sec:parametricity}
+
 Record-grade scores are recomputed from the archived program, GDS, target,
-and calibration rather than taken from worker reports. The campaign also
-audits source for prohibited device-level calls and raw polygon emission.
-When a program is promoted as a reusable design record, a declared top-level
-knob is perturbed and the program is rebuilt to confirm that the geometry
-moves. These checks certify geometric agreement and the tested
-representation properties only. They do not establish optical function,
-fabrication validity, or untested forms of parametricity.
+and calibration. Source analysis rejects prohibited device-level calls and
+raw polygon emission; this verdict determines $s_i$ in
+Eq.~\eqref{eq:usable}. Parametric liveness is measured separately by
+perturbing a top-level variable, rebuilding the program, and confirming that
+the executed geometry changes. The original 104-cell campaign required a
+worker-nominated function knob check. The 104-cell extension was
+independently audited after generation: 90 programs pass on their first
+declared knob, 12 pass on another top-level variable, and two remain
+unresolved. Liveness certifies the tested coordinate and does not alter
+$U$.
 
-\subsection{Verification asymmetry and evaluation harnesses}
-\label{sec:verification}
-
-Program generation is substantially more expensive than geometric
-verification. If independent attempts satisfy the verifier with probability
-$p_{\mathrm{s}}$, then $N$ attempts contain at least one success with
-probability $1-(1-p_{\mathrm{s}})^N$, and the expected generation cost of
-the first success is approximately $c_g/p_{\mathrm{s}}$ for per-attempt
-cost $c_g$ (the subscript distinguishes this success probability from the
-program structure $p$ of Sec.~\ref{sec:representation}). Repeated sampling
-and closed-loop revision are therefore practical when verification is cheap,
-as in test-time scaling and reinforcement learning from verifiable
-feedback~\cite{wei,monkeys,snell,s1,grpo,deepseekr1}.
-
-The program representation also separates discrete structure from
-continuous dimensions. A model selects a composition $p$ and initial
-parameters $\theta$; once the composition is fixed, declared dimensions can
-be refined numerically. The experiments compare two ways of allocating this
-search. In the iterative API harness, an external pipeline controls
-sampling, execution, selection, and feedback. In the coding-agent harness,
-the model controls its own execute-measure-revise loop. The task, targets,
-primitive contract, and geometric verifier remain fixed within each
-reported comparison.
+The experiments use two harnesses. In the iterative API harness, an external
+pipeline controls sampling, execution, selection, and feedback. In the
+coding-agent harness, the model controls its own execute-measure-revise loop.
+Both use the same frozen targets, representation contract, and geometric
+verifier, while their prompts, tool access, and aggregation differ.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_phases.pdf}
 \par\vspace{0.4em}
 \includegraphics[width=\linewidth]{fig_system.pdf}
-\caption{\textbf{The iterative setup and PixCell pipeline.}
-(a)~The benchmark reference is prepared
-once per device by standardization and calibration. A round of
-sampling then runs $N$ parallel seeds for two propose$\to$execute$\to$
-verify$\to$diff turns each and ranks them by the verifier; surviving
-candidates continue for up to three further diff-guided turns with early
-stopping. An external pipeline controls execution, selection, and the
-feedback shown to the model.
-(b)~A component silhouette and physical
-footprint enter a multimodal agent that constructs a parametric program over
-geometric primitives. The program is executed and compared with the target
-by the geometric verifier. Its named parameters then provide the interface
-to stack-specific evaluation through a local mode solver, small-domain
-FDTD, and broadband FDTD.}
+\caption{\textbf{Evaluation harnesses and PixCell pipeline.}
+(a)~The iterative API harness samples programs in parallel, ranks them with
+the verifier, and continues selected candidates with spatial feedback.
+(b)~A coding agent constructs and revises a parametric program using the
+same geometric verifier. Accepted parameters later connect the program to
+tiered physical evaluation.}
 \label{fig:phases}
 \end{figure*}
 
-\subsubsection{The iterative setup}\label{sec:iterative}
+\paragraph{Iterative API harness.}\label{sec:iterative}
 
 In the iterative API harness, the model acts as a stochastic program
-generator and an external pipeline controls the loop
-(Fig.~\ref{fig:phases}(a)). The initial prompt contains the target silhouette,
-physical footprint, primitive catalog, and output contract. It contains no
-device name, worked example, or callable tool. Verbatim prompts are provided
-in the repository.
+generator while the pipeline controls the loop
+(Fig.~\ref{fig:phases}(a)). Its prompt contains the target silhouette,
+footprint, primitive catalog, and output contract, without a device name or
+worked example. Each device receives 5 to 25 parallel seeds and two initial
+proposal-execution-verification turns. The verifier ranks candidates, after
+which selected seeds may receive up to three further difference-guided turns.
+Some presets conclude with numerical SSE minimization over declared
+variables. Results from this harness therefore measure verifier-guided
+selection and revision.
 
-For each device, 5 to 25 seeds run in parallel. Every seed receives two
-proposal-execution-verification turns. The pipeline ranks candidates by the
-verifier and may continue the highest-scoring seeds for up to three
-additional difference-guided turns, with early stopping after repeated
-degradation. Some presets apply a final numerical optimization of SSE over
-declared tunables. Scores from this harness are therefore
-selection-assisted rather than single-attempt measurements.
-
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=\linewidth]{fig_june_seeds.pdf}
-\caption{\textbf{Sampling and revision in the iterative API harness.}
-(a)~Eleven seeds use the same Gemini-3-Pro configuration, prompt, and F4
-target; six of the ten archive-ranked seeds are shown, spanning
-$\iou=0.44$--$0.87$. Maroon denotes
-overlap, pink candidate-only material, and black target-only material.
-(b)~One F6 seed over five propose$\to$verify$\to$difference turns follows
-the non-monotone sequence
-$0.72\to0.63\to0.57\to0.80\to0.975$. The panels are artifact-level
-examples rather than aggregate estimates.}
-\label{fig:juneseeds}
-\end{figure*}
-
-\subsubsection{The multi-agent setup}\label{sec:agentsetup}
+\paragraph{Coding-agent harness.}\label{sec:agentsetup}
 
 In the coding-agent harness, each benchmark cell is assigned to one coding
 CLI session~\cite{claudecode,codexcli}. The matrix contains 13 model and
@@ -498,69 +408,17 @@ Each worker can use the repository's Python environment and geometric
 verifier, write and execute its own program, inspect its own raster and
 difference images, and decide how to revise the candidate. Runs are limited
 to six rounds, and one final program is retained without multi-seed
-selection. No MCP or application-server tools are used in these experiments;
-workers invoke the underlying Python modules directly.
+selection.
 
 Each target-specific task directory begins with the silhouette and
 footprint. The worker brief prohibits access to other cells, prior campaign
 outputs, and benchmark metadata. Briefs are identical across cells except
 for file paths and are scanned before dispatch for device names and physical
-hints. A conductor launches sessions, confirms the requested model and
-reasoning setting by status-line readback, monitors machine-readable
-completion markers, recovers interrupted runs, and archives programs,
-transcripts, intermediate renders, and final measurements. Twenty-four of
-the original 104 cells ran on a second machine under the same protocol. A
-post-hoc audit of 167 staged transcripts found no access to another cell's
-target or answer. In one cell, a repository-wide API-usage search returned
-stray code lines from sibling cells without exposing its target; three other
-workers saw sibling command lines in process listings. Only
-conductor-recomputed artifact measurements enter the record.
-
-\subsubsection{Measuring parametricity}\label{sec:parametricity}
-
-The acceptance record separates geometric score, source purity, and tested
-knob response. First, the submitted GDS is rasterized with the frozen target
-and calibration to recompute IoU. When a worker supplies a claimed score,
-the claim must agree with the recomputation within $0.005$. Second, source
-analysis checks for prohibited device-level component calls and raw polygon
-emission. This verdict determines $s_i$ in Eq.~\eqref{eq:usable}.
-
-Programs promoted as reusable design records receive an additional liveness
-test. The gate perturbs one declared top-level parameter by
-$\delta=5\,\mu$m, rebuilds the program, and requires the geometry to change.
-When the parameter has a declared width-dependent area response, the
-observed layer-area change must agree with
-$\mathrm{width}\times\delta$ within $25\%$. A build failure is a failed
-test. The original 104-cell campaign required a worker-nominated function
-knob check. The 104-cell extension was independently audited after
-generation: 90 programs pass on their first declared knob, 12 pass on
-another top-level variable, and two remain unresolved. This procedure
-verifies the selected parameter; it does not establish that every constant
-in the program is meaningful or independently live. Liveness does not alter
-$U$.
-
-\paragraph{Physical evaluation interface.} Geometric acceptance precedes
-physical evaluation. Tier~0 uses a local mode solver to compute effective
-and group indices and coupled-mode quantities. Tier~1 uses capped,
-small-domain FDTD for transmission measurements. Tier~2 uses gated,
-human-authorized broadband FDTD for full-device audits~\cite{tidy3d}. The
-evaluators return measurements but do not search over geometry. A metric
-that has not been evaluated at its required tier is recorded as
-\texttt{unmeasured} and cannot satisfy a physical specification. Section
-\ref{sec:pdk} applies this interface to cross-stack retargeting.
-
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=\linewidth]{fig5_before_after.pdf}
-\caption{\textbf{Selected reconstructions from the two harnesses.}
-(a)~Selected lower- and higher-scoring outputs from the iterative API
-record illustrate its range and are not distributional summaries.
-(b)~One current-gate run by a multimodal agent is shown for each target, with
-independently recomputed IoU. Each cell overlays an archived raster with
-its target: maroon is overlap, pink is candidate-only material, and black
-is target-only material.}
-\label{fig:beforeafter}
-\end{figure*}
+hints. The conductor confirms each requested model and reasoning setting by
+status-line readback, monitors machine-readable completion markers, and
+archives programs, transcripts, intermediate renders, and final
+measurements. Only conductor-recomputed artifact measurements enter the
+record.
 
 \section{Results}\label{sec:results}
 
@@ -588,6 +446,18 @@ $0.72\to0.63\to0.57\to0.80\to0.975$. Verification therefore supplies both
 the ranking needed to allocate inference and the spatial residual needed to
 revise a candidate.
 
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_june_seeds.pdf}
+\caption{\textbf{Sampling and revision in the iterative API harness.}
+(a)~Six archived Gemini-3-Pro seeds generated from the same prompt and F4
+target span $\iou=0.44$--$0.87$. Maroon denotes overlap, pink
+candidate-only material, and black target-only material.
+(b)~One F6 seed over five verification-guided turns follows
+$0.72\to0.63\to0.57\to0.80\to0.975$.}
+\label{fig:juneseeds}
+\end{figure*}
+
 \subsection{Blind coding-agent benchmark}\label{sec:agents}
 
 The balanced benchmark evaluates 26 model and reasoning configurations on
@@ -610,6 +480,17 @@ is omitted from the cost axis. Blue denotes OpenAI and red Anthropic.
 Each $\times$ marks a source violation whose visible geometric score
 contributes zero to $U$.}
 \label{fig:emergence}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{fig5_before_after.pdf}
+\caption{\textbf{Selected reconstructions.}
+(a)~Lower- and higher-scoring outputs from the iterative API record.
+(b)~One gate-passing coding-agent run for each displayed target, with
+independently recomputed IoU. Maroon denotes overlap, pink candidate-only
+material, and black target-only material.}
+\label{fig:beforeafter}
 \end{figure*}
 
 \subsection{Configuration and target effects}\label{sec:capability}
