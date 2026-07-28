@@ -149,3 +149,106 @@ def test_paid_sample_is_recorded_before_evaluator_failure(monkeypatch) -> None:
     assert sample_records[0]["sampling"]["raw_token_ids"] == [1, 2]
     assert sample_records[0]["program"] == "print('sample')"
     assert evaluated_records == []
+
+
+def _ok(iou: float, dice: float, chamfer: float | None) -> EvaluationResult:
+    return EvaluationResult(
+        EvaluationStatus.OK,
+        Attribution.MODEL,
+        iou=iou,
+        dice=dice,
+        metrics={"chamfer_boundary_um": chamfer},
+    )
+
+
+def _baseline(
+    iou_rect: float = 0.5,
+    dice_rect: float = 0.6,
+    chamfer_rect: float | None = 4.0,
+    diag_um: float = 20.0,
+):
+    from rl.common.baselines import TaskBaseline
+
+    return TaskBaseline(
+        iou_rect=iou_rect,
+        dice_rect=dice_rect,
+        chamfer_rect_boundary_um=chamfer_rect,
+        diag_um=diag_um,
+    )
+
+
+def test_shaped_normalizes_iou_against_rectangle():
+    # dice at its rect value and chamfer at the rect chamfer: only iou_n pays.
+    baseline = _baseline(iou_rect=0.5, dice_rect=0.6, chamfer_rect=4.0)
+    result = _ok(iou=0.75, dice=0.6, chamfer=4.0)
+    reward = reward_for_policy(result, policy="shaped_v3b", baseline=baseline)
+    assert reward == pytest.approx(0.05 + 0.40 * ((0.75 - 0.5) / 0.5))
+
+
+def test_shaped_rect_equivalent_program_earns_exactly_the_floor():
+    baseline = _baseline(iou_rect=0.5, dice_rect=0.6, chamfer_rect=4.0)
+    result = _ok(iou=0.5, dice=0.6, chamfer=4.0)
+    assert reward_for_policy(
+        result, policy="shaped_v3b", baseline=baseline
+    ) == pytest.approx(0.05)
+
+
+def test_shaped_degenerate_target_scores_raw():
+    import math as _math
+
+    baseline = _baseline(iou_rect=0.96, dice_rect=0.97, chamfer_rect=0.1, diag_um=20.0)
+    result = _ok(iou=0.9, dice=0.92, chamfer=0.5)
+    tau = 0.05 * 20.0
+    expected = 0.05 + 0.40 * 0.9 + 0.15 * 0.92 + 0.40 * _math.exp(-0.5 / tau)
+    assert reward_for_policy(
+        result, policy="shaped_v3b", baseline=baseline
+    ) == pytest.approx(expected)
+
+
+def test_shaped_teacher_denominator_floor():
+    import math as _math
+
+    # tau = 1.0 (diag 20); t2b = 0.9, t2b_rect = 0.8 -> 0.1 / max(0.2, 0.3)
+    baseline = _baseline(
+        iou_rect=0.5,
+        dice_rect=0.6,
+        chamfer_rect=-_math.log(0.8),
+        diag_um=20.0,
+    )
+    result = _ok(iou=0.5, dice=0.6, chamfer=-_math.log(0.9))
+    assert reward_for_policy(
+        result, policy="shaped_v3b", baseline=baseline
+    ) == pytest.approx(0.05 + 0.40 * (0.1 / 0.3))
+
+
+def test_shaped_model_failures_are_zero_and_faults_are_masked():
+    baseline = _baseline()
+    crash = EvaluationResult(EvaluationStatus.RUNTIME_ERROR, Attribution.MODEL)
+    rejected = EvaluationResult(EvaluationStatus.SOURCE_REJECTED, Attribution.MODEL)
+    fault = EvaluationResult(
+        EvaluationStatus.MEASUREMENT_ERROR, Attribution.EVALUATOR, retryable=True
+    )
+    assert reward_for_policy(crash, policy="shaped_v3b", baseline=baseline) == 0.0
+    assert reward_for_policy(rejected, policy="shaped_v3b", baseline=baseline) == 0.0
+    assert reward_for_policy(fault, policy="shaped_v3b", baseline=baseline) is None
+
+
+def test_shaped_missing_chamfer_scores_teacher_zero():
+    baseline = _baseline(iou_rect=0.5, dice_rect=0.6, chamfer_rect=4.0)
+    result = _ok(iou=0.5, dice=0.6, chamfer=None)
+    assert reward_for_policy(
+        result, policy="shaped_v3b", baseline=baseline
+    ) == pytest.approx(0.05)
+
+
+def test_shaped_requires_a_baseline():
+    with pytest.raises(ValueError):
+        reward_for_policy(_ok(0.5, 0.5, 1.0), policy="shaped_v3b")
+
+
+def test_shaped_perfect_program_reaches_one():
+    baseline = _baseline(iou_rect=0.3, dice_rect=0.4, chamfer_rect=50.0, diag_um=20.0)
+    result = _ok(iou=1.0, dice=1.0, chamfer=0.0)
+    assert reward_for_policy(
+        result, policy="shaped_v3b", baseline=baseline
+    ) == pytest.approx(1.0)
