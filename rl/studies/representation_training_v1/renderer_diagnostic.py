@@ -41,9 +41,9 @@ from rl.track_a.tinker_data import _message, _renderer
 
 from . import evaluation as checkpoint_v1
 from . import source_transition as source_transition_v2
+from .dataset_binding import _dataset_binding
 from .preflight import (
     _cookbook_source_binding,
-    _dataset_binding,
     _positive_target_text,
 )
 from .protocol import (

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import subprocess
+import sys
 from dataclasses import replace
 from pathlib import Path, PurePosixPath
 
@@ -36,6 +37,31 @@ CHECKPOINT = {
     "role": "terminal",
     "training_progress_fraction": 1.0,
 }
+
+
+def test_record_approval_import_does_not_require_tinker() -> None:
+    script = """
+import importlib.abc
+import sys
+
+class BlockOptionalTrainingModules(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split(".", 1)[0] in {"chz", "tinker", "tinker_cookbook"}:
+            raise ModuleNotFoundError(f"blocked optional module: {fullname}")
+        return None
+
+sys.meta_path.insert(0, BlockOptionalTrainingModules())
+import rl.studies.representation_training_v1.record_approval
+"""
+    subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
 CHECKPOINT_INVENTORY_SHA256 = canonical_sha256([CHECKPOINT])
 
 
@@ -325,15 +351,16 @@ def _synthetic_depth_report(
             panel=promotion.PANEL_DEPTH_VALIDATION,
         ),
     }
-    dataset_manifest = {
+    dataset_manifest = promotion._dataset_binding(REPO_ROOT / "dataset", protocol)
+    dataset_report = {
         "repo_id": protocol["dataset"]["repo_id"],
         "revision": protocol["dataset"]["revision"],
         "configuration": protocol["dataset"]["configuration"],
-        "logical_release_sha256": protocol["dataset"]["logical_release_sha256"],
-        "freeze_file_sha256": "5" * 64,
-        "parquet_shards": [{"path": "depth.parquet", "sha256": "6" * 64}],
+        "split": "depth/validation",
+        "logical_release_sha256": dataset_manifest["logical_release_sha256"],
+        "freeze_file_sha256": dataset_manifest["freeze_file_sha256"],
+        "parquet_shards": dataset_manifest["parquet_shards"],
     }
-    dataset_report = {**dataset_manifest, "split": "depth/validation"}
     sandbox = {
         "runtime_path": "/usr/bin/docker",
         "daemon_endpoint": "unix:///var/run/docker.sock",
@@ -345,7 +372,7 @@ def _synthetic_depth_report(
         {
             "source_git_sha": SOURCE_SHA,
             "protocol_logical_sha256": protocol["logical_sha256"],
-            "dataset": {"logical_release_sha256": protocol["dataset"]["logical_release_sha256"]},
+            "dataset": dataset_manifest,
         },
         record_sha="8" * 64,
         relative="studies/x/stages/qwen-mixed-sft/runs/r0/run_manifest.json",
@@ -805,6 +832,64 @@ def test_depth_report_recomputes_all_rows_metrics_and_provenance() -> None:
         training_receipt=receipt,
         expected_tasks=tasks,
     )
+    report_dataset = report["provenance"]["dataset"]
+    manifest_dataset = evaluation_manifest["payload"]["dataset"]
+    manifest_only_fields = {
+        "train_rows",
+        "validation_rows",
+        "reference_artifacts_sha256",
+        "reference_artifact_count",
+    }
+    assert manifest_only_fields.isdisjoint(report_dataset)
+    assert manifest_only_fields.issubset(manifest_dataset)
+
+    tampered_manifest = copy.deepcopy(evaluation_manifest)
+    tampered_manifest["payload"]["dataset"]["reference_artifact_count"] += 1
+    with pytest.raises(
+        promotion.PromotionError,
+        match="evaluation-manifest dataset differs from the frozen release",
+    ):
+        promotion._validate_report_payload(
+            repo_root=REPO_ROOT,
+            protocol=protocol,
+            expected_source_sha=SOURCE_SHA,
+            key=StageKey(STUDY_ID, "qwen-mixed-sft", "r0"),
+            wave="complete",
+            checkpoint_name="final",
+            selected_checkpoint=CHECKPOINT,
+            checkpoint_inventory_sha256=CHECKPOINT_INVENTORY_SHA256,
+            panel=promotion.PANEL_DEPTH_VALIDATION,
+            report=report,
+            evaluation_manifest=tampered_manifest,
+            training_manifest=manifest,
+            training_receipt=receipt,
+            expected_tasks=tasks,
+        )
+
+    overfull_report = copy.deepcopy(report)
+    overfull_report["provenance"]["dataset"]["reference_artifact_count"] = (
+        manifest_dataset["reference_artifact_count"]
+    )
+    with pytest.raises(
+        promotion.PromotionError,
+        match="report dataset projection differs",
+    ):
+        promotion._validate_report_payload(
+            repo_root=REPO_ROOT,
+            protocol=protocol,
+            expected_source_sha=SOURCE_SHA,
+            key=StageKey(STUDY_ID, "qwen-mixed-sft", "r0"),
+            wave="complete",
+            checkpoint_name="final",
+            selected_checkpoint=CHECKPOINT,
+            checkpoint_inventory_sha256=CHECKPOINT_INVENTORY_SHA256,
+            panel=promotion.PANEL_DEPTH_VALIDATION,
+            report=overfull_report,
+            evaluation_manifest=evaluation_manifest,
+            training_manifest=manifest,
+            training_receipt=receipt,
+            expected_tasks=tasks,
+        )
 
     nonfinite = copy.deepcopy(report)
     nonfinite["summary"]["mean_raw_absolute_scale_iou"] = float("nan")

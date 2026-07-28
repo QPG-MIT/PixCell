@@ -19,6 +19,7 @@ from typing import Any
 from rl.common.prompt import prompt_asset_hashes
 from rl.evaluation.tasks import canonical_json_sha256
 
+from .dataset_binding import _dataset_binding
 from .protocol import (
     LEVELS,
     STUDY_ID,
@@ -491,25 +492,32 @@ def _validate_report_payload(
         manifest_payload.get("dataset"),
         "evaluation_manifest.dataset",
     )
-    for field, expected in manifest_dataset.items():
-        if dataset.get(field) != expected:
-            raise PromotionError(f"report and evaluation-manifest dataset {field} differ")
-    expected_dataset = {
+    try:
+        expected_local_dataset = _dataset_binding(repo_root / "dataset", protocol)
+    except Exception as exc:
+        raise PromotionError("local evaluation dataset could not be verified") from exc
+    if dict(manifest_dataset) != expected_local_dataset:
+        raise PromotionError("evaluation-manifest dataset differs from the frozen release")
+
+    expected_report_dataset = {
         "repo_id": protocol["dataset"]["repo_id"],
         "revision": protocol["dataset"]["revision"],
         "configuration": protocol["dataset"]["configuration"],
-        "logical_release_sha256": protocol["dataset"]["logical_release_sha256"],
+        "split": {
+            PANEL_PROGRESS: "fixed-f1-f8",
+            PANEL_DEPTH_VALIDATION: "depth/validation",
+            PANEL_INKLING_PROMOTION: "depth/validation+fixed-f1-f8",
+        }[panel],
+        "logical_release_sha256": expected_local_dataset[
+            "logical_release_sha256"
+        ],
+        "freeze_file_sha256": expected_local_dataset["freeze_file_sha256"],
+        "parquet_shards": expected_local_dataset["parquet_shards"],
     }
-    for field, expected in expected_dataset.items():
-        if dataset.get(field) != expected:
-            raise PromotionError(f"evaluation dataset {field} differs")
-    expected_split = {
-        PANEL_PROGRESS: "fixed-f1-f8",
-        PANEL_DEPTH_VALIDATION: "depth/validation",
-        PANEL_INKLING_PROMOTION: "depth/validation+fixed-f1-f8",
-    }[panel]
-    if dataset.get("split") != expected_split:
-        raise PromotionError("evaluation dataset split differs from its panel")
+    if dict(dataset) != expected_report_dataset:
+        raise PromotionError(
+            "report dataset projection differs from the evaluation manifest"
+        )
 
     if (
         training_manifest.payload.get("source_git_sha") != expected_source_sha
@@ -520,11 +528,8 @@ def _validate_report_payload(
         training_manifest.payload.get("dataset"),
         "training_manifest.dataset",
     )
-    if (
-        manifest_training_dataset.get("logical_release_sha256")
-        != protocol["dataset"]["logical_release_sha256"]
-    ):
-        raise PromotionError("training manifest dataset differs")
+    if dict(manifest_training_dataset) != expected_local_dataset:
+        raise PromotionError("training manifest dataset differs from the frozen release")
 
     sampler = _mapping(provenance.get("sampler"), "provenance.sampler")
     evaluation_sampler = _mapping(

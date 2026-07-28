@@ -54,7 +54,7 @@ from rl.evaluation.tasks import (
 )
 from rl.track_a.tinker_data import _message, _renderer
 
-from .preflight import _dataset_binding
+from .dataset_binding import _dataset_binding
 from .protocol import (
     STUDY_ID,
     StageSpec,

@@ -568,6 +568,15 @@ def test_all_prompt_and_reference_checks_precede_service_client(
         ["training_progress_fraction"]
         == 1.0
     )
+    assert set(report["payload"]["provenance"]["dataset"]) == {
+        "repo_id",
+        "revision",
+        "configuration",
+        "split",
+        "logical_release_sha256",
+        "freeze_file_sha256",
+        "parquet_shards",
+    }
 
 
 def test_reference_failure_cannot_create_a_service_client(

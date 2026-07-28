@@ -31,7 +31,7 @@ from rl.evaluation.tasks import EvaluationTask, canonical_json_sha256
 from rl.track_a.tinker_data import _message, _renderer
 
 from . import evaluation as checkpoint_v1
-from .preflight import _dataset_binding
+from .dataset_binding import _dataset_binding
 from .protocol import (
     STUDY_ID,
     file_sha256,
