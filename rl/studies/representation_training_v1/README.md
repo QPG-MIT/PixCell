@@ -208,6 +208,26 @@ PYTHONPATH=src:. python -m \
   --confirm-spend PIXCELL_TRAINING_V1
 ```
 
+The final F1–F8 benchmark is a separate, reporting-only v2 panel; it does not
+change progress, depth, or promotion records. It makes four independently
+seeded requests per figure (32 total), resumes only missing attempts, and
+reports mean@1 plus per-figure and aggregate best@4. Its records live under
+`evaluations/<wave>/<checkpoint>/final-benchmark-best4-v2/`:
+
+```bash
+PYTHONPATH=src:. python -m \
+  rl.studies.representation_training_v1.evaluate_final_benchmark \
+  --repo-root "$(pwd)" \
+  --stage <checkpoint-stage> \
+  --wave <checkpoint-wave> \
+  --checkpoint-name <terminal-inventory-name> \
+  --replicate r0 \
+  --source-git-sha "$(git rev-parse HEAD)" \
+  --wave-receipt-record-sha256 <receipt-record-sha256> \
+  --external-root "$PIXCELL_TRAINING_ROOT" \
+  --confirm-spend PIXCELL_TRAINING_V1
+```
+
 After reviewing that immutable report, bind it to exactly one dependent wave:
 
 ```bash
