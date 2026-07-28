@@ -21,6 +21,49 @@
       "rows": 1092,
       "split": "validation"
     },
+    "curriculum_progress_holdout": {
+      "baseline_checkpoints": {
+        "L0": "base:qwen",
+        "L1": "qwen-base-rl-l0:complete",
+        "L2": "qwen-base-rl-l1:complete",
+        "L3": "qwen-base-rl-l2:complete",
+        "L4": "qwen-base-rl-l3:complete"
+      },
+      "configuration": "depth",
+      "evaluation_waves": [
+        "step-5",
+        "step-10",
+        "step-15",
+        "step-20",
+        "step-25",
+        "complete"
+      ],
+      "panel_prefix": "level-progress",
+      "realization_slot": 6,
+      "representations_by_level": {
+        "L0": 93,
+        "L1": 127,
+        "L2": 98,
+        "L3": 120,
+        "L4": 108
+      },
+      "rows_by_level": {
+        "L0": 93,
+        "L1": 127,
+        "L2": 98,
+        "L3": 120,
+        "L4": 108
+      },
+      "split": "validation"
+    },
+    "final_selection_holdout": {
+      "configuration": "depth",
+      "panel": "depth-final-selection",
+      "realization_slot": 7,
+      "representations": 546,
+      "rows": 546,
+      "split": "validation"
+    },
     "progress_benchmark_attempts": 1,
     "task_manifest": "../representation_curriculum_v2/task_manifest.json",
     "task_manifest_logical_sha256": "05ca50526df05a3a79aa785504e36c7538106e5abdb72b64e86b20cc6f94a890"
@@ -45,6 +88,10 @@
     "RT-H05": {
       "name": "inkling-advanced-rl",
       "question": "Can a strong base policy improve on depth-L4 without losing retained capability?"
+    },
+    "RT-H06": {
+      "name": "composition-by-pure-curriculum-rl",
+      "question": "Can verifier-only curriculum RL teach primitives through complete components directly from base Qwen?"
     }
   },
   "launch": {
@@ -54,7 +101,7 @@
       "r0"
     ]
   },
-  "logical_sha256": "498f47fe806e48d82072925f1e78437c0a114bcf51ffdf30ab7ebaad46a105c9",
+  "logical_sha256": "025f09cb67e3e00e0c863f2c888e28ec31b2d489a53d4ce54ddf83f950b9e503",
   "models": {
     "inkling": {
       "context_tokens": 65536,
@@ -164,6 +211,225 @@
         }
       }
     },
+    "qwen-base-rl-l0": {
+      "current_level": "L0",
+      "hypotheses": [
+        "RT-H06"
+      ],
+      "kind": "rl",
+      "model": "qwen",
+      "parent": "base:qwen",
+      "recipe": "qwen_rl",
+      "replay_levels": [],
+      "waves": {
+        "complete": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 30
+        },
+        "step-10": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 10
+        },
+        "step-15": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 15
+        },
+        "step-20": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 20
+        },
+        "step-25": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 25
+        },
+        "step-5": {
+          "approval": "rollout-health-receipt",
+          "max_steps": 5
+        },
+        "smoke": {
+          "approval": "base-level-held-out-baseline-receipt",
+          "max_steps": 1
+        }
+      }
+    },
+    "qwen-base-rl-l1": {
+      "current_level": "L1",
+      "hypotheses": [
+        "RT-H06"
+      ],
+      "kind": "rl",
+      "model": "qwen",
+      "parent": "qwen-base-rl-l0:complete",
+      "recipe": "qwen_rl",
+      "replay_levels": [
+        "L0"
+      ],
+      "waves": {
+        "complete": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 30
+        },
+        "step-10": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 10
+        },
+        "step-15": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 15
+        },
+        "step-20": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 20
+        },
+        "step-25": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 25
+        },
+        "step-5": {
+          "approval": "rollout-health-receipt",
+          "max_steps": 5
+        },
+        "smoke": {
+          "approval": "prior-and-current-level-held-out-transition-receipt",
+          "max_steps": 1
+        }
+      }
+    },
+    "qwen-base-rl-l2": {
+      "current_level": "L2",
+      "hypotheses": [
+        "RT-H06"
+      ],
+      "kind": "rl",
+      "model": "qwen",
+      "parent": "qwen-base-rl-l1:complete",
+      "recipe": "qwen_rl",
+      "replay_levels": [
+        "L0",
+        "L1"
+      ],
+      "waves": {
+        "complete": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 30
+        },
+        "step-10": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 10
+        },
+        "step-15": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 15
+        },
+        "step-20": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 20
+        },
+        "step-25": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 25
+        },
+        "step-5": {
+          "approval": "rollout-health-receipt",
+          "max_steps": 5
+        },
+        "smoke": {
+          "approval": "prior-and-current-level-held-out-transition-receipt",
+          "max_steps": 1
+        }
+      }
+    },
+    "qwen-base-rl-l3": {
+      "current_level": "L3",
+      "hypotheses": [
+        "RT-H06"
+      ],
+      "kind": "rl",
+      "model": "qwen",
+      "parent": "qwen-base-rl-l2:complete",
+      "recipe": "qwen_rl",
+      "replay_levels": [
+        "L0",
+        "L1",
+        "L2"
+      ],
+      "waves": {
+        "complete": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 30
+        },
+        "step-10": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 10
+        },
+        "step-15": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 15
+        },
+        "step-20": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 20
+        },
+        "step-25": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 25
+        },
+        "step-5": {
+          "approval": "rollout-health-receipt",
+          "max_steps": 5
+        },
+        "smoke": {
+          "approval": "prior-and-current-level-held-out-transition-receipt",
+          "max_steps": 1
+        }
+      }
+    },
+    "qwen-base-rl-l4": {
+      "current_level": "L4",
+      "hypotheses": [
+        "RT-H06"
+      ],
+      "kind": "rl",
+      "model": "qwen",
+      "parent": "qwen-base-rl-l3:complete",
+      "recipe": "qwen_rl",
+      "replay_levels": [
+        "L0",
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "waves": {
+        "complete": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 30
+        },
+        "step-10": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 10
+        },
+        "step-15": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 15
+        },
+        "step-20": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 20
+        },
+        "step-25": {
+          "approval": "current-level-held-out-promotion-receipt",
+          "max_steps": 25
+        },
+        "step-5": {
+          "approval": "rollout-health-receipt",
+          "max_steps": 5
+        },
+        "smoke": {
+          "approval": "prior-and-current-level-held-out-transition-receipt",
+          "max_steps": 1
+        }
+      }
+    },
     "qwen-l0-rl-l1": {
       "current_level": "L1",
       "hypotheses": [
@@ -178,31 +444,31 @@
       ],
       "waves": {
         "complete": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 30
         },
         "step-10": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 10
         },
         "step-15": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 15
         },
         "step-20": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 20
         },
         "step-25": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 25
         },
         "step-5": {
-          "approval": "clean-smoke-receipt",
+          "approval": "rollout-health-receipt",
           "max_steps": 5
         },
         "smoke": {
-          "approval": "entry-evaluation-and-promotion-receipt",
+          "approval": "parent-receipt-and-source-transition",
           "max_steps": 1
         }
       }
@@ -222,31 +488,31 @@
       ],
       "waves": {
         "complete": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 30
         },
         "step-10": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 10
         },
         "step-15": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 15
         },
         "step-20": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 20
         },
         "step-25": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 25
         },
         "step-5": {
-          "approval": "clean-smoke-receipt",
+          "approval": "rollout-health-receipt",
           "max_steps": 5
         },
         "smoke": {
-          "approval": "entry-evaluation-and-promotion-receipt",
+          "approval": "prior-level-held-out-promotion-receipt",
           "max_steps": 1
         }
       }
@@ -267,31 +533,31 @@
       ],
       "waves": {
         "complete": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 30
         },
         "step-10": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 10
         },
         "step-15": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 15
         },
         "step-20": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 20
         },
         "step-25": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 25
         },
         "step-5": {
-          "approval": "clean-smoke-receipt",
+          "approval": "rollout-health-receipt",
           "max_steps": 5
         },
         "smoke": {
-          "approval": "entry-evaluation-and-promotion-receipt",
+          "approval": "prior-level-held-out-promotion-receipt",
           "max_steps": 1
         }
       }
@@ -313,31 +579,31 @@
       ],
       "waves": {
         "complete": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 30
         },
         "step-10": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 10
         },
         "step-15": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 15
         },
         "step-20": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 20
         },
         "step-25": {
-          "approval": "clean-smoke-receipt",
+          "approval": "current-level-held-out-promotion-receipt",
           "max_steps": 25
         },
         "step-5": {
-          "approval": "clean-smoke-receipt",
+          "approval": "rollout-health-receipt",
           "max_steps": 5
         },
         "smoke": {
-          "approval": "entry-evaluation-and-promotion-receipt",
+          "approval": "prior-level-held-out-promotion-receipt",
           "max_steps": 1
         }
       }

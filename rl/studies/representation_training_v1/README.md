@@ -1,7 +1,7 @@
 # Representation training v1
 
 This study owns the first training campaign over the released PixCell
-curriculum. It compares four Qwen learning paths and one bounded Inkling
+curriculum. It compares five Qwen learning paths and one bounded Inkling
 policy-improvement path while keeping the model input, evaluator, dataset, and
 F1–F8 benchmark fixed.
 
@@ -14,6 +14,7 @@ ledger, and the explicit `PIXCELL_TRAINING_V1` confirmation.
 
 ```text
 Base Qwen
+├── qwen-base-rl-l0 → l1 → l2 → l3 → l4
 ├── qwen-mixed-sft
 │   └── qwen-mixed-rl-l{first unmastered ... L4}
 └── qwen-l0-sft
@@ -24,7 +25,9 @@ Base Inkling
 └── inkling-l4-rl
 ```
 
-The L0 SFT checkpoint is shared unchanged by the sequential-SFT and
+The pure-RL branch tests whether verifier-only learning can acquire the full
+primitive-to-component curriculum directly from base Qwen. The L0 SFT
+checkpoint is shared unchanged by the sequential-SFT and
 composition-by-RL hypotheses. Mixed SFT supplies the checkpoint for the
 strongest-open-model hypothesis. Each new SFT level loads its parent weights
 with a fresh optimizer and restarts the linear schedule; that reset is part of
@@ -34,12 +37,35 @@ The mixed-SFT path evaluates L0–L4 and enters RL at the first level below the
 protocol-sealed thresholds of 0.80 mean raw IoU or 0.95 pure-executable rate.
 
 Each Qwen RL level is one optimizer run with sealed ceilings at steps 1, 5, 10,
-15, 20, 25, and 30. Continuing to the next ceiling requires a reviewed F1–F8
-progress report from the prior ceiling. Inkling uses sealed ceilings at steps
-1, 6, and 14. These are continuation waves, not independently initialized
-runs.
+15, 20, 25, and 30. In the pure-RL branch, L0 begins directly from base Qwen.
+Its step-1 smoke establishes rollout health, and an immutable rollout-health
+receipt is required before step 5. Starting at step 5, progress is measured on
+the same fixed held-out panel: realization slot 6, with exactly one row for
+every representation at the current level. A report from that panel gates each
+later ceiling. Entry into each pure-RL L1–L4 stage requires two reports from
+the exact preceding-level terminal checkpoint: its prior-level slot-6 report
+and its pre-update slot-6 baseline on the new level. Both reports are bound
+into one approval and canonically recomputed at launch. F1–F8 remains a
+periodic transfer report and never gates this curriculum.
 
-The 16 exact stage definitions, parent edges, wave ceilings, models, recipes,
+The L0-SFT→RL branch uses the same rollout-health and fixed slot-6 cadence from
+L1 onward. Its L1 entry is intentionally different: the L0-SFT checkpoint was
+produced by an earlier frozen source, so smoke requires its exact parent
+receipt plus a reviewed source transition. It does not require the obsolete
+1,092-row depth report, F1–F8, or a fabricated same-source level-panel record.
+L2–L4 entry requires the preceding completed level's slot-6 report.
+
+In the pure-RL branch, each level first evaluates its actual parent policy on
+that level's slot-6 panel, then reuses the identical tasks after steps 5, 10,
+15, 20, 25, and 30. For L0, that pre-update parent is base Qwen and the panel
+has 93 tasks. For L1 through L4, it is the preceding level's completed
+checkpoint evaluated on the new level before its first update. This separates
+learning from changes in sampled training-task difficulty. Final checkpoint
+selection uses the separate 546-row slot-7 panel across L0–L4. Inkling uses
+sealed ceilings at steps 1, 6, and 14. These are continuation waves, not
+independently initialized runs.
+
+The 21 exact stage definitions, parent edges, wave ceilings, models, recipes,
 dataset release, and evaluation identities are in
 [`protocol.json`](protocol.json).
 
@@ -134,6 +160,10 @@ W&B is the live observability mirror:
 The run ID is deterministic in source commit, protocol digest, stage, and
 replicate. RL continuation uses `WANDB_RESUME=must`; a fresh stage uses
 `WANDB_RESUME=never`. Git and source-code upload are disabled.
+Checkpoint and fixed level-panel evaluations are authoritative external-ledger
+jobs, not separate W&B training runs. W&B mirrors live optimizer runs; the
+immutable evaluation records supply checkpoint-selection and promotion
+evidence.
 
 ## Zero-spend gate
 
@@ -146,10 +176,11 @@ PYTHONPATH=src:. python -m \
   --expected-source-sha "$(git rev-parse HEAD)"
 ```
 
-It checks all three initial roots:
+It checks all four initial roots:
 
 - `qwen-mixed-sft` over all 3,468 depth training rows;
 - `qwen-l0-sft` over all 642 L0 training rows;
+- `qwen-base-rl-l0/smoke` over the 642 L0 training rows;
 - `inkling-l4-rl/smoke` over the 648 L4 training rows.
 
 The audit makes no model request. It hashes every frozen release artifact,
@@ -161,11 +192,15 @@ executes a known-good program inside the immutable sandbox.
 
 The first paid starts are deliberately staggered:
 
-1. start `qwen-mixed-sft/complete`, confirm its first metric and local
+1. evaluate base Qwen on `level-progress-l0` and seal its 93-row slot-6
+   baseline before any pure-RL update;
+2. start `qwen-mixed-sft/complete`, confirm its first metric and local
    checkpoint activity without stopping it;
-2. start `qwen-l0-sft/complete`, confirm the same;
-3. start `inkling-l4-rl/smoke`, which ends after one update;
-4. evaluate the resulting checkpoints before approving any dependent stage.
+3. start `qwen-l0-sft/complete`, confirm the same;
+4. start `inkling-l4-rl/smoke`, which ends after one update;
+5. start `qwen-base-rl-l0/smoke`, which is now authorized by the sealed base
+   baseline and ends after one update;
+6. evaluate the resulting checkpoints before approving any dependent stage.
 
 The guarded launcher exposes no model, data, optimizer, token, schedule, or
 W&B override:
@@ -201,7 +236,7 @@ PYTHONPATH=src:. python -m \
   --wave <checkpoint-wave> \
   --checkpoint-name <exact-inventory-name> \
   --replicate r0 \
-  --panel <progress|depth-validation|inkling-promotion> \
+  --panel <progress|depth-validation|inkling-promotion|level-progress-l0..l4> \
   --source-git-sha "$(git rev-parse HEAD)" \
   --wave-receipt-record-sha256 <receipt-record-sha256> \
   --external-root "$PIXCELL_TRAINING_ROOT" \
@@ -264,7 +299,41 @@ PYTHONPATH=src:. python -m \
 
 Approvals bind the report, source commit, protocol digest, task panel,
 checkpoint inventory, training receipt, and selection decision. They cannot be
-reused for a different wave or checkpoint.
+reused for a different wave or checkpoint. The launcher treats the stored
+approval as an index and canonically revalidates its bound report and metrics
+before every paid continuation.
+
+Pure-RL L1–L4 entry evaluates the same parent terminal checkpoint twice: once
+on the preceding level's slot-6 panel and once on the new level's slot-6 panel.
+Pass the preceding-level report as the primary evaluation above and the
+new-level report as:
+
+```bash
+  --entry-baseline-report-record-sha256 <new-level-report-record-sha256>
+```
+
+The combined approval fails unless both reports resolve to the same parent
+stage, wave, checkpoint, checkpoint inventory, run manifest, and wave receipt.
+
+The L0-SFT→L1-RL smoke is the one receipt-only exception. It does not invent or
+wait for an evaluation report. At the clean consumer commit, explicitly review
+and enumerate every path changed since the source commit in the immutable
+L0-SFT manifest:
+
+```bash
+PYTHONPATH=src:. python -m \
+  rl.studies.representation_training_v1.record_parent_transition \
+  --replicate r0 \
+  --expected-source-sha "$(git rev-parse HEAD)" \
+  --approve-changed-path <first-exact-changed-path> \
+  --approve-changed-path <second-exact-changed-path> \
+  --confirm-approval PIXCELL_APPROVE_TRAINING_V1
+```
+
+This approval recomputes the parent manifest, terminal receipt, invocation,
+checkpoint inventory, local artifact hashes, unchanged prompt, dataset, model,
+SFT recipe and programming contract, plus the full ancestor-to-consumer Git
+transition. The L1 smoke launcher revalidates all of it before W&B or Tinker.
 
 An evaluation must always run from the same clean commit as its training
 manifest. To adopt that already-reviewed evidence from a later descendant,

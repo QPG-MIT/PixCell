@@ -24,6 +24,14 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--evaluation-wave", required=True)
     result.add_argument("--evaluation-checkpoint", required=True)
     result.add_argument("--evaluation-report-record-sha256", required=True)
+    result.add_argument(
+        "--entry-baseline-report-record-sha256",
+        default=None,
+        help=(
+            "second report required by the pure-base L1-L4 transition gate: "
+            "the exact parent checkpoint evaluated on the incoming level"
+        ),
+    )
     result.add_argument("--expected-source-sha", required=True)
     result.add_argument(
         "--evidence-source-sha",
@@ -74,6 +82,9 @@ def main() -> None:
         evaluation_wave=args.evaluation_wave,
         evaluation_checkpoint_name=args.evaluation_checkpoint,
         evaluation_report_record_sha256=(args.evaluation_report_record_sha256),
+        entry_baseline_report_record_sha256=(
+            args.entry_baseline_report_record_sha256
+        ),
         expected_source_sha=args.expected_source_sha,
         evidence_source_sha=args.evidence_source_sha,
         approved_change_paths=args.approved_change_paths,

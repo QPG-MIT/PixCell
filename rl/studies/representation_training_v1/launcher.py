@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 import math
@@ -28,11 +29,18 @@ from rl.track_a.tinker_data import (
 from .preflight import stage_preflight
 from .promotion import (
     APPROVAL_SCHEMA_VERSION,
+    LEVEL_PROGRESS_PANELS,
+    PARENT_RECEIPT_TRANSITION_APPROVAL_SCHEMA_VERSION,
     SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION,
     PromotionError,
+    record_base_baseline_approval,
+    record_rollout_health_approval,
+    validate_parent_receipt_transition_approval,
+    validate_same_source_wave_approval,
     validate_source_transition_approval,
 )
 from .protocol import (
+    LEVELS,
     STUDY_ID,
     StageSpec,
     file_sha256,
@@ -49,6 +57,7 @@ _TINKER_PATH = re.compile(r"^tinker://[^\s]+$")
 _GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _CHILD_SOURCE_TRANSITION_SCHEMA_VERSION = "pixcell-training-child-source-transition-v1"
+_WAVE_ARTIFACT_SNAPSHOT_SCHEMA_VERSION = "pixcell-training-wave-artifact-snapshot-v1"
 _ENVIRONMENT_FIELDS = (
     "WANDB_DIR",
     "WANDB_DISABLE_CODE",
@@ -82,23 +91,39 @@ class ParentBinding:
     source_transition: dict[str, Any] | None = None
 
 
+@dataclass(frozen=True)
+class ResumeBinding:
+    """Exact optimizer state the pinned Cookbook is allowed to resume."""
+
+    batch: int
+    checkpoint: dict[str, Any]
+
+
 def _child_source_transition_binding(
     approval: TrainingRecord,
 ) -> dict[str, Any]:
     payload = approval.payload
-    if payload.get("schema_version") != SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION:
-        raise TrainingLaunchError("child source transition is not backed by a v2 approval")
+    if payload.get("schema_version") not in {
+        SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION,
+        PARENT_RECEIPT_TRANSITION_APPROVAL_SCHEMA_VERSION,
+    }:
+        raise TrainingLaunchError(
+            "child source transition is not backed by an approved transition"
+        )
     transition = payload.get("source_transition")
     if not isinstance(transition, Mapping):
-        raise TrainingLaunchError("v2 approval has no source transition")
+        raise TrainingLaunchError("transition approval has no source transition")
     logical_sha256 = str(transition.get("logical_sha256", ""))
     if not re.fullmatch(r"[0-9a-f]{64}", logical_sha256):
-        raise TrainingLaunchError("v2 approval source transition has no logical digest")
+        raise TrainingLaunchError(
+            "transition approval source transition has no logical digest"
+        )
     return {
         "schema_version": _CHILD_SOURCE_TRANSITION_SCHEMA_VERSION,
         "authorized_child_wave": str(payload.get("wave", "")),
         "producer_source_git_sha": str(payload.get("evidence_source_git_sha", "")),
         "consumer_source_git_sha": str(payload.get("source_git_sha", "")),
+        "approval_schema_version": str(payload.get("schema_version", "")),
         "approval": {
             "relative_path": str(approval.relative_path),
             "payload_sha256": approval.payload_sha256,
@@ -414,16 +439,31 @@ def _manifest_transition_approval(
     if approval is None:
         raise TrainingLaunchError("child manifest transition approval is missing")
     try:
-        validate_source_transition_approval(
-            repo_root=repo_root,
-            protocol=protocol,
-            store=store,
-            stage=stage,
-            wave_name=authorized_wave,
-            replicate_id=key.replicate_id,
-            consumer_source_git_sha=source_git_sha,
-            approval=approval,
-        )
+        if (
+            approval.payload.get("schema_version")
+            == PARENT_RECEIPT_TRANSITION_APPROVAL_SCHEMA_VERSION
+        ):
+            validate_parent_receipt_transition_approval(
+                repo_root=repo_root,
+                protocol=protocol,
+                store=store,
+                stage=stage,
+                wave_name=authorized_wave,
+                replicate_id=key.replicate_id,
+                consumer_source_git_sha=source_git_sha,
+                approval=approval,
+            )
+        else:
+            validate_source_transition_approval(
+                repo_root=repo_root,
+                protocol=protocol,
+                store=store,
+                stage=stage,
+                wave_name=authorized_wave,
+                replicate_id=key.replicate_id,
+                consumer_source_git_sha=source_git_sha,
+                approval=approval,
+            )
     except PromotionError as exc:
         raise TrainingLaunchError(
             f"child manifest source transition failed validation: {exc}"
@@ -490,8 +530,36 @@ def _parent_binding(
     ):
         raise TrainingLaunchError("parent receipt and run manifest identities differ")
     if (
-        parent_manifest.payload.get("protocol_logical_sha256") != protocol["logical_sha256"]
-        or parent_manifest.payload.get("contract_version") != protocol["contract_version"]
+        parent_manifest.payload.get("contract_version") != protocol["contract_version"]
+    ):
+        raise TrainingLaunchError("parent run manifest differs from the consumer protocol")
+    historical_parent_transition = (
+        (
+            (
+                approval is not None
+                and approval.payload.get("schema_version")
+                == PARENT_RECEIPT_TRANSITION_APPROVAL_SCHEMA_VERSION
+            )
+            or (
+                existing_manifest is not None
+                and isinstance(
+                    existing_manifest.payload.get("source_transition"),
+                    Mapping,
+                )
+                and existing_manifest.payload["source_transition"].get(
+                    "approval_schema_version"
+                )
+                == PARENT_RECEIPT_TRANSITION_APPROVAL_SCHEMA_VERSION
+            )
+        )
+        and stage.stage_id == "qwen-l0-rl-l1"
+        and parent_stage_id == "qwen-l0-sft"
+        and parent_wave == "complete"
+    )
+    if (
+        parent_manifest.payload.get("protocol_logical_sha256")
+        != protocol["logical_sha256"]
+        and not historical_parent_transition
     ):
         raise TrainingLaunchError("parent run manifest differs from the consumer protocol")
     parent_stage = parent_manifest.payload.get("stage")
@@ -555,9 +623,14 @@ def _parent_binding(
             if (
                 approval is None
                 or approval.payload.get("schema_version")
-                != SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION
+                not in {
+                    SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION,
+                    PARENT_RECEIPT_TRANSITION_APPROVAL_SCHEMA_VERSION,
+                }
             ):
-                raise TrainingLaunchError("cross-source parent requires a v2 transition approval")
+                raise TrainingLaunchError(
+                    "cross-source parent requires a v2 transition approval"
+                )
             entry_approval = approval
         else:
             entry_approval = _manifest_transition_approval(
@@ -628,6 +701,69 @@ def _approval_record(
             )
     if gate == "initial":
         return None
+    if gate == "base-level-held-out-baseline-receipt":
+        if prior_wave is not None:
+            raise TrainingLaunchError("base baseline gate cannot follow a training wave")
+        try:
+            return record_base_baseline_approval(
+                repo_root=repo_root,
+                store=store,
+                key=key,
+                stage=stage,
+                wave_name=wave_name,
+                source_git_sha=source_git_sha,
+                protocol=protocol,
+            )
+        except (PromotionError, ValueError) as exc:
+            raise TrainingLaunchError(
+                f"{stage.stage_id}/{wave_name} base baseline gate failed: {exc}"
+            ) from exc
+    if gate == "rollout-health-receipt":
+        if prior_wave != "smoke" or prior is None:
+            raise TrainingLaunchError(
+                "rollout-health gate requires the exact smoke receipt"
+            )
+        try:
+            return record_rollout_health_approval(
+                store=store,
+                key=key,
+                stage=stage,
+                wave_name=wave_name,
+                prior_wave=prior_wave,
+                prior_receipt=prior,
+                source_git_sha=source_git_sha,
+                protocol=protocol,
+            )
+        except (PromotionError, ValueError) as exc:
+            raise TrainingLaunchError(
+                f"{stage.stage_id}/{wave_name} rollout-health gate failed: {exc}"
+            ) from exc
+    if gate == "parent-receipt-and-source-transition":
+        if prior_wave is not None:
+            raise TrainingLaunchError(
+                "historical-parent transition cannot follow a child training wave"
+            )
+        approval = store.load_wave_approval(key, wave=wave_name)
+        if approval is None:
+            raise TrainingLaunchError(
+                f"{stage.stage_id}/{wave_name} requires an immutable {gate} approval"
+            )
+        try:
+            validate_parent_receipt_transition_approval(
+                repo_root=repo_root,
+                protocol=protocol,
+                store=store,
+                stage=stage,
+                wave_name=wave_name,
+                replicate_id=key.replicate_id,
+                consumer_source_git_sha=source_git_sha,
+                approval=approval,
+            )
+        except PromotionError as exc:
+            raise TrainingLaunchError(
+                f"{stage.stage_id}/{wave_name} parent transition failed: {exc}"
+            ) from exc
+        return approval
     approval = store.load_wave_approval(key, wave=wave_name)
     if approval is None:
         raise TrainingLaunchError(
@@ -639,6 +775,22 @@ def _approval_record(
             field in approval.payload for field in ("evidence_source_git_sha", "source_transition")
         ):
             raise TrainingLaunchError("same-source v1 approval contains source-transition fields")
+        try:
+            validate_same_source_wave_approval(
+                repo_root=repo_root,
+                protocol=protocol,
+                store=store,
+                stage=stage,
+                wave_name=wave_name,
+                replicate_id=key.replicate_id,
+                source_git_sha=source_git_sha,
+                approval=approval,
+            )
+        except PromotionError as exc:
+            raise TrainingLaunchError(
+                f"{stage.stage_id}/{wave_name} same-source approval "
+                f"failed validation: {exc}"
+            ) from exc
     elif schema_version == SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION:
         try:
             validate_source_transition_approval(
@@ -716,6 +868,111 @@ def _approval_record(
             raise TrainingLaunchError(
                 f"{stage.stage_id}/{wave_name} promotion checkpoint differs "
                 f"from its {prior_wave} receipt"
+            )
+    elif gate == "current-level-held-out-promotion-receipt":
+        if (
+            prior_wave is None
+            or prior is None
+            or stage.current_level not in LEVEL_PROGRESS_PANELS
+        ):
+            raise TrainingLaunchError("current-level promotion has no prior receipt")
+        evidence = approval.payload.get("evaluation")
+        expected_evidence = {
+            "stage_id": stage.stage_id,
+            "wave": prior_wave,
+            "panel": LEVEL_PROGRESS_PANELS[stage.current_level],
+            "training_wave_receipt_record_sha256": prior.record_sha256,
+        }
+        if not isinstance(evidence, Mapping) or any(
+            evidence.get(field) != value
+            for field, value in expected_evidence.items()
+        ):
+            raise TrainingLaunchError(
+                f"{stage.stage_id}/{wave_name} is not bound to its "
+                f"{stage.current_level} held-out report"
+            )
+        checkpoint_fields = (
+            "name",
+            "batch",
+            "epoch",
+            "final",
+            "state_path",
+            "sampler_path",
+        )
+        evaluated_checkpoint = evidence.get("checkpoint")
+        receipt_checkpoint = prior.payload.get("checkpoint")
+        if (
+            approval.payload.get("prior_wave") != prior_wave
+            or approval.payload.get("prior_receipt_record_sha256")
+            != prior.record_sha256
+            or not isinstance(evaluated_checkpoint, Mapping)
+            or not isinstance(receipt_checkpoint, Mapping)
+            or any(
+                evaluated_checkpoint.get(field) != receipt_checkpoint.get(field)
+                for field in checkpoint_fields
+            )
+            or not _SHA256.fullmatch(
+                str(evidence.get("report_record_sha256", ""))
+            )
+        ):
+            raise TrainingLaunchError(
+                f"{stage.stage_id}/{wave_name} held-out evidence differs "
+                f"from its {prior_wave} checkpoint"
+            )
+    elif gate == "prior-level-held-out-promotion-receipt":
+        if stage.current_level not in LEVELS[1:]:
+            raise TrainingLaunchError("prior-level promotion has no prior level")
+        parent_stage_id, parent_wave = stage.parent.split(":", 1)
+        parent_key = StageKey(key.study_id, parent_stage_id, key.replicate_id)
+        parent_receipt = store.load_wave_receipt(parent_key, wave=parent_wave)
+        prior_level = LEVELS[LEVELS.index(stage.current_level) - 1]
+        evidence = approval.payload.get("evaluation")
+        expected_evidence = {
+            "stage_id": parent_stage_id,
+            "wave": parent_wave,
+            "panel": LEVEL_PROGRESS_PANELS[prior_level],
+            "training_wave_receipt_record_sha256": (
+                parent_receipt.record_sha256 if parent_receipt is not None else None
+            ),
+        }
+        if parent_receipt is None or not isinstance(evidence, Mapping) or any(
+            evidence.get(field) != value
+            for field, value in expected_evidence.items()
+        ):
+            raise TrainingLaunchError(
+                f"{stage.stage_id}/{wave_name} is not bound to its "
+                f"{prior_level} parent held-out report"
+            )
+        checkpoint_fields = (
+            "name",
+            "batch",
+            "epoch",
+            "final",
+            "state_path",
+            "sampler_path",
+        )
+        evaluated_checkpoint = evidence.get("checkpoint")
+        receipt_checkpoint = parent_receipt.payload.get("checkpoint")
+        if (
+            approval.payload.get("parent_stage_id") != parent_stage_id
+            or approval.payload.get("parent_wave") != parent_wave
+            or approval.payload.get("parent_receipt_record_sha256")
+            != parent_receipt.record_sha256
+            or approval.payload.get("selected_parent_checkpoint")
+            != evaluated_checkpoint
+            or not isinstance(evaluated_checkpoint, Mapping)
+            or not isinstance(receipt_checkpoint, Mapping)
+            or any(
+                evaluated_checkpoint.get(field) != receipt_checkpoint.get(field)
+                for field in checkpoint_fields
+            )
+            or not _SHA256.fullmatch(
+                str(evidence.get("report_record_sha256", ""))
+            )
+        ):
+            raise TrainingLaunchError(
+                f"{stage.stage_id}/{wave_name} parent held-out evidence differs "
+                f"from its {parent_stage_id}/{parent_wave} checkpoint"
             )
     return approval
 
@@ -866,6 +1123,7 @@ def _resolved_launch_binding(
     key: StageKey,
     parent: ParentBinding | None,
     resume_batch: int | None,
+    resume_checkpoint: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return the complete scientific policy consumed by the Cookbook config."""
 
@@ -900,6 +1158,9 @@ def _resolved_launch_binding(
         ),
         "initial_checkpoint": checkpoint,
         "resume_batch": resume_batch,
+        "resume_checkpoint": (
+            dict(resume_checkpoint) if resume_checkpoint is not None else None
+        ),
         "wandb_run_id": deterministic_wandb_run_id(
             source_git_sha=str(manifest.payload["source_git_sha"]),
             protocol_logical_sha256=str(protocol["logical_sha256"]),
@@ -976,6 +1237,38 @@ def _resolved_launch_binding(
             "json_export": bool(recipe["rollout_json_export"]),
             "groups_to_log": 0,
         }
+    if stage.stage_id.startswith(("qwen-base-rl-", "qwen-l0-rl-")):
+        gate = str(stage.wave(wave_name)["approval"])
+        gate_record = (
+            store.load_base_baseline_approval(key, wave=wave_name)
+            if gate == "base-level-held-out-baseline-receipt"
+            else (
+                store.load_rollout_health_approval(key, wave=wave_name)
+                if gate == "rollout-health-receipt"
+                else (
+                    store.load_wave_approval(key, wave=wave_name)
+                    if gate
+                    in {
+                        "current-level-held-out-promotion-receipt",
+                        "parent-receipt-and-source-transition",
+                        "prior-level-held-out-promotion-receipt",
+                        "prior-and-current-level-held-out-transition-receipt",
+                    }
+                    else None
+                )
+            )
+        )
+        if gate != "initial":
+            if gate_record is None:
+                raise TrainingLaunchError(
+                    f"{stage.stage_id}/{wave_name} has no immutable gate evidence"
+                )
+            common["wave_gate_evidence"] = {
+                "approval_gate": gate,
+                "relative_path": str(gate_record.relative_path),
+                "payload_sha256": gate_record.payload_sha256,
+                "record_sha256": gate_record.record_sha256,
+            }
     common["logical_sha256"] = canonical_sha256(common)
     return common
 
@@ -993,6 +1286,7 @@ def _invocation_payload(
     resume_batch: int | None,
     resolved_launch: Mapping[str, Any],
     parent: ParentBinding | None,
+    resume_checkpoint: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the immutable invocation record shared by launch and replay."""
 
@@ -1006,6 +1300,9 @@ def _invocation_payload(
         "preflight_sha256": preflight["preflight_sha256"],
         "wandb_run_id": tracking["run_id"],
         "resume_batch": resume_batch,
+        "resume_checkpoint": (
+            dict(resume_checkpoint) if resume_checkpoint is not None else None
+        ),
         "resolved_launch": dict(resolved_launch),
         "resolved_launch_sha256": resolved_launch["logical_sha256"],
         "policy": {
@@ -1056,6 +1353,11 @@ def build_tinker_config(
         resume_batch=(
             int(invocation.payload["resume_batch"])
             if invocation is not None and invocation.payload.get("resume_batch") is not None
+            else None
+        ),
+        resume_checkpoint=(
+            invocation.payload.get("resume_checkpoint")
+            if invocation is not None
             else None
         ),
     )
@@ -1174,6 +1476,166 @@ def build_tinker_config(
     )
 
 
+def _sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def _wave_artifact_snapshot(
+    *,
+    log_path: Path,
+    wave_name: str,
+    recorded: Mapping[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, bytes]]:
+    """Freeze or verify the append-only log prefix belonging to one wave.
+
+    Cookbook deliberately reuses ``log_path`` across resumable waves.  A
+    receipt therefore cannot hash the live files directly: later waves append
+    to them.  Each receipt instead binds create-only copies under its own wave
+    directory.  During replay, the copies must still match their receipt and
+    the append-only live logs must retain the exact frozen prefix.
+    """
+
+    relative_root = Path("waves") / wave_name / "artifacts"
+    snapshot_root = log_path.parent / relative_root
+    expected_names = ("checkpoints.jsonl", "metrics.jsonl", "hparams.json")
+    stage_root = log_path.parent.resolve(strict=True)
+    resolved_snapshot_root = snapshot_root.resolve(strict=False)
+    if (
+        resolved_snapshot_root == stage_root
+        or not resolved_snapshot_root.is_relative_to(stage_root)
+    ):
+        raise TrainingLaunchError("completed wave artifact snapshot escapes its stage")
+
+    if recorded is None:
+        source_bytes: dict[str, bytes] = {}
+        for name in expected_names:
+            source = log_path / name
+            if source.is_symlink():
+                raise TrainingLaunchError("live training artifact cannot be a symlink")
+            if source.is_file():
+                source_bytes[name] = source.read_bytes()
+        if not {"checkpoints.jsonl", "metrics.jsonl"}.issubset(source_bytes):
+            raise TrainingLaunchError(
+                "training returned without checkpoint and metric artifacts"
+            )
+        snapshot_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        for name, value in source_bytes.items():
+            destination = snapshot_root / name
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            try:
+                descriptor = os.open(destination, flags, 0o600)
+            except FileExistsError:
+                if destination.is_symlink() or destination.read_bytes() != value:
+                    raise TrainingLaunchError(
+                        f"{wave_name} immutable artifact snapshot already differs"
+                    )
+            else:
+                try:
+                    with os.fdopen(descriptor, "wb") as stream:
+                        stream.write(value)
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                except BaseException:
+                    destination.unlink(missing_ok=True)
+                    raise
+        snapshot = {
+            "schema_version": _WAVE_ARTIFACT_SNAPSHOT_SCHEMA_VERSION,
+            "relative_root": relative_root.as_posix(),
+            "files": {
+                name: {
+                    "byte_count": len(value),
+                    "sha256": _sha256_bytes(value),
+                }
+                for name, value in sorted(source_bytes.items())
+            },
+        }
+    else:
+        snapshot = dict(recorded)
+
+    if (
+        set(snapshot) != {"schema_version", "relative_root", "files"}
+        or snapshot.get("schema_version") != _WAVE_ARTIFACT_SNAPSHOT_SCHEMA_VERSION
+        or snapshot.get("relative_root") != relative_root.as_posix()
+        or not isinstance(snapshot.get("files"), Mapping)
+    ):
+        raise TrainingLaunchError("completed wave artifact snapshot is malformed")
+    files = snapshot["files"]
+    if (
+        not {"checkpoints.jsonl", "metrics.jsonl"}.issubset(files)
+        or not set(files).issubset(expected_names)
+    ):
+        raise TrainingLaunchError("completed wave artifact snapshot files differ")
+
+    verified: dict[str, bytes] = {}
+    for name, metadata in files.items():
+        if (
+            not isinstance(name, str)
+            or not isinstance(metadata, Mapping)
+            or set(metadata) != {"byte_count", "sha256"}
+            or isinstance(metadata.get("byte_count"), bool)
+            or not isinstance(metadata.get("byte_count"), int)
+            or int(metadata["byte_count"]) < 0
+            or not _SHA256.fullmatch(str(metadata.get("sha256", "")))
+        ):
+            raise TrainingLaunchError("completed wave artifact snapshot entry is malformed")
+        snapshot_path = snapshot_root / name
+        if not snapshot_path.is_file() or snapshot_path.is_symlink():
+            raise TrainingLaunchError("completed wave artifact snapshot is missing")
+        value = snapshot_path.read_bytes()
+        if (
+            len(value) != int(metadata["byte_count"])
+            or _sha256_bytes(value) != metadata["sha256"]
+        ):
+            raise TrainingLaunchError("completed wave artifact snapshot digest differs")
+        if name in {"checkpoints.jsonl", "metrics.jsonl"}:
+            live_path = log_path / name
+            if not live_path.is_file():
+                if name == "checkpoints.jsonl":
+                    raise TrainingLaunchError(
+                        "completed wave is without a resumable checkpoint artifact"
+                    )
+                raise TrainingLaunchError("completed wave live artifact is missing")
+            with live_path.open("rb") as stream:
+                live_prefix = stream.read(len(value))
+            if live_prefix != value:
+                raise TrainingLaunchError(
+                    "completed wave canonical training artifacts no longer have "
+                    "their frozen prefix"
+                )
+        verified[name] = value
+    return snapshot, verified
+
+
+def _checkpoint_records_from_bytes(value: bytes) -> list[Any]:
+    records: list[Any] = []
+    try:
+        for raw_line in value.decode("utf-8").splitlines():
+            if raw_line.strip():
+                item = json.loads(raw_line)
+                if not isinstance(item, dict):
+                    raise ValueError("checkpoint row is not an object")
+                records.append(checkpoint_utils.CheckpointRecord.from_dict(item))
+    except (UnicodeDecodeError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise TrainingLaunchError("checkpoint snapshot is not valid JSONL") from exc
+    return records
+
+
+def _metrics_from_bytes(value: bytes) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    try:
+        for raw_line in value.decode("utf-8").splitlines():
+            if raw_line.strip():
+                item = json.loads(raw_line)
+                if not isinstance(item, dict):
+                    raise ValueError("metric row is not an object")
+                records.append(item)
+    except (UnicodeDecodeError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise TrainingLaunchError("metric snapshot is not valid JSONL") from exc
+    return records
+
+
 def _checkpoint_receipt(
     *,
     stage: StageSpec,
@@ -1183,8 +1645,14 @@ def _checkpoint_receipt(
     preflight: Mapping[str, Any],
     invocation: TrainingRecord,
     tracking: TrainingRecord | None,
+    artifact_snapshot: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    records = checkpoint_utils.load_checkpoints_file(str(log_path))
+    snapshot, snapshot_files = _wave_artifact_snapshot(
+        log_path=log_path,
+        wave_name=wave_name,
+        recorded=artifact_snapshot,
+    )
+    records = _checkpoint_records_from_bytes(snapshot_files["checkpoints.jsonl"])
     complete = [
         item for item in records if item.state_path is not None and item.sampler_path is not None
     ]
@@ -1256,11 +1724,10 @@ def _checkpoint_receipt(
     ]
     terminal_entry = checkpoint_entry(checkpoint, role="terminal")
     checkpoint_entries.append(terminal_entry)
-    local_artifacts: dict[str, str] = {}
-    for name in ("checkpoints.jsonl", "metrics.jsonl", "hparams.json"):
-        path = log_path / name
-        if path.is_file():
-            local_artifacts[name] = file_sha256(path)
+    local_artifacts = {
+        name: str(metadata["sha256"])
+        for name, metadata in snapshot["files"].items()
+    }
     candidate_root = log_path.parent / "candidates" / str(invocation.payload["invocation_id"])
     candidate_files = (
         sorted(candidate_root.rglob("evaluation.json")) if candidate_root.is_dir() else []
@@ -1292,16 +1759,8 @@ def _checkpoint_receipt(
             )
     else:
         expected_candidates = 0
-    metrics_path = log_path / "metrics.jsonl"
-    if not metrics_path.is_file():
-        raise TrainingLaunchError("training returned without metrics.jsonl")
-    last_metrics: dict[str, Any] | None = None
-    with metrics_path.open(encoding="utf-8") as stream:
-        for line in stream:
-            if line.strip():
-                value = json.loads(line)
-                if isinstance(value, dict):
-                    last_metrics = value
+    metrics = _metrics_from_bytes(snapshot_files["metrics.jsonl"])
+    last_metrics = metrics[-1] if metrics else None
     if last_metrics is None or last_metrics.get("step") != target_steps - 1:
         raise TrainingLaunchError("metrics do not reach the exact wave ceiling")
     required_metric = "optim/entropy" if stage.kind == "rl" else "train_mean_nll"
@@ -1341,6 +1800,7 @@ def _checkpoint_receipt(
             "entries": checkpoint_entries,
             "logical_sha256": canonical_sha256(checkpoint_entries),
         },
+        "artifact_snapshot": snapshot,
         "local_artifact_sha256": local_artifacts,
         "candidate_inventory": {
             "count": len(candidate_inventory),
@@ -1394,6 +1854,7 @@ def _validate_completed_wave_receipt(
         "preflight_sha256",
         "checkpoint",
         "checkpoint_inventory",
+        "artifact_snapshot",
         "local_artifact_sha256",
         "candidate_inventory",
         "sample_inventory",
@@ -1427,6 +1888,15 @@ def _validate_completed_wave_receipt(
         or not 0 <= resume_batch <= target_steps
     ):
         raise TrainingLaunchError("completed wave invocation has an invalid resume batch")
+    resume_checkpoint = invocation.payload.get("resume_checkpoint")
+    if (resume_batch is None) != (resume_checkpoint is None):
+        raise TrainingLaunchError(
+            "completed wave invocation has an incomplete optimizer-resume binding"
+        )
+    if resume_checkpoint is not None and not isinstance(resume_checkpoint, Mapping):
+        raise TrainingLaunchError(
+            "completed wave invocation optimizer-resume checkpoint is malformed"
+        )
     resolved_launch = _resolved_launch_binding(
         repo_root=repo_root,
         protocol=protocol,
@@ -1436,6 +1906,7 @@ def _validate_completed_wave_receipt(
         key=key,
         parent=parent,
         resume_batch=resume_batch,
+        resume_checkpoint=resume_checkpoint,
     )
     tracking_binding = manifest.payload.get("tracking")
     if not isinstance(tracking_binding, Mapping):
@@ -1452,6 +1923,7 @@ def _validate_completed_wave_receipt(
         resume_batch=resume_batch,
         resolved_launch=resolved_launch,
         parent=parent,
+        resume_checkpoint=resume_checkpoint,
     )
     if invocation.payload != expected_invocation:
         raise TrainingLaunchError("completed wave invocation differs from the resolved launch")
@@ -1689,6 +2161,7 @@ def _validate_completed_wave_receipt(
             preflight=preflight,
             invocation=invocation,
             tracking=tracking,
+            artifact_snapshot=payload.get("artifact_snapshot"),
         )
     except TrainingLaunchError:
         raise
@@ -1702,38 +2175,195 @@ def _validate_completed_wave_receipt(
         )
 
 
+def _checkpoint_identity(item: Any) -> dict[str, Any]:
+    if hasattr(item, "to_dict"):
+        value = item.to_dict()
+    elif isinstance(item, Mapping):
+        value = dict(item)
+    else:
+        raise TrainingLaunchError("optimizer checkpoint has an unsupported record type")
+    try:
+        normalized = json.loads(
+            json.dumps(
+                value,
+                allow_nan=False,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+        )
+    except (TypeError, ValueError) as exc:
+        raise TrainingLaunchError("optimizer checkpoint is not finite JSON") from exc
+    if not isinstance(normalized, dict):
+        raise TrainingLaunchError("optimizer checkpoint is not an object")
+    return normalized
+
+
+def _matches_receipt_checkpoint(item: Any, expected: Mapping[str, Any]) -> bool:
+    return all(
+        getattr(item, field, None) == expected.get(field)
+        for field in (
+            "name",
+            "batch",
+            "epoch",
+            "state_path",
+            "sampler_path",
+        )
+    )
+
+
 def _validate_resume_state(
     *,
     stage: StageSpec,
     wave_name: str,
     log_path: Path,
     prior_wave_receipt: TrainingRecord | None,
-) -> int | None:
+) -> ResumeBinding | None:
     if not log_path.exists():
         return None
     records = checkpoint_utils.load_checkpoints_file(str(log_path))
     target = int(stage.wave(wave_name)["max_steps"])
-    progress = [
-        int(item.batch)
-        for item in records
-        if item.state_path is not None and item.batch is not None
+    resumable = [
+        (index, item)
+        for index, item in enumerate(records)
+        if item.state_path is not None
     ]
+    progress: list[int] = []
+    for _index, item in resumable:
+        if isinstance(item.batch, bool) or not isinstance(item.batch, int):
+            raise TrainingLaunchError("resumable optimizer checkpoint has no integer batch")
+        progress.append(item.batch)
     if progress and max(progress) > target:
         raise TrainingLaunchError("local optimizer state is ahead of this wave")
+
+    selected: Any | None = None
     if prior_wave_receipt is not None:
         expected = prior_wave_receipt.payload["checkpoint"]
-        matched = any(
-            item.state_path == expected["state_path"]
-            and item.sampler_path == expected["sampler_path"]
-            for item in records
-        )
-        if not matched:
+        matches = [
+            (index, item)
+            for index, item in resumable
+            if _matches_receipt_checkpoint(item, expected)
+        ]
+        if len(matches) != 1:
             raise TrainingLaunchError("optimizer log does not contain the prior-wave checkpoint")
+        expected_index, expected_item = matches[0]
+        expected_batch = expected.get("batch")
+        if (
+            isinstance(expected_batch, bool)
+            or not isinstance(expected_batch, int)
+            or expected_batch < 0
+            or expected_batch >= target
+        ):
+            raise TrainingLaunchError("prior-wave checkpoint cannot precede this wave")
+        maximum = max(progress) if progress else expected_batch
+        if maximum == expected_batch:
+            later = [
+                item
+                for index, item in resumable
+                if index > expected_index
+            ]
+            if later:
+                # The pinned Cookbook always appends a permanent ``final``
+                # checkpoint after the numbered wave-ceiling checkpoint.
+                # It represents the same completed batch, but it is a
+                # different URI.  We recognize exactly that one safe shape
+                # and still pin the next launch to the receipt's numbered URI.
+                if (
+                    len(later) != 1
+                    or later[0].name != "final"
+                    or later[0].batch != expected_batch
+                    or later[0].state_path is None
+                    or later[0].sampler_path is None
+                ):
+                    raise TrainingLaunchError(
+                        "optimizer log has ambiguous state after the prior-wave checkpoint"
+                    )
+            selected = expected_item
+        else:
+            selected_index, candidate = resumable[-1]
+            if (
+                selected_index <= expected_index
+                or candidate.batch != maximum
+                or candidate.name == "final"
+                or candidate.batch >= target
+            ):
+                raise TrainingLaunchError(
+                    "optimizer log does not have an exact in-wave resume checkpoint"
+                )
+            selected = candidate
+    elif resumable:
+        maximum = max(progress)
+        _selected_index, candidate = resumable[-1]
+        if (
+            candidate.batch != maximum
+            or candidate.name == "final"
+            or candidate.batch >= target
+        ):
+            raise TrainingLaunchError(
+                "training reached its wave ceiling without an immutable receipt"
+            )
+        selected = candidate
+
     if not records and any(log_path.iterdir()):
         raise TrainingLaunchError(
             "training log has no resumable checkpoint; reconcile it before retrying"
         )
-    return max(progress) if progress else None
+    if selected is None:
+        return None
+    return ResumeBinding(
+        batch=int(selected.batch),
+        checkpoint=_checkpoint_identity(selected),
+    )
+
+
+@contextmanager
+def _sealed_cookbook_resume(
+    *,
+    stage: StageSpec,
+    wave_name: str,
+    log_path: Path,
+    prior_wave_receipt: TrainingRecord | None,
+    expected: ResumeBinding | None,
+) -> Iterator[None]:
+    """Make Cookbook consume exactly the optimizer state in the invocation."""
+
+    original = checkpoint_utils.get_last_checkpoint
+    expected_log = log_path.expanduser().resolve(strict=False)
+
+    def sealed(log_dir: str, required_key: str = "state_path") -> Any:
+        requested = Path(log_dir).expanduser().resolve(strict=False)
+        if requested != expected_log:
+            return original(log_dir, required_key=required_key)
+        observed = _validate_resume_state(
+            stage=stage,
+            wave_name=wave_name,
+            log_path=log_path,
+            prior_wave_receipt=prior_wave_receipt,
+        )
+        if observed != expected:
+            raise TrainingLaunchError(
+                "optimizer state changed after the immutable invocation was recorded"
+            )
+        if observed is None:
+            return None
+        records = checkpoint_utils.load_checkpoints_file(str(log_path))
+        matches = [
+            item
+            for item in records
+            if item.state_path is not None
+            and _checkpoint_identity(item) == observed.checkpoint
+        ]
+        if len(matches) != 1 or not matches[0].has(required_key):
+            raise TrainingLaunchError(
+                "sealed optimizer checkpoint is missing at the Cookbook boundary"
+            )
+        return matches[0]
+
+    checkpoint_utils.get_last_checkpoint = sealed
+    try:
+        yield
+    finally:
+        checkpoint_utils.get_last_checkpoint = original
 
 
 async def run_training_stage(
@@ -1782,6 +2412,45 @@ async def run_training_stage(
             and existing_manifest.payload.get("source_git_sha") != source_git_sha
         ):
             raise TrainingLaunchError("existing child manifest belongs to another source commit")
+        if str(stage.wave(wave_name)["approval"]) == "rollout-health-receipt":
+            if existing_manifest is None:
+                raise TrainingLaunchError(
+                    "rollout-health continuation has no completed smoke manifest"
+                )
+            smoke_receipt = store.load_wave_receipt(key, wave="smoke")
+            if smoke_receipt is None:
+                raise TrainingLaunchError(
+                    "rollout-health continuation has no smoke receipt"
+                )
+            smoke_preflight = stage_preflight(
+                repo_root=root,
+                protocol=protocol,
+                stage=stage,
+                wave_name="smoke",
+                require_sandbox=True,
+            )
+            smoke_parent = _parent_binding(
+                repo_root=root,
+                protocol=protocol,
+                store=store,
+                key=key,
+                stage=stage,
+                source_git_sha=source_git_sha,
+                approval=None,
+                existing_manifest=existing_manifest,
+            )
+            _validate_completed_wave_receipt(
+                repo_root=root,
+                protocol=protocol,
+                store=store,
+                key=key,
+                stage=stage,
+                wave_name="smoke",
+                manifest=existing_manifest,
+                preflight=smoke_preflight,
+                parent=smoke_parent,
+                receipt=smoke_receipt,
+            )
         approval = _approval_record(
             repo_root=root,
             store=store,
@@ -1847,11 +2516,15 @@ async def run_training_stage(
             if prior_wave_name is not None
             else None
         )
-        resume_batch = _validate_resume_state(
+        resume_binding = _validate_resume_state(
             stage=stage,
             wave_name=wave_name,
             log_path=log_path,
             prior_wave_receipt=prior_wave_receipt,
+        )
+        resume_batch = resume_binding.batch if resume_binding is not None else None
+        resume_checkpoint = (
+            resume_binding.checkpoint if resume_binding is not None else None
         )
         resume = resume_batch is not None
         # Install one continuous environment before the first W&B SDK call.
@@ -1878,6 +2551,7 @@ async def run_training_stage(
                 key=key,
                 parent=parent,
                 resume_batch=resume_batch,
+                resume_checkpoint=resume_checkpoint,
             )
             invocation_id = f"{wave_name}-{uuid.uuid4().hex}"
             invocation = store.begin_invocation(
@@ -1895,6 +2569,7 @@ async def run_training_stage(
                     resume_batch=resume_batch,
                     resolved_launch=resolved_launch,
                     parent=parent,
+                    resume_checkpoint=resume_checkpoint,
                 ),
             )
             config = build_tinker_config(
@@ -1922,38 +2597,47 @@ async def run_training_stage(
                     },
                 )
 
-            if stage.kind == "sft":
-                if sft_main is None:
-                    from tinker_cookbook.supervised.train import main as resolved_main
-                else:
-                    resolved_main = sft_main
-                if sft_main is None:
-                    with _sealed_wandb_initialization(
-                        tracking,
-                        resume=resume,
-                        on_initialized=record_live_tracking,
-                    ):
+            with _sealed_cookbook_resume(
+                stage=stage,
+                wave_name=wave_name,
+                log_path=log_path,
+                prior_wave_receipt=prior_wave_receipt,
+                expected=resume_binding,
+            ):
+                if stage.kind == "sft":
+                    if sft_main is None:
+                        from tinker_cookbook.supervised.train import main as resolved_main
+                    else:
+                        resolved_main = sft_main
+                    if sft_main is None:
+                        with _sealed_wandb_initialization(
+                            tracking,
+                            resume=resume,
+                            on_initialized=record_live_tracking,
+                        ):
+                            await resolved_main(config)
+                    else:
                         await resolved_main(config)
                 else:
-                    await resolved_main(config)
-            else:
-                if stage.model_key == "inkling":
-                    from rl.track_b.tml_shim import install_inkling_runtime
+                    if stage.model_key == "inkling":
+                        from rl.track_b.tml_shim import install_inkling_runtime
 
-                    install_inkling_runtime(effort=float(protocol["models"]["inkling"]["effort"]))
-                if rl_main is None:
-                    from tinker_cookbook.rl.train import main as resolved_main
-                else:
-                    resolved_main = rl_main
-                if rl_main is None:
-                    with _sealed_wandb_initialization(
-                        tracking,
-                        resume=resume,
-                        on_initialized=record_live_tracking,
-                    ):
+                        install_inkling_runtime(
+                            effort=float(protocol["models"]["inkling"]["effort"])
+                        )
+                    if rl_main is None:
+                        from tinker_cookbook.rl.train import main as resolved_main
+                    else:
+                        resolved_main = rl_main
+                    if rl_main is None:
+                        with _sealed_wandb_initialization(
+                            tracking,
+                            resume=resume,
+                            on_initialized=record_live_tracking,
+                        ):
+                            await resolved_main(config)
+                    else:
                         await resolved_main(config)
-                else:
-                    await resolved_main(config)
         live_tracking = store.load_invocation_tracking(
             key,
             invocation_id=invocation_id,

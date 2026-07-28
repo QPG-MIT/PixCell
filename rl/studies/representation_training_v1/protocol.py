@@ -23,7 +23,12 @@ LEVELS = ("L0", "L1", "L2", "L3", "L4")
 INITIAL_STAGE_IDS = (
     "qwen-mixed-sft",
     "qwen-l0-sft",
+    "qwen-base-rl-l0",
     "inkling-l4-rl",
+)
+BASE_QWEN_RL_STAGE_IDS = tuple(f"qwen-base-rl-l{level}" for level in range(5))
+L0_SFT_QWEN_RL_STAGE_IDS = tuple(
+    f"qwen-l0-rl-l{level}" for level in range(1, 5)
 )
 _STAGE_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -225,6 +230,51 @@ def load_protocol(
         "minimum_pure_executable_rate": 0.95,
     }:
         raise ValueError("training protocol has the wrong mastery thresholds")
+    if document["evaluation"].get("curriculum_progress_holdout") != {
+        "baseline_checkpoints": {
+            "L0": "base:qwen",
+            "L1": "qwen-base-rl-l0:complete",
+            "L2": "qwen-base-rl-l1:complete",
+            "L3": "qwen-base-rl-l2:complete",
+            "L4": "qwen-base-rl-l3:complete",
+        },
+        "configuration": "depth",
+        "evaluation_waves": [
+            "step-5",
+            "step-10",
+            "step-15",
+            "step-20",
+            "step-25",
+            "complete",
+        ],
+        "panel_prefix": "level-progress",
+        "realization_slot": 6,
+        "representations_by_level": {
+            "L0": 93,
+            "L1": 127,
+            "L2": 98,
+            "L3": 120,
+            "L4": 108,
+        },
+        "rows_by_level": {
+            "L0": 93,
+            "L1": 127,
+            "L2": 98,
+            "L3": 120,
+            "L4": 108,
+        },
+        "split": "validation",
+    }:
+        raise ValueError("training protocol has the wrong curriculum progress holdout")
+    if document["evaluation"].get("final_selection_holdout") != {
+        "configuration": "depth",
+        "panel": "depth-final-selection",
+        "realization_slot": 7,
+        "representations": 546,
+        "rows": 546,
+        "split": "validation",
+    }:
+        raise ValueError("training protocol has the wrong final selection holdout")
     for key, value in document["models"].items():
         _validate_model(str(key), value)
     stages = {
@@ -233,6 +283,8 @@ def load_protocol(
     }
     if set(INITIAL_STAGE_IDS) - set(stages):
         raise ValueError("training protocol omits an initial branch")
+    if set(BASE_QWEN_RL_STAGE_IDS) - set(stages):
+        raise ValueError("training protocol omits the pure Qwen RL curriculum")
     if set(document["recipes"]) != {"qwen_sft", "qwen_rl", "inkling_l4_rl"}:
         raise ValueError("training protocol has an unexpected recipe set")
     for recipe_name, recipe in document["recipes"].items():
@@ -291,14 +343,59 @@ def load_protocol(
                     for name, wave in stage.waves.items()
                 } != expected_waves:
                     raise ValueError(f"{stage.stage_id} has wrong Qwen RL waves")
-                if any(
+                if stage.stage_id in BASE_QWEN_RL_STAGE_IDS:
+                    expected_gates = {
+                        "smoke": (
+                            "base-level-held-out-baseline-receipt"
+                            if stage.current_level == "L0"
+                            else (
+                                "prior-and-current-level-held-out-"
+                                "transition-receipt"
+                            )
+                        ),
+                        "step-5": "rollout-health-receipt",
+                        "step-10": "current-level-held-out-promotion-receipt",
+                        "step-15": "current-level-held-out-promotion-receipt",
+                        "step-20": "current-level-held-out-promotion-receipt",
+                        "step-25": "current-level-held-out-promotion-receipt",
+                        "complete": "current-level-held-out-promotion-receipt",
+                    }
+                    observed_gates = {
+                        name: str(stage.wave(name)["approval"])
+                        for name in expected_waves
+                    }
+                    if observed_gates != expected_gates:
+                        raise ValueError(
+                            f"{stage.stage_id} has wrong pure-RL gates"
+                        )
+                elif stage.stage_id in L0_SFT_QWEN_RL_STAGE_IDS:
+                    expected_gates = {
+                        "smoke": (
+                            "parent-receipt-and-source-transition"
+                            if stage.current_level == "L1"
+                            else "prior-level-held-out-promotion-receipt"
+                        ),
+                        "step-5": "rollout-health-receipt",
+                        "step-10": "current-level-held-out-promotion-receipt",
+                        "step-15": "current-level-held-out-promotion-receipt",
+                        "step-20": "current-level-held-out-promotion-receipt",
+                        "step-25": "current-level-held-out-promotion-receipt",
+                        "complete": "current-level-held-out-promotion-receipt",
+                    }
+                    observed_gates = {
+                        name: str(stage.wave(name)["approval"])
+                        for name in expected_waves
+                    }
+                    if observed_gates != expected_gates:
+                        raise ValueError(
+                            f"{stage.stage_id} has wrong L0-SFT-to-RL gates"
+                        )
+                elif any(
                     stage.wave(name)["approval"] != "clean-smoke-receipt"
                     for name in expected_waves
                     if name != "smoke"
                 ):
-                    raise ValueError(
-                        f"{stage.stage_id} continuation gates changed"
-                    )
+                    raise ValueError(f"{stage.stage_id} continuation gates changed")
             else:
                 if set(stage.waves) != {
                     "smoke",
@@ -318,6 +415,40 @@ def load_protocol(
                 raise ValueError(
                     f"{stage.stage_id} does not bind unique wave checkpoints"
                 )
+    for level, stage_id in enumerate(BASE_QWEN_RL_STAGE_IDS):
+        stage = stages[stage_id]
+        expected_parent = (
+            "base:qwen"
+            if level == 0
+            else f"qwen-base-rl-l{level - 1}:complete"
+        )
+        if (
+            stage.kind != "rl"
+            or stage.model_key != "qwen"
+            or stage.recipe_key != "qwen_rl"
+            or stage.hypotheses != ("RT-H06",)
+            or stage.current_level != f"L{level}"
+            or stage.replay_levels != LEVELS[:level]
+            or stage.parent != expected_parent
+        ):
+            raise ValueError(f"{stage_id} changed the pure Qwen RL curriculum")
+    for level, stage_id in enumerate(L0_SFT_QWEN_RL_STAGE_IDS, start=1):
+        stage = stages[stage_id]
+        expected_parent = (
+            "qwen-l0-sft:complete"
+            if level == 1
+            else f"qwen-l0-rl-l{level - 1}:complete"
+        )
+        if (
+            stage.kind != "rl"
+            or stage.model_key != "qwen"
+            or stage.recipe_key != "qwen_rl"
+            or stage.hypotheses != ("RT-H03",)
+            or stage.current_level != f"L{level}"
+            or stage.replay_levels != LEVELS[:level]
+            or stage.parent != expected_parent
+        ):
+            raise ValueError(f"{stage_id} changed the L0-SFT-to-RL curriculum")
     exact_edges = {
         stage.stage_id: stage.parent.split(":", 1)[0]
         for stage in stages.values()

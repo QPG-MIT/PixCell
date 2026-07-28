@@ -5,6 +5,7 @@ import copy
 import json
 import os
 from pathlib import Path
+import subprocess
 from types import SimpleNamespace
 
 import pytest
@@ -699,8 +700,53 @@ def test_completed_rl_receipt_requires_every_candidate_and_sample(
         parent=None,
         receipt=receipt,
     )
+    checkpoints_path = log_path / "checkpoints.jsonl"
+    original_checkpoints = checkpoints_path.read_bytes()
     metrics_path = log_path / "metrics.jsonl"
     original_metrics = metrics_path.read_bytes()
+    with checkpoints_path.open("ab") as stream:
+        stream.write(
+            (
+                json.dumps(
+                    {
+                        "name": "final",
+                        "batch": 1,
+                        "state_path": "tinker://unit/weights/final",
+                        "sampler_path": "tinker://unit/sampler_weights/final",
+                    }
+                )
+                + "\n"
+                + json.dumps(
+                    {
+                        "name": "000005",
+                        "batch": 5,
+                        "state_path": "tinker://unit/weights/000005",
+                        "sampler_path": "tinker://unit/sampler_weights/000005",
+                    }
+                )
+                + "\n"
+            ).encode("utf-8")
+        )
+    with metrics_path.open("ab") as stream:
+        stream.write(
+            (json.dumps({"step": 4, "optim/entropy": 0.25}) + "\n").encode("utf-8")
+        )
+    # A later wave appends to Cookbook's shared log.  The earlier receipt
+    # remains reconstructable from its immutable prefix snapshot.
+    launcher._validate_completed_wave_receipt(
+        repo_root=REPO_ROOT,
+        protocol=protocol,
+        store=store,
+        key=key,
+        stage=stage,
+        wave_name=wave,
+        manifest=manifest,
+        preflight=preflight,
+        parent=None,
+        receipt=receipt,
+    )
+    checkpoints_path.write_bytes(original_checkpoints)
+    metrics_path.write_bytes(original_metrics)
     metrics_path.write_text(
         json.dumps({"step": 0, "optim/entropy": 0.25}) + "\n",
         encoding="utf-8",
@@ -722,8 +768,6 @@ def test_completed_rl_receipt_requires_every_candidate_and_sample(
             receipt=receipt,
         )
     metrics_path.write_bytes(original_metrics)
-    checkpoints_path = log_path / "checkpoints.jsonl"
-    original_checkpoints = checkpoints_path.read_bytes()
     checkpoints_path.unlink()
     with pytest.raises(
         launcher.TrainingLaunchError,
@@ -758,6 +802,138 @@ def test_completed_rl_receipt_requires_every_candidate_and_sample(
             preflight=preflight,
             parent=None,
             receipt=receipt,
+        )
+
+
+def test_resume_pins_receipt_checkpoint_instead_of_later_cookbook_final(
+    tmp_path: Path,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    stage = stage_spec(protocol, "qwen-base-rl-l0")
+    log_path = tmp_path / "tinker"
+    log_path.mkdir()
+    numbered = {
+        "name": "000001",
+        "batch": 1,
+        "state_path": "tinker://unit/weights/000001",
+        "sampler_path": "tinker://unit/sampler_weights/000001",
+    }
+    terminal_final = {
+        "name": "final",
+        "batch": 1,
+        "state_path": "tinker://unit/weights/final",
+        "sampler_path": "tinker://unit/sampler_weights/final",
+    }
+    (log_path / "checkpoints.jsonl").write_text(
+        json.dumps(numbered) + "\n" + json.dumps(terminal_final) + "\n",
+        encoding="utf-8",
+    )
+    prior = SimpleNamespace(
+        payload={
+            "checkpoint": {
+                **numbered,
+                "epoch": None,
+                "final": True,
+            }
+        }
+    )
+
+    # Unsealed Cookbook behavior selects the later, different final URI.
+    assert (
+        launcher.checkpoint_utils.get_last_checkpoint(str(log_path)).state_path
+        == terminal_final["state_path"]
+    )
+    binding = launcher._validate_resume_state(
+        stage=stage,
+        wave_name="step-5",
+        log_path=log_path,
+        prior_wave_receipt=prior,
+    )
+    assert binding is not None
+    assert binding.batch == 1
+    assert binding.checkpoint["state_path"] == numbered["state_path"]
+    invocation = launcher._invocation_payload(
+        protocol=protocol,
+        stage=stage,
+        wave_name="step-5",
+        source_git_sha="a" * 40,
+        invocation_id="resume-unit",
+        manifest=SimpleNamespace(record_sha256="b" * 64),
+        preflight={"preflight_sha256": "c" * 64},
+        tracking={"run_id": "unit"},
+        resume_batch=binding.batch,
+        resume_checkpoint=binding.checkpoint,
+        resolved_launch={"logical_sha256": "d" * 64},
+        parent=None,
+    )
+    assert invocation["resume_batch"] == 1
+    assert invocation["resume_checkpoint"] == binding.checkpoint
+
+    with launcher._sealed_cookbook_resume(
+        stage=stage,
+        wave_name="step-5",
+        log_path=log_path,
+        prior_wave_receipt=prior,
+        expected=binding,
+    ):
+        selected = launcher.checkpoint_utils.get_last_checkpoint(str(log_path))
+        assert selected.state_path == numbered["state_path"]
+        assert selected.sampler_path == numbered["sampler_path"]
+
+    with (log_path / "checkpoints.jsonl").open("a", encoding="utf-8") as stream:
+        stream.write(
+            json.dumps(
+                {
+                    "name": "000002",
+                    "batch": 2,
+                    "state_path": "tinker://unit/weights/000002",
+                    "rolling": True,
+                }
+            )
+            + "\n"
+        )
+    with launcher._sealed_cookbook_resume(
+        stage=stage,
+        wave_name="step-5",
+        log_path=log_path,
+        prior_wave_receipt=prior,
+        expected=binding,
+    ):
+        with pytest.raises(
+            launcher.TrainingLaunchError,
+            match="changed after the immutable invocation",
+        ):
+            launcher.checkpoint_utils.get_last_checkpoint(str(log_path))
+
+
+def test_resume_rejects_unreceipted_terminal_checkpoint(
+    tmp_path: Path,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    stage = stage_spec(protocol, "qwen-base-rl-l0")
+    log_path = tmp_path / "tinker"
+    log_path.mkdir()
+    (log_path / "checkpoints.jsonl").write_text(
+        json.dumps(
+            {
+                "name": "final",
+                "batch": 1,
+                "state_path": "tinker://unit/weights/final",
+                "sampler_path": "tinker://unit/sampler_weights/final",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="wave ceiling without an immutable receipt",
+    ):
+        launcher._validate_resume_state(
+            stage=stage,
+            wave_name="smoke",
+            log_path=log_path,
+            prior_wave_receipt=None,
         )
 
 
@@ -1356,10 +1532,21 @@ def test_tinker_config_rejects_invocation_policy_drift(tmp_path: Path) -> None:
             )
 
 
-def test_inkling_extension_rechecks_exact_pilot_evidence() -> None:
+def test_inkling_extension_rechecks_exact_pilot_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     protocol = load_protocol(REPO_ROOT)
     stage = stage_spec(protocol, "inkling-l4-rl")
     key = StageKey(STUDY_ID, stage.stage_id, "r0")
+    # This test isolates the launcher's downstream binding of an already
+    # canonically validated approval to the exact pilot receipt.  Canonical
+    # report reconstruction is covered independently; keep it out of this
+    # deliberately synthetic store.
+    monkeypatch.setattr(
+        launcher,
+        "validate_same_source_wave_approval",
+        lambda **_kwargs: None,
+    )
     checkpoint = {
         "name": "000006",
         "batch": 6,
@@ -1432,6 +1619,66 @@ def test_inkling_extension_rechecks_exact_pilot_evidence() -> None:
             stage=stage,
             wave_name="coverage-extension",
             source_git_sha="a" * 40,
+            protocol=protocol,
+        )
+
+
+def test_launcher_rejects_fabricated_minimal_same_source_approval() -> None:
+    protocol = load_protocol(REPO_ROOT)
+    stage = stage_spec(protocol, "inkling-l4-rl")
+    key = StageKey(STUDY_ID, stage.stage_id, "r0")
+    source_git_sha = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        cwd=REPO_ROOT,
+        text=True,
+    ).strip()
+    prior = SimpleNamespace(
+        record_sha256="b" * 64,
+        payload={
+            "checkpoint": {
+                "name": "000006",
+                "batch": 6,
+                "epoch": 0,
+                "final": False,
+                "state_path": "tinker://unit/weights/000006",
+                "sampler_path": "tinker://unit/sampler_weights/000006",
+            },
+        },
+    )
+    fabricated = SimpleNamespace(
+        payload={
+            "schema_version": launcher.APPROVAL_SCHEMA_VERSION,
+            "decision": "approve",
+            "approval_gate": "promotion-receipt-and-explicit-human-approval",
+            "stage_id": stage.stage_id,
+            "wave": "coverage-extension",
+            "source_git_sha": source_git_sha,
+            "protocol_logical_sha256": protocol["logical_sha256"],
+        },
+    )
+
+    class FakeStore:
+        @staticmethod
+        def load_wave_receipt(_key, *, wave):
+            assert wave == "pilot"
+            return prior
+
+        @staticmethod
+        def load_wave_approval(_key, *, wave):
+            assert wave == "coverage-extension"
+            return fabricated
+
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="same-source approval failed validation",
+    ):
+        launcher._approval_record(
+            repo_root=REPO_ROOT,
+            store=FakeStore(),
+            key=key,
+            stage=stage,
+            wave_name="coverage-extension",
+            source_git_sha=source_git_sha,
             protocol=protocol,
         )
 
@@ -1513,6 +1760,90 @@ def test_cross_source_parent_requires_v2_and_child_manifest_records_it() -> None
     assert manifest["source_transition"]["consumer_source_git_sha"] == (consumer)
     assert manifest["source_transition"]["authorized_child_wave"] == "smoke"
     assert manifest["parent_receipt"]["record_sha256"] == (receipt.record_sha256)
+
+
+def test_historical_l0_parent_uses_receipt_transition_without_evaluation(
+    monkeypatch,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    producer = "1" * 40
+    consumer = "2" * 40
+    checkpoint, parent_manifest, receipt, approval = _cross_source_parent_records(
+        protocol,
+        producer_source_git_sha=producer,
+        consumer_source_git_sha=consumer,
+    )
+    parent_manifest.payload["protocol_logical_sha256"] = "3" * 64
+    approval.payload.update(
+        {
+            "schema_version": (
+                launcher.PARENT_RECEIPT_TRANSITION_APPROVAL_SCHEMA_VERSION
+            ),
+            "decision": "approve",
+            "approval_gate": "parent-receipt-and-source-transition",
+            "protocol_logical_sha256": protocol["logical_sha256"],
+            "explicit_human_confirmation": True,
+        }
+    )
+    key = StageKey(STUDY_ID, "qwen-l0-rl-l1", "r0")
+    parent_key = StageKey(STUDY_ID, "qwen-l0-sft", "r0")
+    stage = stage_spec(protocol, key.stage_id)
+    validation_calls: list[dict] = []
+    monkeypatch.setattr(
+        launcher,
+        "validate_parent_receipt_transition_approval",
+        lambda **kwargs: validation_calls.append(dict(kwargs)),
+    )
+
+    class ParentStore:
+        @staticmethod
+        def load_wave_approval(observed_key, *, wave):
+            assert observed_key == key
+            assert wave == "smoke"
+            return approval
+
+        @staticmethod
+        def load_manifest(observed_key):
+            assert observed_key == parent_key
+            return parent_manifest
+
+        @staticmethod
+        def load_wave_receipt(observed_key, *, wave):
+            assert observed_key == parent_key
+            assert wave == "complete"
+            return receipt
+
+    observed_approval = launcher._approval_record(
+        repo_root=REPO_ROOT,
+        store=ParentStore(),
+        key=key,
+        stage=stage,
+        wave_name="smoke",
+        source_git_sha=consumer,
+        protocol=protocol,
+    )
+    assert observed_approval is approval
+    assert len(validation_calls) == 1
+
+    parent = launcher._parent_binding(
+        repo_root=REPO_ROOT,
+        protocol=protocol,
+        store=ParentStore(),
+        key=key,
+        stage=stage,
+        source_git_sha=consumer,
+        approval=approval,
+        existing_manifest=None,
+    )
+    assert parent is not None
+    assert parent.checkpoint == checkpoint
+    assert parent.entry_approval is approval
+    child_transition = launcher._child_source_transition_binding(approval)
+    assert child_transition["approval_schema_version"] == (
+        launcher.PARENT_RECEIPT_TRANSITION_APPROVAL_SCHEMA_VERSION
+    )
+    assert child_transition["producer_source_git_sha"] == producer
+    assert child_transition["consumer_source_git_sha"] == consumer
 
 
 def test_existing_child_manifest_revalidates_exact_v2_transition(
