@@ -228,6 +228,24 @@ PYTHONPATH=src:. python -m \
   --confirm-spend PIXCELL_TRAINING_V1
 ```
 
+The mixed-SFT renderer postmortem is a fixed, non-canonical diagnostic. It
+samples only the final checkpoint with `qwen3_5_disable_thinking` and steps
+14, 28, and 42 with `qwen3_5`, once each on F1–F8. Its 32 rows live under
+`diagnostics/qwen-sft-renderer-diagnostic-v1/`, use a diagnostic-only schema,
+and are explicitly ineligible for checkpoint promotion. Sampling the three
+periodic checkpoints is a deliberate postmortem-only exception to the study's
+terminal-checkpoint evaluation rule:
+
+```bash
+PYTHONPATH=src:. python -m \
+  rl.studies.representation_training_v1.evaluate_renderer_diagnostic \
+  --repo-root "$(pwd)" \
+  --evaluator-source-git-sha "$(git rev-parse HEAD)" \
+  --producer-wave-receipt-record-sha256 <mixed-sft-receipt-record-sha256> \
+  --external-root "$PIXCELL_TRAINING_ROOT" \
+  --confirm-spend PIXCELL_TRAINING_V1
+```
+
 After reviewing that immutable report, bind it to exactly one dependent wave:
 
 ```bash
