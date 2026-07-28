@@ -2,39 +2,38 @@
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
-from collections.abc import Mapping
 from pathlib import Path
 
 from rl.common.isolation import require_execution_boundary
 
 
-def bind_execution_boundary(
-    resolved_launch: Mapping[str, object],
-) -> dict[str, object]:
+def bind_execution_boundary() -> dict[str, object]:
     """Bind paid program execution to one immutable local sandbox image."""
 
-    binding = dict(resolved_launch)
-    if binding.get("kind") not in {"rl", "evaluation"}:
-        return binding
     boundary = require_execution_boundary()
-    binding["candidate_sandbox"] = {
+    return {
         "runtime_path": str(boundary.runtime_path),
         "daemon_endpoint": boundary.daemon_endpoint,
         "image_ref": boundary.image_ref,
         "image_id": boundary.image_id,
         "workspace_root": str(boundary.workspace_root),
     }
-    return binding
 
 
 def run_launch_preflight(
     repo_root: Path,
     *,
-    resolved_launch: Mapping[str, object],
+    dataset_root: Path,
+    model_name: str,
+    renderer_name: str,
+    require_sandbox: bool,
+    tokenize_sft: bool = False,
+    sft_levels: str = "",
+    max_length: int = 6144,
+    max_image: int = 1440,
 ) -> None:
     """Run the complete local gate before any Tinker client can be created."""
 
@@ -44,27 +43,28 @@ def run_launch_preflight(
     if existing:
         roots.append(existing)
     environment["PYTHONPATH"] = os.pathsep.join(roots)
-    subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "rl.track_a.preflight",
-            "--execute-ground-truth",
-            "5",
-            "--tokenize-sft",
-            "--require-clean",
-            "--dataset-root",
-            str(resolved_launch["dataset_root"]),
-            "--config",
-            str(resolved_launch["config_path"]),
-            "--resolved-launch-json",
-            json.dumps(
-                dict(resolved_launch),
-                sort_keys=True,
-                separators=(",", ":"),
-            ),
-        ],
-        cwd=repo_root,
-        env=environment,
-        check=True,
-    )
+    command = [
+        sys.executable,
+        "-m",
+        "rl.track_a.preflight",
+        "--execute-ground-truth",
+        "5",
+        "--require-clean",
+        "--dataset-root",
+        str(dataset_root),
+        "--model-name",
+        model_name,
+        "--renderer-name",
+        renderer_name,
+        "--max-length",
+        str(max_length),
+        "--max-image",
+        str(max_image),
+    ]
+    if require_sandbox:
+        command.append("--require-sandbox")
+    if tokenize_sft:
+        command.append("--tokenize-sft")
+    if sft_levels:
+        command.extend(["--sft-levels", sft_levels])
+    subprocess.run(command, cwd=repo_root, env=environment, check=True)

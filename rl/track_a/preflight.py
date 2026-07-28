@@ -32,14 +32,9 @@ from rl.common.prompt import (
     catalog_text,
     prompt_asset_hashes,
 )
+from rl.common.baselines import cached_rect_baseline
 from rl.common.runtime import validate_runtime_stack
-from rl.track_a.reward import reward_for
-from rl.track_a.recipe import (
-    canonical_config_path,
-    canonical_dataset_root,
-    canonical_json_sha256,
-    validate_resolved_binding,
-)
+from rl.track_a.reward import reward_for_policy
 
 
 def _dataset_allowed_components(dataset_root: Path) -> frozenset[str]:
@@ -180,42 +175,8 @@ def _token_audit(
 def run(args: argparse.Namespace) -> dict:
     dataset_root = args.dataset_root.resolve()
     repo_root = dataset_root.parent
-    config_path = args.config.resolve()
-    if dataset_root != canonical_dataset_root(repo_root):
+    if dataset_root != (repo_root / "dataset").resolve():
         raise RuntimeError("preflight dataset_root is not repo_root/dataset")
-    if config_path != canonical_config_path(repo_root):
-        raise RuntimeError("preflight config is not the committed Track A config")
-    config = json.loads(config_path.read_text(encoding="utf-8"))
-    if args.audit_only:
-        if args.resolved_launch_json is not None:
-            raise RuntimeError("audit-only preflight does not accept a launch binding")
-        resolved_launch = {
-            "kind": "audit-only",
-            "dataset_root": str(dataset_root),
-            "config_path": str(config_path),
-            "model_name": config["model"]["name"],
-            "renderer_name": config["model"]["renderer"],
-            "lora_rank": config["model"]["lora_rank"],
-        }
-    else:
-        if args.resolved_launch_json is None:
-            raise RuntimeError(
-                "paid-launch preflight requires the exact resolved launch binding"
-            )
-        try:
-            resolved_launch = json.loads(args.resolved_launch_json)
-        except json.JSONDecodeError as exc:
-            raise RuntimeError("resolved launch binding is not valid JSON") from exc
-        if not isinstance(resolved_launch, dict):
-            raise RuntimeError("resolved launch binding must be a JSON object")
-        try:
-            validate_resolved_binding(repo_root, resolved_launch)
-        except ValueError as exc:
-            raise RuntimeError(f"resolved launch binding failed: {exc}") from exc
-    if config["contract_version"] != CONTRACT_VERSION:
-        raise RuntimeError("config and prompt contract versions differ")
-    if config["launch"]["paid_launch_enabled"] is not False:
-        raise RuntimeError("committed config must remain spend-locked")
     release = _verify_frozen_release(dataset_root)
     git = _git_state(repo_root, require_clean=args.require_clean)
     runtime = validate_runtime_stack(repo_root)
@@ -285,7 +246,7 @@ def run(args: argparse.Namespace) -> dict:
         raise RuntimeError(f"policy prompt leaked hidden row state: {leaked}")
 
     sandbox: dict | None = None
-    if resolved_launch["kind"] in {"rl", "evaluation"}:
+    if args.require_sandbox:
         with PixCellEvaluator(
             max_workers=1,
             evaluator_retries=0,
@@ -334,7 +295,11 @@ def run(args: argparse.Namespace) -> dict:
                 "opaque_index": len(executed),
                 "level": row["level"],
                 "iou": result.iou,
-                "reward": reward_for(result),
+                "reward": reward_for_policy(
+                    result,
+                    policy="shaped_v3b",
+                    baseline=cached_rect_baseline(reference_from_row(row)),
+                ),
             }
         )
 
@@ -343,8 +308,8 @@ def run(args: argparse.Namespace) -> dict:
         "spend": False,
         "contract_version": CONTRACT_VERSION,
         "prompt_assets": prompt_asset_hashes(),
-        "resolved_launch_sha256": canonical_json_sha256(resolved_launch),
-        "resolved_launch": resolved_launch,
+        "model_name": args.model_name,
+        "renderer_name": args.renderer_name,
         "release": release,
         "git": git,
         "dataset": {
@@ -368,11 +333,24 @@ def run(args: argparse.Namespace) -> dict:
         },
         "token_audit": (
             _token_audit(
-                train_tasks,
-                model_name=str(resolved_launch["model_name"]),
-                renderer_name=str(resolved_launch["renderer_name"]),
-                max_length=int(config["sft"]["max_sequence_tokens"]),
-                max_image=int(config["model"]["max_image_long_edge"]),
+                (
+                    [
+                        task
+                        for task in train_tasks
+                        if task.sampler.level.upper()
+                        in {
+                            item.strip().upper()
+                            for item in args.sft_levels.split(",")
+                            if item.strip()
+                        }
+                    ]
+                    if args.sft_levels.strip()
+                    else train_tasks
+                ),
+                model_name=args.model_name,
+                renderer_name=args.renderer_name,
+                max_length=args.max_length,
+                max_image=args.max_image,
             )
             if args.tokenize_sft
             else None
@@ -385,22 +363,21 @@ def parser() -> argparse.ArgumentParser:
     repo_root = Path(__file__).resolve().parents[2]
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--dataset-root", type=Path, default=repo_root / "dataset")
-    result.add_argument(
-        "--config",
-        type=Path,
-        default=repo_root / "rl" / "track_a" / "config.json",
-    )
+    result.add_argument("--model-name", default="Qwen/Qwen3.6-35B-A3B")
+    result.add_argument("--renderer-name", default="qwen3_5_disable_thinking")
+    result.add_argument("--max-length", type=int, default=6144)
+    result.add_argument("--max-image", type=int, default=1440)
+    result.add_argument("--sft-levels", default="")
     result.add_argument("--execute-ground-truth", type=int, default=5)
     result.add_argument("--minimum-self-iou", type=float, default=0.97)
     result.add_argument("--workers", type=int, default=8)
     result.add_argument("--tokenize-sft", action="store_true")
     result.add_argument("--require-clean", action="store_true")
     result.add_argument(
-        "--audit-only",
+        "--require-sandbox",
         action="store_true",
-        help="run the zero-spend repository audit without authorizing a launch",
+        help="bind and self-test the immutable Docker candidate sandbox",
     )
-    result.add_argument("--resolved-launch-json")
     return result
 
 

@@ -10,6 +10,37 @@ from collections.abc import Sequence
 from rl.common.contracts import TaskRecord
 
 
+LEVELS = ("L0", "L1", "L2", "L3", "L4")
+
+
+def normalize_level(value: str) -> str:
+    level = value.strip().upper()
+    if level not in LEVELS:
+        raise ValueError(
+            f"expected exactly one curriculum level in {LEVELS}; got {value!r}"
+        )
+    return level
+
+
+def normalize_replay_levels(value: str) -> tuple[str, ...]:
+    if not value.strip():
+        return ()
+    values = tuple(item.strip().upper() for item in value.split(",") if item.strip())
+    if len(values) != len(set(values)):
+        raise ValueError("replay_levels must not contain duplicates")
+    unknown = [item for item in values if item not in LEVELS]
+    if unknown:
+        raise ValueError(f"unknown replay levels: {unknown}")
+    if values != tuple(sorted(values, key=LEVELS.index)):
+        raise ValueError("replay_levels must be in curriculum order")
+    return values
+
+
+def expected_replay_levels(current_level: str) -> tuple[str, ...]:
+    current = normalize_level(current_level)
+    return LEVELS[: LEVELS.index(current)]
+
+
 def balanced_effective_pass(
     tasks: list[TaskRecord],
     *,

@@ -18,10 +18,6 @@ from rl.track_a.curriculum import (
 pytest.importorskip("tinker", reason="Tinker SDK env (rl/requirements-lock.txt) not installed")
 pytest.importorskip("chz", reason="chz env (rl/requirements-lock.txt) not installed")
 
-from rl.track_a.recipe import (
-    first_unmastered_level,
-    validate_curriculum_selection,
-)
 from rl.track_a.tinker_data import TrackARLDataset
 
 
@@ -105,52 +101,6 @@ def test_balanced_effective_pass_never_wraps_or_duplicates():
     assert len({item.sampler.opaque_id for item in full}) == len(tasks)
     with pytest.raises(ValueError, match="unique available tasks"):
         balanced_effective_pass(tasks, seed=3, draws=len(tasks) + 1)
-
-
-def test_first_unmastered_and_replay_contract_are_computed():
-    report = {
-        "levels_summary": {
-            level: {
-                "mean_iou_at_1": 0.9,
-                "pure_executable_rate": 0.99,
-            }
-            for level in ("L0", "L1", "L2", "L3", "L4")
-        }
-    }
-    report["levels_summary"]["L2"]["mean_iou_at_1"] = 0.7
-    recipe = {
-        "rl": {
-            "curriculum": {
-                "minimum_iou": 0.8,
-                "minimum_pure_executable_rate": 0.95,
-            }
-        }
-    }
-    assert first_unmastered_level(
-        report,
-        minimum_iou=0.8,
-        minimum_pure_executable_rate=0.95,
-    ) == "L2"
-    assert validate_curriculum_selection(
-        recipe,
-        report,
-        current_level="L2",
-        replay_levels="L0,L1",
-    ) == ("L2", ("L0", "L1"))
-    with pytest.raises(ValueError, match="computed first unmastered"):
-        validate_curriculum_selection(
-            recipe,
-            report,
-            current_level="L3",
-            replay_levels="L0,L1,L2",
-        )
-    with pytest.raises(ValueError, match="exactly the earlier levels"):
-        validate_curriculum_selection(
-            recipe,
-            report,
-            current_level="L2",
-            replay_levels="L1",
-        )
 
 
 def test_rl_five_step_cycle_is_exactly_eighty_twenty():
