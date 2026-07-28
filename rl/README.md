@@ -13,7 +13,7 @@ model checkpoints are not part of this tree.
 | [`evaluation/`](evaluation/) | Model-neutral task loading, sampling adapters, immutable attempt records, aggregation, and metrics-only experiment tracking |
 | [`studies/`](studies/) | Versioned study protocols, task manifests, and launch entry points |
 | [`track_a/`](track_a/) | Self-hostable open model trained by direct SFT, then curriculum G4 RL |
-| [`track_b/`](track_b/) | Reserved for the established second training protocol; no implementation is implied yet |
+| [`track_b/`](track_b/) | Inkling-specific native TML runtime bridge used by the advanced L4 policy study |
 | [`track_c/`](track_c/) | Reserved for the established third training protocol; no implementation is implied yet |
 | [`requirements-lock.txt`](requirements-lock.txt) | Shared pinned Python environment |
 | [`stack.json`](stack.json) | Shared runtime version evidence |
@@ -40,6 +40,13 @@ The active direct-policy baseline protocol is
 [`representation_curriculum_v2`](studies/representation_curriculum_v2/README.md).
 It measures Qwen and Inkling on F1–F8 under the corrected prompt contract and
 performs no training or operating-point selection.
+
+The active training campaign is
+[`representation_training_v1`](studies/representation_training_v1/README.md).
+It freezes the shared Qwen L0 checkpoint, mixed and sequential SFT branches,
+Qwen curriculum-RL branches, and the bounded Inkling L4 policy-improvement
+branch. All training state and sampled programs remain in an immutable
+external ledger.
 
 [`representation_curriculum_v1`](studies/representation_curriculum_v1/README.md)
 is a superseded diagnostic record. It compared zero-shot Qwen operating

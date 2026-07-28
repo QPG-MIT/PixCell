@@ -5,6 +5,14 @@ photonic geometry as a primitive-only GDSFactory program. This directory is the
 training boundary over the frozen PixCell Dataset. It does not contain private
 paper benchmarks, historical rollouts, or model checkpoints.
 
+The reusable data adapters, evaluator boundary, and contract checks live here.
+The current paid campaign is not launched through the older configurable
+`train_sft.py`, `train_rl.py`, or `config.json` entry points; that draft remains
+disabled for provenance. The sealed models, 60k thinking policy, branch graph,
+raw-IoU reward, schedules, W&B identity, and guarded command for the current
+campaign live in
+[`representation_training_v1`](../studies/representation_training_v1/README.md).
+
 ## What the model receives
 
 The `pixcell-direct-reconstruction-v2` contract is a one-shot adaptation of
