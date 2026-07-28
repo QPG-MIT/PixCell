@@ -38,6 +38,7 @@ from tinker_cookbook.supervised.types import (
 )
 from tinker_cookbook.tokenizer_utils import get_tokenizer
 
+from rl.common.baselines import cached_rect_baseline
 from rl.common.batcher import AsyncEvaluationBatcher
 from rl.common.contracts import TaskRecord
 from rl.common.dataset_io import load_tasks
@@ -51,7 +52,11 @@ from rl.track_a.curriculum import (
 )
 from rl.common.preprocess import model_image
 from rl.common.prompt import build_prompt_text
-from rl.track_a.reward import REWARD_POLICIES, reward_for_policy
+from rl.track_a.reward import (
+    REWARD_POLICIES,
+    reward_for_policy,
+    shaped_components,
+)
 from rl.track_a.recipe import (
     expected_replay_levels,
     normalize_level,
@@ -344,8 +349,17 @@ class TrackAEnv(Env):
         }
         if self.sample_recorder is not None:
             self.sample_recorder(sample_record)
+        baseline = (
+            cached_rect_baseline(self.task.reference)
+            if self.reward_policy == "shaped_v3b"
+            else None
+        )
         result = await _batcher().submit(self.task.reference, completion)
-        reward = reward_for_policy(result, policy=self.reward_policy)
+        reward = reward_for_policy(
+            result,
+            policy=self.reward_policy,
+            baseline=baseline,
+        )
         if reward is None:
             if result.attribution is Attribution.REFERENCE:
                 raise BrokenReferenceError(result.error or result.status.value)
@@ -367,24 +381,32 @@ class TrackAEnv(Env):
                     },
                 }
             )
+        step_metrics = {
+            "iou": float(result.iou or 0.0),
+            "dice": float(result.dice or 0.0),
+            "program_valid": float(result.status is EvaluationStatus.OK),
+            "source_rejected": float(
+                result.status is EvaluationStatus.SOURCE_REJECTED
+            ),
+            "latency_seconds": float(result.latency_seconds),
+            "channel_parse_complete": float(termination.is_clean),
+            "length_capped": float(
+                getattr(extra, "stop_reason", None) == "length"
+            ),
+        }
+        if baseline is not None:
+            parts = shaped_components(result, baseline)
+            step_metrics.update(
+                iou_n=parts["iou_n"],
+                teacher_nb=parts["teacher_nb"],
+                degenerate=parts["degenerate"],
+            )
         return StepResult(
             reward=reward,
             episode_done=True,
             next_observation=tinker.ModelInput.from_ints([]),
             next_stop_condition=[],
-            metrics={
-                "iou": float(result.iou or 0.0),
-                "dice": float(result.dice or 0.0),
-                "program_valid": float(result.status is EvaluationStatus.OK),
-                "source_rejected": float(
-                    result.status is EvaluationStatus.SOURCE_REJECTED
-                ),
-                "latency_seconds": float(result.latency_seconds),
-                "channel_parse_complete": float(termination.is_clean),
-                "length_capped": float(
-                    getattr(extra, "stop_reason", None) == "length"
-                ),
-            },
+            metrics=step_metrics,
         )
 
 
@@ -513,7 +535,7 @@ def _level_filter(tasks: list[TaskRecord], levels: str) -> list[TaskRecord]:
 class TrackARLDatasetBuilder(RLDatasetBuilder):
     dataset_root: str
     batch_size: int = 8
-    group_size: int = 4
+    group_size: int = 8
     model_name: str = DEFAULT_MODEL
     renderer_name: str = DEFAULT_RENDERER
     model_effort: float | None = None
@@ -523,7 +545,7 @@ class TrackARLDatasetBuilder(RLDatasetBuilder):
     validation_canaries: int = 40
     attempt_recorder: Callable[[Mapping[str, object]], None] | None = None
     sample_recorder: Callable[[Mapping[str, object]], None] | None = None
-    reward_policy: str = "validity_floor"
+    reward_policy: str = "shaped_v3b"
     require_prefix_replay: bool = True
     schedule_seed: int = 10_000
     attempt_metadata: Mapping[str, object] | None = None
