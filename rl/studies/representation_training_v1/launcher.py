@@ -209,9 +209,15 @@ def _sealed_wandb_initialization(
             supplied = kwargs.get(field)
             if supplied is not None and str(supplied) != str(binding[field]):
                 raise TrainingLaunchError(f"the training process supplied a different W&B {field}")
+        cookbook_config = kwargs.get("config")
         sealed = dict(kwargs)
         sealed.update(
             {
+                # Cookbook logs the same config again immediately after init.
+                # RL callback fields are sanitized differently across the two
+                # W&B calls, so initialize identity first and write hparams
+                # through the same canonical post-init path both times.
+                "config": None,
                 "entity": str(binding["entity"]),
                 "project": str(binding["project"]),
                 "dir": str(binding["directory"]),
@@ -280,6 +286,30 @@ def _sealed_wandb_initialization(
             raise TrainingLaunchError(
                 "the live W&B run differs from its sealed " + ", ".join(differences)
             )
+        if cookbook_config is not None:
+            config = getattr(module, "config", None)
+            update = getattr(config, "update", None)
+            if not callable(update):
+                _finish_wandb_run(module, run)
+                raise TrainingLaunchError(
+                    "the live W&B run has no configurable hparam store"
+                )
+            try:
+                # Use Config.update for both writes. W&B sanitizes callable
+                # fields differently in wandb.init, while the Cookbook writes
+                # the same hparams again immediately after init. Continuation
+                # waves intentionally change their ceiling and invocation
+                # metadata, so only the preseed update may replace prior-wave
+                # values; the Cookbook's following update is then identical.
+                update(cookbook_config, allow_val_change=resume)
+            except BaseException:
+                _finish_wandb_run(module, run)
+                raise
+            observed["hparams_preseeded"] = True
+            observed["hparams_allow_val_change"] = resume
+        else:
+            observed["hparams_preseeded"] = False
+            observed["hparams_allow_val_change"] = False
         try:
             if on_initialized is not None:
                 on_initialized(observed)

@@ -101,14 +101,42 @@ class _FakeRun:
         self._module.run = None
 
 
+class _FakeConfig:
+    def __init__(self, initial=None):
+        self.values = dict(initial or {})
+        self.updates = []
+
+    def update(self, value, allow_val_change=None):
+        payload = dict(value)
+        changed = [
+            key
+            for key, item in payload.items()
+            if key in self.values and self.values[key] != item
+        ]
+        if changed and allow_val_change is not True:
+            raise RuntimeError(
+                "config changed without allow_val_change: "
+                + ", ".join(changed)
+            )
+        self.values.update(payload)
+        self.updates.append(
+            {
+                "value": payload,
+                "allow_val_change": allow_val_change,
+            }
+        )
+
+
 class _FakeWandb:
-    def __init__(self):
+    def __init__(self, *, initial_config=None):
         self.run = None
         self.calls = []
-        self.config = SimpleNamespace(update=lambda _value: None)
+        self.config = _FakeConfig(initial_config)
 
     def init(self, **kwargs):
         self.calls.append(kwargs)
+        if kwargs.get("config") is not None:
+            self.config.update(kwargs["config"])
         self.run = _FakeRun(self, kwargs)
         return self.run
 
@@ -280,6 +308,15 @@ def test_builtin_sft_records_observed_wandb_before_service_client(
     )
     assert report["status"] == "complete"
     assert service_client_markers == ["created"]
+    assert fake_wandb.calls[0]["config"] is None
+    assert len(fake_wandb.config.updates) == 2
+    assert fake_wandb.config.updates[0]["allow_val_change"] is False
+    assert fake_wandb.config.updates[1]["allow_val_change"] is None
+    assert (
+        fake_wandb.config.updates[0]["value"]
+        == fake_wandb.config.updates[1]["value"]
+    )
+    assert "dataset_builder" in fake_wandb.config.values
     key = StageKey(STUDY_ID, "qwen-l0-sft", "r0")
     store = TrainingStore(repo_root=REPO_ROOT, external_root=external)
     tracking_paths = list(external.rglob("tracking.json"))
@@ -378,6 +415,15 @@ def test_builtin_rl_records_observed_wandb_before_service_client(
         )
     assert service_client_markers == ["created"]
     assert fake_wandb.run is None
+    assert fake_wandb.calls[0]["config"] is None
+    assert len(fake_wandb.config.updates) == 2
+    assert fake_wandb.config.updates[0]["allow_val_change"] is False
+    assert fake_wandb.config.updates[1]["allow_val_change"] is None
+    assert (
+        fake_wandb.config.updates[0]["value"]
+        == fake_wandb.config.updates[1]["value"]
+    )
+    assert "dataset_builder" in fake_wandb.config.values
     assert len(list(external.rglob("tracking.json"))) == 1
 
 
@@ -458,8 +504,75 @@ def test_sealed_wandb_initialization_overrides_cookbook_identity(
             ),
             "requested_resume": "must",
             "resolved_resume": "must",
+            "hparams_preseeded": False,
+            "hparams_allow_val_change": False,
         }
     ]
+
+
+def test_sealed_wandb_initialization_allows_resume_hparam_changes_once(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from tinker_cookbook.utils import ml_log
+
+    wandb_dir = tmp_path / "sealed-wandb"
+    cookbook_dir = tmp_path / "cookbook-log"
+    wandb_dir.mkdir()
+    binding = {
+        "entity": "unit-entity",
+        "project": "unit-project",
+        "run_id": "pxct-unit-run",
+        "name": "unit/name",
+        "group": "unit/group",
+        "job_type": "rl",
+        "tags": ["study", "stage", "r0"],
+        "directory": str(wandb_dir),
+    }
+    resumed_config = {
+        "max_steps": 6,
+        "wave": "pilot",
+    }
+
+    fake = _FakeWandb(
+        initial_config={
+            "max_steps": 1,
+            "wave": "smoke",
+        }
+    )
+    monkeypatch.setenv("WANDB_API_KEY", "test-only")
+    monkeypatch.setattr(ml_log, "wandb", fake)
+    monkeypatch.setattr(ml_log, "_wandb_available", True)
+    observed = []
+    with launcher._sealed_wandb_initialization(
+        binding,
+        resume=True,
+        wandb_module=fake,
+        on_initialized=observed.append,
+    ):
+        logger = ml_log.setup_logging(
+            log_dir=str(cookbook_dir),
+            wandb_project=binding["project"],
+            wandb_name=binding["name"],
+            config=resumed_config,
+            do_configure_logging_module=False,
+        )
+        logger.close()
+
+    assert fake.calls[0]["config"] is None
+    assert len(fake.config.updates) == 2
+    assert fake.config.updates[0] == {
+        "value": resumed_config,
+        "allow_val_change": True,
+    }
+    assert fake.config.updates[1] == {
+        "value": resumed_config,
+        "allow_val_change": None,
+    }
+    assert fake.config.values["max_steps"] == 6
+    assert fake.config.values["wave"] == "pilot"
+    assert observed[0]["hparams_preseeded"] is True
+    assert observed[0]["hparams_allow_val_change"] is True
 
 
 def test_sealed_wandb_initialization_rejects_live_identity_mismatch(
