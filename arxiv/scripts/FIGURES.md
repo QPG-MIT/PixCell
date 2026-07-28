@@ -20,7 +20,7 @@ where the generator or its data is local-only.
 | fig3_heatmap.pdf — RETIRED after its matrix was merged into Fig. 9 | `make_figures.py::fig3` (retained as provenance; no longer called by the script entry point) | `figures/agent_table.json` |
 | fig4_effort_generation.pdf | `make_figures.py::fig4` | `figures/agent_table.json` |
 | fig_progression.pdf | `make_fig_progression.py` | archived per-cell iteration logs (reconstructed 2026-07-09) |
-| fig_pareto.pdf | `make_fig_pareto3d.py` | `figures/agent_table.json` + archived token/cost records |
+| fig_pareto.pdf | `make_fig_pareto.py` | `scripts/agent_table.json` (cost from `data/agents/paper_swap/compilation.json`) |
 | fig5_before_after.pdf | `make_fig5_before_after.py` | `fig_before_after_assets/manifest.json`: hash-locked candidate rasters and exact archived IoUs; target masks are shared with `fig_target_assets/` |
 | fig_cross_matrix.pdf + `../table_retargeting.tex` | `make_fig_pdk_swap.py` | `fig_retargeting_assets/manifest.json`: hash-locked full-precision MZI cross-stack matrices and the 60 fixed-representation verdicts, reduced from the tracked `QPG-MIT/PixCell-running` campaign record at the source commit recorded in the manifest |
 | fig_sweep_feasibility.pdf — REMOVED from the paper 2026-07-09 (near-uniform null heatmap; the numbers live in the prose) | `data/agents/catalog_swap/cat5/output/sweep_pilot/postprocess.py` | that dir's sweep matrices |
