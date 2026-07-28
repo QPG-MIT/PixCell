@@ -14,7 +14,9 @@ from rl.studies.representation_training_v1.launcher import (
 from rl.studies.representation_training_v1.protocol import (
     STUDY_ID,
     load_protocol,
+    parent_replicate_id,
     stage_spec,
+    validate_stage_replicate,
 )
 from rl.studies.representation_training_v1.schedule import (
     SCHEDULE_SEED,
@@ -80,6 +82,38 @@ def test_protocol_seals_the_pure_qwen_rl_curriculum() -> None:
         assert {
             wave: stage.wave(wave)["approval"] for wave in expected_gates
         } == expected_gates
+
+
+def test_operational_retry_is_scoped_and_keeps_the_historical_r0_parent() -> None:
+    protocol = load_protocol(REPO_ROOT)
+
+    validate_stage_replicate(
+        protocol,
+        stage_id="qwen-l0-rl-l1",
+        replicate_id="r0-retry1",
+    )
+    assert (
+        parent_replicate_id(
+            protocol,
+            stage_id="qwen-l0-rl-l1",
+            replicate_id="r0-retry1",
+        )
+        == "r0"
+    )
+    assert (
+        parent_replicate_id(
+            protocol,
+            stage_id="qwen-l0-rl-l2",
+            replicate_id="r0-retry1",
+        )
+        == "r0-retry1"
+    )
+    with pytest.raises(ValueError, match="not declared for this training stage"):
+        validate_stage_replicate(
+            protocol,
+            stage_id="qwen-base-rl-l0",
+            replicate_id="r0-retry1",
+        )
 
 
 def test_protocol_seals_fixed_progress_and_final_selection_panels() -> None:

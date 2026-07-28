@@ -96,12 +96,29 @@
   },
   "launch": {
     "confirmation_token": "PIXCELL_TRAINING_V1",
+    "parent_replicate_overrides": {
+      "qwen-l0-rl-l1": {
+        "r0-retry1": "r0"
+      }
+    },
     "paid_launch_enabled": true,
+    "replicate_stage_scopes": {
+      "r0": [
+        "*"
+      ],
+      "r0-retry1": [
+        "qwen-l0-rl-l1",
+        "qwen-l0-rl-l2",
+        "qwen-l0-rl-l3",
+        "qwen-l0-rl-l4"
+      ]
+    },
     "replicates": [
-      "r0"
+      "r0",
+      "r0-retry1"
     ]
   },
-  "logical_sha256": "025f09cb67e3e00e0c863f2c888e28ec31b2d489a53d4ce54ddf83f950b9e503",
+  "logical_sha256": "b80fbd37e377ca2709241f1c02e651d9d95ca483b6219840b91f8bbb4fa959db",
   "models": {
     "inkling": {
       "context_tokens": 65536,

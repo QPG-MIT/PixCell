@@ -45,7 +45,9 @@ from .protocol import (
     StageSpec,
     file_sha256,
     load_protocol,
+    parent_replicate_id,
     stage_spec,
+    validate_stage_replicate,
     validate_source_sha,
 )
 from .schedule import SCHEDULE_SEED
@@ -58,6 +60,9 @@ _GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _CHILD_SOURCE_TRANSITION_SCHEMA_VERSION = "pixcell-training-child-source-transition-v1"
 _WAVE_ARTIFACT_SNAPSHOT_SCHEMA_VERSION = "pixcell-training-wave-artifact-snapshot-v1"
+_COOKBOOK_FRESH_RESUME_BOOTSTRAP_FILES = frozenset(
+    {"code.diff", "config.json", "logs.log"}
+)
 _ENVIRONMENT_FIELDS = (
     "WANDB_DIR",
     "WANDB_DISABLE_CODE",
@@ -83,6 +88,7 @@ class TrainingLaunchError(RuntimeError):
 class ParentBinding:
     stage_id: str
     wave: str
+    replicate_id: str
     receipt: TrainingRecord
     checkpoint: dict[str, Any]
     source_git_sha: str
@@ -515,7 +521,12 @@ def _parent_binding(
             raise TrainingLaunchError(f"{stage.stage_id} approval selected an invalid parent")
         parent_stage_id, parent_wave = selected_stage, selected_wave
 
-    parent_key = StageKey(key.study_id, parent_stage_id, key.replicate_id)
+    parent_replicate = parent_replicate_id(
+        protocol,
+        stage_id=stage.stage_id,
+        replicate_id=key.replicate_id,
+    )
+    parent_key = StageKey(key.study_id, parent_stage_id, parent_replicate)
     parent_manifest = store.load_manifest(parent_key)
     receipt = store.load_wave_receipt(parent_key, wave=parent_wave)
     if parent_manifest is None or receipt is None:
@@ -577,6 +588,8 @@ def _parent_binding(
         if (
             frozen_parent.get("stage_id") != parent_stage_id
             or frozen_parent.get("wave") != parent_wave
+            or frozen_parent.get("replicate_id", parent_replicate)
+            != parent_replicate
             or frozen_parent.get("record_sha256") != receipt.record_sha256
         ):
             raise TrainingLaunchError("frozen stage manifest and current parent receipt differ")
@@ -609,6 +622,12 @@ def _parent_binding(
         claimed = approval.payload.get("parent_receipt_record_sha256")
         if claimed is not None and claimed != receipt.record_sha256:
             raise TrainingLaunchError("approval and parent receipt differ")
+        claimed_parent_replicate = approval.payload.get("parent_replicate_id")
+        if (
+            claimed_parent_replicate is not None
+            and claimed_parent_replicate != parent_replicate
+        ):
+            raise TrainingLaunchError("approval and parent execution identity differ")
         selected = approval.payload.get("selected_parent_checkpoint")
         if selected is not None and selected != checkpoint:
             raise TrainingLaunchError("approval and selected parent checkpoint differ")
@@ -661,6 +680,7 @@ def _parent_binding(
     return ParentBinding(
         stage_id=parent_stage_id,
         wave=parent_wave,
+        replicate_id=parent_replicate,
         receipt=receipt,
         checkpoint=checkpoint,
         source_git_sha=parent_source_git_sha,
@@ -1016,6 +1036,7 @@ def _manifest_payload(
                 "relative_path": str(parent.receipt.relative_path),
                 "stage_id": parent.stage_id,
                 "wave": parent.wave,
+                "replicate_id": parent.replicate_id,
                 "record_sha256": parent.receipt.record_sha256,
                 "checkpoint": parent.checkpoint,
                 "checkpoint_inventory_logical_sha256": parent.receipt.payload[
@@ -2329,11 +2350,59 @@ def _sealed_cookbook_resume(
 
     original = checkpoint_utils.get_last_checkpoint
     expected_log = log_path.expanduser().resolve(strict=False)
+    fresh_at_entry = False
+    if expected is None:
+        observed_at_entry = _validate_resume_state(
+            stage=stage,
+            wave_name=wave_name,
+            log_path=log_path,
+            prior_wave_receipt=prior_wave_receipt,
+        )
+        if observed_at_entry is not None:
+            raise TrainingLaunchError(
+                "optimizer state changed after the immutable invocation was recorded"
+            )
+        fresh_at_entry = not log_path.exists() or not any(log_path.iterdir())
 
     def sealed(log_dir: str, required_key: str = "state_path") -> Any:
         requested = Path(log_dir).expanduser().resolve(strict=False)
         if requested != expected_log:
             return original(log_dir, required_key=required_key)
+        if fresh_at_entry:
+            if stage.kind == "sft":
+                if log_path.exists() and (
+                    not log_path.is_dir() or any(log_path.iterdir())
+                ):
+                    raise TrainingLaunchError(
+                        "fresh SFT resume boundary contains unexpected training artifacts"
+                    )
+                return None
+            if not log_path.is_dir():
+                raise TrainingLaunchError(
+                    "fresh Cookbook bootstrap did not create its training log directory"
+                )
+            entries = tuple(log_path.iterdir())
+            names = {entry.name for entry in entries}
+            if (
+                names != _COOKBOOK_FRESH_RESUME_BOOTSTRAP_FILES
+                or any(entry.is_symlink() or not entry.is_file() for entry in entries)
+            ):
+                raise TrainingLaunchError(
+                    "fresh Cookbook bootstrap created unexpected training artifacts"
+                )
+            try:
+                config = json.loads(
+                    (log_path / "config.json").read_text(encoding="utf-8")
+                )
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                raise TrainingLaunchError(
+                    "fresh Cookbook bootstrap config is not valid JSON"
+                ) from exc
+            if not isinstance(config, dict):
+                raise TrainingLaunchError(
+                    "fresh Cookbook bootstrap config is not a JSON object"
+                )
+            return None
         observed = _validate_resume_state(
             stage=stage,
             wave_name=wave_name,
@@ -2386,9 +2455,15 @@ async def run_training_stage(
     source_git_sha = validate_source_sha(root, expected_source_sha)
     if confirmation != protocol["launch"]["confirmation_token"]:
         raise TrainingLaunchError("explicit paid-training confirmation is missing")
-    if replicate_id not in protocol["launch"]["replicates"]:
-        raise TrainingLaunchError("replicate is not declared in the protocol")
     stage = stage_spec(protocol, stage_id)
+    try:
+        validate_stage_replicate(
+            protocol,
+            stage_id=stage.stage_id,
+            replicate_id=replicate_id,
+        )
+    except ValueError as exc:
+        raise TrainingLaunchError(str(exc)) from exc
     if wave_name not in stage.waves:
         stage.wave(wave_name)
     if not os.environ.get("TINKER_API_KEY"):

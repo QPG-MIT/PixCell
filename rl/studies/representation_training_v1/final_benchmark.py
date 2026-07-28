@@ -37,6 +37,7 @@ from .protocol import (
     file_sha256,
     load_protocol,
     protocol_path,
+    validate_stage_replicate,
     validate_source_sha,
 )
 from .store import TrainingStore
@@ -1513,8 +1514,14 @@ async def run_final_benchmark(
     source_git_sha = validate_source_sha(root, expected_source_sha)
     if confirmation != protocol["launch"]["confirmation_token"]:
         raise FinalBenchmarkError("explicit paid-evaluation confirmation is missing")
-    if replicate_id not in protocol["launch"]["replicates"]:
-        raise FinalBenchmarkError("replicate is not declared in the protocol")
+    try:
+        validate_stage_replicate(
+            protocol,
+            stage_id=stage_id,
+            replicate_id=replicate_id,
+        )
+    except ValueError as exc:
+        raise FinalBenchmarkError(str(exc)) from exc
     if protocol["evaluation"].get("final_benchmark_attempts") != ATTEMPTS_PER_TASK:
         raise FinalBenchmarkError("protocol no longer seals four final-benchmark attempts")
 

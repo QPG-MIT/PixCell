@@ -7,6 +7,7 @@ import json
 import math
 import re
 import subprocess
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -464,6 +465,18 @@ def load_protocol(
             cursor = exact_edges[cursor]
     if document["launch"].get("paid_launch_enabled") is not True:
         raise ValueError("training protocol is not launch-enabled")
+    expected_retry_stages = list(L0_SFT_QWEN_RL_STAGE_IDS)
+    if document["launch"].get("replicates") != ["r0", "r0-retry1"]:
+        raise ValueError("training protocol has the wrong launch identities")
+    if document["launch"].get("replicate_stage_scopes") != {
+        "r0": ["*"],
+        "r0-retry1": expected_retry_stages,
+    }:
+        raise ValueError("training protocol has the wrong launch identity scopes")
+    if document["launch"].get("parent_replicate_overrides") != {
+        "qwen-l0-rl-l1": {"r0-retry1": "r0"}
+    }:
+        raise ValueError("training protocol has the wrong parent identity override")
     if require_committed:
         _require_at_head(root, path)
     return document
@@ -475,6 +488,47 @@ def stage_spec(protocol: dict[str, Any], stage_id: str) -> StageSpec:
     except KeyError as exc:
         raise ValueError(f"unknown training stage: {stage_id!r}") from exc
     return _stage_spec(stage_id, value, protocol=protocol)
+
+
+def validate_stage_replicate(
+    protocol: Mapping[str, Any],
+    *,
+    stage_id: str,
+    replicate_id: str,
+) -> None:
+    """Validate one declared execution identity for one exact stage."""
+
+    if replicate_id not in protocol["launch"]["replicates"]:
+        raise ValueError("replicate is not declared in the protocol")
+    scopes = protocol["launch"]["replicate_stage_scopes"]
+    allowed = scopes.get(replicate_id)
+    if not isinstance(allowed, list) or (
+        "*" not in allowed and stage_id not in allowed
+    ):
+        raise ValueError("replicate is not declared for this training stage")
+
+
+def parent_replicate_id(
+    protocol: Mapping[str, Any],
+    *,
+    stage_id: str,
+    replicate_id: str,
+) -> str:
+    """Resolve a protocol-bound parent execution identity."""
+
+    validate_stage_replicate(
+        protocol,
+        stage_id=stage_id,
+        replicate_id=replicate_id,
+    )
+    overrides = protocol["launch"]["parent_replicate_overrides"]
+    stage_overrides = overrides.get(stage_id, {})
+    if not isinstance(stage_overrides, Mapping):
+        raise ValueError("parent replicate override is malformed")
+    result = str(stage_overrides.get(replicate_id, replicate_id))
+    if result not in protocol["launch"]["replicates"]:
+        raise ValueError("parent replicate override names an unknown identity")
+    return result
 
 
 def validate_source_sha(repo_root: Path, expected_source_sha: str) -> str:

@@ -26,8 +26,10 @@ from .protocol import (
     StageSpec,
     file_sha256,
     load_protocol,
+    parent_replicate_id,
     protocol_path,
     stage_spec,
+    validate_stage_replicate,
     validate_source_sha,
 )
 from .store import (
@@ -372,12 +374,17 @@ def _parent_receipt_transition_payload(
         != "parent-receipt-and-source-transition"
     ):
         raise PromotionError("parent-receipt transition is not the L0-SFT→L1-RL entry")
+    producer_replicate_id = parent_replicate_id(
+        protocol,
+        stage_id=stage.stage_id,
+        replicate_id=replicate_id,
+    )
     manifest, receipt, invocation, checkpoint, documents = (
         _parent_receipt_transition_evidence(
             repo_root=repo_root,
             protocol=protocol,
             store=store,
-            replicate_id=replicate_id,
+            replicate_id=producer_replicate_id,
         )
     )
     producer_source_git_sha = str(manifest.payload["source_git_sha"])
@@ -396,7 +403,7 @@ def _parent_receipt_transition_payload(
         "producer_training": {
             "stage_id": "qwen-l0-sft",
             "wave": "complete",
-            "replicate_id": replicate_id,
+            "replicate_id": producer_replicate_id,
         },
     }
     equivalence = {
@@ -438,6 +445,7 @@ def _parent_receipt_transition_payload(
         "explicit_human_confirmation": True,
         "parent_stage_id": "qwen-l0-sft",
         "parent_wave": "complete",
+        "parent_replicate_id": producer_replicate_id,
         "parent_manifest_record_sha256": manifest.record_sha256,
         "parent_receipt_record_sha256": receipt.record_sha256,
         "parent_invocation_record_sha256": invocation.record_sha256,
@@ -510,9 +518,15 @@ def record_parent_receipt_transition_approval(
     root = repo_root.expanduser().resolve(strict=True)
     protocol = load_protocol(root, require_committed=True)
     source_git_sha = validate_source_sha(root, expected_source_sha)
-    if replicate_id not in protocol["launch"]["replicates"]:
-        raise PromotionError("replicate is not declared in the protocol")
     stage = stage_spec(protocol, stage_id)
+    try:
+        validate_stage_replicate(
+            protocol,
+            stage_id=stage.stage_id,
+            replicate_id=replicate_id,
+        )
+    except ValueError as exc:
+        raise PromotionError(str(exc)) from exc
     store = TrainingStore(repo_root=root, external_root=external_root)
     payload = _parent_receipt_transition_payload(
         repo_root=root,
@@ -2623,9 +2637,15 @@ def record_wave_approval(
             raise PromotionError(f"source transition is invalid: {exc}") from exc
     elif approved_change_paths is not None:
         raise PromotionError("same-source v1 approval cannot include an approved change scope")
-    if replicate_id not in protocol["launch"]["replicates"]:
-        raise PromotionError("replicate is not declared in the protocol")
     stage = stage_spec(protocol, stage_id)
+    try:
+        validate_stage_replicate(
+            protocol,
+            stage_id=stage.stage_id,
+            replicate_id=replicate_id,
+        )
+    except ValueError as exc:
+        raise PromotionError(str(exc)) from exc
     plan = approval_plan(stage, wave_name)
     store = TrainingStore(repo_root=root, external_root=external_root)
     evidence = validate_checkpoint_report(
