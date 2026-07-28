@@ -63,6 +63,7 @@ from .protocol import (
     load_protocol,
     protocol_path,
     stage_spec,
+    validate_stage_replicate,
     validate_source_sha,
 )
 from .store import StageKey, TrainingRecord, TrainingStore
@@ -1941,8 +1942,14 @@ async def run_checkpoint_evaluation(
         raise CheckpointEvaluationError(
             "explicit paid-evaluation confirmation is missing"
         )
-    if replicate_id not in protocol["launch"]["replicates"]:
-        raise CheckpointEvaluationError("replicate is not declared in the protocol")
+    try:
+        validate_stage_replicate(
+            protocol,
+            stage_id=stage_id,
+            replicate_id=replicate_id,
+        )
+    except ValueError as exc:
+        raise CheckpointEvaluationError(str(exc)) from exc
     training_store = TrainingStore(
         repo_root=root,
         external_root=external_root,

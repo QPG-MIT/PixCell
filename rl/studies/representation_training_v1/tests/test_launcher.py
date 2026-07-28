@@ -906,6 +906,142 @@ def test_resume_pins_receipt_checkpoint_instead_of_later_cookbook_final(
             launcher.checkpoint_utils.get_last_checkpoint(str(log_path))
 
 
+def _write_fresh_cookbook_bootstrap(log_path: Path) -> None:
+    log_path.mkdir(parents=True, exist_ok=True)
+    (log_path / "config.json").write_text('{"max_steps": 1}\n', encoding="utf-8")
+    (log_path / "code.diff").write_text("", encoding="utf-8")
+    (log_path / "logs.log").write_text("bootstrap\n", encoding="utf-8")
+
+
+def test_fresh_cookbook_bootstrap_is_allowed_only_inside_sealed_boundary(
+    tmp_path: Path,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    stage = stage_spec(protocol, "qwen-base-rl-l0")
+    log_path = tmp_path / "tinker"
+
+    with launcher._sealed_cookbook_resume(
+        stage=stage,
+        wave_name="smoke",
+        log_path=log_path,
+        prior_wave_receipt=None,
+        expected=None,
+    ):
+        _write_fresh_cookbook_bootstrap(log_path)
+        assert launcher.checkpoint_utils.get_last_checkpoint(str(log_path)) is None
+
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="no resumable checkpoint",
+    ):
+        with launcher._sealed_cookbook_resume(
+            stage=stage,
+            wave_name="smoke",
+            log_path=log_path,
+            prior_wave_receipt=None,
+            expected=None,
+        ):
+            pass
+
+
+def test_fresh_sft_resume_boundary_precedes_logging_and_rejects_debris(
+    tmp_path: Path,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    stage = stage_spec(protocol, "qwen-l0-sft")
+    clean_log = tmp_path / "clean-sft"
+
+    with launcher._sealed_cookbook_resume(
+        stage=stage,
+        wave_name="complete",
+        log_path=clean_log,
+        prior_wave_receipt=None,
+        expected=None,
+    ):
+        assert launcher.checkpoint_utils.get_last_checkpoint(str(clean_log)) is None
+
+    dirty_log = tmp_path / "dirty-sft"
+    with launcher._sealed_cookbook_resume(
+        stage=stage,
+        wave_name="complete",
+        log_path=dirty_log,
+        prior_wave_receipt=None,
+        expected=None,
+    ):
+        dirty_log.mkdir()
+        (dirty_log / "logs.log").write_text("unexpected\n", encoding="utf-8")
+        with pytest.raises(
+            launcher.TrainingLaunchError,
+            match="SFT resume boundary contains unexpected training artifacts",
+        ):
+            launcher.checkpoint_utils.get_last_checkpoint(str(dirty_log))
+
+
+@pytest.mark.parametrize("unexpected_name", ["metrics.jsonl", "checkpoints.jsonl"])
+def test_fresh_cookbook_bootstrap_rejects_unexpected_training_artifacts(
+    tmp_path: Path,
+    unexpected_name: str,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    stage = stage_spec(protocol, "qwen-base-rl-l0")
+    log_path = tmp_path / "tinker"
+
+    with launcher._sealed_cookbook_resume(
+        stage=stage,
+        wave_name="smoke",
+        log_path=log_path,
+        prior_wave_receipt=None,
+        expected=None,
+    ):
+        _write_fresh_cookbook_bootstrap(log_path)
+        (log_path / unexpected_name).write_text("", encoding="utf-8")
+        with pytest.raises(
+            launcher.TrainingLaunchError,
+            match="unexpected training artifacts",
+        ):
+            launcher.checkpoint_utils.get_last_checkpoint(str(log_path))
+
+
+def test_fresh_cookbook_bootstrap_rejects_invalid_config_or_non_file(
+    tmp_path: Path,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    stage = stage_spec(protocol, "qwen-base-rl-l0")
+
+    invalid_config = tmp_path / "invalid-config"
+    with launcher._sealed_cookbook_resume(
+        stage=stage,
+        wave_name="smoke",
+        log_path=invalid_config,
+        prior_wave_receipt=None,
+        expected=None,
+    ):
+        _write_fresh_cookbook_bootstrap(invalid_config)
+        (invalid_config / "config.json").write_text("{", encoding="utf-8")
+        with pytest.raises(
+            launcher.TrainingLaunchError,
+            match="config is not valid JSON",
+        ):
+            launcher.checkpoint_utils.get_last_checkpoint(str(invalid_config))
+
+    non_file = tmp_path / "non-file"
+    with launcher._sealed_cookbook_resume(
+        stage=stage,
+        wave_name="smoke",
+        log_path=non_file,
+        prior_wave_receipt=None,
+        expected=None,
+    ):
+        _write_fresh_cookbook_bootstrap(non_file)
+        (non_file / "code.diff").unlink()
+        (non_file / "code.diff").mkdir()
+        with pytest.raises(
+            launcher.TrainingLaunchError,
+            match="unexpected training artifacts",
+        ):
+            launcher.checkpoint_utils.get_last_checkpoint(str(non_file))
+
+
 def test_resume_rejects_unreceipted_terminal_checkpoint(
     tmp_path: Path,
 ) -> None:
@@ -1844,6 +1980,59 @@ def test_historical_l0_parent_uses_receipt_transition_without_evaluation(
     )
     assert child_transition["producer_source_git_sha"] == producer
     assert child_transition["consumer_source_git_sha"] == consumer
+
+
+def test_operational_retry_consumes_historical_parent_from_r0() -> None:
+    protocol = load_protocol(REPO_ROOT)
+    producer = "1" * 40
+    consumer = "2" * 40
+    checkpoint, parent_manifest, receipt, approval = _cross_source_parent_records(
+        protocol,
+        producer_source_git_sha=producer,
+        consumer_source_git_sha=consumer,
+    )
+    parent_manifest.payload["protocol_logical_sha256"] = "3" * 64
+    approval.payload.update(
+        {
+            "schema_version": (
+                launcher.PARENT_RECEIPT_TRANSITION_APPROVAL_SCHEMA_VERSION
+            ),
+            "decision": "approve",
+            "approval_gate": "parent-receipt-and-source-transition",
+            "protocol_logical_sha256": protocol["logical_sha256"],
+            "explicit_human_confirmation": True,
+            "parent_replicate_id": "r0",
+        }
+    )
+    key = StageKey(STUDY_ID, "qwen-l0-rl-l1", "r0-retry1")
+    parent_key = StageKey(STUDY_ID, "qwen-l0-sft", "r0")
+    stage = stage_spec(protocol, key.stage_id)
+
+    class ParentStore:
+        @staticmethod
+        def load_manifest(observed_key):
+            assert observed_key == parent_key
+            return parent_manifest
+
+        @staticmethod
+        def load_wave_receipt(observed_key, *, wave):
+            assert observed_key == parent_key
+            assert wave == "complete"
+            return receipt
+
+    parent = launcher._parent_binding(
+        repo_root=REPO_ROOT,
+        protocol=protocol,
+        store=ParentStore(),
+        key=key,
+        stage=stage,
+        source_git_sha=consumer,
+        approval=approval,
+        existing_manifest=None,
+    )
+    assert parent is not None
+    assert parent.replicate_id == "r0"
+    assert parent.checkpoint == checkpoint
 
 
 def test_existing_child_manifest_revalidates_exact_v2_transition(

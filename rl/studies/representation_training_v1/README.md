@@ -131,7 +131,7 @@ ledger is authoritative:
 ```text
 $PIXCELL_TRAINING_ROOT/
 └── studies/representation-training-v1/
-    └── stages/<stage>/runs/r0/
+    └── stages/<stage>/runs/<replicate>/
         ├── run_manifest.json
         ├── invocations/
         ├── candidates/
@@ -148,11 +148,17 @@ reasoning/final channels, extracted program, stop state, and deterministic
 measurement. A crash retry gets a new invocation ID, so it cannot overwrite
 earlier paid samples.
 
+`r0-retry1` is reserved for the L0-SFT→L1–L4 RL path after its original `r0`
+smoke stopped before Tinker client creation. The original run has no samples,
+checkpoints, metrics, or wave receipt and remains excluded from results. The
+retry consumes the exact historical `qwen-l0-sft/r0` checkpoint; it is an
+operational identity, not a second statistical replicate.
+
 W&B is the live observability mirror:
 
 - entity: `aadarwal-massachusetts-institute-of-technology`
 - project: `pixcell-representation-training-v1`
-- name: `representation-training-v1/<stage>/r0@<source-sha>`
+- name: `representation-training-v1/<stage>/<replicate>@<source-sha>`
 - group: `representation-training-v1/qwen-open` or
   `representation-training-v1/inkling`
 - tags: stage, model, kind, replicate, and hypothesis IDs
