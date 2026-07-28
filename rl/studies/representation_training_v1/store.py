@@ -456,13 +456,59 @@ class TrainingStore:
         if self.load_manifest(key) is None:
             raise TrainingStoreError("invocation cannot precede its run manifest")
         return self._create_or_verify(
-            self.stage_relative_path(key)
-            / "invocations"
-            / invocation_id
-            / "start.json",
+            self.stage_relative_path(key) / "invocations" / invocation_id / "start.json",
             record_type="invocation",
             key={**key.as_dict(), "invocation_id": invocation_id},
             payload=payload,
+        )
+
+    def load_invocation(
+        self,
+        key: StageKey,
+        *,
+        invocation_id: str,
+    ) -> TrainingRecord | None:
+        if not _IDENTIFIER.fullmatch(invocation_id):
+            raise ValueError(f"invalid invocation ID: {invocation_id!r}")
+        return self._load(
+            self.stage_relative_path(key) / "invocations" / invocation_id / "start.json",
+            record_type="invocation",
+            key={**key.as_dict(), "invocation_id": invocation_id},
+        )
+
+    def write_invocation_tracking(
+        self,
+        key: StageKey,
+        *,
+        invocation_id: str,
+        payload: Mapping[str, Any],
+    ) -> TrainingRecord:
+        """Bind the observed live tracking session before paid training begins."""
+
+        self._require_lock(key)
+        if not _IDENTIFIER.fullmatch(invocation_id):
+            raise ValueError(f"invalid invocation ID: {invocation_id!r}")
+        if self.load_invocation(key, invocation_id=invocation_id) is None:
+            raise TrainingStoreError("tracking session cannot precede its invocation")
+        return self._create_or_verify(
+            self.stage_relative_path(key) / "invocations" / invocation_id / "tracking.json",
+            record_type="invocation_tracking",
+            key={**key.as_dict(), "invocation_id": invocation_id},
+            payload=payload,
+        )
+
+    def load_invocation_tracking(
+        self,
+        key: StageKey,
+        *,
+        invocation_id: str,
+    ) -> TrainingRecord | None:
+        if not _IDENTIFIER.fullmatch(invocation_id):
+            raise ValueError(f"invalid invocation ID: {invocation_id!r}")
+        return self._load(
+            self.stage_relative_path(key) / "invocations" / invocation_id / "tracking.json",
+            record_type="invocation_tracking",
+            key={**key.as_dict(), "invocation_id": invocation_id},
         )
 
     def _path(self, relative: PurePosixPath) -> Path:
