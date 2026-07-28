@@ -64,7 +64,7 @@ def test_base_qwen_rl_contract_is_exact() -> None:
         assert stage.replay_levels == tuple(f"L{prior}" for prior in range(level))
         assert stage.hypotheses == ("RT-H06",)
         assert stage.wave("smoke")["approval"] == (
-            "base-level-held-out-baseline-receipt"
+            "initial"
             if level == 0
             else "prior-and-current-level-held-out-transition-receipt"
         )
@@ -106,7 +106,7 @@ def test_l0_sft_to_qwen_rl_contract_uses_modern_level_gates() -> None:
     [
         (
             lambda value: value["stages"]["qwen-base-rl-l0"]["waves"]["smoke"].update(
-                {"approval": "initial"}
+                {"approval": "base-level-held-out-baseline-receipt"}
             ),
             "wrong pure-RL gates",
         ),

@@ -75,7 +75,7 @@ def test_protocol_seals_the_pure_qwen_rl_curriculum() -> None:
             "complete": 30,
         }
         assert stage.wave("smoke")["approval"] == (
-            "base-level-held-out-baseline-receipt"
+            "initial"
             if level == 0
             else "prior-and-current-level-held-out-transition-receipt"
         )
