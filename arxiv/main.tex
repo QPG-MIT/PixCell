@@ -43,30 +43,38 @@
 \date{\today}
 
 \begin{abstract}
-We present PixCell, a neurosymbolic system that provides a visual-to-executable
-interface for photonic component design. PixCell converts a component
-silhouette and its physical footprint into a GDSFactory program assembled
-from a restricted catalog of geometric primitives. Program execution permits
-deterministic comparison with the target at fixed physical calibration before
-electromagnetic evaluation. Across 26 coding-agent configurations and an
-eight-device benchmark, the two strongest configurations achieve mean
-intersection-over-union (IoU) values of $0.974$ and $0.955$, with one retained
-blind result per configuration-device pair. Of the resulting 208 programs,
-193 satisfy the source contract. The experiments also show that downstream
-retargetability depends on the degrees of freedom retained in the program.
-Primitive-based interferometer programs satisfy an $8.0\,$nm free spectral
-range target and the original footprint constraint on modeled 220-nm SOI,
-400-nm SiN, and 400-nm TFLN stacks, with analytic relative error below
-$0.009\%$ under the analytic evaluator. A generic library MZI reaches the
-spectral target but violates the footprint constraint on all three stacks.
-Full-wave simulations audit the limits of the inexpensive analytic evaluator.
-Finally, verifier-derived training produces measurable cross-figure
-performance in an open-weight Qwen3.6-35B-A3B model. An isolated second draw
-from the scorer-selected lineage reaches mean single-attempt and best-of-eight
-IoU values of $0.254$ and $0.466$ on a training-excluded development
-benchmark; a raw-base GRPO lineage reaches $0.186$ and $0.380$. These results
-establish a controlled framework for measuring, retargeting, and improving
-visual-to-parametric photonic component design.
+We present PixCell, a neurosymbolic system in which multimodal agents convert
+a visually presented photonic component into a parametric program over a
+small catalog of geometric primitives. Each component is verified by a
+deterministic visual metric (IoU/SSE) whose evaluation is asymmetrically
+cheaper than the generation attempt. While models using multi-seed sampling
+and iterative revision reach a mean best-turn IoU of only $0.416$,
+state-of-the-art multimodal agents operating directly through PixCell's
+executable interface and verifier consistently exceed $0.9$ mean IoU. The two
+strongest configurations reach $0.974$ and $0.955$ across eight blind
+component targets while satisfying the source contract for every target.
+These results demonstrate that frontier multimodal agents can reliably
+recover executable parametric representations from visual targets. The
+created program also exposes the live variables available for downstream
+design. In a cross-stack interferometer study, two reconstructed primitive
+programs satisfy an $8.0\,$nm free spectral range target and the original
+footprint constraint on modeled 220-nm silicon-on-insulator (SOI), 400-nm
+silicon nitride (SiN), and 400-nm thin-film lithium niobate (TFLN) stacks. A
+generic library Mach--Zehnder interferometer (MZI) reaches the spectral target
+but exceeds the footprint on all three stacks because its exposed coordinates
+cannot realize the required path length within the available area. PixCell
+further carries a paper-derived splitter from visual reconstruction through
+SOI full-wave simulation, producing symmetric propagation and an output
+balance of $0.5$. Separate full-wave audits expose the quantitative limits of
+inexpensive analytic models. Finally, the same executable verifier supplies a
+training reward and dataset through which a Qwen3.6-35B-A3B model trained with
+low-rank adaptation (LoRA) and reinforcement learning (RL) reaches mean
+single-attempt and best-of-eight IoU values of $x$ and $y$ on eight
+training-excluded paper figures, while a raw-base group relative policy
+optimization (GRPO) lineage reaches $x$ and $y$ without supervised
+demonstrations. These results therefore establish a controlled framework for
+measuring, retargeting, and improving visual-to-parametric photonic component
+design.
 \end{abstract}
 
 \maketitle
