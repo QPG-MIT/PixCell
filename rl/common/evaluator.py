@@ -40,6 +40,7 @@ from michaelangelo.core.compare_absolute import (
 )
 
 from .contracts import VerifierReference
+from .geometry import boundary_mask, chamfer_sym_um
 from .isolation import (
     ExecutionBoundary,
     candidate_identity,
@@ -795,6 +796,20 @@ class PixCellEvaluator:
                     prepared.calibration,
                 )
                 metrics = compute_metrics(raster, prepared.target.copy())
+                raster_mask = np.asarray(raster.convert("L")) < 245
+                target_mask = np.asarray(prepared.target) < 245
+                scale_x, scale_y = prepared.calibration["scale_px_per_um"]
+                chamfer_b, _, _ = chamfer_sym_um(
+                    boundary_mask(raster_mask),
+                    boundary_mask(target_mask),
+                    2.0 / (scale_x + scale_y),
+                )
+                metrics = {
+                    **metrics,
+                    "chamfer_boundary_um": (
+                        None if chamfer_b == float("inf") else float(chamfer_b)
+                    ),
+                }
                 diagnostics = _json_diagnostic(
                     {
                         **metrics,
