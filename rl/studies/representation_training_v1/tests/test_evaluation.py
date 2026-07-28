@@ -501,6 +501,38 @@ def test_model_fault_is_zero_and_infrastructure_fault_aborts() -> None:
             )
 
 
+def test_stored_evaluation_rejects_misattributed_infrastructure_status() -> None:
+    task = _task()
+    payload = subject._evaluation_payload(
+        task=task,
+        result=EvaluationResult(
+            status=EvaluationStatus.SYNTAX_ERROR,
+            attribution=Attribution.MODEL,
+            error="invalid syntax",
+        ),
+        sample_record_sha256="1" * 64,
+        manifest_record_sha256="2" * 64,
+    )
+    subject._validate_evaluation_record(
+        record={"payload": payload},
+        task=task,
+        sample_record_sha256="1" * 64,
+        manifest_record_sha256="2" * 64,
+    )
+
+    payload["status"] = EvaluationStatus.REFERENCE_ERROR.value
+    with pytest.raises(
+        subject.ImmutableEvaluationRecordError,
+        match="non-model evaluation status",
+    ):
+        subject._validate_evaluation_record(
+            record={"payload": payload},
+            task=task,
+            sample_record_sha256="1" * 64,
+            manifest_record_sha256="2" * 64,
+        )
+
+
 def test_all_prompt_and_reference_checks_precede_service_client(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

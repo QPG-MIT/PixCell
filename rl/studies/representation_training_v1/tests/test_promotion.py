@@ -62,7 +62,54 @@ import rl.studies.representation_training_v1.record_approval
     )
 
 
+def test_record_approval_accepts_dual_level_transition_evidence() -> None:
+    from rl.studies.representation_training_v1.record_approval import parser
+
+    args = parser().parse_args(
+        [
+            "--stage",
+            "qwen-base-rl-l1",
+            "--wave",
+            "smoke",
+            "--evaluation-stage",
+            "qwen-base-rl-l0",
+            "--evaluation-wave",
+            "complete",
+            "--evaluation-checkpoint",
+            "000030",
+            "--evaluation-report-record-sha256",
+            "a" * 64,
+            "--entry-baseline-report-record-sha256",
+            "b" * 64,
+            "--expected-source-sha",
+            "c" * 40,
+        ]
+    )
+
+    assert args.entry_baseline_report_record_sha256 == "b" * 64
+
+
 CHECKPOINT_INVENTORY_SHA256 = canonical_sha256([CHECKPOINT])
+
+
+def test_report_aggregate_rejects_non_model_status_and_failure_iou() -> None:
+    base = {
+        "status": "runtime_error",
+        "pure_executable": False,
+        "raw_absolute_scale_iou": 0.0,
+    }
+    promotion._aggregate([base])
+
+    with pytest.raises(
+        promotion.PromotionError,
+        match="non-model evaluation status",
+    ):
+        promotion._aggregate([{**base, "status": "measurement_error"}])
+    with pytest.raises(
+        promotion.PromotionError,
+        match="failed model output has nonzero IoU",
+    ):
+        promotion._aggregate([{**base, "raw_absolute_scale_iou": 0.1}])
 
 
 def _record(
@@ -294,6 +341,132 @@ def _cross_source_evidence(
         evaluation_manifest_payload_sha256="b" * 64,
         evaluation_manifest_record_sha256="a" * 64,
     )
+
+
+def _historical_parent_records(
+    tmp_path: Path,
+    protocol: dict,
+    *,
+    producer_source_git_sha: str,
+) -> tuple[
+    TrainingRecord,
+    TrainingRecord,
+    TrainingRecord,
+    dict,
+    dict,
+    object,
+]:
+    dataset = promotion._dataset_binding(REPO_ROOT / "dataset", protocol)
+    parent_stage = stage_spec(protocol, "qwen-l0-sft")
+    stage_payload = {
+        "stage_id": parent_stage.stage_id,
+        "kind": parent_stage.kind,
+        "model_key": parent_stage.model_key,
+        "recipe_key": parent_stage.recipe_key,
+        "hypotheses": list(parent_stage.hypotheses),
+        "parent_policy": parent_stage.parent,
+        "levels": list(parent_stage.levels),
+        "current_level": parent_stage.current_level,
+        "replay_levels": list(parent_stage.replay_levels),
+        "waves": parent_stage.waves,
+    }
+    manifest = _record(
+        {
+            "source_git_sha": producer_source_git_sha,
+            "protocol_logical_sha256": "0" * 64,
+            "protocol_file_sha256": "1" * 64,
+            "contract_version": protocol["contract_version"],
+            "prompt_assets": prompt_asset_hashes(),
+            "dataset": dataset,
+            "model": protocol["models"]["qwen"],
+            "recipe": protocol["recipes"]["qwen_sft"],
+            "stage": stage_payload,
+        },
+        record_sha="2" * 64,
+        relative=(
+            "studies/representation-training-v1/stages/"
+            "qwen-l0-sft/runs/r0/run_manifest.json"
+        ),
+    )
+    checkpoint = {
+        **CHECKPOINT,
+        "batch": 0,
+        "epoch": 1,
+    }
+    inventory_sha = canonical_sha256([checkpoint])
+    log_path = tmp_path / "tinker"
+    log_path.mkdir(parents=True)
+    local_artifacts = {}
+    for name, content in (
+        ("checkpoints.jsonl", "{}\n"),
+        ("metrics.jsonl", "{}\n"),
+    ):
+        path = log_path / name
+        path.write_text(content, encoding="utf-8")
+        local_artifacts[name] = promotion.file_sha256(path)
+    invocation = _record(
+        {
+            "source_git_sha": producer_source_git_sha,
+            "run_manifest_record_sha256": manifest.record_sha256,
+        },
+        record_sha="3" * 64,
+        relative=(
+            "studies/representation-training-v1/stages/qwen-l0-sft/"
+            "runs/r0/invocations/complete-unit/start.json"
+        ),
+    )
+    receipt = _record(
+        {
+            "stage_id": "qwen-l0-sft",
+            "wave": "complete",
+            "run_manifest_record_sha256": manifest.record_sha256,
+            "invocation_id": "complete-unit",
+            "invocation_record_sha256": invocation.record_sha256,
+            "checkpoint": {
+                field: checkpoint[field]
+                for field in (
+                    "name",
+                    "batch",
+                    "epoch",
+                    "final",
+                    "state_path",
+                    "sampler_path",
+                )
+            },
+            "checkpoint_inventory": {
+                "count": 1,
+                "entries": [checkpoint],
+                "logical_sha256": inventory_sha,
+            },
+            "local_artifact_sha256": local_artifacts,
+        },
+        record_sha="4" * 64,
+        relative=(
+            "studies/representation-training-v1/stages/qwen-l0-sft/"
+            "runs/r0/waves/complete/receipt.json"
+        ),
+    )
+
+    class ParentStore:
+        @staticmethod
+        def load_manifest(_key):
+            return manifest
+
+        @staticmethod
+        def load_wave_receipt(_key, *, wave):
+            assert wave == "complete"
+            return receipt
+
+        @staticmethod
+        def load_invocation(_key, *, invocation_id):
+            assert invocation_id == "complete-unit"
+            return invocation
+
+        @staticmethod
+        def tinker_log_path(_key):
+            return log_path
+
+    return manifest, receipt, invocation, checkpoint, local_artifacts, ParentStore()
 
 
 def _synthetic_depth_report(
@@ -688,6 +861,266 @@ def test_plans_bind_reports_and_clean_smoke_storage() -> None:
     assert continuation.expected_panel == promotion.PANEL_PROGRESS
 
 
+def test_pure_base_level_transition_binds_prior_and_current_slot6_panels() -> None:
+    protocol = load_protocol(REPO_ROOT)
+    stage = stage_spec(protocol, "qwen-base-rl-l2")
+    plan = promotion.approval_plan(stage, "smoke")
+    assert plan.gate == (
+        "prior-and-current-level-held-out-transition-receipt"
+    )
+    assert plan.expected_panel == "level-progress-l1"
+    assert plan.entry_baseline_panel == "level-progress-l2"
+    assert plan.allowed_evaluation_checkpoints == (
+        ("qwen-base-rl-l1", "complete"),
+    )
+
+    prior = _evidence(
+        stage_id="qwen-base-rl-l1",
+        wave="complete",
+        panel="level-progress-l1",
+        first_unmastered=None,
+    )
+    baseline = replace(
+        prior,
+        panel="level-progress-l2",
+        report_record_sha256="1" * 64,
+        report_payload_sha256="2" * 64,
+        report_relative_path=(
+            "studies/x/stages/qwen-base-rl-l1/evaluations/"
+            "complete/final/level-progress-l2/report.json"
+        ),
+        evaluation_manifest_payload_sha256="3" * 64,
+        evaluation_manifest_record_sha256="4" * 64,
+        evaluation_manifest_relative_path=(
+            "studies/x/stages/qwen-base-rl-l1/evaluations/"
+            "complete/final/level-progress-l2/manifest.json"
+        ),
+    )
+    payload = promotion._approval_payload(
+        stage=stage,
+        wave_name="smoke",
+        plan=plan,
+        evidence=prior,
+        entry_baseline_evidence=baseline,
+        source_git_sha=SOURCE_SHA,
+        protocol=protocol,
+    )
+    assert payload["evaluation"]["panel"] == "level-progress-l1"
+    assert payload["entry_baseline"]["panel"] == "level-progress-l2"
+    assert (
+        payload["evaluation"]["checkpoint"]
+        == payload["entry_baseline"]["checkpoint"]
+    )
+    assert payload["parent_stage_id"] == "qwen-base-rl-l1"
+    assert payload["parent_wave"] == "complete"
+
+    with pytest.raises(promotion.PromotionError, match="requires the .* baseline"):
+        promotion._approval_payload(
+            stage=stage,
+            wave_name="smoke",
+            plan=plan,
+            evidence=prior,
+            source_git_sha=SOURCE_SHA,
+            protocol=protocol,
+        )
+    with pytest.raises(promotion.PromotionError, match="exact same parent checkpoint"):
+        promotion._approval_payload(
+            stage=stage,
+            wave_name="smoke",
+            plan=plan,
+            evidence=prior,
+            entry_baseline_evidence=replace(
+                baseline,
+                checkpoint={**baseline.checkpoint, "sampler_path": "tinker://other"},
+            ),
+            source_git_sha=SOURCE_SHA,
+            protocol=protocol,
+        )
+    mismatched_artifact_chains = (
+        replace(baseline, checkpoint_inventory_sha256="6" * 64),
+        replace(
+            baseline,
+            training_manifest=replace(
+                baseline.training_manifest,
+                record_sha256="7" * 64,
+            ),
+        ),
+        replace(
+            baseline,
+            training_receipt=replace(
+                baseline.training_receipt,
+                record_sha256="8" * 64,
+            ),
+        ),
+    )
+    for mismatched in mismatched_artifact_chains:
+        with pytest.raises(
+            promotion.PromotionError,
+            match="exact same parent checkpoint",
+        ):
+            promotion._approval_payload(
+                stage=stage,
+                wave_name="smoke",
+                plan=plan,
+                evidence=prior,
+                entry_baseline_evidence=mismatched,
+                source_git_sha=SOURCE_SHA,
+                protocol=protocol,
+            )
+
+
+def test_same_source_approval_is_recomputed_from_both_bound_reports(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    stage = stage_spec(protocol, "qwen-base-rl-l2")
+    plan = promotion.approval_plan(stage, "smoke")
+    prior = _evidence(
+        stage_id="qwen-base-rl-l1",
+        wave="complete",
+        panel=plan.expected_panel,
+        first_unmastered=None,
+    )
+    baseline = replace(
+        prior,
+        panel=str(plan.entry_baseline_panel),
+        report_record_sha256="1" * 64,
+        report_payload_sha256="2" * 64,
+        report_relative_path=(
+            "studies/x/stages/qwen-base-rl-l1/evaluations/"
+            "complete/final/level-progress-l2/report.json"
+        ),
+        evaluation_manifest_payload_sha256="3" * 64,
+        evaluation_manifest_record_sha256="4" * 64,
+        evaluation_manifest_relative_path=(
+            "studies/x/stages/qwen-base-rl-l1/evaluations/"
+            "complete/final/level-progress-l2/manifest.json"
+        ),
+    )
+    payload = promotion._approval_payload(
+        stage=stage,
+        wave_name="smoke",
+        plan=plan,
+        evidence=prior,
+        entry_baseline_evidence=baseline,
+        source_git_sha=SOURCE_SHA,
+        protocol=protocol,
+    )
+    approval = _record(
+        payload,
+        record_sha="5" * 64,
+        relative=(
+            "studies/representation-training-v1/stages/qwen-base-rl-l2/"
+            "runs/r0/waves/smoke/approval.json"
+        ),
+    )
+    calls: list[dict] = []
+
+    def validate_report(**kwargs):
+        calls.append(dict(kwargs))
+        if kwargs["panel"] == plan.expected_panel:
+            assert kwargs["expected_report_record_sha256"] == "d" * 64
+            return prior
+        assert kwargs["panel"] == plan.entry_baseline_panel
+        assert kwargs["expected_report_record_sha256"] == "1" * 64
+        return baseline
+
+    monkeypatch.setattr(
+        promotion,
+        "validate_source_sha",
+        lambda _root, expected: expected,
+    )
+    monkeypatch.setattr(
+        promotion,
+        "validate_checkpoint_report",
+        validate_report,
+    )
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    store = TrainingStore(repo_root=repo, external_root=tmp_path / "external")
+    observed = promotion.validate_same_source_wave_approval(
+        repo_root=repo,
+        protocol=protocol,
+        store=store,
+        stage=stage,
+        wave_name="smoke",
+        replicate_id="r0",
+        source_git_sha=SOURCE_SHA,
+        approval=approval,
+    )
+    assert observed is prior
+    assert [call["panel"] for call in calls] == [
+        "level-progress-l1",
+        "level-progress-l2",
+    ]
+
+    tampered = replace(
+        approval,
+        payload={
+            **approval.payload,
+            "entry_baseline": {
+                **approval.payload["entry_baseline"],
+                "report_payload_sha256": "9" * 64,
+            },
+        },
+    )
+    with pytest.raises(promotion.PromotionError, match="canonically recomputed"):
+        promotion.validate_same_source_wave_approval(
+            repo_root=repo,
+            protocol=protocol,
+            store=store,
+            stage=stage,
+            wave_name="smoke",
+            replicate_id="r0",
+            source_git_sha=SOURCE_SHA,
+            approval=tampered,
+        )
+
+
+def test_same_source_current_level_approval_rejects_minimal_json(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    stage = stage_spec(protocol, "qwen-base-rl-l0")
+    monkeypatch.setattr(
+        promotion,
+        "validate_source_sha",
+        lambda _root, expected: expected,
+    )
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    store = TrainingStore(repo_root=repo, external_root=tmp_path / "external")
+    approval = _record(
+        {
+            "schema_version": promotion.APPROVAL_SCHEMA_VERSION,
+            "decision": "approve",
+            "approval_gate": "current-level-held-out-promotion-receipt",
+            "stage_id": stage.stage_id,
+            "wave": "step-10",
+            "source_git_sha": SOURCE_SHA,
+            "protocol_logical_sha256": protocol["logical_sha256"],
+        },
+        record_sha="6" * 64,
+        relative=(
+            "studies/representation-training-v1/stages/qwen-base-rl-l0/"
+            "runs/r0/waves/step-10/approval.json"
+        ),
+    )
+    with pytest.raises(promotion.PromotionError, match="approval.evaluation"):
+        promotion.validate_same_source_wave_approval(
+            repo_root=repo,
+            protocol=protocol,
+            store=store,
+            stage=stage,
+            wave_name="step-10",
+            replicate_id="r0",
+            source_git_sha=SOURCE_SHA,
+            approval=approval,
+        )
+
+
 def test_mixed_approval_selects_first_unmastered_and_binds_parent() -> None:
     protocol = load_protocol(REPO_ROOT)
     stage = stage_spec(protocol, "qwen-mixed-rl-l2")
@@ -977,8 +1410,8 @@ def test_record_approval_requires_human_confirmation_and_is_immutable(
     kwargs = {
         "repo_root": repo,
         "external_root": external,
-        "stage_id": "qwen-l0-rl-l1",
-        "wave_name": "smoke",
+        "stage_id": "qwen-sequential-sft-l1",
+        "wave_name": "complete",
         "replicate_id": "r0",
         "evaluation_stage_id": "qwen-l0-sft",
         "evaluation_wave": "complete",
@@ -992,8 +1425,8 @@ def test_record_approval_requires_human_confirmation_and_is_immutable(
     assert first == second
     store = TrainingStore(repo_root=repo, external_root=external)
     approval = store.load_wave_approval(
-        StageKey(STUDY_ID, "qwen-l0-rl-l1", "r0"),
-        wave="smoke",
+        StageKey(STUDY_ID, "qwen-sequential-sft-l1", "r0"),
+        wave="complete",
     )
     assert approval is not None
     assert approval.payload["decision"] == "approve"
@@ -1041,8 +1474,8 @@ def test_cross_source_v2_binds_exact_evidence_scope_and_one_child(
     result = promotion.record_wave_approval(
         repo_root=repo,
         external_root=external,
-        stage_id="qwen-l0-rl-l1",
-        wave_name="smoke",
+        stage_id="qwen-sequential-sft-l1",
+        wave_name="complete",
         replicate_id="r0",
         evaluation_stage_id="qwen-l0-sft",
         evaluation_wave="complete",
@@ -1059,9 +1492,9 @@ def test_cross_source_v2_binds_exact_evidence_scope_and_one_child(
     assert result["evidence_source_git_sha"] == producer
     assert result["consumer_source_git_sha"] == consumer
 
-    key = StageKey(STUDY_ID, "qwen-l0-rl-l1", "r0")
+    key = StageKey(STUDY_ID, "qwen-sequential-sft-l1", "r0")
     store = TrainingStore(repo_root=repo, external_root=external)
-    approval = store.load_wave_approval(key, wave="smoke")
+    approval = store.load_wave_approval(key, wave="complete")
     assert approval is not None
     payload = approval.payload
     assert payload["schema_version"] == (promotion.SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION)
@@ -1077,10 +1510,10 @@ def test_cross_source_v2_binds_exact_evidence_scope_and_one_child(
     )
     transition = payload["source_transition"]
     assert transition["scope"]["child"] == {
-        "stage_id": "qwen-l0-rl-l1",
-        "wave": "smoke",
+        "stage_id": "qwen-sequential-sft-l1",
+        "wave": "complete",
         "replicate_id": "r0",
-        "approval_gate": "entry-evaluation-and-promotion-receipt",
+        "approval_gate": "parent-evaluation-receipt",
     }
     assert transition["scope"]["approved_changes"]["paths"] == ["bridge.txt"]
     assert (
@@ -1101,8 +1534,8 @@ def test_cross_source_v2_binds_exact_evidence_scope_and_one_child(
             repo_root=repo,
             protocol=protocol,
             store=store,
-            stage=stage_spec(protocol, "qwen-l0-rl-l1"),
-            wave_name="smoke",
+            stage=stage_spec(protocol, "qwen-sequential-sft-l1"),
+            wave_name="complete",
             replicate_id="r0",
             consumer_source_git_sha=consumer,
             approval=approval,
@@ -1114,8 +1547,8 @@ def test_cross_source_v2_binds_exact_evidence_scope_and_one_child(
             repo_root=repo,
             protocol=protocol,
             store=store,
-            stage=stage_spec(protocol, "qwen-l0-rl-l1"),
-            wave_name="smoke",
+            stage=stage_spec(protocol, "qwen-sequential-sft-l1"),
+            wave_name="complete",
             replicate_id="r1",
             consumer_source_git_sha=consumer,
             approval=approval,
@@ -1131,8 +1564,8 @@ def test_cross_source_v2_binds_exact_evidence_scope_and_one_child(
             repo_root=repo,
             protocol=protocol,
             store=store,
-            stage=stage_spec(protocol, "qwen-l0-rl-l1"),
-            wave_name="smoke",
+            stage=stage_spec(protocol, "qwen-sequential-sft-l1"),
+            wave_name="complete",
             replicate_id="r0",
             consumer_source_git_sha=consumer,
             approval=tampered,
@@ -1150,8 +1583,8 @@ def test_cross_source_v2_binds_exact_evidence_scope_and_one_child(
             repo_root=repo,
             protocol=protocol,
             store=store,
-            stage=stage_spec(protocol, "qwen-l0-rl-l1"),
-            wave_name="smoke",
+            stage=stage_spec(protocol, "qwen-sequential-sft-l1"),
+            wave_name="complete",
             replicate_id="r0",
             consumer_source_git_sha=consumer,
             approval=approval,
@@ -1177,8 +1610,8 @@ def test_cross_source_recording_rejects_missing_or_wrong_change_scope(
     common = {
         "repo_root": repo,
         "external_root": tmp_path / "external",
-        "stage_id": "qwen-l0-rl-l1",
-        "wave_name": "smoke",
+        "stage_id": "qwen-sequential-sft-l1",
+        "wave_name": "complete",
         "replicate_id": "r0",
         "evaluation_stage_id": "qwen-l0-sft",
         "evaluation_wave": "complete",
@@ -1208,4 +1641,159 @@ def test_cross_source_recording_rejects_missing_or_wrong_change_scope(
                 "evidence_source_sha": consumer,
             },
             approved_change_paths=["bridge.txt"],
+        )
+
+
+def test_historical_parent_evidence_binds_receipt_without_evaluation(
+    tmp_path: Path,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    producer = "b" * 40
+    manifest, receipt, invocation, checkpoint, artifacts, store = (
+        _historical_parent_records(
+            tmp_path,
+            protocol,
+            producer_source_git_sha=producer,
+        )
+    )
+    observed = promotion._parent_receipt_transition_evidence(
+        repo_root=REPO_ROOT,
+        protocol=protocol,
+        store=store,
+        replicate_id="r0",
+    )
+    assert observed[:4] == (manifest, receipt, invocation, checkpoint)
+    document = observed[4]
+    assert "evaluation" not in document["evidence"]
+    assert document["evidence"]["local_artifact_sha256"] == artifacts
+    assert (
+        document["stable_equivalence"]["prompt_assets"]
+        == prompt_asset_hashes()
+    )
+
+    manifest.payload["prompt_assets"] = {
+        **prompt_asset_hashes(),
+        "task_sha256": "f" * 64,
+    }
+    with pytest.raises(promotion.PromotionError, match="stable contract"):
+        promotion._parent_receipt_transition_evidence(
+            repo_root=REPO_ROOT,
+            protocol=protocol,
+            store=store,
+            replicate_id="r0",
+        )
+
+
+def test_parent_receipt_transition_records_and_revalidates_exact_bridge(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo, producer, consumer = _git_transition_history(tmp_path)
+    protocol = load_protocol(REPO_ROOT)
+    manifest, receipt, invocation, checkpoint, _artifacts, _store = (
+        _historical_parent_records(
+            tmp_path / "parent",
+            protocol,
+            producer_source_git_sha=producer,
+        )
+    )
+    stable = {
+        "stable_equivalence": {
+            "contract_version": protocol["contract_version"],
+            "prompt_assets": prompt_asset_hashes(),
+            "dataset": promotion._dataset_binding(REPO_ROOT / "dataset", protocol),
+            "model": protocol["models"]["qwen"],
+            "recipe": protocol["recipes"]["qwen_sft"],
+            "stage": dict(manifest.payload["stage"]),
+        },
+        "evidence": {
+            "parent_run_manifest": {"record_sha256": manifest.record_sha256},
+            "parent_wave_receipt": {"record_sha256": receipt.record_sha256},
+            "parent_invocation": {"record_sha256": invocation.record_sha256},
+            "checkpoint_inventory": receipt.payload["checkpoint_inventory"],
+            "selected_checkpoint": checkpoint,
+        },
+    }
+    monkeypatch.setattr(
+        promotion,
+        "load_protocol",
+        lambda *_args, **_kwargs: protocol,
+    )
+    monkeypatch.setattr(
+        promotion,
+        "validate_source_sha",
+        lambda _root, expected: expected,
+    )
+    monkeypatch.setattr(promotion, "file_sha256", lambda _path: "5" * 64)
+    monkeypatch.setattr(
+        promotion,
+        "_parent_receipt_transition_evidence",
+        lambda **_kwargs: (
+            manifest,
+            receipt,
+            invocation,
+            checkpoint,
+            stable,
+        ),
+    )
+    external = tmp_path / "external"
+    with pytest.raises(promotion.PromotionError, match="human approval"):
+        promotion.record_parent_receipt_transition_approval(
+            repo_root=repo,
+            external_root=external,
+            stage_id="qwen-l0-rl-l1",
+            wave_name="smoke",
+            replicate_id="r0",
+            expected_source_sha=consumer,
+            approved_change_paths=["bridge.txt"],
+            confirmation="wrong",
+        )
+    result = promotion.record_parent_receipt_transition_approval(
+        repo_root=repo,
+        external_root=external,
+        stage_id="qwen-l0-rl-l1",
+        wave_name="smoke",
+        replicate_id="r0",
+        expected_source_sha=consumer,
+        approved_change_paths=["bridge.txt"],
+        confirmation=promotion.APPROVAL_CONFIRMATION_TOKEN,
+    )
+    assert result["parent_receipt_record_sha256"] == receipt.record_sha256
+    store = TrainingStore(repo_root=repo, external_root=external)
+    key = StageKey(STUDY_ID, "qwen-l0-rl-l1", "r0")
+    approval = store.load_wave_approval(key, wave="smoke")
+    assert approval is not None
+    assert approval.payload["schema_version"] == (
+        promotion.PARENT_RECEIPT_TRANSITION_APPROVAL_SCHEMA_VERSION
+    )
+    assert approval.payload["selected_parent_checkpoint"] == checkpoint
+    assert "evaluation" not in approval.payload
+    promotion.validate_parent_receipt_transition_approval(
+        repo_root=repo,
+        protocol=protocol,
+        store=store,
+        stage=stage_spec(protocol, "qwen-l0-rl-l1"),
+        wave_name="smoke",
+        replicate_id="r0",
+        consumer_source_git_sha=consumer,
+        approval=approval,
+    )
+
+    tampered = replace(
+        approval,
+        payload={
+            **approval.payload,
+            "parent_receipt_record_sha256": "0" * 64,
+        },
+    )
+    with pytest.raises(promotion.PromotionError, match="recomputed evidence"):
+        promotion.validate_parent_receipt_transition_approval(
+            repo_root=repo,
+            protocol=protocol,
+            store=store,
+            stage=stage_spec(protocol, "qwen-l0-rl-l1"),
+            wave_name="smoke",
+            replicate_id="r0",
+            consumer_source_git_sha=consumer,
+            approval=tampered,
         )

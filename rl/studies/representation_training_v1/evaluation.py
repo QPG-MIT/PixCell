@@ -23,6 +23,7 @@ import math
 import os
 import re
 import stat
+import subprocess
 import uuid
 from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping, Sequence
@@ -72,10 +73,41 @@ EVALUATION_RECORD_SCHEMA_VERSION = "pixcell-training-evaluation-record-v1"
 PANEL_PROGRESS = "progress"
 PANEL_DEPTH_VALIDATION = "depth-validation"
 PANEL_INKLING_PROMOTION = "inkling-promotion"
+LEVEL_PROGRESS_PANELS = {
+    "L0": "level-progress-l0",
+    "L1": "level-progress-l1",
+    "L2": "level-progress-l2",
+    "L3": "level-progress-l3",
+    "L4": "level-progress-l4",
+}
+PANEL_DEPTH_FINAL_SELECTION = "depth-final-selection"
+LEVEL_PROGRESS_ROWS = {
+    "L0": 93,
+    "L1": 127,
+    "L2": 98,
+    "L3": 120,
+    "L4": 108,
+}
+_MODEL_EVALUATION_STATUSES = frozenset(
+    {
+        EvaluationStatus.OK.value,
+        EvaluationStatus.SYNTAX_ERROR.value,
+        EvaluationStatus.SOURCE_REJECTED.value,
+        EvaluationStatus.RUNTIME_TIMEOUT.value,
+        EvaluationStatus.RUNTIME_ERROR.value,
+        EvaluationStatus.NO_GDS.value,
+        EvaluationStatus.BAD_GDS.value,
+    }
+)
 PANELS = (
     PANEL_PROGRESS,
     PANEL_DEPTH_VALIDATION,
     PANEL_INKLING_PROMOTION,
+)
+SUPPORTED_PANELS = (
+    *PANELS,
+    *LEVEL_PROGRESS_PANELS.values(),
+    PANEL_DEPTH_FINAL_SELECTION,
 )
 MAX_IMAGE_LONG_EDGE = 1920
 MAX_OUTPUT_TOKENS = 60_000
@@ -87,6 +119,8 @@ EVALUATOR_WORKERS = 8
 _PANEL_SELECTION_SEED = (
     "pixcell-representation-training-v1-inkling-promotion-20260728"
 )
+_LEVEL_PROGRESS_SELECTION = "validation-realization-slot-6"
+_DEPTH_FINAL_SELECTION = "validation-realization-slot-7"
 _DEPTH_COLUMNS = (
     "id",
     "level",
@@ -148,6 +182,23 @@ class CheckpointBinding:
     sampler_path: str
     run_manifest: TrainingRecord
     wave_receipt: TrainingRecord
+
+
+@dataclass(frozen=True)
+class BaseModelBinding:
+    """An explicit base-model sampler identity with no fictitious receipt."""
+
+    key: StageKey
+    stage: StageSpec
+    wave: str
+    checkpoint_name: str
+    checkpoint: dict[str, Any]
+    checkpoint_inventory_sha256: str
+    sampler_path: str
+    binding_sha256: str
+
+
+EvaluationBinding = CheckpointBinding | BaseModelBinding
 
 
 @dataclass(frozen=True)
@@ -290,7 +341,7 @@ class CheckpointEvaluationStore:
         if (
             not _IDENTIFIER.fullmatch(wave)
             or not _IDENTIFIER.fullmatch(checkpoint_name)
-            or panel not in PANELS
+            or panel not in SUPPORTED_PANELS
         ):
             raise ValueError("invalid checkpoint-evaluation identity")
         self.stage_path = stage_path.expanduser().resolve(strict=True)
@@ -628,6 +679,45 @@ def _inkling_depth_tasks(rows: Sequence[dict[str, Any]]) -> list[EvaluationTask]
     return selected
 
 
+def _one_realization_per_representation(
+    rows: Sequence[dict[str, Any]],
+    *,
+    realization_slot: int,
+    level: str | None = None,
+) -> list[EvaluationTask]:
+    """Select one exact held-out realization for every requested representation."""
+
+    requested_level = level.upper() if level is not None else None
+    by_representation: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        row_level = str(row["level"]).upper()
+        if requested_level is not None and row_level != requested_level:
+            continue
+        if row.get("realization_slot") == realization_slot:
+            by_representation[(row_level, str(row["representation_id"]))].append(row)
+    if not by_representation:
+        raise ReferencePanelFault(
+            f"no validation rows use realization slot {realization_slot}"
+        )
+
+    selected: list[EvaluationTask] = []
+    for identity, candidates in sorted(by_representation.items()):
+        if len(candidates) != 1:
+            raise ReferencePanelFault(
+                f"{identity[0]}/{identity[1]} has {len(candidates)} rows "
+                f"for validation realization slot {realization_slot}"
+            )
+        selected.append(_depth_task(candidates[0]))
+    return selected
+
+
+def _level_for_progress_panel(panel: str) -> str | None:
+    return next(
+        (level for level, panel_id in LEVEL_PROGRESS_PANELS.items() if panel == panel_id),
+        None,
+    )
+
+
 def build_panel_tasks(
     *,
     repo_root: Path,
@@ -636,7 +726,7 @@ def build_panel_tasks(
 ) -> list[EvaluationTask]:
     """Build one exact label-free evaluation panel."""
 
-    if panel not in PANELS:
+    if panel not in SUPPORTED_PANELS:
         raise ValueError(f"unsupported panel {panel!r}")
     if panel == PANEL_PROGRESS:
         tasks = _benchmark_tasks(repo_root=repo_root, protocol=protocol)
@@ -655,14 +745,33 @@ def build_panel_tasks(
                     task.task_id,
                 ),
             )
-        else:
+        elif panel == PANEL_INKLING_PROMOTION:
             tasks = _inkling_depth_tasks(rows)
             tasks.extend(_benchmark_tasks(repo_root=repo_root, protocol=protocol))
+        elif panel == PANEL_DEPTH_FINAL_SELECTION:
+            tasks = _one_realization_per_representation(
+                rows,
+                realization_slot=7,
+            )
+        else:
+            level = _level_for_progress_panel(panel)
+            if level is None:
+                raise ValueError(f"unsupported panel {panel!r}")
+            tasks = _one_realization_per_representation(
+                rows,
+                realization_slot=6,
+                level=level,
+            )
 
     expected = {
         PANEL_PROGRESS: 8,
         PANEL_DEPTH_VALIDATION: 1092,
         PANEL_INKLING_PROMOTION: 68,
+        PANEL_DEPTH_FINAL_SELECTION: 546,
+        **{
+            panel_id: LEVEL_PROGRESS_ROWS[level]
+            for level, panel_id in LEVEL_PROGRESS_PANELS.items()
+        },
     }[panel]
     if len(tasks) != expected:
         raise ReferencePanelFault(
@@ -676,6 +785,25 @@ def build_panel_tasks(
         if len(representations) != 546:
             raise ReferencePanelFault(
                 "depth validation no longer spans 546 representations"
+            )
+    if panel == PANEL_DEPTH_FINAL_SELECTION:
+        representations = {
+            (task.level, task.representation_id)
+            for task in tasks
+        }
+        if len(representations) != 546:
+            raise ReferencePanelFault(
+                "depth final-selection no longer spans 546 representations"
+            )
+    level = _level_for_progress_panel(panel)
+    if level is not None:
+        if (
+            {task.level for task in tasks} != {level}
+            or len({task.representation_id for task in tasks})
+            != LEVEL_PROGRESS_ROWS[level]
+        ):
+            raise ReferencePanelFault(
+                f"{panel} no longer contains one {level} row per representation"
             )
     if panel == PANEL_INKLING_PROMOTION:
         counts = Counter(task.level for task in tasks)
@@ -712,7 +840,15 @@ def _task_manifest(tasks: Sequence[EvaluationTask], *, panel: str) -> dict[str, 
         "selection_seed": (
             _PANEL_SELECTION_SEED
             if panel == PANEL_INKLING_PROMOTION
-            else None
+            else (
+                _LEVEL_PROGRESS_SELECTION
+                if panel in LEVEL_PROGRESS_PANELS.values()
+                else (
+                    _DEPTH_FINAL_SELECTION
+                    if panel == PANEL_DEPTH_FINAL_SELECTION
+                    else None
+                )
+            )
         ),
         "task_count": len(entries),
         "task_ids": [item["task_id"] for item in entries],
@@ -911,6 +1047,105 @@ def _load_checkpoint_binding(
     )
 
 
+def _base_model_binding(
+    *,
+    protocol: dict[str, Any],
+    stage_id: str,
+    replicate_id: str,
+    source_git_sha: str,
+) -> BaseModelBinding:
+    stage = stage_spec(protocol, stage_id)
+    if (
+        stage.stage_id != "qwen-base-rl-l0"
+        or stage.model_key != "qwen"
+        or stage.parent != "base:qwen"
+    ):
+        raise CheckpointReceiptError(
+            "base-model evaluation is restricted to qwen-base-rl-l0"
+        )
+    key = StageKey(STUDY_ID, stage.stage_id, replicate_id)
+    model = dict(protocol["models"]["qwen"])
+    checkpoint = {
+        "name": "base",
+        "model": model["model"],
+        "renderer": model["renderer"],
+        "thinking": model["thinking"],
+    }
+    inventory_sha256 = _canonical_sha256([checkpoint])
+    identity = {
+        "schema_version": "pixcell-training-base-model-binding-v1",
+        "study_id": STUDY_ID,
+        "stage_id": stage.stage_id,
+        "replicate_id": replicate_id,
+        "source_git_sha": source_git_sha,
+        "protocol_logical_sha256": protocol["logical_sha256"],
+        "model": checkpoint,
+        "checkpoint_inventory_sha256": inventory_sha256,
+    }
+    return BaseModelBinding(
+        key=key,
+        stage=stage,
+        wave="base",
+        checkpoint_name="base",
+        checkpoint=checkpoint,
+        checkpoint_inventory_sha256=inventory_sha256,
+        sampler_path=str(model["model"]),
+        binding_sha256=_canonical_sha256(identity),
+    )
+
+
+def _sample_binding_identity(binding: EvaluationBinding) -> dict[str, Any]:
+    common = {
+        "checkpoint_name": binding.checkpoint_name,
+        "checkpoint_inventory_sha256": binding.checkpoint_inventory_sha256,
+        "checkpoint": binding.checkpoint,
+    }
+    if isinstance(binding, CheckpointBinding):
+        return {
+            "training_wave_receipt_record_sha256": (
+                binding.wave_receipt.record_sha256
+            ),
+            **common,
+        }
+    return {
+        "base_model_binding_sha256": binding.binding_sha256,
+        **common,
+    }
+
+
+def _sampler_provenance(binding: EvaluationBinding) -> dict[str, Any]:
+    common = {
+        "sampler_path": binding.sampler_path,
+        "checkpoint_name": binding.checkpoint_name,
+        "checkpoint": binding.checkpoint,
+        "checkpoint_inventory_sha256": binding.checkpoint_inventory_sha256,
+    }
+    if isinstance(binding, CheckpointBinding):
+        return {
+            **common,
+            "training_run_manifest_record_sha256": (
+                binding.run_manifest.record_sha256
+            ),
+            "training_wave_receipt_record_sha256": (
+                binding.wave_receipt.record_sha256
+            ),
+            "training_wave_receipt_relative_path": str(
+                binding.wave_receipt.relative_path
+            ),
+        }
+    return {
+        **common,
+        "binding_kind": "base-model",
+        "base_model_binding_sha256": binding.binding_sha256,
+    }
+
+
+def _sampling_client_kwargs(binding: EvaluationBinding) -> dict[str, str]:
+    if isinstance(binding, BaseModelBinding):
+        return {"base_model": binding.sampler_path}
+    return {"model_path": binding.sampler_path}
+
+
 def _model_binding(
     protocol: Mapping[str, Any],
     stage: StageSpec,
@@ -1019,7 +1254,7 @@ def _preflight_tasks(
 def _sample_seed(
     *,
     protocol_sha256: str,
-    binding: CheckpointBinding,
+    binding: EvaluationBinding,
     panel: str,
     task_id: str,
 ) -> int:
@@ -1095,16 +1330,11 @@ def _sample_payload(
     response: dict[str, Any],
     seed: int,
     manifest_record_sha256: str,
-    binding: CheckpointBinding,
+    binding: EvaluationBinding,
 ) -> dict[str, Any]:
     return {
         "evaluation_manifest_record_sha256": manifest_record_sha256,
-        "training_wave_receipt_record_sha256": (
-            binding.wave_receipt.record_sha256
-        ),
-        "checkpoint_name": binding.checkpoint_name,
-        "checkpoint_inventory_sha256": binding.checkpoint_inventory_sha256,
-        "checkpoint": binding.checkpoint,
+        **_sample_binding_identity(binding),
         "task": {
             "task_id": prepared.task.task_id,
             "level": prepared.task.level,
@@ -1179,18 +1409,12 @@ def _validate_sample_record(
     prepared: PreparedTask,
     seed: int,
     manifest_record_sha256: str,
-    receipt_record_sha256: str,
-    checkpoint_name: str,
-    checkpoint_inventory_sha256: str,
-    checkpoint: Mapping[str, Any],
+    binding: EvaluationBinding,
 ) -> None:
     payload = record["payload"]
     expected = {
         "evaluation_manifest_record_sha256": manifest_record_sha256,
-        "training_wave_receipt_record_sha256": receipt_record_sha256,
-        "checkpoint_name": checkpoint_name,
-        "checkpoint_inventory_sha256": checkpoint_inventory_sha256,
-        "checkpoint": dict(checkpoint),
+        **_sample_binding_identity(binding),
     }
     for field, value in expected.items():
         if payload.get(field) != value:
@@ -1244,6 +1468,15 @@ def _validate_evaluation_record(
             raise ImmutableEvaluationRecordError(
                 f"{task.task_id} evaluation record changed"
             )
+    status = str(payload.get("status", ""))
+    if status not in _MODEL_EVALUATION_STATUSES:
+        raise ImmutableEvaluationRecordError(
+            f"{task.task_id} has a non-model evaluation status"
+        )
+    if payload.get("pure_executable") != (status == EvaluationStatus.OK.value):
+        raise ImmutableEvaluationRecordError(
+            f"{task.task_id} status and pure-executable flag differ"
+        )
     iou = payload.get("raw_absolute_scale_iou")
     if (
         isinstance(iou, bool)
@@ -1254,6 +1487,10 @@ def _validate_evaluation_record(
         raise ImmutableEvaluationRecordError(
             f"{task.task_id} has an invalid stored IoU"
         )
+    if status != EvaluationStatus.OK.value and float(iou) != 0.0:
+        raise ImmutableEvaluationRecordError(
+            f"{task.task_id} failed model output has nonzero IoU"
+        )
 
 
 async def _sample_missing(
@@ -1263,7 +1500,7 @@ async def _sample_missing(
     sampling_client: Any,
     store: CheckpointEvaluationStore,
     manifest_record_sha256: str,
-    binding: CheckpointBinding,
+    binding: EvaluationBinding,
     protocol_sha256: str,
     panel: str,
 ) -> None:
@@ -1285,10 +1522,7 @@ async def _sample_missing(
                 prepared=item,
                 seed=seed,
                 manifest_record_sha256=manifest_record_sha256,
-                receipt_record_sha256=binding.wave_receipt.record_sha256,
-                checkpoint_name=binding.checkpoint_name,
-                checkpoint_inventory_sha256=binding.checkpoint_inventory_sha256,
-                checkpoint=binding.checkpoint,
+                binding=binding,
             )
             return
         messages = [_message(item.task, max_image=MAX_IMAGE_LONG_EDGE)]
@@ -1423,7 +1657,7 @@ def validate_checkpoint_report(
     record: Mapping[str, Any],
     *,
     manifest_record_sha256: str,
-    binding: CheckpointBinding,
+    binding: EvaluationBinding,
     panel: str,
     expected_task_ids: Sequence[str],
 ) -> dict[str, Any]:
@@ -1472,19 +1706,24 @@ def validate_checkpoint_report(
             raise CheckpointEvaluationError(
                 f"checkpoint report {field} differs from its manifest"
             )
-    if (
-        sampler.get("sampler_path") != binding.sampler_path
-        or sampler.get("checkpoint_name") != binding.checkpoint_name
-        or sampler.get("checkpoint") != binding.checkpoint
-        or sampler.get("checkpoint_inventory_sha256")
-        != binding.checkpoint_inventory_sha256
-        or sampler.get("training_run_manifest_record_sha256")
-        != binding.run_manifest.record_sha256
-        or sampler.get("training_wave_receipt_record_sha256")
-        != binding.wave_receipt.record_sha256
+    expected_sampler = _sampler_provenance(binding)
+    if any(
+        sampler.get(field) != expected
+        for field, expected in expected_sampler.items()
     ):
         raise CheckpointEvaluationError(
             "checkpoint report sampler provenance differs from training"
+        )
+    if isinstance(binding, BaseModelBinding) and any(
+        field in sampler
+        for field in (
+            "training_run_manifest_record_sha256",
+            "training_wave_receipt_record_sha256",
+            "training_wave_receipt_relative_path",
+        )
+    ):
+        raise CheckpointEvaluationError(
+            "base-model report fabricates training provenance"
         )
     task_ids = [str(value) for value in expected_task_ids]
     if (
@@ -1498,12 +1737,13 @@ def validate_checkpoint_report(
         )
     iou = summary.get("mean_raw_absolute_scale_iou")
     pure_rate = summary.get("pure_executable_rate")
+    representation_macro = payload.get("representation_macro_mean_iou")
     if any(
         isinstance(value, bool)
         or not isinstance(value, (int, float))
         or not math.isfinite(float(value))
         or not 0.0 <= float(value) <= 1.0
-        for value in (iou, pure_rate)
+        for value in (iou, pure_rate, representation_macro)
     ):
         raise CheckpointEvaluationError(
             "checkpoint report summary contains invalid metrics"
@@ -1517,7 +1757,7 @@ def _report_payload(
     prepared: Sequence[PreparedTask],
     store: CheckpointEvaluationStore,
     manifest_record: Mapping[str, Any],
-    binding: CheckpointBinding,
+    binding: EvaluationBinding,
     protocol: Mapping[str, Any],
     source_git_sha: str,
     panel: str,
@@ -1603,7 +1843,15 @@ def _report_payload(
                     else (
                         "depth/validation+fixed-f1-f8"
                         if panel == PANEL_INKLING_PROMOTION
-                        else "depth/validation"
+                        else (
+                            "depth/validation/slot-7"
+                            if panel == PANEL_DEPTH_FINAL_SELECTION
+                            else (
+                                f"depth/validation/{_level_for_progress_panel(panel)}/slot-6"
+                                if _level_for_progress_panel(panel) is not None
+                                else "depth/validation"
+                            )
+                        )
                     )
                 ),
                 "logical_release_sha256": dataset["logical_release_sha256"],
@@ -1618,21 +1866,7 @@ def _report_payload(
                 "model": protocol["models"][binding.stage.model_key]["model"],
                 "renderer": protocol["models"][binding.stage.model_key]["renderer"],
                 "effort": protocol["models"][binding.stage.model_key].get("effort"),
-                "sampler_path": binding.sampler_path,
-                "checkpoint_name": binding.checkpoint_name,
-                "checkpoint": binding.checkpoint,
-                "checkpoint_inventory_sha256": (
-                    binding.checkpoint_inventory_sha256
-                ),
-                "training_run_manifest_record_sha256": (
-                    binding.run_manifest.record_sha256
-                ),
-                "training_wave_receipt_record_sha256": (
-                    binding.wave_receipt.record_sha256
-                ),
-                "training_wave_receipt_relative_path": str(
-                    binding.wave_receipt.relative_path
-                ),
+                **_sampler_provenance(binding),
             },
             "sampling": {
                 "attempts_per_task": 1,
@@ -1692,6 +1926,7 @@ async def run_checkpoint_evaluation(
     confirmation: str,
     service_client_factory: Callable[[], Any] = _default_service_client_factory,
     evaluator_factory: Callable[[], PixCellEvaluator] = _default_evaluator_factory,
+    base_model: bool = False,
 ) -> dict[str, Any]:
     """Run or resume one exact checkpoint panel.
 
@@ -1712,16 +1947,36 @@ async def run_checkpoint_evaluation(
         repo_root=root,
         external_root=external_root,
     )
-    binding = _load_checkpoint_binding(
-        store=training_store,
-        protocol=protocol,
-        stage_id=stage_id,
-        wave=wave,
-        checkpoint_name=checkpoint_name,
-        replicate_id=replicate_id,
-        expected_receipt_sha256=expected_wave_receipt_sha256,
-        source_git_sha=source_git_sha,
-    )
+    if base_model:
+        if (
+            wave != "base"
+            or checkpoint_name != "base"
+            or expected_wave_receipt_sha256
+        ):
+            raise CheckpointReceiptError(
+                "base-model evaluation must use wave/checkpoint 'base' and no receipt"
+            )
+        binding: EvaluationBinding = _base_model_binding(
+            protocol=protocol,
+            stage_id=stage_id,
+            replicate_id=replicate_id,
+            source_git_sha=source_git_sha,
+        )
+        if panel != LEVEL_PROGRESS_PANELS["L0"]:
+            raise CheckpointEvaluationError(
+                "base Qwen evaluation is restricted to level-progress-l0"
+            )
+    else:
+        binding = _load_checkpoint_binding(
+            store=training_store,
+            protocol=protocol,
+            stage_id=stage_id,
+            wave=wave,
+            checkpoint_name=checkpoint_name,
+            replicate_id=replicate_id,
+            expected_receipt_sha256=expected_wave_receipt_sha256,
+            source_git_sha=source_git_sha,
+        )
     if panel == PANEL_INKLING_PROMOTION and binding.stage.model_key != "inkling":
         raise CheckpointEvaluationError(
             "inkling-promotion is restricted to an Inkling checkpoint"
@@ -1734,7 +1989,19 @@ async def run_checkpoint_evaluation(
         model["renderer"],
         effort=model.get("effort"),
     )
-    evaluator = evaluator_factory()
+    base_stage_lock = (
+        training_store.acquire_stage_lock(binding.key)
+        if isinstance(binding, BaseModelBinding)
+        else None
+    )
+    if base_stage_lock is not None:
+        base_stage_lock.__enter__()
+    try:
+        evaluator = evaluator_factory()
+    except Exception:
+        if base_stage_lock is not None:
+            base_stage_lock.__exit__(None, None, None)
+        raise
     try:
         prepared, preflight = _preflight_tasks(
             tasks=tasks,
@@ -1744,8 +2011,11 @@ async def run_checkpoint_evaluation(
         )
         sandbox = _sandbox_provenance(evaluator)
         panel_manifest = _task_manifest(tasks, panel=panel)
+        evaluation_stage_path = training_store.stage_path(binding.key)
+        if isinstance(binding, BaseModelBinding):
+            evaluation_stage_path.mkdir(parents=True, exist_ok=True, mode=0o700)
         evaluation_store = CheckpointEvaluationStore(
-            stage_path=training_store.stage_path(binding.key),
+            stage_path=evaluation_stage_path,
             wave=wave,
             checkpoint_name=binding.checkpoint_name,
             panel=panel,
@@ -1778,20 +2048,7 @@ async def run_checkpoint_evaluation(
                 "prompt_assets": prompt_asset_hashes(),
                 "preflight": preflight,
                 "sandbox": sandbox,
-                "sampler": {
-                    "sampler_path": binding.sampler_path,
-                    "checkpoint_name": binding.checkpoint_name,
-                    "checkpoint": binding.checkpoint,
-                    "checkpoint_inventory_sha256": (
-                        binding.checkpoint_inventory_sha256
-                    ),
-                    "training_run_manifest_record_sha256": (
-                        binding.run_manifest.record_sha256
-                    ),
-                    "training_wave_receipt_record_sha256": (
-                        binding.wave_receipt.record_sha256
-                    ),
-                },
+                "sampler": _sampler_provenance(binding),
             }
             manifest = evaluation_store.create_or_verify_manifest(
                 manifest_payload
@@ -1826,11 +2083,18 @@ async def run_checkpoint_evaluation(
             if missing_samples:
                 if not os.environ.get("TINKER_API_KEY"):
                     raise CheckpointEvaluationError("TINKER_API_KEY is not present")
+                try:
+                    validate_source_sha(root, source_git_sha)
+                except (OSError, ValueError, subprocess.SubprocessError) as exc:
+                    raise CheckpointEvaluationError(
+                        "source changed after evaluation preflight; refusing "
+                        "paid sampling access"
+                    ) from exc
                 # The first paid-capable object is created only after all
                 # prompts, references, records, and sandbox provenance pass.
                 service = service_client_factory()
                 sampling_client = service.create_sampling_client(
-                    model_path=binding.sampler_path
+                    **_sampling_client_kwargs(binding)
                 )
                 await _sample_missing(
                     prepared=missing_samples,
@@ -1862,12 +2126,7 @@ async def run_checkpoint_evaluation(
                     prepared=item,
                     seed=seed,
                     manifest_record_sha256=str(manifest["record_sha256"]),
-                    receipt_record_sha256=binding.wave_receipt.record_sha256,
-                    checkpoint_name=binding.checkpoint_name,
-                    checkpoint_inventory_sha256=(
-                        binding.checkpoint_inventory_sha256
-                    ),
-                    checkpoint=binding.checkpoint,
+                    binding=binding,
                 )
             _score_missing(
                 prepared=prepared,
@@ -1906,7 +2165,11 @@ async def run_checkpoint_evaluation(
                 "summary": report_payload["summary"],
             }
     finally:
-        evaluator.close()
+        try:
+            evaluator.close()
+        finally:
+            if base_stage_lock is not None:
+                base_stage_lock.__exit__(None, None, None)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -1916,9 +2179,10 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--wave", required=True)
     result.add_argument("--checkpoint-name", required=True)
     result.add_argument("--replicate", default="r0")
-    result.add_argument("--panel", choices=PANELS, required=True)
+    result.add_argument("--panel", choices=SUPPORTED_PANELS, required=True)
     result.add_argument("--source-git-sha", required=True)
-    result.add_argument("--wave-receipt-record-sha256", required=True)
+    result.add_argument("--wave-receipt-record-sha256", default="")
+    result.add_argument("--base-model", action="store_true")
     result.add_argument("--external-root", type=Path, required=True)
     result.add_argument("--confirm-spend", default="")
     return result
@@ -1938,6 +2202,7 @@ def main() -> None:
             expected_wave_receipt_sha256=args.wave_receipt_record_sha256,
             external_root=args.external_root,
             confirmation=args.confirm_spend,
+            base_model=args.base_model,
         )
     )
     print(json.dumps(report, indent=2, sort_keys=True))

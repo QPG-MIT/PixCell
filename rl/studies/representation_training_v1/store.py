@@ -338,6 +338,80 @@ class TrainingStore:
             key={**key.as_dict(), "wave": wave},
         )
 
+    def write_rollout_health_approval(
+        self,
+        key: StageKey,
+        *,
+        wave: str,
+        payload: Mapping[str, Any],
+    ) -> TrainingRecord:
+        """Persist one deterministic, receipt-only rollout-health decision."""
+
+        self._require_lock(key)
+        if not _IDENTIFIER.fullmatch(wave):
+            raise ValueError(f"invalid wave name: {wave!r}")
+        return self._create_or_verify(
+            self.stage_relative_path(key)
+            / "waves"
+            / wave
+            / "rollout_health_approval.json",
+            record_type="rollout_health_approval",
+            key={**key.as_dict(), "wave": wave},
+            payload=payload,
+        )
+
+    def load_rollout_health_approval(
+        self,
+        key: StageKey,
+        *,
+        wave: str,
+    ) -> TrainingRecord | None:
+        return self._load(
+            self.stage_relative_path(key)
+            / "waves"
+            / wave
+            / "rollout_health_approval.json",
+            record_type="rollout_health_approval",
+            key={**key.as_dict(), "wave": wave},
+        )
+
+    def write_base_baseline_approval(
+        self,
+        key: StageKey,
+        *,
+        wave: str,
+        payload: Mapping[str, Any],
+    ) -> TrainingRecord:
+        """Persist the base-policy level-panel evidence required before RL."""
+
+        self._require_lock(key)
+        if not _IDENTIFIER.fullmatch(wave):
+            raise ValueError(f"invalid wave name: {wave!r}")
+        return self._create_or_verify(
+            self.stage_relative_path(key)
+            / "waves"
+            / wave
+            / "base_baseline_approval.json",
+            record_type="base_baseline_approval",
+            key={**key.as_dict(), "wave": wave},
+            payload=payload,
+        )
+
+    def load_base_baseline_approval(
+        self,
+        key: StageKey,
+        *,
+        wave: str,
+    ) -> TrainingRecord | None:
+        return self._load(
+            self.stage_relative_path(key)
+            / "waves"
+            / wave
+            / "base_baseline_approval.json",
+            record_type="base_baseline_approval",
+            key={**key.as_dict(), "wave": wave},
+        )
+
     def write_candidate(
         self,
         key: StageKey,
@@ -373,6 +447,40 @@ class TrainingStore:
                 "attempt": attempt,
             },
             payload=payload,
+        )
+
+    def load_candidate(
+        self,
+        key: StageKey,
+        *,
+        invocation_id: str,
+        step: int,
+        task_id: str,
+        attempt: int,
+    ) -> TrainingRecord | None:
+        if (
+            not _IDENTIFIER.fullmatch(invocation_id)
+            or step < 0
+            or attempt < 1
+            or not _IDENTIFIER.fullmatch(task_id)
+        ):
+            raise ValueError("invalid candidate key")
+        return self._load(
+            self.stage_relative_path(key)
+            / "candidates"
+            / invocation_id
+            / f"step-{step:06d}"
+            / task_id
+            / f"attempt-{attempt:02d}"
+            / "evaluation.json",
+            record_type="candidate_evaluation",
+            key={
+                **key.as_dict(),
+                "invocation_id": invocation_id,
+                "step": step,
+                "task_id": task_id,
+                "attempt": attempt,
+            },
         )
 
     def write_candidate_sample(
