@@ -99,7 +99,7 @@ async def cli_main(cfg: CLIConfig) -> None:
         wandb_project=cfg.wandb_project or None,
         wandb_name=cfg.wandb_name or None,
     )
-    cli_utils.check_log_dir(cfg.log_path, behavior_if_exists="raise")
+    cli_utils.check_log_dir(cfg.log_path, behavior_if_exists="resume")
     await main(config)
 
 
