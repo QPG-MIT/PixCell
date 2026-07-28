@@ -207,15 +207,13 @@ rather than thrashes; sampling, not evaluation, dominates step wall-clock.
 - `rl/README.md` rewritten to describe exactly this design; `track_a/README.md` updated
   (reward table changes from `0.05 + 0.95·IoU` to the shaped contract).
 
-### 2.8 Open item resolved by measurement, not opinion
-The dataset's model image is the **max-visibility view** (per-axis magnified — a
-45×9.9 µm L4 device renders at image aspect 1.32, not 4.55). The old library handled
-exactly this with an honest scale note in the prompt above 1.6× anisotropy ("the image
-is NOT drawn to scale … trust the stated footprint"). We measure the anisotropy
-distribution across `depth/train`; if a material fraction exceeds the old 1.6×
-threshold, the note is added to the prompt builder (computed from model-visible inputs
-only) as contract `v3` with tests. Data decides; the change is isolated to
-`rl/common/prompt.py` + tests either way.
+### 2.8 Resolved by measurement: prompt contract v3 (anisotropy note) — TAKEN
+Measured over `depth/train` (3,468 rows): **50% exceed 1.6× aspect distortion**
+(p50 1.59, p90 5.0, max 31.6; by level: L0 29%, L1 42%, L2 49%, L3 53%, **L4 78%**).
+The old library's honest scale note is therefore required, not optional: above 1.6×
+the prompt states the per-axis render scale computed only from the attached image's
+ink bbox and the stated footprint. Contract bumped `v2 → v3`; tests updated; below
+the threshold the prompt is byte-identical to v2.
 
 ---
 
