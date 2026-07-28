@@ -1,5 +1,8 @@
 \begin{table}[t]
-\caption{\textbf{Fully re-scored final-checkpoint evaluation.} Eight attempts per target at temperature $1.0$. Executable counts attempts that produced a scored GDS; eval@1 is mean IoU and best@8 is the maximum over the eight attempts.}
+\caption{\textbf{Isolated second-draw evaluation of the primary training
+lineage.} Eight attempts per target at temperature $1.0$. Executable counts
+programs that produce a scored GDS; mean IoU averages the eight attempts and
+best of 8 retains the highest.}
 \label{tab:rl}
 \begingroup
 \footnotesize
@@ -7,7 +10,7 @@
 \renewcommand{\arraystretch}{1.06}
 \begin{ruledtabular}
 \begin{tabular}{@{}lccc@{}}
-Device & Executable & eval@1 & best@8 \\
+Device & Executable & Mean IoU & Best of 8 \\
 \colrule
 F1 & 7/8 & 0.248 & 0.440 \\
 F2 & 7/8 & 0.396 & 0.599 \\

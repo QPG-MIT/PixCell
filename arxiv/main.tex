@@ -43,30 +43,33 @@
 \date{\today}
 
 \begin{abstract}
-We present PixCell, a neurosymbolic system that provides a visual-to-executable
-interface for photonic component design. PixCell converts a component
-silhouette and its
-physical footprint into a GDSFactory program assembled from a restricted
-catalog of geometric primitives. Program execution permits deterministic
-comparison with the target at fixed physical calibration before
-electromagnetic evaluation. On an eight-device benchmark, the two strongest
-coding-agent configurations achieve mean intersection-over-union (IoU)
-values of $0.910$ and $0.912$ with one retained blind result per device. The experiments
-also show that downstream retargetability depends on the degrees of freedom
-retained in the program. Primitive-based interferometer programs satisfy an
-$8.0\,$nm free spectral range target and the original footprint constraint
-on modeled 220-nm SOI, 400-nm SiN, and 400-nm TFLN stacks, with analytic
-relative error below $0.009\%$ under the analytic evaluator. A
-generic library MZI reaches the spectral target but violates the footprint
-constraint on all three stacks. Full-wave simulations audit the limits of
-the inexpensive analytic evaluator. Finally, verifier-derived training
-produces measurable cross-figure performance in an open-weight
-Qwen3.6-35B-A3B model. A fully re-scored scorer-selected lineage reaches
-mean single-attempt and best-of-eight IoU values of $0.254$ and $0.466$ on a
-training-excluded development benchmark; a verifier-only lineage reaches
-$0.186$ and $0.380$. These results establish a controlled framework for
-measuring, retargeting, and improving visual-to-parametric photonic
-component design.
+Photonic components are defined by physical geometry, yet automated design
+systems largely operate through text or fixed component libraries. We
+present PixCell, a neurosymbolic system that converts a component silhouette
+and physical footprint into an executable GDSFactory program assembled from
+a restricted catalog of geometric primitives. A deterministic verifier
+executes each program, renders its geometry at calibrated absolute scale,
+and returns both an overlap score and a spatial residual for selection and
+revision. Across 26 multimodal coding-agent configurations and eight blind
+device targets, PixCell produces 208 programs. The two strongest
+configurations achieve mean intersection-over-union (IoU) values of $0.974$
+and $0.955$, and 193 of 208 programs satisfy the source contract. Archived
+API experiments further show that the verifier converts additional sampling
+and revision into measurable gains: only $12.7\%$ of first seeds are best
+among 63 multi-seed experiments, and best-of-five revision improves $18.3\%$
+over the first turn across 640 trajectories. Downstream retargeting depends
+on the design variables retained in the program. Under fixed
+representations, reconstructed programs and library PCells pass 21 of 30 and
+22 of 30 cross-stack cases, respectively. Full-wave simulations then expose
+the boundary of inexpensive analytic evaluation: Mach--Zehnder
+interferometer fringe spacing agrees within $2.9\%$, while a directional
+coupler estimate fails quantitatively. Finally, verifier-derived training
+yields mean
+single-attempt and best-of-eight IoU values of $0.254$ and $0.466$ in an
+open-weight Qwen3.6-35B-A3B model; a raw-base GRPO lineage reaches $0.186$
+and $0.380$. PixCell therefore provides an executable and measurable
+interface for visual photonic component creation, physical retargeting, and
+model improvement.
 \end{abstract}
 
 \maketitle
@@ -186,7 +189,7 @@ are instantiated from the catalog and aligned through eight port-connection
 operations to form a complete four-port directional coupler. Hollow nodes
 mark primitive endpoints before assembly and the four external ports after
 assembly. Blue, red, and green identify the straight,
-bend, and coupling-section provenance rather than fabrication layers.
+bend, and coupling-section provenance, independent of fabrication layers.
 (b)~The same PCell source is re-executed after changing
 $g$ from $0.25$ to $0.75\,\mu\mathrm{m}$ and $L_c$ from $10$ to
 $16\,\mu\mathrm{m}$. The geometry changes while the four-port graph remains
@@ -215,11 +218,12 @@ during training.
 This paper makes four contributions. First, it formulates
 visual-to-parametric photonic component creation under a restricted
 primitive vocabulary, fixed-scale geometric verification, and an explicit
-parametricity contract. Second, it evaluates 13 coding-agent configurations
-over eight literature-derived devices. The two strongest configurations
-reach mean IoU values of $0.910$ and $0.912$ with one retained blind result
-per configuration-device pair, while a separate iterative campaign
-characterizes variation across samples and revision turns. Third, it
+parametricity contract. Second, it evaluates 26 coding-agent configurations
+over eight component targets, producing 208 independently verified programs.
+The two strongest configurations reach mean IoU values of $0.974$ and
+$0.955$ with one retained blind result per configuration-device pair, while
+a separate iterative campaign measures variation across samples and
+revision turns. Third, it
 connects the recovered representation to downstream utility through
 cross-stack retargeting and tiered electromagnetic audits, identifying how
 available design variables and evaluator fidelity bound the resulting
@@ -227,28 +231,23 @@ physical claims. Fourth, it uses the geometric verifier to construct
 training tasks, select generated programs, and optimize an open-weight
 multimodal model. The scorer-selected lineage reaches mean single-attempt
 and best-of-eight IoU values of $0.254$ and $0.466$ on a training-excluded
-development benchmark, while a verifier-only lineage reaches $0.186$ and
+development benchmark, while a raw-base GRPO lineage reaches $0.186$ and
 $0.380$.
-
-The present study is restricted to individual photonic components.
-Circuit-level composition is outside its scope (Sec.~\ref{sec:conclusion}).
 
 \section{Setup}\label{sec:problem}
 
 PixCell receives a frozen binary target mask, its physical footprint, and a
 catalog of permitted geometric operations. It must produce an executable
 program whose rasterized geometry matches the target at fixed physical
-calibration and whose declared design parameters remain active. The
-experimental setup therefore specifies three elements: the program
-representation, the deterministic geometric verifier, and the model
-harness used to construct and revise candidate programs.
+calibration. Function-relevant dimensions must remain named and editable.
+The experimental setup specifies the program representation, benchmark
+inputs, deterministic verifier, and two model harnesses used to construct
+and revise candidates.
 
 \begin{table*}[!t]
 \centering
-\caption{\textbf{The PixCell geometric language under GDSFactory 9.20.7.}
-Left: permitted region and port-bearing constructors. Right: cross-section,
-path, extrusion, Boolean, composition, and routing operators. Entries show
-the permitted callable surface and principal live arguments.
+\caption{\textbf{The PixCell geometric language.}
+Permitted constructors and operators under GDSFactory 9.20.7.
 Function-relevant dimensions must remain named and editable.}
 \label{tab:primitives}
 \input{table_primitives.tex}
@@ -256,56 +255,34 @@ Function-relevant dimensions must remain named and editable.}
 
 \subsection{Geometric primitive representation}\label{sec:representation}
 
-The output of the task is a Python program, not a fitted image or an
-unstructured polygon file. Each program constructs a GDSFactory component
-from the restricted vocabulary in Fig.~\ref{fig:primitives} and
-Table~\ref{tab:primitives}~\cite{gdsfactory}. The language contains
-geometric-region and port-bearing constructors together with cross-section,
-path, Boolean, and component-composition operators. Basic shapes provide
-simple geometric regions. Waveguide elements provide port-bearing straights,
-bends, tapers, and parallel guides. The path system separates a centerline
-from its cross-section so that path geometry and guide width remain
-independently editable. Boolean operations combine or subtract regions when
-direct composition is insufficient; component and reference methods position
-and connect the resulting geometry.
+Each output is a Python program that constructs a GDSFactory component from
+the vocabulary in Fig.~\ref{fig:primitives} and
+Table~\ref{tab:primitives}~\cite{gdsfactory}. The language contains geometric
+regions, port-bearing waveguide elements, parameterized paths and
+cross-sections, Boolean operations, and reference-based composition. Its path
+system keeps the centerline and cross-section independently editable, while
+ports define how instantiated elements connect. Dimensions such as widths,
+gaps, radii, taper lengths, and coupling lengths appear as named top-level
+variables. The result is a small geometric domain-specific
+language~\cite{chaudhuri} whose programs can be executed by standard layout
+tools and audited directly from source.
 
-Candidate programs may position references, connect compatible ports, and
-extrude parameterized paths. They must expose the dimensions that define
-the device's geometry, such as gaps, radii, widths, taper lengths, and
-coupling lengths, as named top-level variables. The restricted Python
-interface therefore functions as a small geometric domain-specific
-language~\cite{chaudhuri}: programs remain executable with standard layout
-tools, while their permitted operations and declared parameters can be
-audited from source. Figure~\ref{fig:composition} illustrates this mapping
-directly: named dimensions instantiate catalog components, compatible ports
-define the composition graph, and re-execution with a new parameter vector
-changes the geometry without changing that graph.
-
-The representation contract excludes two shortcuts. First, candidates may
-not reproduce the mask through raw polygon or vertex emission. Such a trace
-can obtain high pixel overlap without identifying reusable geometric
-parameters. Second, candidates may not call pre-built device cells outside
-the primitive vocabulary. A library cell is useful when its existing
-parameter space covers a design, but retrieving one does not test whether a
-model can author a new component representation. A program is called
-\emph{disciplined} when it uses only the permitted operations and keeps its
-function-relevant dimensions named and editable. Discipline is evaluated
-separately from geometric agreement (Sec.~\ref{sec:parametricity}).
-
-The task also differs from visual recognition. Device names and source
-captions are withheld, and success cannot be obtained by assigning a class
-label. The required output must reconstruct the observed geometry as a
-composition of permitted operations. This protocol measures component
-authoring rather than classification or device-level retrieval.
+The source contract rejects raw polygon or vertex emission and pre-built
+device cells outside the permitted vocabulary. A pixel trace may overlap the
+target without recovering constructive parameters, while a pre-built cell
+substitutes retrieval for component authoring. Candidates may instead
+instantiate primitives, extrude paths, apply Boolean operations, position
+references, and connect compatible ports. Figure~\ref{fig:composition}
+illustrates the resulting program structure: named dimensions instantiate
+the component graph, and changing those dimensions changes the executed
+geometry.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_targets.pdf}
-\caption{\textbf{Benchmark targets.} Each of the eight devices, F1--F8,
-is presented to the model as a device-only binary silhouette and a physical
-footprint. The varied set spans smooth, multiport, compact, resonant, and
-fine-feature geometry; panels are not shown at a common physical scale.
-Archived source attributions are: F1, 3-dB adiabatic
+\caption{\textbf{Benchmark targets.} Each device, F1--F8, is presented as a
+binary silhouette and physical footprint; panels are not shown at a common
+scale. Source attributions are: F1, 3-dB adiabatic
 splitter~\cite{splitter2020}; F2, $1\times4$ MMI
 splitter~\cite{malka2016}; F3, adiabatic $2\times2$
 coupler~\cite{mao2019}; F4, thin-film lithium niobate directional
@@ -313,58 +290,54 @@ coupler~\cite{huang2023}; F5, standing-wave nanobeam resonator
 pair~\cite{nanobeam}; F6, ultra-compact waveguide
 crossing~\cite{crossing2020}; F7, ring-based WDM filter
 section~\cite{wdmfilter}; F8 is retained as a provenance-incomplete target
-because its bibliographic source could not be recovered; its extraction
-record is included in the release metadata.}
+with its extraction record included in the release metadata.}
 \label{fig:targets}
 \end{figure*}
 
-\paragraph{The target set.} The benchmark is eight passive photonic
-devices, F1--F8 (Fig.~\ref{fig:targets}). It includes adiabatic and
-directional couplers, a multimode-interference splitter, a four-port
-crossing, a ring-based filter section, and grating-like fine structure.
-Physical footprints range from a $4.7\,\mu$m square to a
-$120\,\mu$m-long bus. The targets come from published component figures;
-the caption records the available source attributions. F1 is also used in
-the full-wave case study of
-Sec.~\ref{sec:third}. In every reconstruction trial, the worker receives
-only the frozen silhouette and footprint. Device identity, source text, and
-captions are withheld.
+\subsection{Targets and calibration}
 
-\begin{figure}[H]
+The benchmark contains eight passive photonic components, F1--F8
+(Fig.~\ref{fig:targets}), spanning smooth adiabatic paths, compact multiport
+regions, resonant loops, crossings, and repeated fine features. Physical
+footprints range from a $4.7\,\mu$m square to a $120\,\mu$m-long bus. Each
+worker receives only the frozen silhouette and footprint. Device identity,
+source text, captions, and the other benchmark cells remain hidden.
+
+Published panels may include annotations, field overlays, or surrounding
+page content. Each selected panel is isolated and converted once into a
+device-only binary mask, with dark pixels denoting material on the
+waveguiding layer. Gemini~3 Pro Image produces this canonical
+rendering~\cite{gemini3image}, and a separate vision pass extracts the
+physical footprint from the source text or scale annotations~\cite{gemini3}.
+The masks, footprints, and calibration records are then frozen and reused
+across every configuration (Fig.~\ref{fig:extraction}). The reported
+campaigns use GDSFactory 9.20.7 and Python 3.13; dependency locks, worker
+briefs, inputs, and grading code are included in the release.
+
+\begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{fig_extraction.pdf}
 \caption{\textbf{Preparation of target devices.} Source figure
-panels (left) are standardized once into frozen masks and physical footprints
-(right). F5 tests isolating panel (c) from a compound figure; F2 tests
-removing schematic annotations while preserving topology. Inputs are reused
-across model configurations.}
+panels are standardized once into frozen masks and physical footprints.
+F5 shows panel isolation from a compound figure; F2 shows annotation removal
+while preserving topology. The resulting inputs are fixed before model
+evaluation.}
 \label{fig:extraction}
 \end{figure}
-
-\paragraph{Target preparation.} Published panels contain annotations,
-labels, field overlays, and surrounding page content. Each selected panel
-is therefore converted once into a device-only binary mask, with dark pixels
-representing material on the waveguiding layer. Gemini~3 Pro Image is
-instructed to redraw the panel in this canonical form~\cite{gemini3image},
-and a separate vision pass reads the physical footprint from the source
-text or scale annotations~\cite{gemini3}. This preparation stage is
-generative; it is not part of the deterministic verifier. The resulting
-masks, footprints, and calibrations are frozen before model evaluation, so
-every configuration is scored against identical references. Figure
-\ref{fig:extraction} shows two examples.
-
-\paragraph{Software environment.} The reported evaluations use GDSFactory
-9.20.7 and Python 3.13. The repository archives the dependency lockfiles,
-worker briefs, calibration records, and grading code used in the campaigns.
 
 \subsection{Verification}\label{sec:verifier}
 
 The geometric verifier executes each candidate program, renders its output
-at a target-derived physical calibration, and compares the resulting mask
-with the frozen reference. A candidate is represented as $(p,\theta)$,
-where $p$ denotes the program structure and
-$\theta\in\mathbb{R}^{k(p)}$ denotes its named dimensions. Given the stored
-pixel-to-micron calibration $\kappa$, the rendered candidate is
+at target-derived physical calibration, and compares the result with the
+frozen reference. For each target, the foreground bounding box and stated
+footprint define separate horizontal and vertical pixel-per-micron scales
+$\kappa$. Rendering preserves those scales, aligns the candidate's left edge
+with the target, and centers it vertically using its own bounds. Candidate
+geometry is never rescaled to fit the target.
+
+A candidate is represented as $(p,\theta)$, where $p$ is the program
+structure and $\theta\in\mathbb{R}^{k(p)}$ contains its named dimensions.
+The rendered candidate is
 \begin{equation}\label{eq:render}
 \hat y(p,\theta)\;=\;R_{\kappa}\!\bigl(\Exec(p,\theta)\bigr)
 \;\in\;\{0,1\}^{H\times W},
@@ -376,484 +349,301 @@ and its geometric agreement with target $y$ is
 where intersection and union are evaluated over foreground pixels. IoU is
 the geometric acceptance metric used throughout the reconstruction
 experiments. The verifier also reports Dice overlap and binary sum of
-squared errors (SSE), which equals the number of mismatched pixels and is
-used by the optional numerical-polish stage. A signed difference image
-marks spurious and missing material and is returned as feedback during
-iterative runs.
+squared errors (SSE). A signed difference image localizes spurious and
+missing material for revision.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_verification.pdf}
 \caption{\textbf{Geometric verification for one benchmark cell.} The
-example is F4 ($18\times3\,\mu$m), reconstructed by a GPT-5.5 worker.
-(a)~The target bounding box and stated footprint define a fixed
-calibration for each axis: $1584\,\mathrm{px}/18\,\mu\mathrm{m}=88$ and
-$447\,\mathrm{px}/3\,\mu\mathrm{m}=149\,\mathrm{px}/\mu$m. The first
-candidate is rendered at this calibration without fit-to-target rescaling.
-(b)~Pixelwise comparison separates overlap (black), spurious material
-(candidate only, red), and missing material (target only, blue). The initial
-score is $\iou=0.708$; one feedback-guided revision reduces the signed
-residual and increases the score to $\iou=0.921$. The values are reproduced
-by rescoring the archived artifacts with the grading code.}
+F4 target has footprint $18\times3\,\mu$m and fixed axis calibrations of
+$88$ and $149\,\mathrm{px}/\mu$m. The candidate is rendered without
+fit-to-target rescaling. Black marks overlap, red candidate-only material,
+and blue target-only material. One feedback-guided revision raises IoU from
+$0.708$ to $0.921$.}
 \label{fig:verification}
 \end{figure*}
 
-\Needspace{15\baselineskip}
-Calibration is fixed once for each target. The bounding box of foreground
-pixels is divided by the stated physical footprint separately along each
-axis, producing the stored pixels-per-micron scale $\kappa$. This rule
-retains any anisotropy in the standardized figure; the most anisotropic
-target differs by a factor of 26 between axes. During rendering, the
-candidate's left edge is aligned with the target bounding box and the
-candidate is vertically centered using its own bounds. Its geometry is not
-rescaled to fit the target. The score is therefore insensitive to global
-translation in the source GDS but remains sensitive to physical width,
-height, and shape.
-
-The verifier returns the candidate raster, an overlay, the signed
-difference image, IoU, Dice, and SSE (Fig.~\ref{fig:verification}).
-These artifacts provide spatial feedback for revision. In the example of
-Fig.~\ref{fig:verification}, one revision increases IoU from $0.708$ to
-$0.921$.
-
-Geometric quality and compliance with the representation contract are
-reported jointly through expected usable IoU,
+For a configuration with $n$ cells, source-compliant geometric performance
+is reported as usable IoU,
 \begin{equation}\label{eq:usable}
-U\;=\;\Pr(\mathrm{disciplined})\cdot
-\mathbb{E}\bigl[\iou\mid\mathrm{disciplined}\bigr],
+U=\frac{1}{n}\sum_{i=1}^{n}s_i\,\iou_i
+=\Pr(s=1)\,\mathbb{E}\!\left[\iou\mid s=1\right],
 \end{equation}
-where disciplined runs satisfy the primitive and parametricity rules. This
-quantity distinguishes poor geometric reconstruction from violation of the
-required representation.
+where $s_i=1$ when the program passes the source contract and zero otherwise.
+Thus every source violation contributes zero without hiding its raw geometric
+score.
 
-Record-grade scores are recomputed from the archived GDS, target, and
-calibration rather than taken from worker reports. The campaign also audits
-source for prohibited device-level calls and raw polygon emission. When a
-program is promoted as a reusable design record, a declared top-level knob
-is perturbed and the program is rebuilt to confirm that the geometry moves.
-These checks certify geometric agreement and the tested representation
-properties only. They do not establish optical function, fabrication
-validity, or untested forms of parametricity.
+\subsection{Acceptance gates and evaluation harnesses}
+\label{sec:parametricity}
 
-\subsection{Verification asymmetry and evaluation harnesses}
-\label{sec:verification}
+Record-grade scores are recomputed from the archived program, GDS, target,
+and calibration. Source analysis rejects prohibited device-level calls and
+raw polygon emission; this verdict determines $s_i$ in
+Eq.~\eqref{eq:usable}. Parametric liveness is measured separately by
+perturbing a top-level variable, rebuilding the program, and confirming that
+the executed geometry changes. The original 104-cell campaign required a
+worker-nominated function knob check. The 104-cell extension was
+independently audited after generation: 90 programs pass on their first
+declared knob, 12 pass on another top-level variable, and two remain
+unresolved. Liveness certifies the tested coordinate and does not alter
+$U$.
 
-Program generation is substantially more expensive than geometric
-verification. If independent attempts satisfy the verifier with probability
-$p_{\mathrm{s}}$, then $N$ attempts contain at least one success with
-probability $1-(1-p_{\mathrm{s}})^N$, and the expected generation cost of
-the first success is approximately $c_g/p_{\mathrm{s}}$ for per-attempt
-cost $c_g$ (the subscript distinguishes this success probability from the
-program structure $p$ of Sec.~\ref{sec:representation}). Repeated sampling and
-closed-loop revision are therefore practical when verification is cheap, as
-in test-time scaling and reinforcement learning from verifiable
-feedback~\cite{wei,monkeys,snell,s1,grpo,deepseekr1}.
-
-The program representation also separates discrete structure from
-continuous dimensions. A model selects a composition $p$ and initial
-parameters $\theta$; once the composition is fixed, declared dimensions can
-be refined numerically. The experiments compare two ways of allocating this
-search. In the iterative API harness, an external pipeline controls
-sampling, execution, selection, and feedback. In the coding-agent harness,
-the model controls its own execute-measure-revise loop. The task, targets,
-primitive contract, and geometric verifier remain fixed within each
-reported comparison.
+The experiments use two harnesses. In the iterative API harness, an external
+pipeline controls sampling, execution, selection, and feedback. In the
+coding-agent harness, the model controls its own execute-measure-revise loop.
+Both use the same frozen targets, representation contract, and geometric
+verifier, while their prompts, tool access, and aggregation differ.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_phases.pdf}
 \par\vspace{0.4em}
 \includegraphics[width=\linewidth]{fig_system.pdf}
-\caption{\textbf{The iterative setup and PixCell pipeline.}
-(a)~The benchmark reference is prepared
-once per device by standardization and calibration. A round of
-sampling then runs $N$ parallel seeds for two propose$\to$execute$\to$
-verify$\to$diff turns each and ranks them by the verifier; surviving
-candidates continue for up to three further diff-guided turns with early
-stopping. An external pipeline controls execution, selection, and the
-feedback shown to the model.
-(b)~A component silhouette and physical
-footprint enter a multimodal agent that constructs a parametric program over
-geometric primitives. The program is executed and compared with the target
-by the geometric verifier. Its named parameters then provide the interface
-to stack-specific evaluation through a local mode solver, small-domain
-FDTD, and broadband FDTD.}
+\caption{\textbf{Evaluation harnesses and PixCell pipeline.}
+(a)~The iterative API harness samples programs in parallel, ranks them with
+the verifier, and continues selected candidates with spatial feedback.
+(b)~A coding agent constructs and revises a parametric program using the
+same geometric verifier. Accepted parameters later connect the program to
+tiered physical evaluation.}
 \label{fig:phases}
 \end{figure*}
 
-\subsubsection{The iterative setup}\label{sec:iterative}
+\paragraph{Iterative API harness.}\label{sec:iterative}
 
 In the iterative API harness, the model acts as a stochastic program
-generator and an external pipeline controls the loop
-(Fig.~\ref{fig:phases}(a)). The initial prompt contains the target silhouette,
-physical footprint, primitive catalog, and output contract. It contains no
-device name, worked example, or callable tool. Verbatim prompts are provided
-in the reproduction section.
+generator while the pipeline controls the loop
+(Fig.~\ref{fig:phases}(a)). Its prompt contains the target silhouette,
+footprint, primitive catalog, and output contract, without a device name or
+worked example. Each device receives 5 to 25 parallel seeds and two initial
+proposal-execution-verification turns. The verifier ranks candidates, after
+which selected seeds may receive up to three further difference-guided turns.
+Some presets conclude with numerical SSE minimization over declared
+variables. Results from this harness therefore measure verifier-guided
+selection and revision.
 
-For each device, 5 to 25 seeds run in parallel. Every seed receives two
-proposal-execution-verification turns. The pipeline ranks candidates by the
-verifier and may continue the highest-scoring seeds for up to three
-additional difference-guided turns, with early stopping after repeated
-degradation. Some presets apply a final numerical optimization of SSE over
-declared tunables. Scores from this harness are therefore
-selection-assisted rather than single-attempt measurements.
-
-\FloatBarrier
-
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=\linewidth]{fig_june_seeds.pdf}
-\caption{\textbf{Sampling and revision in the iterative API harness.}
-(a)~Eleven seeds use the same Gemini-3-Pro configuration, prompt, and F4
-target; six of the ten archive-ranked seeds are shown, spanning
-$\iou=0.44$--$0.87$. Maroon denotes
-overlap, pink candidate-only material, and black target-only material.
-(b)~One F6 seed over five propose$\to$verify$\to$difference turns follows
-the non-monotone sequence
-$0.72\to0.63\to0.57\to0.80\to0.975$. The panels are artifact-level
-examples rather than aggregate estimates.}
-\label{fig:juneseeds}
-\end{figure*}
-
-\subsubsection{The multi-agent setup}\label{sec:agentsetup}
+\paragraph{Coding-agent harness.}\label{sec:agentsetup}
 
 In the coding-agent harness, each benchmark cell is assigned to one coding
 CLI session~\cite{claudecode,codexcli}. The matrix contains 13 model and
-reasoning configurations from two vendors, evaluated on all eight targets.
+reasoning configurations from the original campaign and 13 from a
+same-protocol extension, each evaluated on all eight targets. The full matrix
+therefore contains 26 configurations and 208 programs.
 Each worker can use the repository's Python environment and geometric
 verifier, write and execute its own program, inspect its own raster and
 difference images, and decide how to revise the candidate. Runs are limited
-to six rounds. No MCP or application-server tools are used in these
-experiments; workers invoke the underlying Python modules directly.
+to six rounds, and one final program is retained without multi-seed
+selection.
 
 Each target-specific task directory begins with the silhouette and
 footprint. The worker brief prohibits access to other cells, prior campaign
 outputs, and benchmark metadata. Briefs are identical across cells except
-for file paths and are scanned before dispatch for device names and physics
-hints. A conductor launches sessions, confirms the requested model and
-reasoning setting by status-line readback, monitors machine-readable
-completion markers, recovers interrupted runs, and archives the outputs.
-Twenty-four of the 104 cells ran on a second machine under the same
-protocol. A post-hoc audit of 167 staged transcripts found no access to
-another cell's target or answer. In one cell, a repository-wide API-usage
-search returned stray code lines from sibling cells without exposing its
-target; three other workers saw sibling command lines in process listings.
-
-\subsubsection{Measuring parametricity}\label{sec:parametricity}
-
-The acceptance record separates geometric score, source purity, and tested
-knob response. First, the submitted GDS is rasterized with the frozen target
-and calibration to recompute IoU. When a worker supplies a claimed score,
-the claim must agree with the recomputation within $0.005$. Second, source
-analysis checks for prohibited device-level component calls and raw polygon
-emission. These two checks determine the discipline term used in
-Eq.~\eqref{eq:usable} for the benchmark matrix.
-
-Programs promoted as reusable design records receive an additional liveness
-test. The gate perturbs one declared top-level parameter by
-$\delta=5\,\mu$m, rebuilds the program, and requires the geometry to change.
-When the parameter has a declared width-dependent area response, the
-observed layer-area change must agree with
-$\mathrm{width}\times\delta$ within $25\%$. A build failure is a failed
-test. This procedure verifies the selected parameter; it does not establish
-that every constant in the program is meaningful or independently live.
-
-\paragraph{Physical evaluation interface.} Geometric acceptance precedes
-physical evaluation. Tier~0 uses a local mode solver to compute effective
-and group indices and coupled-mode quantities. Tier~1 uses capped,
-small-domain FDTD for transmission measurements. Tier~2 uses gated,
-human-authorized broadband FDTD for full-device audits~\cite{tidy3d}. The
-evaluators return measurements but do not search over geometry. A metric
-that has not been evaluated at its required tier is recorded as
-\texttt{unmeasured} and cannot satisfy a physical specification. Section
-\ref{sec:pdk} applies this interface to cross-stack retargeting.
-
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=\linewidth]{fig5_before_after.pdf}
-\caption{\textbf{Selected reconstructions from the two harnesses.}
-(a)~Selected lower- and higher-scoring outputs from the iterative API
-record illustrate its range and are not distributional summaries.
-(b)~One current-gate run by a multimodal agent is shown for each target, with
-independently recomputed IoU. Each cell overlays an archived raster with
-its target: maroon is overlap, pink is candidate-only material, and black
-is target-only material.}
-\label{fig:beforeafter}
-\end{figure*}
+for file paths and are scanned before dispatch for device names and physical
+hints. The conductor confirms each requested model and reasoning setting by
+status-line readback, monitors machine-readable completion markers, and
+archives programs, transcripts, intermediate renders, and final
+measurements. Only conductor-recomputed artifact measurements enter the
+record.
 
 \section{Results}\label{sec:results}
 
-The reconstruction experiments comprise two campaigns. The iterative API
-campaign characterizes externally controlled sampling and
-verifier feedback. The coding-agent campaign measures final programs from a
-balanced matrix with one retained result for each configuration and target
-and no multi-seed selection. The
-campaigns share the frozen targets and geometric verifier, but differ in
-prompt format, tool access, iteration control, aggregation, and source
-audit. We therefore analyze each campaign on its own terms. Cross-campaign
-scores provide historical context rather than a controlled estimate of a
-single harness effect. Raw IoU denotes geometric agreement; the
-compliance-weighted quantity $U$ additionally accounts for the source
-contract used in the corresponding campaign.
+The two harnesses measure complementary uses of the same verifier. The
+iterative API campaign measures selection across seeds and revision turns.
+The coding-agent campaign measures one retained program in every cell of a
+balanced configuration-by-target matrix. Raw IoU reports geometric
+agreement; $U$ additionally assigns zero to source-violating programs.
 
-\subsection{Variability under the iterative API harness}\label{sec:june}
+\subsection{Verifier-guided sampling and revision}\label{sec:june}
 
-The broader API campaign evaluated fourteen valid model configurations on
-some or all of the eight targets. The compliance-weighted summary produced
-by the legacy source audit covers nine configurations.
-That audit classified turn-level programs by the presence of recognized
-GDSFactory calls; it is broader than the source gate used in the coding-agent
-matrix. Within this legacy record, the fraction of programs tagged as
-primitive-bearing rises from $0.302$ for Gemini-2.0-Flash to $0.852$ for
-Gemini-3-Pro, and the corresponding $U$ values rise from $0.063$ to $0.354$.
-The best selected program reaches $\iou=0.975$. These results show that the
-API pipeline could recover a close geometric match, but not that such an
-output was obtained reliably from a single attempt.
+The iterative API record contains 63 experiments with multiple seeds. The
+mean difference between the best and worst seed is $0.246$ IoU, and $84\%$
+of experiments span at least $0.10$. The first seed is best in only
+$12.7\%$ of experiments. Across 640 revision trajectories, mean first-turn
+IoU is $0.369$, while the best observed turn averages $0.416$; $65.9\%$ of
+trajectories peak after the first turn. Relative to retaining turn one,
+best-of-two, best-of-three, and best-of-five selection improve mean IoU by
+$10.0\%$, $16.0\%$, and $18.3\%$, respectively.
 
-The archived examples in Fig.~\ref{fig:juneseeds} show why selection was
-operationally important. On F4, eleven seeds from the same Gemini-3-Pro
-configuration produce IoU values from $0.360$ to $0.868$ (the archived
-ranking retains ten of them, spanning $0.437$--$0.868$). On F6, one seed
-follows the five-turn sequence
-$0.72\to0.63\to0.57\to0.80\to0.975$. These examples are not population
-estimates, but they directly establish two properties of the iterative
-harness: identical prompts can produce materially different programs, and
-revision need not improve the score monotonically. The verifier identifies
-which seed and turn to retain.
+The same pattern is visible in individual artifacts
+(Fig.~\ref{fig:juneseeds}). Eleven Gemini-3-Pro seeds on F4 range from
+$0.360$ to $0.868$. One F6 seed follows the non-monotone sequence
+$0.72\to0.63\to0.57\to0.80\to0.975$. Verification therefore supplies both
+the ranking needed to allocate inference and the spatial residual needed to
+revise a candidate.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_june_seeds.pdf}
+\caption{\textbf{Sampling and revision in the iterative API harness.}
+(a)~Six archived Gemini-3-Pro seeds generated from the same prompt and F4
+target span $\iou=0.44$--$0.87$. Maroon denotes overlap, pink
+candidate-only material, and black target-only material.
+(b)~One F6 seed over five verification-guided turns follows
+$0.72\to0.63\to0.57\to0.80\to0.975$.}
+\label{fig:juneseeds}
+\end{figure*}
 
 \subsection{Blind coding-agent benchmark}\label{sec:agents}
 
-The primary benchmark is the balanced coding-agent matrix specified in
-Sec.~\ref{sec:agentsetup}: 13 model and reasoning configurations, eight
-targets, and one retained result per cell, for 104 programs. Every configuration
-is evaluated on all eight targets. Final geometry is independently rescored,
-and the current source gate rejects prohibited device stencils and raw
-polygon emission.
-
-The highest configuration mean is $0.912$, for GPT-5.5 at xhigh effort,
-followed by a near-tie at $0.910$ between GPT-5.5 at high effort
-($0.9096$ before rounding) and Opus-4.8 at medium effort ($0.9095$). All
-three achieve $U$ equal to their raw mean because every program satisfies
-the source contract. Nine of the
-thirteen configurations attain $U\geq0.64$, while the lower-scoring
-configurations exhibit both geometric errors and source violations
-(Fig.~\ref{fig:emergence}(a)).
-
-Figure~\ref{fig:beforeafter} provides a qualitative view of the geometric
-differences represented by these scores. The examples are deliberately
-identified as selected cases: the balanced matrix, rather than this gallery,
-supports the quantitative claims below.
+The balanced benchmark evaluates 26 model and reasoning configurations on
+all eight targets, producing 208 independently rescored programs
+(Fig.~\ref{fig:emergence}). Fable~5 at max effort reaches the highest mean
+IoU, $0.974$, followed by Opus~5 at max effort with $0.955$ and Fable~5 at
+medium effort with $0.952$. All three are source-compliant in every cell, so
+their raw means equal $U$. Across the full matrix, 22 of 26 configurations
+reach $U\geq0.64$.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig1_emergence.pdf}
-\caption{\textbf{Model evaluation and target-level benchmark matrix.}
-(a)~The same 26 configurations used in (b), grouped by base model and ordered
-by score. The left axis reports visual score $U$: the mean over all eight
-targets after assigning zero to every source-violating program. The right axis
-reports median API-list-price-equivalent cost per target on a logarithmic
-scale, converted from measured tokens at published list rates; one
-configuration has no published per-token price and no cost is shown for it.
-Blue denotes OpenAI and red Anthropic.
+\caption{\textbf{Coding-agent benchmark.}
+(a)~Usable IoU $U$ and median API-list-price-equivalent cost per target for
+26 configurations and 208 programs. Cost converts measured tokens at the
+published rates frozen on July 27, 2026; one unpriced preview configuration
+is omitted from the cost axis. Blue denotes OpenAI and red Anthropic.
 (b)~Independently recomputed raw IoU across F1--F8 in the same row order.
-The color scale runs from 0 to 1; $\times$ marks a program containing
-prohibited source constructs. Its geometric score remains visible here but
-contributes zero to $U$ under Eq.~\eqref{eq:usable}.}
+Each $\times$ marks a source violation whose visible geometric score
+contributes zero to $U$.}
 \label{fig:emergence}
 \end{figure*}
 
-For historical context, two model version names appear in both the iterative
-API record and the current sweep. Their reported values change from
-$0.070$ to $0.341$ for Opus-4.5 and from $0.031$ to $0.148$ for Sonnet-4.5.
-The direction is consistent with improved measured performance, but the
-mismatched audits and aggregation rules preclude a causal attribution.
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{fig5_before_after.pdf}
+\caption{\textbf{Selected reconstructions.}
+(a)~Lower- and higher-scoring outputs from the iterative API record.
+(b)~One gate-passing coding-agent run for each displayed target, with
+independently recomputed IoU. Maroon denotes overlap, pink candidate-only
+material, and black target-only material.}
+\label{fig:beforeafter}
+\end{figure*}
 
 \subsection{Configuration and target effects}\label{sec:capability}
 
 The eight-target design provides breadth across geometry but no replicated
-seeds within a cell. Bootstrap intervals over devices therefore
-describe target-to-target variation conditional on the observed runs; they
-do not measure run-to-run variance. Under this convention, the $95\%$
-intervals are $0.912~[0.870,0.952]$ for GPT-5.5-xhigh and
-$0.910~[0.862,0.952]$ for Opus-4.8-medium.
+seeds within a benchmark cell. Bootstrap intervals over devices therefore
+measure variation across the observed targets. The $95\%$ intervals are
+$0.974~[0.952,0.991]$ for Fable~5 max and
+$0.955~[0.914,0.987]$ for Opus~5 max.
 
 Performance varies substantially by target (Fig.~\ref{fig:emergence}(b)). F3
-and F5 have the lowest mean IoU across configurations, $0.587$ and $0.548$,
-respectively. F3 spans $0.019$--$0.967$, and F8 spans $0.058$--$0.981$.
-The matrix also contains rank reversals: GPT-5.3-spark is mid-ranked by
-configuration mean but records the highest scores on F7 and F8. Reporting
-only configuration averages would hide this target dependence.
+and F5 remain the lowest-mean targets at $0.695$ and $0.660$. F3 spans
+$0.019$--$0.967$ across configurations, while F8 spans $0.058$--$0.986$.
+No configuration wins all eight targets: the highest-mean configuration
+wins four, while GPT-5.5 medium, GPT-5.5 high, and Opus~5 max lead at least
+one of the others. The matrix therefore contains substantial
+configuration-by-target structure beyond the row means.
 
-The clearest cross-generation contrast within one vendor is Sonnet-5 versus
-Opus-4.5. Sonnet-5 has mean IoU $0.797$, compared with $0.506$ for
-Opus-4.5, and is higher on seven of eight paired targets.
-
-The paired mean difference is $+0.292$ with a bootstrap interval of
-$[+0.147,+0.428]$; the two-sided exact sign test gives $p=0.070$ at
-$n=8$. This is a large observed difference on the selected targets, but it
-does not isolate model generation from other differences between the two
-configurations.
-
-Increasing the configured reasoning effort does not produce a consistent
-mean improvement. For Opus-4.8, max effort minus medium changes the mean by
-$-0.001$; its $95\%$ interval is $[-0.036,+0.025]$. For GPT-5.5, xhigh
-minus medium changes the mean by $+0.015$, with interval
-$[-0.042,+0.076]$. For Haiku-4.5, high minus medium changes the mean by
-$+0.052$, with interval $[-0.078,+0.202]$. These intervals remain
-conditional on one retained result per target and do not exclude
-target-specific benefits.
+Higher configured reasoning effort is associated with higher mean IoU in
+most within-family ladders, although the relation is not uniformly
+monotone. Fable~5 rises from $0.952$ at medium effort to $0.974$ at max,
+and GPT-5.6 sol rises from $0.896$ at medium to $0.934$ at ultra. Opus~4.8
+is effectively unchanged, moving from $0.910$ at medium to $0.909$ at max,
+while GPT-5.6 terra peaks at xhigh and declines slightly at ultra.
 
 Source compliance separates several configurations with similar raw
-geometric scores. All 48 OpenAI cells and all 24 cells from Sonnet-5 and
-Opus-4.8 satisfy the source gate. Violations occur in 2 of 8 Opus-4.5
-cells, 3 of 8 Sonnet-4.5 cells, 4 of 8 Haiku-4.5-high cells, and 6 of 8
-Haiku-4.5-medium cells. Every flagged program contains prohibited
-\texttt{add\_polygon} calls. Equation~\eqref{eq:usable} records this
-difference without conflating geometric overlap with representation
-compliance.
-
-\FloatBarrier
+geometric scores. In total, 193 of 208 programs satisfy the source gate.
+All 104 extension programs are compliant. The 15 violations occur in four
+original configurations: 2 of 8 Opus-4.5 cells, 3 of 8 Sonnet-4.5 cells,
+4 of 8 Haiku-4.5-high cells, and 6 of 8 Haiku-4.5-medium cells. Every
+flagged program contains prohibited \texttt{add\_polygon} calls.
 
 \subsection{Runtime and cost}\label{sec:inference}
 
-The archived timing records and API-equivalent estimates provide a
-descriptive cost comparison within the coding-agent matrix; the earlier API
-campaign has no measured cost ledger. Along the tested OpenAI configurations,
-GPT-5.4-mini attains $U=0.645$ at a median API-equivalent cost of $\$0.87$
-per target, GPT-5.4 attains $0.802$ at $\$1.48$, and GPT-5.5-high attains
-$0.910$ at $\$2.01$ with a median runtime of $12.7$ minutes. GPT-5.5-xhigh
-raises the mean to $0.912$ at $\$3.27$ and $25.9$ minutes.
+The cost axis in Fig.~\ref{fig:emergence}(a) converts measured token buckets
+to the published list-price equivalent under one frozen rate
+card~\cite{openai_pricing,anthropic_pricing}. The
+tested frontier spans more than two orders of magnitude. GPT-5.6 terra at
+ultra effort reaches $U=0.900$ at a median $\$0.317$ per target; GPT-5.6 sol
+at ultra reaches $0.934$ at $\$3.121$; Fable~5 at medium reaches $0.952$ at
+$\$4.766$; and Fable~5 at max reaches $0.974$ at $\$52.452$. Opus~5 max
+reaches $0.955$ at $\$28.405$. Additional compute is therefore one route to
+higher performance, but model choice and target geometry materially affect
+the return.
 
-The tested Anthropic effort pair shows why cost alone is not a performance
-measure. Opus-4.8-medium and Opus-4.8-max attain means of $0.910$ and
-$0.909$, respectively, while their median output-token counts are 171k and
-462k and their API-equivalent costs are $\$28.66$ and $\$68.72$. These
-values depend on the campaign's rate assumptions and should not be read as a
-general vendor comparison. They do show that the highest tested effort is
-not required to reach the highest observed means.
+The benchmark establishes high-fidelity, source-compliant reconstruction
+under the tested program language. Section~\ref{sec:pdk} next asks whether
+the retained variables support process-specific physical retargeting.
 
-The primary result of this section is that several configurations produce
-high-fidelity, source-compliant programs across a balanced target set. The
-matrix also exposes variation across targets, configurations, and cost.
-Section~\ref{sec:pdk} next tests whether the parameters retained in those
-programs support process-specific physical retargeting.
+\section{Retargeting across stack models}\label{sec:pdk}
 
-\Needspace{12\baselineskip}
+Geometric verification establishes an executable representation. Physical
+evaluation begins after that gate. Tier~0 uses local mode solutions to
+compute effective and group indices, path-delay quantities, and
+coupled-mode estimates. Tier~1 uses capped small-domain FDTD for
+transmission, and tier~2 uses human-authorized broadband FDTD for
+full-device audits~\cite{tidy3d}. The evaluators only measure; the agent
+decides how to modify the program.
 
-\section{PDK retargeting}\label{sec:pdk}
+The experiments use explicit models of 220-nm SOI, 400-nm SiN, and 400-nm
+TFLN. A pass requires the implemented optical figure of merit and footprint
+constraint to hold on the selected stack. The TFLN model is isotropic, and
+the gate does not enforce the bend-radius and guide-spacing fields or a
+complete foundry rule deck. The results therefore measure functional
+reachability under these stack models.
 
-Section~\ref{sec:results} establishes that coding agents can recover
-executable component geometry from visual targets. We next test what those
-programs support after reconstruction. The experiments progress from an
-interferometer edited for three stack models, to a paired comparison between
-reconstructed programs and library PCells, and finally to full-wave audits
-of the analytic evaluator and of a fabrication variable absent from GDS.
+\subsection{Editable routing enables cross-stack retargeting}
+\label{sec:ladder}
 
-Here, PDK retargeting has a restricted operational meaning. A pass
-indicates that a program satisfies the modeled optical figure of merit and
-the stated footprint on one of three explicit stack models: 220-nm SOI,
-400-nm SiN, or 400-nm TFLN. The TFLN model uses an isotropic material
-approximation. The evaluator does not implement a complete foundry rule
-deck; in particular, the bend-radius and guide-spacing values stored with
-the stacks are not enforced by the pass gate. The results therefore concern
-functional retargeting under the implemented evaluator, not tape-out
-readiness.
+Retargetability is the set of valid geometries reachable through a
+program's live variables. A library PCell exposes the coordinates chosen by
+its author; a reconstructed program exposes those retained by the coding
+agent. The parameter ranges, evaluator, and geometric constraints determine
+which operating points either representation can reach.
 
-\subsection{Layer stack and generic stencils}\label{sec:ladder}
-
-The first experiment uses an unbalanced Mach--Zehnder interferometer
+The first test starts from an unbalanced Mach--Zehnder interferometer (MZI)
 reconstructed independently by Opus-4.8 medium and GPT-5.5 xhigh. Each
-worker received only the calibrated silhouette and its
-$91.1\times 50.75\,\mu\mathrm{m}^{2}$ footprint. Phase B then requested a
-free-spectral range (FSR) of $8.0$\,nm within $\pm2\%$ at
-$1550$\,nm on each stack model. The evaluator computes the group index
-locally and combines it with path lengths reported by the executed program;
-a separate perturbation check verifies that the declared imbalance
-parameter changes the geometry.
+worker receives the calibrated silhouette and its
+$91.1\times50.75\,\mu\mathrm{m}^{2}$ footprint. Retargeting requests a
+free spectral range (FSR) of $8.0$\,nm within $\pm2\%$ at $1550$\,nm on
+each stack. The tier-0 evaluator combines a local group-index solution with
+path lengths from the executed program.
 
-For a fixed program, let
-$g:\Theta\rightarrow\mathcal{G}$ map its admissible parameters to geometry.
-A frozen layout has a singleton, zero-dimensional parameter domain rather
-than an empty domain. A library PCell exposes the parameters chosen by its
-author, while a reconstructed program exposes the parameters retained by
-the worker. For a modeled stack $K$, evaluator $\Phi_K$, implemented
-geometric constraints $E$, and target set $S_K$, the representation can
-reach the requested operating point when
-\begin{equation}\label{eq:reach}
-\exists\,\theta\in\Theta:\quad
-g(\theta)\models E
-\quad\mathrm{and}\quad
-\Phi_K\!\left(g(\theta)\right)\in S_K .
-\end{equation}
-A parameter is live when changing it changes the executed geometry.
-Liveness is necessary for adjustment along that coordinate, but it does
-not guarantee Eq.~\eqref{eq:reach}; parameter ranges, coupling among
-parameters, the evaluator, and the constraints determine the reachable
-set.
-
-The as-pictured interferometer has a $10.0\,\mu$m path imbalance. Its
-modeled FSR is $59.21$\,nm on SOI, $131.37$\,nm on SiN, and
-$114.48$\,nm on TFLN, so the fixed geometry misses the target on all three
-stacks. Retuning the native imbalance parameter of the GDSFactory MZI PCell
-reaches the analytic FSR target, but the PCell realizes the additional path
-length as vertical extension. Even after compacting its other native
-parameters, the SOI, SiN, and TFLN layouts have heights of $58.8$,
-$96.5$, and $89.9\,\mu$m, respectively, each exceeding the
+The as-pictured MZI has a $10.0\,\mu$m imbalance, giving modeled FSRs of
+$59.21$\,nm on SOI, $131.37$\,nm on SiN, and $114.48$\,nm on TFLN.
+The native imbalance variable of the GDSFactory MZI reaches the spectral
+target, but realizes the extra path length through vertical extension. Its
+minimum tested heights are $58.8$, $96.5$, and $89.9\,\mu$m, all above the
 $50.75\,\mu$m budget.
 
-The reconstructed-program arm was allowed to edit primitive routing during
-Phase B. Both workers replaced the long-arm realization with a folded route
-and used modeled imbalances of approximately $74.0$, $148.6$, and
-$134.8\,\mu$m on SOI, SiN, and TFLN. The final designs satisfy the
-analytic FSR and footprint gates on all three stack models, with FSRs from
-$7.9995$ to $8.0007$\,nm. Opus required one FSR evaluation per stack;
-GPT-5.5 required two FSR evaluations followed by one footprint-refolding
-verification. Because code revision was permitted for the reconstructed
-program but the library control was restricted to its native interface,
-this ladder compares the available authoring surfaces rather than two fixed
-parameterizations. The fixed-representation comparison follows in
-Sec.~\ref{sec:catalog}.
+The reconstructed programs can revise their primitive routing. Both agents
+replace the long-arm geometry with a folded route and use imbalances of
+approximately $74.0$, $148.6$, and $134.8\,\mu$m across SOI, SiN, and
+TFLN. All six agent-by-stack designs satisfy the analytic FSR and footprint
+gates, with FSRs from $7.9995$ to $8.0007$\,nm. This test compares editable
+primitive code with the native interface of a library PCell. The
+fixed-interface experiment in Sec.~\ref{sec:catalog} removes that authoring
+asymmetry.
 
 A geometry tuned on one stack does not transfer unchanged to the other two.
 Figure~\ref{fig:crossmatrix} evaluates each Opus-tuned geometry on every
 stack model. The diagonal entries pass, whereas all six off-diagonal
 entries miss the $\pm2\%$ interval, by $9.3\%$ to $100.7\%$. The
 corresponding GPT-5.5 matrix differs by less than $0.002$\,nm in every
-cell. Thus, none of the three tuned geometries passes on either other stack;
-the editable program, rather than a single set of polygons, is the
-transferable artifact.
+cell. The same pattern holds for both agents: all 12 off-diagonal polygon
+transfers fail, while the executable program can be retargeted.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{fig_cross_matrix.pdf}
 \caption{\textbf{Cross-stack transfer of the retuned MZI.} Each row fixes
-one Opus-4.8-medium geometry tuned for the indicated stack and evaluates it
-unchanged on every column stack. Values are tier-0 analytic FSRs in
-nanometers. The outlined diagonal cells fall within the $8.0$\,nm
-$\pm2\%$ target; all six off-diagonal transfers miss. The independently
-retuned GPT-5.5-xhigh matrix agrees within $0.002$\,nm per cell.}
+one Opus-4.8-medium geometry and evaluates it unchanged on every column
+stack. Outlined diagonal cells meet the $8.0$\,nm $\pm2\%$ target; all six
+off-diagonal transfers miss. The GPT-5.5-xhigh matrix agrees within
+$0.002$\,nm per cell.}
 \label{fig:crossmatrix}
 \end{figure}
 
-\subsection{Functional performance}\label{sec:catalog}
+\subsection{Fixed-representation comparison}\label{sec:catalog}
 
-A second experiment holds each representation fixed. Five catalog devices
-with tier-0 figures of merit were considered: an MZI, ring resonator,
-directional coupler, delay spiral, and distributed Bragg reflector (DBR).
-GPT-5.5 high and Opus-4.8 medium first reconstructed each catalog image
-blind using primitives. For each model and device, Phase B then compared
-two representations under the same stack files, target, and footprint:
-the model's reconstructed program and a wrapper exposing the corresponding
-GDSFactory PCell's native parameters. Both arms could change existing
-parameters but could not rewrite their program.
-
-The target in each case was the library PCell's modeled behavior on its
-home SOI stack, requested on all three stack models. Table~\ref{tab:twoarm}
-reports the resulting 60 tier-0 outcomes. A filled marker means that the
-implemented figure-of-merit and footprint gates passed; an open marker
-denotes an observed miss. These entries are neither full-wave validation
-nor complete design-rule checks, and an observed miss does not prove
-mathematical infeasibility over the full parameter domain.
+A second experiment fixes both representations for five catalog devices:
+an MZI, ring resonator, directional coupler, delay spiral, and distributed
+Bragg reflector. GPT-5.5 high and Opus-4.8 medium first reconstruct each
+catalog image using primitives. Retargeting then operates either on the
+reconstructed program or on a wrapper around the corresponding GDSFactory
+PCell. Both arms may change existing parameters but may not rewrite their
+code. The library PCell's modeled home-SOI behavior defines the target
+requested on all three stacks, giving 60 total outcomes.
 
 \input{table_retargeting.tex}
 
@@ -870,183 +660,122 @@ too large. Conversely, one reconstructed spiral fixes its loop
 count and misses the SiN and TFLN delay targets; the other reconstruction
 keeps that coordinate live and passes. For the ring, both representations
 miss on SiN and TFLN because the radius required by the modeled FSR exceeds
-the footprint. These cases support a narrower conclusion than primitive
-superiority: retargetability is a property of the reachable set
-$g(\Theta)$ under a specified evaluator and constraint set.
-
-Tier-0 figures of merit do not establish insertion loss. A separate
-small-domain FDTD comparison tested a $1{\times}2$ MMI at the same grid
-resolution. The generic GDSFactory PCell measures $1.08$\,dB insertion
-loss on SOI. Keeping its $2.5\times5.5\,\mu\mathrm{m}^{2}$ body fixed
-while adapting the access width to SiN increases the loss to $3.06$\,dB.
-A primitives MMI dimensioned for the SiN mode solution measures
-$1.09$\,dB. This single fixture shows that stack-specific redimensioning
-can recover the home-stack loss level; it does not establish a general
-advantage for either representation class.
+the footprint. The 21--22 near tie rules out a representation-class
+advantage in this experiment; success tracks the live coordinates retained
+by each program.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_sidewall_stacks.pdf}
-\caption{\textbf{From agent reconstruction to full-wave function and
-fabrication sensitivity.}
-(a)~Normalized E-field intensity reported for the shallow-etched rib splitter
-of Nguyen \emph{et al.}~\cite{splitter2020}, reproduced under CC BY 4.0.
-(b)~The exact silhouette supplied to the worker and its executed
-primitives-only reconstruction.
-(c)~Positive forward Poynting-flux density at the mid-plane of the
-SOI-retargeted realization,
-$S_x^+=\max[\frac{1}{2}\operatorname{Re}(E_yH_z^\ast-E_zH_y^\ast),0]$,
-normalized to its peak over an upstream $x=5$--$15\,\mu$m reference window.
-The mode monitors give $T=0.7873$ and $b=0.500001$. Panels (a) and (c) use
-different observables, geometries, domains, material models, and
-normalizations, so their comparison is qualitative.
-(d)~Left: coupling ratio of one fixed reconstructed coupler mask under
-uniform sidewall tilt. Right: split balance and monitored transmission
-for separately retargeted mirror-symmetric splitter controls. Markers are
-simulated samples and straight segments are guides to the eye. The TFLN
-model is isotropic.}
-\label{fig:sidewall}\label{fig:trident}\label{fig:sourcevsours}
+\caption{\textbf{Full-wave function and fabrication sensitivity.}
+(a)~Published field intensity for the shallow-etched rib splitter of Nguyen
+\emph{et al.}~\cite{splitter2020}, reproduced under CC BY 4.0.
+(b)~The silhouette supplied to the worker and its executed primitive
+reconstruction.
+(c)~Forward Poynting-flux density for the SOI-retargeted realization. Mode
+monitors give transmission $T=0.7873$ and split balance $b=0.500001$.
+Panels (a) and (c) differ in geometry, observable, domain, material model,
+and normalization, so their comparison is qualitative.
+(d)~Left: coupling ratio of a fixed reconstructed directional-coupler mask
+under uniform sidewall tilt. Right: split balance and transmission for
+stack-specific, mirror-symmetric F1 splitter controls. Markers are simulated
+samples and connecting segments guide the eye.}
+\label{fig:sidewall}
 \end{figure*}
 
-\subsection{Simulation and end-to-end realization}\label{sec:third}\label{sec:release}\label{sec:channel}
+\subsection{Full-wave and fabrication audits}
+\label{sec:third}\label{sec:release}\label{sec:channel}
 
-Full-wave simulation first audits the inexpensive analytic tier. A coarse
-broadband FDTD run of the SOI MZI gives a fringe spacing of $7.77$\,nm,
-compared with $8.00$\,nm from the analytic evaluator, a $2.9\%$
-difference. The simulated fringe contrast is $12.24$\,dB. Loss remains
-unresolved: a separate tier-1 splitter calculation gives $2.012$\,dB per
-reconstructed splitter, implying $4.024$\,dB for two splitters, while the
-generic PCell gives $1.075$\,dB per splitter, or $2.15$\,dB for two. These
-derived two-splitter estimates are not full-device broadband loss
-measurements, and both exceed the specified $1$\,dB ceiling.
+Full-wave simulation first audits the inexpensive analytic tier. A broadband
+FDTD run of the Opus-retargeted SOI MZI gives a fringe spacing of
+$7.77$\,nm, compared with $7.9995$\,nm from the analytic evaluator, a
+$2.9\%$ difference. The simulated fringe contrast is $12.24$\,dB.
+Separate tier-1 splitter fixtures measure $2.012$\,dB per Opus
+reconstruction, $2.994$\,dB per GPT-5.5 reconstruction, and
+$1.075$\,dB per generic PCell. The corresponding two-splitter estimates,
+$4.024$, $5.989$, and $2.15$\,dB, all exceed the specified $1$\,dB
+ceiling; these estimates are not full-device broadband loss measurements.
 
-The same analytic tier is less reliable for the directional coupler. For
-the reconstructed SiN coupler, the supermode model reports a coupling ratio
-of $0.9439$, while a matched full-wave fixture gives $0.1711$. The
-full-wave calculation includes the access and S-bend regions omitted from
-the parallel-guide approximation. Their omission and mode-tail error are
-plausible sources of the discrepancy, but this experiment does not isolate
-their contributions. The defensible evaluator boundary is empirical: FSR
-agrees within $2.9\%$ for the tested MZI, whereas the SiN coupling ratio
-does not. Accordingly, the coupler checks in Table~\ref{tab:twoarm} should
-be read only as tier-0 evaluator outcomes.
+The same analytic tier fails quantitatively for the directional coupler.
+For the reconstructed SiN coupler, the parallel-guide supermode model
+predicts a coupling ratio of $0.9439$, while a matched full-wave fixture
+gives $0.1711$, a $5.5\times$ overestimate. The full-wave geometry includes
+the access and S-bend regions omitted from the analytic model. The cheap
+evaluator is therefore accurate to $2.9\%$ for the tested MZI fringe spacing
+and inaccurate for this coupler ratio. Coupler entries in
+Table~\ref{tab:twoarm} are tier-0 outcomes.
+
+A separate MMI fixture shows the value of stack-specific redimensioning.
+The generic PCell measures $1.08$\,dB per splitter on SOI. Holding its
+$2.5\times5.5\,\mu\mathrm{m}^{2}$ body fixed while adapting only the access
+width to SiN raises loss to $3.06$\,dB. A primitive MMI dimensioned for the
+SiN mode solution measures $1.09$\,dB per splitter.
 
 F1 provides an end-to-end check. The worker received only the standardized
 silhouette and its $40.0\times1.7\,\mu\mathrm{m}^{2}$ footprint, not the source
 text or published field panel. Its primitives-only program achieved
 an IoU of $0.947$. Retargeting then derived a simplified 220-nm SOI realization
 from that program. At $1550$\,nm, full-wave simulation yields symmetric
-two-output flow, split balance $0.50000$, and monitored transmission $0.787$
-(Fig.~\ref{fig:sidewall}(a)--(c)). The shallow-etched rib source and our full-height
-strip fixture differ in geometry, domain, field observable, and normalization
-\cite{splitter2020}. Their comparison supports the intended splitting function
-qualitatively, not numerical replication of the published field or loss.
+two-output flow, split balance $0.500001$, and monitored transmission
+$0.7873$ (Fig.~\ref{fig:sidewall}(a)--(c)). This establishes the intended
+splitting function for the simplified SOI realization; the published
+shallow-etched rib field provides a qualitative reference~\cite{splitter2020}.
 
-A layout also omits fabrication variables. If $G$ is the mask geometry,
-the simulated device is a realization
-$\Omega=\mathrm{Fab}_{\zeta}(G)$, where $\zeta$ includes thickness,
-sidewall angle, etch bias, and related process variables. To measure one
-such dependence, we held an Opus-reconstructed directional-coupler mask
-fixed and varied uniform sidewall angle in full-wave simulations on the
-three stack models. On SiN, the coupling ratio changes from $0.014$ at
-vertical walls to $0.944$ at $30^{\circ}$; on TFLN it changes from
-$0.008$ to $1.000$. Linear interpolation places the first $50/50$
-crossing at approximately $12.2^{\circ}$ and $11.0^{\circ}$,
-respectively. Both curves fall again at $45^{\circ}$. On SOI, six samples
-from $0^{\circ}$ through $12.5^{\circ}$ remain between $0.640$ and
-$0.752$ (mean $0.694$), followed by larger oscillations at higher angles
+A two-dimensional mask also omits fabrication variables. We hold one
+Opus-reconstructed directional-coupler mask fixed and vary uniform sidewall
+tilt in full-wave simulations. On SiN, the coupling ratio changes from
+$0.014$ at vertical walls to $0.944$ at $30^{\circ}$; on TFLN it changes
+from $0.008$ to $1.000$. The first interpolated $50/50$ crossings occur at
+$12.2^{\circ}$ and $11.0^{\circ}$, respectively
 (Fig.~\ref{fig:sidewall}(d), left).
 
-A mirror-symmetric $1{\times}2$ splitter provides a control. Uniform
-sidewall tilt preserves its left-right mirror symmetry even though it can
-change throughput. Across three stack-specific fixtures and five angles,
-the simulated split balance ranges from $0.4982$ to $0.5072$, for a
-maximum deviation of $0.0072$ from $0.5$. Total transmission changes
-substantially, including an SOI increase from $0.787$ at vertical walls to
-$0.935$ at $15^{\circ}$ followed by a decrease to $0.581$ at
-$45^{\circ}$ (Fig.~\ref{fig:sidewall}(d), right). In these two modeled devices,
-sidewall angle strongly affects an asymmetry-dependent coupling ratio while
-leaving a symmetry-protected balance nearly fixed. These sweeps use the
-draft-fidelity grid of the tier-1 harness: four small-angle SOI samples
-($2.5^{\circ}$--$12.5^{\circ}$) in the released fixtures record monitored
-flux sums exceeding unity by up to $8.4\%$, while the $30^{\circ}$ and
-$45^{\circ}$ cells conserve flux, and one companion field-run fixture
-records a marginally negative cross ratio; individual transmission values
-therefore carry grid-level uncertainty of that order. The reported coupling ratios are ratios of monitored powers and
-are insensitive to this normalization; the trends, not the third decimal,
-are the claim.
+A mirror-symmetric $1{\times}2$ splitter provides the control. Across three
+stack-specific fixtures and five angles, split balance remains between
+$0.4982$ and $0.5072$, while SOI transmission moves from $0.787$ at
+vertical walls to $0.935$ at $15^{\circ}$ and $0.581$ at $45^{\circ}$
+(Fig.~\ref{fig:sidewall}(d), right). Sidewall tilt therefore changes an
+asymmetry-dependent coupling ratio while preserving a symmetry-protected
+balance. Four low-angle SOI fixtures have monitored output sums up to
+$1.084$ at the draft grid. Normalization by total monitored output reduces
+sensitivity to a common multiplicative error. The resolved quantities are
+the angular trends and power ratios.
 
-The FDTD studies reported in this section retain cloud task identifiers,
-simulation inputs, result matrices, and billed-cost records. The associated
-simulation campaigns and diagnostic sweeps total $16.674$ FlexCredits.
-More generally, each PixCell stage writes a durable
-artifact bundle containing the program, calibration, stack and
-specification files, executed GDS, and evaluator output. The released CLI,
-API, and studio operate on this same record, while
-Appendix~\ref{app:walkthrough} gives one complete operational trace. The
-scientific conclusion is twofold: the reachable geometry is bounded by the
-representation, and the physical conclusion is bounded by the evaluator and
-the fabrication variables it models.
-
-\FloatBarrier
-\Needspace{12\baselineskip}
+Each physical study retains its program, stack and specification files,
+executed GDS, simulation inputs, cloud task identifiers, and evaluator
+outputs. The representation bounds reachable geometry, while the evaluator
+and modeled fabrication variables bound the physical conclusion.
 
 \section{Training with verifier-derived rewards}\label{sec:rl}
 
-Sections~\ref{sec:problem}--\ref{sec:pdk} evaluate pretrained models with
-fixed weights. We next test whether PixCell's executable verifier can support
-model training for visual-to-program synthesis. The reported experiment
-adapts one open-weight vision-language model through policy-generated
-distillation and 95 GRPO steps, then measures executable-program generation
-on a seed-disjoint synthetic pool and a training-excluded benchmark of eight
-paper figures. A separate GRPO-only lineage provides a verifier-only
-comparison without distillation or critique. The scope is
-feasibility for these lineages, not a general comparison of training
-algorithms or a claim of parity with frontier agents.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\linewidth]{fig_rl_training.pdf}
-\caption{\textbf{Recorded telemetry for the reported 95-step lineage.}
-(a)~Raw IoU on the fixed, seed-disjoint synthetic evaluation pool at scheduled
-checkpoints through cumulative step 85; vertical rules mark stage boundaries.
-L2 and L3 increase from $0.147$ and $0.159$ to $0.294$ and $0.332$.
-(b)~The thin crimson trace and its five-step mean show recorded L4 training
-IoU; open blue markers show one-sample measurements on the training-excluded
-benchmark. Green markers give the first $k{=}8$ draw,
-with eval@1 $0.240$ and best@8 $0.443$. The benchmark falls during the
-13-figure stage and recovers during the 18-figure stage, but the sequential
-design does not identify corpus size as the cause. The runs predate
-per-evaluation cache clearing, so the curves are diagnostic.}
-\label{fig:rltraining}
-\end{figure*}
+The deterministic verifier takes a median $0.18$--$0.19$ seconds per
+program, making executable geometry inexpensive enough to use as a training
+reward. We adapt Qwen3.6-35B-A3B along two lineages. The primary lineage
+uses supervised fine-tuning on scorer-selected policy outputs followed by
+95 GRPO steps. A second lineage starts from the raw base model and completes
+365 GRPO steps with the same reward, without supervised demonstrations or
+critic-generated feedback. Both are evaluated on a seed-disjoint synthetic
+pool and eight training-excluded paper figures.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig_rl_gallery.pdf}
-\caption{\textbf{Best-of-eight programs from the fully re-scored draw.}
-Each target is paired with the highest-IoU program from Table~\ref{tab:rl}.
+\caption{\textbf{Best-of-eight programs from the isolated second draw.}
+Each target is paired with its highest-IoU program from Table~\ref{tab:rl}.
 Maroon denotes overlap, pink candidate-only material, and black target-only
-material.
-Large-scale topology is
-often present, while widths, gaps, and repeated-feature counts remain
-imprecise. F5 has one executable attempt at IoU $0.246$, after failing in all
-eight attempts of the first draw.}
+material. The display overlays are thresholded re-renders; reported scores
+come from the archived evaluator outputs. Large-scale topology is often
+present, while widths, gaps, and repeated-feature counts remain imprecise.}
 \label{fig:rlgallery}
 \end{figure*}
 
 \subsection{Training protocol}
 
-Each episode uses one blind Phase-A task without test-time iteration. The
-policy receives the silhouette, its physical footprint, and the same
-primitives-only contract as Appendix~\ref{app:briefs}; the primitive catalog
-is included in the prompt because the policy has no tools. It emits one
-program. A worker process executes the program in a temporary directory with
-a timeout, credential stripping, and a best-effort memory limit. The resulting
-GDS is rasterized at the task calibration and scored by the deterministic
-evaluator. No difference image or revision turn is returned. Recorded median
-evaluator latency was approximately $0.18$--$0.19$ seconds per program, below
-the model-sampling time.
+Each episode is one blind reconstruction without test-time iteration. The
+policy receives a silhouette, physical footprint, primitive catalog, and
+source contract, then emits one program. The program is executed in an
+isolated worker, rasterized at task calibration, and scored by the
+deterministic evaluator. The policy receives no tools, difference image, or
+revision turn.
 
 The policy is Qwen3.6-35B-A3B, a vision-capable mixture-of-experts model with
 35B total and 3B active parameters~\cite{qwen36}. We apply a rank-32
@@ -1054,34 +783,32 @@ LoRA~\cite{lora} and GRPO~\cite{grpo} through the Tinker API~\cite{tinker},
 using learning rate $10^{-5}$, temperature $1.0$, eight task groups per step,
 and eight rollouts per group. Advantages are computed within each group, and
 constant-reward groups are omitted from the update. All reported benchmark
-measurements are one-shot samples from the adapted policy, without the agent
-loop used in Sec.~\ref{sec:agents}.
+measurements sample the adapted policy directly, without the coding-agent
+loop of Sec.~\ref{sec:agents}.
 
 \subsection{Tasks, reward, and controls}\label{sec:rlshortcuts}
 
 The task factory samples a program from the DSL prior and renders its target
 silhouette. The training pool contains 2{,}793 instances from 17 motifs in four
 tiers: single primitives (L0), two-element relations (L1), path constructions
-(L2), and multi-part compositions (L3). A task is admitted only when its
-ground-truth program, re-executed through the reward path, reproduces the stored
-target with $\iou\ge0.98$ for L0--L2 or $\iou\ge0.95$ for L3. The synthetic
-evaluation pool uses the same generators with a disjoint seed. An additional
-L4 tier contains 18 real figures, 11 paper extractions and seven catalog
-silhouettes, none drawn from the eight benchmark targets.
+(L2), and multi-part compositions (L3). The synthetic evaluation pool uses
+the same generators with a disjoint seed. An additional L4 tier contains 18
+real figures, 11 paper extractions and seven catalog silhouettes, excluding
+all eight benchmark targets.
 
-The benchmark never enters the distillation or GRPO samplers. It was,
-however, evaluated repeatedly to diagnose the campaign and select the reported
-lineage. We therefore treat it as a training-excluded development benchmark,
-not an untouched test set. The fixed synthetic evaluation pool measures
-parameter generalization within the same motif generators; cross-figure
-transfer is assessed by the training-excluded benchmark.
+The benchmark never enters supervised fine-tuning or GRPO sampling. It is
+evaluated repeatedly for campaign diagnosis and lineage selection, so it
+serves as a training-excluded development benchmark. The synthetic pool
+measures transfer to new instances of the same motif generators; the paper
+figures measure cross-figure transfer.
 
 Let $J$ and $D$ denote IoU and Dice, and let the subscript $\mathrm{rect}$
-denote the score obtained by filling the target's bounding box. Let $c$ be the
-symmetric mean Chamfer distance between rendered and target boundaries, $d$
-the physical footprint diagonal, and $T=\exp[-c/(0.05d)]$. We define
+denote the score obtained by filling the target's bounding box. Let $c$ be
+the symmetric mean boundary distance in raster space, converted with the
+mean axis calibration, and let $d$ be the footprint diagonal. Define
+$C=\exp[-c/(0.05d)]$,
 $N(x;x_0)=\max\{0,(x-x_0)/(1-x_0)\}$ for $x_0<1$ (and zero at $x_0=1$), and
-$B=\max\{0,T-T_{\mathrm{rect}}\}/\max\{1-T_{\mathrm{rect}},0.3\}$. For
+$B=\max\{0,C-C_{\mathrm{rect}}\}/\max\{1-C_{\mathrm{rect}},0.3\}$. For
 $J_{\mathrm{rect}}<0.95$, the reported runs use
 \begin{equation}
 R = v + w\left[0.40N(J;J_{\mathrm{rect}})
@@ -1091,295 +818,149 @@ R = v + w\left[0.40N(J;J_{\mathrm{rect}})
 where $v=0.05$ for an executable GDS and zero otherwise, and the whitelist
 indicator $w=1$ only when the program passes the primitive whitelist. For
 rectangle-like targets with $J_{\mathrm{rect}}\ge0.95$, the implementation
-instead uses $R=v+w(0.40J+0.15D+0.40T)$, avoiding normalization against a
-near-perfect
-rectangle. Thus a bounding-box fill receives no normalized geometric credit
-on other targets, although an executable program retains the $0.05$ validity
-floor even when it violates the whitelist.
+instead uses $R=v+w(0.40J+0.15D+0.40C)$. This rectangle baseline prevents
+area-filling shortcuts from receiving normalized geometric credit.
 
-The whitelist permits primitive components and paths but removes geometric
-reward for compound device cells, raw polygons, and alias imports. The prompt
-also states this contract explicitly, so source compliance is both instructed
-and reward-reinforced. The winner logger excludes evaluation and benchmark
-tasks, and final evaluations execute model outputs rather than accepting
-reported scores.
+The training-time catalog check sets $w=0$ for compound device cells, raw
+polygons, and alias imports. Such programs lose all geometric reward but
+retain the $0.05$ executable floor. Evaluation always executes model output
+and applies the current source audit separately.
 
-A footprint-only control shows that the parameter-tracking probe cannot be
-interpreted as evidence of image use. Across its 12 ring instances, footprint diameter
-has Spearman $\rho=1$ with radius, while the image-blind relation
-$(D_{\mathrm{footprint}}-20)/2$ gives $1.41\%$ mean radius error, compared with
-$1.55\%$ for the model. Footprint aspect ratio also separates the two arc-angle
-classes perfectly. The probe therefore measures recovery from the combined
-image-plus-footprint input and cannot identify the contribution of image pixels.
+A footprint-only control bounds what the parameter probes establish. Across
+12 rings, footprint diameter and radius have Spearman $\rho=1$; a direct
+footprint formula gives $1.41\%$ mean radius error, compared with $1.55\%$
+for the model. The probes therefore measure recovery from the combined image
+and footprint input, not pixels in isolation.
 
-\Needspace{14\baselineskip}
 \subsection{Training lineage}
 
-The reported checkpoint begins with two epochs of supervised distillation
-from 677 scorer-selected image-program pairs. The set contains 192, 320, 112,
-and 53 rows from L0 through L3; 634 rows are used for training and 43 for
-validation. Distillation and GRPO reuse the same 2{,}793-instance L0--L3
-training pool. Candidate programs were emitted by earlier Qwen policy runs and
-retained when their logged value of $N(J;J_{\mathrm{rect}})$ exceeded $0.5$.
-Exact code matching traces 337 rows to single-turn runs, 257 to two-turn runs
-with deterministic verifier-generated critique, and 83 to runs configured with
-an external model critic whose inputs included the target, attempted render,
-diagnostics, and ground-truth program. The retained logs do not distinguish
-critic responses from deterministic fallbacks in the last group. The programs
-are policy-authored, but external-teacher information may enter their provenance.
+The primary lineage begins with two epochs of supervised fine-tuning on 677
+scorer-selected image-program pairs, split into 634 training and 43
+validation examples. Earlier Qwen policies generated every program, and the
+builder retained outputs whose logged normalized IoU exceeded $0.5$. Code
+matching traces 337 pairs to single-turn generation, 257 to two-turn runs
+with deterministic verifier feedback, and 83 to critic-configured runs. The
+critic input included the target, attempted render, diagnostics, and
+ground-truth program; retained logs do not distinguish critic responses from
+deterministic fallbacks. External-teacher information may therefore enter
+this subset.
 
-The dataset builder did not independently re-execute or re-run purity checks
-on the 677 rows, and one row uses a raw polygon. We therefore describe the set
-as scorer-selected rather than gate-verified. No human-authored program was
-inserted into the set, but these rows are sequence-level demonstrations in the
-ordinary supervised-learning sense.
+The builder did not independently re-execute or purity-gate the 677 selected
+pairs, and one uses a raw polygon. We consequently describe the data as
+scorer-selected policy outputs. Starting from the supervised checkpoint, the
+lineage completes 30 GRPO steps on L0--L3, 35 with a 13-figure L4 tier, and
+30 after L4 expands to 18 figures. The curriculum favors task groups with
+recent reward variance. The raw-base comparison instead completes 365 GRPO
+steps across nine consecutive runs using the same reward and no supervised
+demonstrations or critic-generated feedback.
 
-Starting from the distilled checkpoint, the lineage runs 30 GRPO steps on
-L0--L3, 35 steps with a 13-figure L4 tier, and 30 further steps after L4 expands
-to 18 figures. Within the enabled tiers, the curriculum favors task groups with
-recent reward variance. During the 13-figure stage, one L4 training batch
-reaches IoU $0.910$ while the concurrent one-sample benchmark measurement falls
-from $0.183$ to $0.073$. Benchmark performance later recovers during the
-18-figure stage. Because the stages are sequential, this observation does not
-isolate corpus diversity from the effect of additional optimization.
+The 95-step history predates per-evaluation clearing of GDSFactory's cell
+cache. Isolated re-scoring leaves 12 of 12 sampled training winners and all
+64 programs from the second benchmark draw unchanged. We use the history and
+first benchmark draw as diagnostics and the isolated second draw as the
+primary result.
 
-All three GRPO stages predate per-evaluation clearing of GDSFactory's cell
-cache, so repeated cell names could make scores depend on worker history.
-Isolated re-scoring leaves 12 of 12 sampled training winners and all 64
-archived programs from the second benchmark draw unchanged. The full 95-step
-history and first draw cannot be replayed. We treat both as diagnostic and
-report the fully re-scored second draw in Table~\ref{tab:rl} and
-Fig.~\ref{fig:rlgallery}.
-
-\Needspace{14\baselineskip}
 \subsection{Evaluation results}
 
-Before GRPO, one raw-base sample per device yields eight failed executions and
-zero IoU. The reported lineage's final synthetic evaluation gives L0--L3 raw
-IoU values of $0.891$, $0.776$, $0.294$, and $0.332$, respectively
-(Fig.~\ref{fig:rltraining}a). Gains are largest on primitives and two-element
-relations; path and composition tasks remain partial.
+At the last recorded synthetic checkpoint, step 85, the primary lineage
+reaches L0--L3 IoU values of $0.891$, $0.776$, $0.294$, and $0.332$
+on the fixed seed-disjoint evaluation pool. Primitive and two-element tasks
+are substantially stronger than path and multi-part composition tasks.
 
-On the training-excluded benchmark, the first $k{=}8$ draw yields 47 of 64
-executable programs, eval@1 $0.2395$, best@8 $0.4433$, and seven devices above
-IoU $0.05$. The fully re-scored second draw (Table~\ref{tab:rl}) yields 48 of
-64, $0.2540$, $0.4662$, and all eight devices above the threshold. Eval@1 is
-mean IoU across the eight attempts per device; best@8 is the per-device
-maximum. Two draws show replicate variation, not an estimated distribution.
+On the training-excluded development benchmark, the isolated second draw
+produces 48 executable programs from 64 attempts, mean IoU $0.2540$, and
+mean per-target best-of-eight IoU $0.4662$ (Table~\ref{tab:rl}). Every target
+exceeds IoU $0.05$ at least once. The first draw produces 47 executable
+programs, mean IoU $0.2395$, and best-of-eight $0.4433$.
 
-\Needspace{9\baselineskip}
-A raw-base GRPO lineage without supervised distillation or a teacher reaches
-eval@1 $0.1864$ and best@8 $0.3804$, with all eight devices above IoU $0.05$
-at least once. Verifier-only supervision can therefore attain measurable
-cross-figure performance. The reported lineage scores higher but includes
-scorer-selected distillation with critic-configured provenance; the design
-does not identify the cause of the difference.
+The 365-step raw-base GRPO lineage reaches mean IoU $0.1864$ and
+best-of-eight $0.3804$, with every target above $0.05$ at least once.
+Deterministic executable rewards can therefore produce measurable
+cross-figure transfer without supervised demonstrations. The higher primary
+lineage uses scorer-selected data and a different optimization budget, so
+the score difference is not an ablation of supervised fine-tuning.
 
 \input{table_rl.tex}
 
-The archived replicate also permits a source-compliance audit. Sixty-three of
-64 programs pass the current primitive whitelist. The remaining program calls
-a prohibited compound component, fails execution, and scores zero. This high
-compliance is consistent with both the explicit prompt contract and the purity
-term in Eq.~\eqref{eq:rlreward}; the experiment does not identify their separate
-effects.
+Sixty-three of 64 programs in the primary draw pass the current source gate.
+The remaining program calls a prohibited compound component, fails execution,
+and scores zero.
 
-Figure~\ref{fig:rlgallery} shows that the best programs recover topology but
-retain dimensional and count errors. This supports proposals from combined
-image and footprint input, not pixel-only perception. Scores remain below the
-frontier-agent results of Sec.~\ref{sec:results}; the result concerns
-trainability, not parity.
+Figure~\ref{fig:rlgallery} shows that the best programs often recover
+large-scale topology while widths, gaps, and repeated-feature counts remain
+imprecise. The result establishes trainability from executable geometry,
+with substantial room between the adapted policy and the coding agents of
+Sec.~\ref{sec:results}.
 
-Together, the lineages show that the geometric verifier supplies a training
-signal, while the effects of scorer selection, image use, and run variance
-remain unresolved.
+\section{Discussion and conclusion}\label{sec:conclusion}
 
-\FloatBarrier
-\Needspace{12\baselineskip}
-\section{Research Contracts}\label{sec:conclusion}
+PixCell formulates visual photonic component authoring as executable program
+synthesis under deterministic verification. Across 26 coding-agent
+configurations and eight blind targets, the system produces 208 programs,
+of which 193 satisfy the source contract. The strongest configurations
+reach mean IoU values of $0.974$ and $0.955$. The iterative API record
+explains why verification matters beyond final scoring: only $12.7\%$ of
+first seeds are best, and best-of-five revision improves $18.3\%$ over the
+first turn. A cheap verifier turns additional inference into a controlled
+choice among executable artifacts.
 
-A closing section conventionally summarizes the evidence and sketches an
-outlook. This section keeps the summary and issues the outlook in a
-different form. Every result above entered the record through a gate that
-recomputed declared artifacts under terms fixed before the work ran. The
-directions that follow from those results are stated here the same way:
-as research contracts, bounded units of work whose objective, acceptance
-tests, required evidence, and review procedure are frozen before any work
-begins, and which settle only after the retained evidence is
-independently recomputed. This reflects a position on how follow-on research should be
-written. A direction stated as a contract can be claimed by any
-researcher or agent, executed against its declared gate, and audited
-without appeal to the claimant's narrative.
+The principal value of the output is its representation. A reconstructed
+program records how geometry is assembled and exposes coordinates that can
+be changed after visual matching. Both MZI reconstructions use this freedom
+to fold the delay path and meet the $8.0$\,nm FSR and footprint gates on
+three stack models. Fixed polygons fail every off-diagonal transfer. The
+broader fixed-interface experiment is deliberately balanced: reconstructed
+programs pass 21 of 30 cases and library PCells pass 22, with 23 paired
+agreements. Neither representation class dominates. Retargetability follows
+from the reachable geometries exposed by a particular program.
 
-PixCell formulates visual photonic-component authoring as program synthesis
-under deterministic verification. Given a calibrated silhouette, a physical
-footprint, and a restricted vocabulary of geometric primitives, current
-multimodal coding agents produced source-compliant parametric programs for
-the eight literature-derived targets studied here. The two strongest
-configurations reached mean IoU values of $0.910$ and $0.912$, with one
-retained blind result per configuration-target cell. These measurements show
-that high-fidelity visual-to-program reconstruction is feasible for the
-tested canonical components. They do not establish run-to-run reliability,
-optical correctness for every reconstruction, or performance beyond this
-target set.
+Physical evaluation determines what can be claimed about those geometries.
+The analytic evaluator predicts the tested MZI fringe spacing within
+$2.9\%$ of broadband FDTD, yet overestimates the SiN directional-coupler
+ratio by $5.5\times$. Sidewall tilt then changes the coupler response by
+nearly its full range while a mirror-symmetric splitter remains balanced
+within $0.0072$. These results define a hierarchy of evidence: calibrated
+IoU verifies reconstruction, local solvers support inexpensive
+retargeting, and full-wave models test optical behavior and fabrication
+variables that the two-dimensional layout does not contain.
 
-The downstream experiments identify the useful consequence of the executable
-representation. For the retuned MZI, the reconstructed programs retained
-enough routing freedom to satisfy the modeled FSR and footprint constraints
-on all three simplified stack models. The native interface of the generic
-library MZI reached the spectral target but exceeded the footprint. The
-fixed-representation comparison was more balanced: reconstructed programs
-passed 21 of 30 stack-by-model cases and library PCells passed 22. Neither
-representation class dominated. Retargetability is therefore a property of
-the reachable set of a particular program under a specified evaluator and
-constraint set, not of primitives or library cells in isolation.
+The same executable verifier supplies a training reward. The primary
+Qwen3.6-35B-A3B lineage reaches mean IoU $0.254$ and best-of-eight $0.466$
+on the training-excluded development benchmark. A raw-base lineage trained
+for 365 GRPO steps without supervised demonstrations or critic feedback
+reaches $0.186$ and $0.380$. This establishes that deterministic geometric
+rewards can produce cross-figure transfer in an open-weight model. The
+different optimization budgets and scorer-selected data in the primary
+lineage leave the contribution of supervised fine-tuning for a controlled
+ablation.
 
-Full-wave simulation places an equally important boundary on the physical
-claims. The analytic MZI estimate agreed with the tested FDTD fringe spacing
-to within $2.9\%$, whereas the directional-coupler approximation disagreed
-substantially with its matched full-wave fixture. The sidewall study further
-showed that a fabrication variable absent from GDS can change an
-asymmetry-dependent coupling ratio while leaving a symmetry-protected split
-balance nearly fixed. An accepted artifact is thus valid only with respect to
-the predicates, models, and fabrication variables that were actually
-evaluated. Geometric agreement is useful because it grounds the executable
-program, but it is not a surrogate for unmeasured optical function.
+The current evidence covers eight passive components, one retained
+coding-agent run per matrix cell, simplified stack models, and selected
+full-wave fixtures. F8 also lacks a recovered bibliographic source. The next
+experiments should add replicated agent runs, broader and fully sourced
+component families, typed port and connectivity checks, enforced foundry
+rules, anisotropic material models, and untouched training evaluations.
+These extensions preserve and strengthen the central mechanism: agents
+search over executable component programs, while deterministic tools measure
+the resulting artifacts.
 
-The same executable verifier also provides a training signal. On the
-training-excluded development benchmark, the verifier-only lineage reached
-eval@1 $0.186$ and best@8 $0.380$. The lineage that also used
-scorer-selected distillation reached $0.254$ and $0.466$ in the fully
-re-scored draw. This establishes bounded feasibility for verifier-derived
-training, not parity with frontier coding agents or superiority of one
-training procedure. The stronger lineage includes demonstrations with
-critic-configured provenance, and the sequential design does not isolate the
-effects of distillation, corpus composition, or further optimization.
+PixCell therefore establishes a visual interface to photonic component
+creation that remains compatible with programmatic circuit design. The
+agent recovers an editable construction from pixels, the conductor verifies
+it at absolute physical scale, and the resulting variables connect visual
+reconstruction to stack-specific evaluation and learning. This combination
+provides a practical foundation for multimodal agents that author, test, and
+retarget photonic components through code.
 
-Deterministic verification makes these claims auditable without making the
-underlying search deterministic or exhaustive. In the fixed-weight agent
-experiments, the model may propose and revise candidates on the instance at
-hand, but only independently recomputed artifact measurements enter the
-record. Weight training raises a different question and therefore requires
-distributional controls, including excluded evaluation data and explicit
-reporting of development-set use. Humans remain responsible for the intent
-that the verifier cannot supply: specifications, physical models, acceptance
-criteria, and compute budgets. In this study, every tier-2 simulation was
-authorized before execution.
-
-The evidence remains bounded in several respects. The 104-cell agent matrix
-contains no replicated runs within a cell, so its device-bootstrap intervals
-describe variation across targets conditional on the observed programs rather
-than run-to-run uncertainty. The benchmark contains eight canonical passive
-devices, pretraining familiarity is not separated from visual reasoning, and
-F8's bibliographic source remains unresolved. The source gate is syntactic
-and was evaluated on non-adversarial workers. Functional evaluation covers
-selected devices rather than all 104 reconstructions. The stack files omit a
-complete foundry rule deck, model TFLN isotropically, and support full-wave
-tests that are limited in grid resolution, wavelength coverage, and
-realization detail. The training study covers one base model and two
-non-equivalent lineages; its synthetic evaluation pool is seed-disjoint but
-template-shared, and repeated benchmark measurements informed campaign
-selection. Its two best-of-eight draws show replicate variation rather than
-an estimated sampling distribution. Because the physical footprint is part
-of the model input and covaries with parameters in the tracking probe, the
-study also does not isolate pixel-only perception.
-
-The next steps follow directly from these boundaries. Reconstruction needs
-replicated runs, broader component families, and function-aware rewards.
-Physical evaluation needs enforced design rules, anisotropic materials,
-process-dependent fabrication models, and higher-fidelity loss
-calculations. Training needs untouched held-out evaluations and controlled
-ablations across models, corpora, and optimization methods. Four of these
-steps are mature enough for their acceptance tests to be frozen now, and
-each is therefore issued as a numbered research contract, RC-01 through RC-04.
-A contract fixes five elements before any work begins: a question that
-evidence can settle; acceptance tests that any submission must pass; the
-evidence bundle that must be retained; a review procedure in which every
-reported number is recomputed from that bundle; and a statement of what
-success does not establish. The full terms and fixtures of each
-contract are versioned under \texttt{research-contracts/} in the released
-repository, and the contracts are published as funded, claimable bounties
-through the project page. The paragraphs below state each contract's
-question, gate, and boundary.
-
-\paragraph*{RC-01: Shape-aware visual verification.}
-What deterministic metric reflects structural agreement without rewarding
-area-filling shortcuts? The gate freezes an evaluation suite of calibrated
-perturbations, topology and port errors, and adversarial block
-constructions. A submitted metric must be a pure deterministic function on
-calibrated rasters, must order the suite better than IoU and the current
-boundary baseline under blinded judgments and a locked optimization
-comparison, must score every adversarial construction below its honest
-counterpart, and must reproduce all raw scores from the shipped corpus and
-code. Success establishes better ordering on the declared corpus; optical
-equivalence and fabrication validity remain outside the contract.
-
-\paragraph*{RC-02: Process-faithful 2D-to-3D retargeting.}
-Can one editable program be retargeted across four process models when its
-three-dimensional realization is explicit? The gate requires one
-parametric program whose topology is identical across four versioned stack
-manifests, explicit three-dimensional geometry for every retarget,
-functional, footprint, process, and convergence gates committed before any
-simulation, mesh-refinement and energy-conservation audits recomputed from
-shipped field data, a fixed-geometry cross-stack control, and an
-independent rerun of at least one stack that matches the reported
-S-parameters within a stated tolerance. Success concerns simulation-backed
-retargeting on the declared models; foundry signoff, tape-out readiness,
-and measured hardware remain outside the contract.
-
-\paragraph*{RC-03: Representation and scale dataset.}
-Should topology recognition, evidence-backed physical scale, and
-executable reconstruction be learned jointly or as separately supervised
-problems? The gate requires a versioned, licensed corpus with per-item
-provenance and three separable annotation layers; in-family,
-held-out-topology, and held-out-paper splits published as salted
-membership hashes with a shipped leakage audit; abstention scored as the
-only correct behavior where scale evidence is absent, since physical size
-is not identifiable from an unscaled silhouette; and a comparison of joint
-and staged supervision at matched, logged compute. Results remain bounded
-to the released families and protected splits.
-
-\paragraph*{RC-04: Smallest qualifying open model.}
-What is the smallest open-weight model, counted in active parameters, that
-remains effective across the five PixCell task tiers and untouched paper
-figures? The gate freezes the candidate registry, per-tier floors, and
-identical inference and verifier budgets before any evaluation; requires
-all attempts, including failures, to ship raw; recomputes confidence
-bounds independently from the shipped programs and scores; reruns the
-conductor purity gate on a sample of generated programs; and requires the
-qualifying model to ship with weights, license, model and data cards,
-training lineage, and total and active parameter accounting. The claim is
-scoped to the dated registry under this protocol.
-
-Two further directions from the same boundaries are stated without
-contracts because their acceptance tests cannot yet be frozen: extension
-of the verifier beyond pixel overlap to typed ports, connectivity, and
-behavior at circuit scale, and recovery of editable programs from legacy
-GDS archives in support of cross-process migration, coupled where useful
-to search over geometry, material stack, and fabrication variables.
-Contracts for both will be issued once their gates can be written in the
-form above.
-
-The accompanying release preserves the programs, geometric scores, worker
-transcripts, simulation records, evaluation fixtures, and training artifacts
-needed to inspect and reproduce the reported measurements. PixCell therefore
-does not establish that automated photonic design is solved. It establishes
-that, within the tested scope, visual component geometry can be converted
-into an auditable parametric program and evaluated at successively stronger
-levels of physical fidelity, and it leaves its continuation in a form that
-can be claimed, executed, and verified.
-
-\paragraph*{Data and code availability.} The PixCell system, the
-benchmark fixtures (silhouettes, footprints, calibrations), the complete
-measurement record behind every reported number (per-cell programs,
-conductor re-verification logs, simulation inputs and result matrices,
-worker transcripts, and cost ledgers), and the figure-generation scripts
-are released at \url{https://github.com/QPG-MIT/PixCell}. A claims-to-artifacts
-map (\texttt{data/README.md}) links each Results statement to its backing
-file, and every geometric score can be recomputed from the released
-programs with the repository's verification recipe. Bulk binary evidence
-(raw FDTD field records and render rasters) ships as a checksummed
-external bundle referenced from the repository.
+\paragraph*{Data and code availability.} The PixCell implementation,
+benchmark fixtures, 208 reconstruction programs, conductor measurements,
+worker transcripts, retargeting records, simulation inputs and result
+matrices, training recipes, and figure-generation scripts are released at
+\url{https://github.com/QPG-MIT/PixCell}. The repository maps claims to
+artifacts in \texttt{data/README.md}; large FDTD fields and render rasters
+are indexed by a checksummed external-bundle manifest. Derived training
+tables and figure assets are included, while the full attempt and run
+ledgers are designated for the companion training artifact release.
 
 \begin{acknowledgments}
 We thank the Thinking Machines Lab team for supporting the model-training
@@ -1391,128 +972,6 @@ This work was supported in part by the NSF National Quantum Virtual Laboratory
 Computing Laboratory) and by the NSF Center for Quantum Networks under Award
 No.~\mbox{EEC-1941583}.
 \end{acknowledgments}
-\appendix
-
-\section{Reproduction spine: briefs and prompts}
-\label{app:briefs}
-
-Full briefs, fixtures, transcripts, and audit tooling ship with the
-release; this appendix records the load-bearing text so the paper is
-self-contained.
-
-\emph{June pipeline (chatbot regime).} The verbatim turn prompts are
-quoted in Sec.~\ref{sec:iterative}; the strongest seeds continued for
-additional turns with rebuilt conversation history.
-
-\emph{July worker brief (agent regime, Phase A).} Every cell received the
-same brief skeleton, instantiated per cell: the two inputs
-(\texttt{device\_bw.png}, \texttt{footprint.json}); a private working
-directory; the discipline (``Primitives only \dots\ NO
-\texttt{gf.components} device stencils. NO raw polygons''; function knobs
-as top-level tunables); the loop (``Iterate (max 6): run script $\to$
-[rasterize-and-compare] $\to$ read IoU, study diff.png $\to$ refine'',
-with knob-response verification); data hygiene (``your ONLY ground truth
-is the two input files below''); and a machine-readable completion marker
-(``\texttt{PHASE\_A DONE: IoU=<final>}''). A hint-lint pass over all
-worker-visible text verified that no brief names the device, its
-function, or any physics vocabulary.
-
-\emph{Phase B (retargeting).} The brief supplies each stack file and a
-specification that states \emph{what} must be met, never \emph{why}.
-Before editing geometry, the worker records its physical rationale and
-grounds every change in tier-0 solves. Tier-1 access is conductor-mediated
-and capped per stack through
-``\texttt{MEASURE <stack>: fixture=<path> predicted\_T=<x>}''. The brief
-also states, ``Honest failure beats fudge.''
-
-\section{Operational walkthrough: one device through the channel}
-\label{app:walkthrough}
-
-Section~\ref{sec:release} argues the architecture; this appendix
-operates it once, at the granularity needed to re-run it. One project
-directory holds a device's entire history --- that channel is,
-concretely, this tree:
-
-\begin{verbatim}
-projects/<name>/
-  paper.pdf          # or a sketch: the input
-  device_bw.png      # silhouette (dark=material)
-  footprint.json     # {"footprint_um": [L, W]}
-  function.json      # conductor-side dossier
-  output/
-    recreation_<w>/  # worker w's private dir
-      device.py      calibration.json
-      component.png  raster.png  diff.png
-      metrics_abs.json  recreation_log.json
-    best.py  best.gds   # the design record
-    retarget/           # Phase-B, per stack
-\end{verbatim}
-
-\emph{Step 1 --- extract.} The conductor dispatches an extraction agent
-against \texttt{paper.pdf} (or accepts a drawn silhouette directly). The
-agent renders pages, crops candidate panels, and selects the device
-figure with its own perception; the pipeline's only external image call
-is the black-and-white standardization of the chosen panel. It writes
-\texttt{device\_bw.png} and \texttt{footprint.json} and announces
-\texttt{EXTRACT DONE: files=<n>}; the conductor accepts iff both
-artifacts exist and parse. The same pass harvests the source's own
-account of the device --- its words, its reported numbers, page
-provenance --- into \texttt{function.json}, which no worker ever reads.
-
-\emph{Step 2 --- calibrate.} Before any comparison, scale is fixed once:
-the bounding box of non-white pixels in the silhouette, joined to the
-stated footprint, yields \texttt{calibration.json}
-(\texttt{image\_size\_px}, \texttt{scale\_px\_per\_um}, offset). Every
-subsequent rasterization uses this stored mapping rather than the
-candidate's own bounding box, so a wrong-sized candidate scores as
-wrong-sized instead of being silently renormalized.
-
-\emph{Step 3 --- recreate (Phase A).} A blind worker is dispatched into
-a private directory containing exactly the two task files, with the
-brief of Appendix~\ref{app:briefs}. Its loop, at most six rounds: write
-\texttt{device.py} $\to$ execute $\to$ rasterize at the stored
-calibration $\to$ read $\iou$, study \texttt{diff.png} (spurious versus
-missing material) $\to$ refine. It logs its topology reading in
-\texttt{recreation\_log.json} \emph{before} coding and ends with
-\texttt{PHASE\_A DONE: IoU=<x>}. The conductor then runs the promotion
-gate on artifacts alone: re-execute the program in a clean namespace;
-re-rasterize; recompute $\iou$ and require
-$|\text{claimed}-\text{recomputed}|\le 0.005$; reject vendor device
-cells and raw polygon emission by source analysis; perturb one declared
-knob and re-execute --- the geometry must move. Only on pass does the
-program become \texttt{best.py} and \texttt{best.gds}.
-
-\emph{Step 4 --- resolve function.} The figure of merit resolves from up
-to three sources --- the human's stated intent, \texttt{function.json},
-and the worker's own blind classification in its log --- under
-precedence human $>$ paper $>$ visual, with disagreement surfaced rather
-than resolved. The plan compiles to \texttt{spec\_<stack>.json} in the
-evaluator's schema (metric, target, tolerance: \emph{what}, never
-\emph{why}), and the spec bytes pass the same hint-lint as briefs before
-any worker sees them.
-
-\emph{Step 5 --- retarget (Phase B).} Per stack: the worker receives the
-stack file and the specification, writes its derivation before touching
-geometry, grounds every change in tier-0 solves it requests itself
-(free, unlimited), and obtains tier-1 numbers only by ending its turn
-with \texttt{MEASURE <stack>: fixture=<path> predicted\_T=<x>}. The
-conductor gates in order: the fixture must postdate every geometry
-source it claims to measure --- stale fixtures are declined without
-consuming the cap; the per-stack ledger must have calls remaining
-(default three); then the capped harness runs and the numbers are
-relayed --- including failures, which do consume the call. Verdicts are
-\texttt{pass}, \texttt{fail}, or \texttt{unmeasured}; the third can
-never pass.
-
-\emph{Step 6 --- simulate (tier 2).} The agent stages the broadband run
-as a draft and reports the link; a human starts it; results land in the
-project directory like every other artifact.
-
-\emph{Recovery and audit.} Because the directory is the state, a crashed
-worker is redispatched against the same files; a contract violation is a
-recorded failure, not a retry-until-green; and any number in the record
-reconstructs from the tree above plus the archived transcript of the
-session that produced it.
 
 \bibliographystyle{apsrev4-2}
 \bibliography{emergence}

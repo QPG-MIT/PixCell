@@ -11,7 +11,7 @@ stored artifacts, and you can recompute any of them yourself (below).
 | Path | Mode / campaign | What it holds |
 |---|---|---|
 | `chatbots/` | models as API chatbots | benchmark aggregates (`analysis/`, `aggregates/`), the frozen Sec III.A statistics + figure panels (`figure_panels/`), curated reference runs (`june_finals/`), raw trajectories (`trajectories/`), the paper-10 figure run (`paper_10/`), manifests, result decks |
-| `agents/paper_swap/` | models as blind coding agents | the 104-cell matrix (8 devices × 13 configs), briefs, access audit, transcripts, per-cell records |
+| `agents/paper_swap/` | models as blind coding agents | the 208-cell matrix (8 devices × 26 configurations), briefs, access audit, transcripts, per-cell records, and parameter-liveness audit |
 | `agents/catalog_swap/` | models as blind coding agents | the primitives-vs-stencil ladder: 16 recreation cells + the 20-cell two-arm Phase-B game |
 | `agents/pdk_swap/` | models as blind coding agents | the MZI one-drawing→three-fabs proof + MMI craft transfer + tier-2 validation |
 | `benchmark/` | — | the 8 device input fixtures (silhouette + footprint + calibration + meta), each `meta.json` naming its source panel in `benchmark/source_panels/` |
@@ -77,7 +77,7 @@ per-cell record.
 
 Every number in the paper's Results, mapped to its backing file.
 
-### Sec III.A — models as API chatbots
+### Sec III.A — verifier-guided API sampling and revision
 
 | Claim | Artifact |
 |---|---|
@@ -89,20 +89,21 @@ Every number in the paper's Results, mapped to its backing file.
 | raw scored trajectories (all 8 devices, per seed × turn: metrics, telemetry, generated program; failed attempts may lack individual files) | `chatbots/trajectories/FINAL_1..8/benchmark_*/{phase1,phase2,multiturn_seeds}/run_*/turn*/` |
 | chatbot-benchmark per-device cost $0.03–$6 | order-of-magnitude estimate computed in `arxiv/scripts/make_fig_pareto3d.py` (no measured cost ledger exists for those runs) |
 
-### Sec III.B–E — the agent matrix
+### Sec III.B–D — the blind coding-agent matrix
 
 | Claim | Artifact |
 |---|---|
-| 104 cells (13 configs × 8 devices), per-cell verified IoU + violation flags | `agents/paper_swap/sweep_results.json` |
+| 208 cells (26 configurations × 8 devices), per-cell verified IoU + violation flags | `agents/paper_swap/sweep_results.json` |
+| 193/208 source-compliant programs; 90 declared-knob passes, 12 alternate-knob passes, 2 unresolved extension cells | `agents/paper_swap/sweep_results.json`, `agents/paper_swap/knob_retrofit.json` |
 | per-cell tokens / wall-clock (feeds Table `tab:cost`) | `agents/paper_swap/sweep_metrics.json`; USD conversion + bootstrap CIs computed in `arxiv/scripts/make_figures.py` → `arxiv/scripts/agent_table.json` |
 | conductor re-verification of every cell | `agents/paper_swap/sweep_verdicts.txt`, `SWEEP_STATE.md` |
 | access audit over staged sessions | `agents/paper_swap/ACCESS_AUDIT_SWEEP.md` + `transcripts/phaseA/INDEX.json` + `SHA256SUMS` |
-| worker transcripts | `agents/paper_swap/transcripts/phaseA/*.gz` (180 archived; the audit froze at 167 — some cells produced two sessions) |
+| worker transcripts | `agents/paper_swap/transcripts/phaseA/INDEX.json` maps all 208 cells; `SHA256SUMS` enumerates the archived sessions |
 | worker briefs (hint-linted, verbatim) | `agents/paper_swap/briefs/` |
 | per-cell record (program, topology log, iterations, knob check) | `agents/paper_swap/final<N>/output/recreation_<config>/{device.py, recreation_log.json, metrics*.json}` |
 | device provenance (source papers, footprints, stacks) | `agents/paper_swap/curation_manifest.json`, `papers_report_codex.md`, `papers_fom_codex.md` |
 
-### Sec IV — one drawing, three fabs (pdk_swap)
+### Sec IV — retargeting across stack models
 
 | Claim | Artifact |
 |---|---|
@@ -114,7 +115,7 @@ Every number in the paper's Results, mapped to its backing file.
 | tier-2 broadband: FSR 7.77 nm, ER 12.24 dB, task id | `agents/pdk_swap/output/smatrix_result.json` (raw S-matrix: `smatrix_data.hdf5`, bundle) |
 | FlexCredit ledger | `agents/pdk_swap/output/cloud_costs.json` |
 
-### Sec V — the catalog head-to-head (catalog_swap)
+### Sec IV.B — fixed-representation comparison (catalog_swap)
 
 | Claim | Artifact |
 |---|---|
@@ -123,7 +124,7 @@ Every number in the paper's Results, mapped to its backing file.
 | vendor stencil sources | `agents/catalog_swap/stencils/cat<N>_stencil.py` |
 | FlexCredit ledger (0.641 FC) | `agents/catalog_swap/cloud_costs.json` |
 
-### Sec VI — the third dimension
+### Sec IV.C — full-wave and fabrication audits
 
 | Claim | Artifact |
 |---|---|
@@ -132,18 +133,16 @@ Every number in the paper's Results, mapped to its backing file.
 | trident symmetry control: balance 0.500 ± 0.007, 15 cells | `agents/paper_swap/final1/output/sidewall_sweep/trident_matrix.json` |
 | total billed < 13 FlexCredits | sum of the three `cloud_costs.json` ledgers (6.458 + 4.366 + 0.641 = 11.47 FC) + per-cell `billed_fc` in the sweep matrices |
 
-### Sec VIII — the RL study
+### Sec V — verifier-derived training
 
-See the RL study's own record (not yet in this tree — `rl/` currently carries
-the training recipe): `rl/reports/benchmark_eval_bridge2_g.json` (the paper's k=8 table,
-Table `tab:rl`: 0.254 / 0.466; the first draw `benchmark_eval_bridge2.json`, 0.2395 /
-0.4433, is retained as the variance reference),
-`benchmark_attempts_bridge2.jsonl` (per-attempt record), `rl/reports/runs_ledger/`
-(training metrics behind fig_rl_training), `rl/LINEAGE.md` (checkpoint chain).
+The repository contains the training recipes under `rl/` and the derived
+paper table and gallery under `arxiv/`. The full benchmark-attempt and
+training-run ledgers are reserved for the companion training-artifact
+release, as stated in the paper's data-availability paragraph.
 
 ## Curation notes (read before reusing)
 
-1. **`sweep_results.json` is the source of truth** for the 104 cells. Per-cell
+1. **`sweep_results.json` is the source of truth** for the 208 cells. Per-cell
    `metrics*.json` filenames vary across cells (the campaign evolved); do not assume a
    uniform per-cell schema.
 2. **GDS files are not stored** — they regenerate deterministically from each cell's
@@ -163,7 +162,7 @@ Table `tab:rl`: 0.254 / 0.466; the first draw `benchmark_eval_bridge2.json`, 0.2
    keys (`gemini/geminim2p0mflash`, `gemini/geminim2p5mflash`) alongside the clean rows;
    the record is kept as-generated — filter on the clean `model_key` values.
 7. **Phase B ran on `final1` only** within paper_swap ("PHASE B IS FROZEN" for 2–8);
-   cross-stack evidence lives in `pdk_swap` and `catalog_swap`. The 104-cell matrix is a
+   cross-stack evidence lives in `pdk_swap` and `catalog_swap`. The 208-cell matrix is a
    Phase-A (recreation) measurement.
 8. **JEE-polish IoU (0.565→0.628)** in pdk_swap is reproducible from
    `output/jee_refine/` + `mode_cache/` but was not frozen as a standalone metrics JSON
