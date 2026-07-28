@@ -22,6 +22,7 @@ import tempfile
 import threading
 import time
 import uuid
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
@@ -97,6 +98,36 @@ class _PreparedReference:
 def _error_text(value: BaseException | str, limit: int = 1200) -> str:
     text = str(value).replace("\x00", "")
     return text[-limit:]
+
+
+def _json_diagnostic(value: Any) -> Any:
+    """Convert measurement diagnostics to strict, finite JSON primitives."""
+
+    if value is None or isinstance(value, (str, bool)):
+        return value
+    if isinstance(value, int):
+        return int(value)
+    if isinstance(value, float):
+        result = float(value)
+        if not math.isfinite(result):
+            raise ValueError("measurement diagnostic is not finite")
+        return result
+    if isinstance(value, np.generic):
+        return _json_diagnostic(value.item())
+    if isinstance(value, np.ndarray):
+        return _json_diagnostic(value.tolist())
+    if isinstance(value, Mapping):
+        if any(not isinstance(key, str) for key in value):
+            raise TypeError("measurement diagnostic keys must be strings")
+        return {
+            key: _json_diagnostic(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [_json_diagnostic(item) for item in value]
+    raise TypeError(
+        f"measurement diagnostic contains {type(value).__name__}"
+    )
 
 
 def _render_sha256(image: Image.Image) -> str:
@@ -764,6 +795,14 @@ class PixCellEvaluator:
                     prepared.calibration,
                 )
                 metrics = compute_metrics(raster, prepared.target.copy())
+                diagnostics = _json_diagnostic(
+                    {
+                        **metrics,
+                        "render_info": render_info,
+                        "render_sha256": _render_sha256(raster),
+                        "reference_sha256": reference.target_image_sha256,
+                    }
+                )
             except Exception as exc:
                 return EvaluationResult(
                     EvaluationStatus.MEASUREMENT_ERROR,
@@ -773,12 +812,10 @@ class PixCellEvaluator:
                     retryable=True,
                 )
 
-        iou = float(metrics["IoU"])
-        dice = float(metrics["Dice"])
-        diagnostics = dict(metrics)
-        diagnostics["render_info"] = render_info
-        diagnostics["render_sha256"] = _render_sha256(raster)
-        diagnostics["reference_sha256"] = reference.target_image_sha256
+        if not isinstance(diagnostics, dict):
+            raise RuntimeError("measurement diagnostics are not an object")
+        iou = float(diagnostics["IoU"])
+        dice = float(diagnostics["Dice"])
         return EvaluationResult(
             EvaluationStatus.OK,
             Attribution.MODEL,

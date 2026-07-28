@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 
 import pytest
 
@@ -30,6 +31,11 @@ def test_ground_truth_self_scores_at_full_precision(core_row, evaluator):
     assert result.dice is not None and result.dice > 0.98
     assert result.iou != round(result.iou, 4)
     assert len(result.metrics["render_sha256"]) == 64
+    json.dumps(result.metrics, allow_nan=False)
+    assert all(
+        type(value) is bool
+        for value in result.metrics["render_info"]["size_match"]
+    )
 
 
 def test_purity_rejection_happens_before_execution(core_row, evaluator, tmp_path):
