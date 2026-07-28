@@ -347,7 +347,7 @@ def load_protocol(
                 if stage.stage_id in BASE_QWEN_RL_STAGE_IDS:
                     expected_gates = {
                         "smoke": (
-                            "base-level-held-out-baseline-receipt"
+                            "initial"
                             if stage.current_level == "L0"
                             else (
                                 "prior-and-current-level-held-out-"

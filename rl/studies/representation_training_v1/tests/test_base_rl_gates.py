@@ -346,6 +346,20 @@ def test_base_l0_panel_run_and_resume_has_no_fictitious_receipt(
     with training_store.acquire_stage_lock(
         StageKey(STUDY_ID, stage.stage_id, "r0")
     ):
+        direct_approval = launcher._approval_record(
+            repo_root=REPO_ROOT,
+            store=training_store,
+            key=StageKey(STUDY_ID, stage.stage_id, "r0"),
+            stage=stage,
+            wave_name="smoke",
+            source_git_sha=SOURCE_SHA,
+            protocol=protocol,
+        )
+    assert direct_approval is None
+
+    with training_store.acquire_stage_lock(
+        StageKey(STUDY_ID, stage.stage_id, "r0")
+    ):
         base_approval = launcher._approval_record(
             repo_root=REPO_ROOT,
             store=training_store,

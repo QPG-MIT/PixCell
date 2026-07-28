@@ -196,17 +196,20 @@ executes a known-good program inside the immutable sandbox.
 
 ## Initial start order
 
-The first paid starts are deliberately staggered:
+The first paid starts may run in parallel:
 
-1. evaluate base Qwen on `level-progress-l0` and seal its 93-row slot-6
-   baseline before any pure-RL update;
+1. start `qwen-base-rl-l0/smoke` directly from base Qwen. Its first 8×G4
+   rollout batch is the untouched policy's on-policy starting measurement,
+   immediately followed by one optimizer update;
 2. start `qwen-mixed-sft/complete`, confirm its first metric and local
    checkpoint activity without stopping it;
 3. start `qwen-l0-sft/complete`, confirm the same;
 4. start `inkling-l4-rl/smoke`, which ends after one update;
-5. start `qwen-base-rl-l0/smoke`, which is now authorized by the sealed base
-   baseline and ends after one update;
-6. evaluate the resulting checkpoints before approving any dependent stage.
+5. evaluate selected checkpoints only when the result will govern a
+   continuation or final comparison.
+
+The optional `level-progress-l0` base panel remains available for reporting,
+but it does not gate the direct RL branch.
 
 The guarded launcher exposes no model, data, optimizer, token, schedule, or
 W&B override:
