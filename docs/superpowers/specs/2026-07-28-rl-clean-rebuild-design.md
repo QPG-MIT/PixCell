@@ -121,14 +121,37 @@ preflight (dataset digest check against `freeze.json`, sandbox binding, clean-tr
 | Curriculum | staged L0→L4, **30 steps/level**, 80/20 current/replay via the existing deterministic five-step cycle | old stage budgets (30/35/30) + this tree's tested scheduler; no mastery gates, no approvals |
 | Checkpoints | state every 5 steps; sampler checkpoint at each level boundary + final | enough to resume and to evaluate; nothing else |
 
-### 2.3 The two runs (the ablation the paper explicitly defers)
-- **Run A (`l0sft-rl`)**: SFT on the 642 L0 `depth/train` rows (batch 64, lr 1e-4
-  linear, `LAST_ASSISTANT_MESSAGE`, 2 epochs ≈ 22 steps, prompt byte-identical to RL) →
-  RL L0→L4, 150 steps.
-- **Run B (`base-rl`)**: raw base → RL L0→L4, 150 steps.
-Identical RL recipe, schedule, reward, and eval ⇒ a controlled ±L0-SFT comparison at
-matched RL budget — precisely the "controlled ablation" and "untouched training
-evaluations" the paper names as the open door (`arxiv/main.tex:879-881, :932-942`).
+### 2.3 The four runs — a 2×2: (±L0-SFT) × (no-think / think) [user-extended 2026-07-28]
+The failed campaign's one useful measurement is RC-H05: zero-shot Qwen with thinking
+at a 60k output ceiling scores **0.218 mean IoU@1** on F1–F8 under the corrected v2
+prompt — already near the old post-training result (0.24). RL from that operating
+point starts from a far higher launchpad, and the campaign's two 6-step runs sampled
+with thinking@60k through this exact Env, so the path is execution-proven. Per the
+user's direction, the ±SFT pair runs at both operating points, all four simultaneous:
+
+| Run | Operating point | Arm |
+|---|---|---|
+| **A** `runA-l0sft-rl` | `qwen3_5_disable_thinking`, max_tokens 4096 | L0-SFT → RL L0→L4 (150 steps) |
+| **B** `runB-base-rl` | `qwen3_5_disable_thinking`, max_tokens 4096 | base → RL L0→L4 (150 steps) |
+| **C** `runC-think-base-rl` | `qwen3_5` (thinking), max_tokens 60000 | base → RL L0→L4 (150 steps) |
+| **D** `runD-think-l0sft-rl` | `qwen3_5` (thinking), max_tokens 60000 | L0-SFT → RL L0→L4 (150 steps) |
+
+Within each operating point the pair is a controlled ±L0-SFT comparison at matched RL
+budget — the "controlled ablation" and "untouched training evaluations" the paper
+defers (`arxiv/main.tex:879-881, :932-942`). Across operating points, A/B vs C/D
+measures what the reasoning budget buys under identical reward, data, and schedule.
+
+**Run D's SFT is gated.** The renderer diagnostic showed code-only SFT collapsing
+checkpoints under the thinking renderer (0/8 executable) — but that was mixed-level
+SFT, where L1–L4 labels plausibly truncated at `max_length`; L0-only SFT is the clean
+test of the renderer hypothesis. D therefore runs its L0-SFT (code-only labels,
+thinking renderer) and proceeds to RL **only if** the post-SFT sanity probe beats the
+base-model thinking probe; otherwise D falls back to RL-from-base (C's config, second
+seed) and the SFT collapse is reported as a finding. SFT for A stays as designed:
+642 L0 `depth/train` rows, batch 64, lr 1e-4 linear, `LAST_ASSISTANT_MESSAGE`,
+2 epochs ≈ 22 steps, prompt byte-identical to RL. Image stays 1440 for all four
+(dataset-native; the protocol's 1920 was a no-op since no dataset image exceeds 1440).
+Prompt-identity rule: each SFT and the RL that resumes it share one renderer.
 
 **SFT hygiene (the mixed-SFT autopsy made this mandatory):**
 1. decode-and-inspect rendered datums (text + train-mask) before spending;
@@ -163,8 +186,12 @@ store roots. Run artifacts live outside the repo under the existing training vol
 Runs launch in detached host tmux panes (not inside an agent session), logging to the
 run dir; monitoring reads `metrics.jsonl` and rollout summaries. Keys are sourced from
 the existing env file at launch, never printed. Smoke first: 2 GRPO steps at G=8×B=2 on
-L0 to validate the full loop and measure real per-step cost; the extrapolated cost of
-both full runs is reported before the full launches go out.
+L0 **per operating point** (one no-think smoke, one think smoke — thinking decode is
+~3–10× per rollout, so C/D cost must be measured, not assumed); the extrapolated cost
+of all four full runs is reported before the full launches go out. Four simultaneous
+runs share this machine's Docker evaluator: per-candidate containers are capped at
+1 CPU and the batcher bounds in-flight evaluations per run, so evaluation queues
+rather than thrashes; sampling, not evaluation, dominates step wall-clock.
 
 ### 2.7 Deletions (this branch)
 - `rl/studies/` — all three studies + both extensions (the campaign ceremony, the
