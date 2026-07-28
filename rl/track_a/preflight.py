@@ -236,7 +236,6 @@ def run(args: argparse.Namespace) -> dict:
     forbidden = (
         "DISPLAY NOTE",
         "magnification x:y",
-        "px/um",
         "target_image",
         str(sample["id"]),
         str(sample["representation_id"]),

@@ -1,16 +1,30 @@
-"""The versioned direct Phase-A prompt shared by training and evaluation."""
+"""The versioned direct Phase-A prompt shared by training and evaluation.
+
+v3 adds the anisotropy scale note. The dataset's model image is the
+max-visibility view — per-axis magnified, NOT physical aspect. Measured over
+depth/train: 50% of rows exceed 1.6x aspect distortion (p90 = 5.0x, L4 max
+31.6x). Above the 1.6x threshold the prompt states the per-axis render
+scale, computed ONLY from model-visible inputs (the attached image's ink
+bounding box and the stated footprint) — honest input, not leakage; the
+private library shipped the same note for the same reason.
+"""
 
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+from PIL import Image
+
 from rl.common.contracts import ModelObservation
 
 
-CONTRACT_VERSION = "pixcell-direct-reconstruction-v2"
+CONTRACT_VERSION = "pixcell-direct-reconstruction-v3"
+SCALE_NOTE_ANISOTROPY_THRESHOLD = 1.6
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _CATALOG_PATH = (
     _REPO_ROOT
@@ -39,6 +53,47 @@ def prompt_asset_hashes() -> dict[str, str]:
     }
 
 
+_SCALE_NOTE_CACHE: dict[str, str] = {}
+
+
+def scale_note(observation: ModelObservation) -> str:
+    """The anisotropy note, or an empty string below the threshold.
+
+    Computed only from what the model can already see: the attached image's
+    ink bounding box and the stated footprint.
+    """
+
+    cached = _SCALE_NOTE_CACHE.get(observation.image_sha256)
+    if cached is not None:
+        return cached
+    array = np.asarray(
+        Image.open(io.BytesIO(observation.image_bytes)).convert("L")
+    )
+    mask = array < 245
+    ys, xs = np.where(mask)
+    if xs.size == 0:
+        note = ""
+    else:
+        bbox_w = int(xs.max()) - int(xs.min()) + 1
+        bbox_h = int(ys.max()) - int(ys.min()) + 1
+        length_um, width_um = observation.footprint_um
+        scale_x = bbox_w / length_um
+        scale_y = bbox_h / width_um
+        anisotropy = max(scale_x / scale_y, scale_y / scale_x)
+        if anisotropy <= SCALE_NOTE_ANISOTROPY_THRESHOLD:
+            note = ""
+        else:
+            note = (
+                "\nNOTE: the image is NOT drawn to physical scale - it is "
+                f"rendered at {scale_x:.2f} px/um horizontally and "
+                f"{scale_y:.2f} px/um vertically. Trust the stated footprint "
+                "for physical dimensions, not the image's apparent aspect "
+                "ratio.\n"
+            )
+    _SCALE_NOTE_CACHE[observation.image_sha256] = note
+    return note
+
+
 def build_prompt_text(observation: ModelObservation) -> str:
     """Build the only text visible to a direct image-to-code policy."""
 
@@ -54,7 +109,7 @@ material on layer `(1, 0)` and WHITE is background.
 Physical footprint, where `footprint_um` is `[x-length, y-width]`:
 
 {footprint_text}
-
+{scale_note(observation)}
 ---
 
 ## Exact GDSFactory Extended Primitive Catalogue

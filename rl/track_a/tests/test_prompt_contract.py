@@ -38,7 +38,6 @@ def test_prompt_is_one_blind_image_first_turn(core_row):
     forbidden = (
         "DISPLAY NOTE",
         "magnification x:y",
-        "px/um",
         "target_image",
         "target raster",
         "candidate raster",
@@ -143,4 +142,4 @@ def test_catalog_dataset_and_runtime_whitelists_are_identical():
 
 
 def test_contract_version_is_pinned():
-    assert CONTRACT_VERSION == "pixcell-direct-reconstruction-v2"
+    assert CONTRACT_VERSION == "pixcell-direct-reconstruction-v3"
