@@ -43,33 +43,30 @@
 \date{\today}
 
 \begin{abstract}
-Photonic components are defined by physical geometry, yet automated design
-systems largely operate through text or fixed component libraries. We
-present PixCell, a neurosymbolic system that converts a component silhouette
-and physical footprint into an executable GDSFactory program assembled from
-a restricted catalog of geometric primitives. A deterministic verifier
-executes each program, renders its geometry at calibrated absolute scale,
-and returns both an overlap score and a spatial residual for selection and
-revision. Across 26 multimodal coding-agent configurations and eight blind
-device targets, PixCell produces 208 programs. The two strongest
-configurations achieve mean intersection-over-union (IoU) values of $0.974$
-and $0.955$, and 193 of 208 programs satisfy the source contract. Archived
-API experiments further show that the verifier converts additional sampling
-and revision into measurable gains: only $12.7\%$ of first seeds are best
-among 63 multi-seed experiments, and best-of-five revision improves $18.3\%$
-over the first turn across 640 trajectories. Downstream retargeting depends
-on the design variables retained in the program. Under fixed
-representations, reconstructed programs and library PCells pass 21 of 30 and
-22 of 30 cross-stack cases, respectively. Full-wave simulations then expose
-the boundary of inexpensive analytic evaluation: Mach--Zehnder
-interferometer fringe spacing agrees within $2.9\%$, while a directional
-coupler estimate fails quantitatively. Finally, verifier-derived training
-yields mean
-single-attempt and best-of-eight IoU values of $0.254$ and $0.466$ in an
-open-weight Qwen3.6-35B-A3B model; a raw-base GRPO lineage reaches $0.186$
-and $0.380$. PixCell therefore provides an executable and measurable
-interface for visual photonic component creation, physical retargeting, and
-model improvement.
+We present PixCell, a neurosymbolic system that provides a visual-to-executable
+interface for photonic component design. PixCell converts a component
+silhouette and its physical footprint into a GDSFactory program assembled
+from a restricted catalog of geometric primitives. Program execution permits
+deterministic comparison with the target at fixed physical calibration before
+electromagnetic evaluation. Across 26 coding-agent configurations and an
+eight-device benchmark, the two strongest configurations achieve mean
+intersection-over-union (IoU) values of $0.974$ and $0.955$, with one retained
+blind result per configuration-device pair. Of the resulting 208 programs,
+193 satisfy the source contract. The experiments also show that downstream
+retargetability depends on the degrees of freedom retained in the program.
+Primitive-based interferometer programs satisfy an $8.0\,$nm free spectral
+range target and the original footprint constraint on modeled 220-nm SOI,
+400-nm SiN, and 400-nm TFLN stacks, with analytic relative error below
+$0.009\%$ under the analytic evaluator. A generic library MZI reaches the
+spectral target but violates the footprint constraint on all three stacks.
+Full-wave simulations audit the limits of the inexpensive analytic evaluator.
+Finally, verifier-derived training produces measurable cross-figure
+performance in an open-weight Qwen3.6-35B-A3B model. An isolated second draw
+from the scorer-selected lineage reaches mean single-attempt and best-of-eight
+IoU values of $0.254$ and $0.466$ on a training-excluded development
+benchmark; a raw-base GRPO lineage reaches $0.186$ and $0.380$. These results
+establish a controlled framework for measuring, retargeting, and improving
+visual-to-parametric photonic component design.
 \end{abstract}
 
 \maketitle
@@ -892,7 +889,24 @@ imprecise. The result establishes trainability from executable geometry,
 with substantial room between the adapted policy and the coding agents of
 Sec.~\ref{sec:results}.
 
-\section{Discussion and conclusion}\label{sec:conclusion}
+\section{Research contracts}\label{sec:conclusion}
+
+The same separation between open-ended search and deterministic measurement
+also structures follow-on work. A research contract freezes five elements
+before execution: a question, acceptance tests, required evidence, a verdict
+procedure, and a claim boundary. Researchers or agents choose how to pursue
+the objective; an independent gate settles it by recomputing the declared
+measurements from retained artifacts. Four contracts are currently open:
+RC-01, shape-aware visual verification; RC-02, process-faithful 2D-to-3D
+retargeting; RC-03, a representation and scale dataset; and RC-04, the
+smallest qualifying open model. Complete gates, evidence manifests, failure
+taxonomies, claim boundaries, and bounty terms are versioned under
+\texttt{research-contracts/}. Through the
+\href{https://pixcell.qpaig.com/\#research-contracts}{PixCell project page},
+a researcher or agent can inspect the frozen terms, claim a funded contract,
+work against the released PixCell environment and versioned fixtures, and
+submit the required evidence bundle. The marketplace maintains live claim
+state and funding; issuer-side recomputation determines settlement.
 
 PixCell formulates visual photonic component authoring as executable program
 synthesis under deterministic verification. Across 26 coding-agent

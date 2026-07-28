@@ -1,0 +1,139 @@
+% Final representation-training insertion module for the PixCell paper.
+%
+% This file is intentionally NOT input by main.tex. It records the parts of
+% the final campaign that are already frozen and leaves placeholders only for
+% evidence that the paid runs must produce. Do not activate it until every
+% reported checkpoint and measurement is bound to the external run ledger.
+%
+% FROZEN NOW
+%   Public dataset: qpaig-mit/pixcell, configuration depth, revision v2.0.0
+%   Dataset source release: dataset-v2.0.0
+%   depth rows: 3,468 train and 1,092 validation
+%   depth logical SHA-256:
+%     676c49134d4d044c7d84426cf8eeecf09302e74ca4aa548956f14b7631a4d80b
+%   Direct-policy contract: pixcell-direct-reconstruction-v2
+%   Study definition:
+%     rl/studies/representation_training_v1/protocol.json
+%   Protocol logical SHA-256:
+%     498f47fe806e48d82072925f1e78437c0a114bcf51ffdf30ab7ebaad46a105c9
+%   Training boundary: rl/track_a/
+%   Inkling runtime bridge: rl/track_b/
+%   Evidence root:
+%     $PIXCELL_TRAINING_ROOT/studies/representation-training-v1/
+%
+% RUN-DEPENDENT ITEMS STILL TO FREEZE
+% [ ] Exact source commit and immutable evaluator image digest.
+% [ ] Completed waves, numeric checkpoints, and cumulative steps per lineage.
+% [ ] Promotion and checkpoint-selection receipts.
+% [ ] Full 1,092-row depth-validation reports for selected Qwen checkpoints.
+% [ ] Final four-attempt F1--F8 reports for every reported model.
+% [ ] Every attempt retained, including extraction and execution failures.
+% [ ] Pure-executable and source-compliance counts.
+% [ ] Independent repeats or an explicit statement that r0 is the only run.
+% [ ] Figure-data manifest with source records and hashes.
+% [ ] Regenerated figures/fig_rl_training.pdf from that frozen manifest.
+%
+% Suggested use:
+%   Replace the historical training-study prose in main.tex after the new
+%   campaign is complete. The old fig_rl_training.pdf contains historical
+%   telemetry and must not be reused for the new study.
+
+\subsection{Frozen dataset and study design}
+
+The representation-training study uses the public
+\href{https://huggingface.co/datasets/qpaig-mit/pixcell}
+{\texttt{qpaig-mit/pixcell}} dataset, configuration \texttt{depth}, at
+revision \texttt{v2.0.0}. The release contains 3{,}468 training rows and
+1{,}092 held-out parameter settings over 546 representations. Each policy
+receives the maximum-visibility component image, its physical footprint, and
+the fixed \texttt{pixcell-direct-reconstruction-v2} programming contract.
+Supervised stages use the corresponding primitive-only program as the target.
+Target rasters, calibration, reference programs, representation labels, and
+split metadata remain in the separately keyed \texttt{references}
+configuration and never enter model messages.
+
+The dataset revision is bound to a release manifest, while the complete
+stage graph and every recipe are frozen in
+\path{rl/studies/representation_training_v1/protocol.json}. Run manifests
+and sampled programs are retained outside the repository under the
+versioned \path{representation-training-v1} evidence root.
+
+\subsection{Training paths}
+
+The study tests five predefined hypotheses. RT-H01 applies one mixed
+supervised pass to all 3{,}468 training rows. RT-H02 begins from the shared
+L0 supervised checkpoint and adds L1 through L4 supervision sequentially,
+resetting the optimizer at each level. RT-H03 begins from the same L0
+checkpoint and learns L1 through L4 with geometry-rewarded reinforcement
+learning. RT-H04 continues the mixed-supervised checkpoint with reinforcement
+learning from its first unmastered level. RT-H05 applies a bounded L4
+reinforcement-learning stage to Inkling. The protocol represents these paths
+as \texttt{qwen-mixed-sft} followed by the first required stage from
+\texttt{qwen-mixed-rl-l0} through \texttt{qwen-mixed-rl-l4};
+\texttt{qwen-l0-sft} followed by
+\texttt{qwen-sequential-sft-l1} through
+\texttt{qwen-sequential-sft-l4}; \texttt{qwen-l0-sft} followed by
+\texttt{qwen-l0-rl-l1} through \texttt{qwen-l0-rl-l4}; and
+\texttt{inkling-l4-rl}.
+
+The Qwen policy is Qwen3.6-35B-A3B with a rank-32 LoRA. Supervised training
+uses batch size 64, Adam with learning rate $10^{-4}$, linear decay, one
+physical pass, and loss only on the generated program and end token. Each
+Qwen reinforcement-learning level permits at most 30 steps, with checkpoints
+at steps 1, 5, 10, 15, 20, 25, and 30. Each step contains eight prompt groups
+with four samples per group, a $10^{-5}$ learning rate, zero KL penalty, and
+20\% replay from earlier levels. The reward is raw absolute-scale IoU after
+deterministic execution and source verification. Inkling uses the same
+four-sample grouping and learning rate for its bounded L4 path, with sealed
+ceilings at steps 1, 6, and 14.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{fig_rl_training.pdf}
+\caption{\textbf{Verifier-derived representation training under the frozen
+study protocol.}
+(a)~The predefined mixed-SFT, sequential-SFT, composition-by-RL,
+full-SFT-then-RL, and bounded Inkling paths. Points denote numeric checkpoints
+bound to immutable run receipts. Report representation-macro mean raw IoU and
+pure-executable rate on all 1{,}092 rows of the \texttt{depth/validation}
+split.
+(b)~Direct-policy performance on the training-excluded F1--F8 benchmark.
+Progress evaluations use one attempt per target; the final comparison uses
+four attempts per target. Report mean attempt-level IoU and mean per-target
+best-of-four IoU, retain failed attempts at score zero, and identify any
+checkpoint for which F1--F8 feedback influenced promotion or selection.
+All plotted values are recomputed from the released attempt ledger. The final
+caption must state completed step counts, selected checkpoint identities,
+sample counts, and whether uncertainty comes from independent training runs
+or repeated evaluation draws.}
+\label{fig:rltraining}
+\end{figure*}
+
+\subsection{Evaluation and final results}
+
+The full held-out-parameter panel contains all 1{,}092
+\texttt{depth/validation} rows. The F1--F8 progress panel uses one attempt per
+figure, while the final benchmark uses four. A level is mastered only when
+mean raw absolute-scale IoU reaches $0.80$ and the pure-executable rate
+reaches $0.95$. Reference rasters and calibration enter only the evaluator
+after a program has been sampled.
+
+% Replace this paragraph from the immutable stage and promotion receipts.
+The completed campaign executes [COMPLETED STAGES AND WAVES]. The selected
+mixed-SFT checkpoint is [CHECKPOINT], and its reinforcement-learning branch
+continues through [FINAL LEVEL, CHECKPOINT, AND CUMULATIVE STEP COUNT]. The
+shared L0 checkpoint produces [SEQUENTIAL-SFT OUTCOME] along the sequential
+supervision path and [COMPOSITION-BY-RL OUTCOME] along the reinforcement
+learning path. The bounded Inkling branch reaches [CHECKPOINT AND STEP COUNT].
+Checkpoint selection follows [EXACT PREDECLARED RULE AND RECEIPT], with
+[EXPLICIT ACCOUNT OF ANY DEVELOPMENT-BENCHMARK FEEDBACK].
+
+% Replace this paragraph from the final four-attempt F1--F8 reports.
+Under the frozen four-attempt protocol, [PRIMARY LINEAGE] produces
+[EXECUTABLE COUNT] executable programs from 32 attempts, with mean
+attempt-level IoU [MEAN IOU] and mean per-target best-of-four IoU
+[BEST-OF-FOUR IOU]. [COMPARISON LINEAGE] reaches [COMPARISON MEAN IOU] and
+[COMPARISON BEST-OF-FOUR IOU]. Report the source-compliant count, every
+task-level failure, and [UNCERTAINTY ACROSS INDEPENDENT RUNS OR A CLEAR
+SINGLE-RUN LIMITATION]. State which checkpoints are confirmatory outcomes and
+which measurements served campaign diagnosis or promotion.
