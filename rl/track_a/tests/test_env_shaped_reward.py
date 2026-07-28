@@ -13,7 +13,7 @@ from rl.common.baselines import cached_rect_baseline
 from rl.common.contracts import task_from_row
 from rl.common.evaluator import Attribution, EvaluationResult, EvaluationStatus
 from rl.track_a import tinker_data
-from rl.track_a.reward import reward_for_policy
+from rl.track_a.reward import norm_excess, reward_for_policy
 from rl.track_a.tinker_data import TrackAEnv
 
 
@@ -64,7 +64,7 @@ def test_env_step_pays_shaped_reward_with_task_baseline(core_row, monkeypatch):
     assert step.reward == pytest.approx(expected)
     assert step.reward > 0.05
     assert step.metrics["iou_n"] == pytest.approx(
-        max(0.0, (0.62 - baseline.iou_rect) / (1.0 - baseline.iou_rect))
+        norm_excess(0.62, baseline.iou_rect)
     )
     assert "teacher_nb" in step.metrics and "degenerate" in step.metrics
 
