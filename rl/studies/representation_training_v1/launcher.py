@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import math
 import os
@@ -46,6 +47,7 @@ _ENVIRONMENT_FIELDS = (
     "WANDB_JOB_TYPE",
     "WANDB_MODE",
     "WANDB_NAME",
+    "WANDB_PROJECT",
     "WANDB_RESUME",
     "WANDB_RUN_GROUP",
     "WANDB_RUN_ID",
@@ -102,10 +104,7 @@ def _tracking_binding(
         "entity": protocol["tracking"]["entity"],
         "project": protocol["tracking"]["project"],
         "run_id": run_id,
-        "name": (
-            f"{STUDY_ID}/{stage.stage_id}/{key.replicate_id}"
-            f"@{source_git_sha[:12]}"
-        ),
+        "name": (f"{STUDY_ID}/{stage.stage_id}/{key.replicate_id}@{source_git_sha[:12]}"),
         "group": f"{STUDY_ID}/{model_family}",
         "job_type": stage.kind,
         "tags": [
@@ -138,6 +137,7 @@ def _wandb_environment(
             "WANDB_JOB_TYPE": str(binding["job_type"]),
             "WANDB_MODE": "online",
             "WANDB_NAME": str(binding["name"]),
+            "WANDB_PROJECT": str(binding["project"]),
             "WANDB_RESUME": "must" if resume else "never",
             "WANDB_RUN_GROUP": str(binding["group"]),
             "WANDB_RUN_ID": str(binding["run_id"]),
@@ -153,6 +153,157 @@ def _wandb_environment(
                 os.environ.pop(name, None)
             else:
                 os.environ[name] = value
+
+
+def _finish_wandb_run(wandb_module: Any, run: Any) -> None:
+    """Best-effort cleanup after rejecting a live W&B binding."""
+
+    finish = getattr(run, "finish", None)
+    if callable(finish):
+        try:
+            finish()
+            return
+        except BaseException:
+            pass
+    module_finish = getattr(wandb_module, "finish", None)
+    if callable(module_finish):
+        try:
+            module_finish()
+        except BaseException:
+            pass
+
+
+@contextmanager
+def _sealed_wandb_initialization(
+    binding: Mapping[str, Any],
+    *,
+    resume: bool,
+    wandb_module: Any | None = None,
+    on_initialized: Callable[[Mapping[str, Any]], None] | None = None,
+) -> Iterator[None]:
+    """Force Cookbook logging onto the exact run sealed in the manifest.
+
+    The Cookbook intentionally owns the call to ``wandb.init``.  This narrow
+    wrapper preserves that integration while replacing identity-bearing
+    arguments with the immutable launch binding.  The observed live run is
+    checked and recorded before the Cookbook can construct a Tinker client.
+    """
+
+    module = wandb_module if wandb_module is not None else importlib.import_module("wandb")
+    if getattr(module, "run", None) is not None:
+        raise TrainingLaunchError("a W&B run is already active before sealed initialization")
+    original_init = getattr(module, "init", None)
+    if not callable(original_init):
+        raise TrainingLaunchError("the W&B module has no callable init")
+    init_calls = 0
+    initialized_run: Any | None = None
+
+    def sealed_init(*args: Any, **kwargs: Any) -> Any:
+        nonlocal init_calls, initialized_run
+        init_calls += 1
+        if init_calls != 1:
+            raise TrainingLaunchError("the training process attempted multiple W&B initializations")
+        if args:
+            raise TrainingLaunchError("the training process used positional W&B identity arguments")
+        for field in ("project", "name"):
+            supplied = kwargs.get(field)
+            if supplied is not None and str(supplied) != str(binding[field]):
+                raise TrainingLaunchError(f"the training process supplied a different W&B {field}")
+        sealed = dict(kwargs)
+        sealed.update(
+            {
+                "entity": str(binding["entity"]),
+                "project": str(binding["project"]),
+                "dir": str(binding["directory"]),
+                "id": str(binding["run_id"]),
+                "name": str(binding["name"]),
+                "group": str(binding["group"]),
+                "job_type": str(binding["job_type"]),
+                "tags": tuple(str(item) for item in binding["tags"]),
+                "mode": "online",
+                "resume": "must" if resume else "never",
+                "save_code": False,
+            }
+        )
+        run = original_init(**sealed)
+        initialized_run = run
+        settings = getattr(run, "settings", None)
+        observed = {
+            "run_id": str(getattr(run, "id", "")),
+            "entity": str(getattr(run, "entity", "")),
+            "project": str(getattr(run, "project", "")),
+            "name": str(getattr(run, "name", "")),
+            "group": str(getattr(run, "group", "")),
+            "job_type": str(getattr(run, "job_type", "")),
+            "tags": [str(item) for item in getattr(run, "tags", ())],
+            "resumed": bool(getattr(run, "resumed", False)),
+            "url": str(getattr(run, "url", "")),
+            "requested_directory": str(binding["directory"]),
+            "resolved_root_directory": str(getattr(settings, "root_dir", "")),
+            "files_directory": str(getattr(run, "dir", "")),
+            "requested_resume": "must" if resume else "never",
+            "resolved_resume": str(getattr(settings, "resume", "")),
+        }
+        expected = {
+            "run_id": str(binding["run_id"]),
+            "entity": str(binding["entity"]),
+            "project": str(binding["project"]),
+            "name": str(binding["name"]),
+            "group": str(binding["group"]),
+            "job_type": str(binding["job_type"]),
+            "tags": [str(item) for item in binding["tags"]],
+            "resumed": resume,
+            "resolved_resume": "must" if resume else "never",
+        }
+        differences = [field for field, value in expected.items() if observed[field] != value]
+        requested_directory = Path(str(binding["directory"])).resolve(strict=False)
+        try:
+            resolved_directory = Path(observed["resolved_root_directory"]).resolve(
+                strict=True
+            )
+        except (OSError, RuntimeError):
+            differences.append("resolved_root_directory")
+        else:
+            if resolved_directory != requested_directory:
+                differences.append("resolved_root_directory")
+        try:
+            files_directory = Path(observed["files_directory"]).resolve(
+                strict=True
+            )
+        except (OSError, RuntimeError):
+            differences.append("files_directory")
+        else:
+            if not files_directory.is_relative_to(requested_directory):
+                differences.append("files_directory")
+        if differences:
+            _finish_wandb_run(module, run)
+            raise TrainingLaunchError(
+                "the live W&B run differs from its sealed " + ", ".join(differences)
+            )
+        try:
+            if on_initialized is not None:
+                on_initialized(observed)
+        except BaseException:
+            _finish_wandb_run(module, run)
+            raise
+        return run
+
+    module.init = sealed_init
+    try:
+        yield
+    except BaseException:
+        if initialized_run is not None:
+            _finish_wandb_run(module, initialized_run)
+        raise
+    else:
+        if init_calls != 1:
+            if initialized_run is not None:
+                _finish_wandb_run(module, initialized_run)
+            raise TrainingLaunchError(
+                "training returned without initializing its sealed W&B run"
+            )
+    finally:
+        module.init = original_init
 
 
 def _checkpoint_from_inventory(
@@ -171,14 +322,11 @@ def _checkpoint_from_inventory(
         raise TrainingLaunchError("parent checkpoint inventory digest differs")
     entries = inventory.get("entries")
     if not isinstance(entries, list) or dict(selected) not in entries:
-        raise TrainingLaunchError(
-            "selected parent checkpoint is not in the parent receipt"
-        )
+        raise TrainingLaunchError("selected parent checkpoint is not in the parent receipt")
     checkpoint = dict(selected)
-    if (
-        not _TINKER_PATH.fullmatch(str(checkpoint.get("state_path", "")))
-        or not _TINKER_PATH.fullmatch(str(checkpoint.get("sampler_path", "")))
-    ):
+    if not _TINKER_PATH.fullmatch(
+        str(checkpoint.get("state_path", ""))
+    ) or not _TINKER_PATH.fullmatch(str(checkpoint.get("sampler_path", ""))):
         raise TrainingLaunchError("selected parent checkpoint has invalid URIs")
     return checkpoint
 
@@ -211,31 +359,21 @@ def _parent_binding(
             selected_stage = str(approval.payload.get("parent_stage_id", ""))
             selected_wave = str(approval.payload.get("parent_wave", ""))
         else:
-            raise TrainingLaunchError(
-                f"{stage.stage_id} requires an approved dynamic parent"
-            )
+            raise TrainingLaunchError(f"{stage.stage_id} requires an approved dynamic parent")
         allowed = {"qwen-mixed-sft"}
         target_index = int(str(stage.current_level)[1:])
-        allowed.update(
-            f"qwen-mixed-rl-l{index}" for index in range(target_index)
-        )
+        allowed.update(f"qwen-mixed-rl-l{index}" for index in range(target_index))
         if selected_stage not in allowed or selected_wave != "complete":
-            raise TrainingLaunchError(
-                f"{stage.stage_id} approval selected an invalid parent"
-            )
+            raise TrainingLaunchError(f"{stage.stage_id} approval selected an invalid parent")
         parent_stage_id, parent_wave = selected_stage, selected_wave
 
     parent_key = StageKey(key.study_id, parent_stage_id, key.replicate_id)
     receipt = store.load_wave_receipt(parent_key, wave=parent_wave)
     if receipt is None:
-        raise TrainingLaunchError(
-            f"{stage.stage_id} requires {parent_stage_id}/{parent_wave}"
-        )
+        raise TrainingLaunchError(f"{stage.stage_id} requires {parent_stage_id}/{parent_wave}")
     checkpoint: dict[str, Any]
     frozen_parent = (
-        existing_manifest.payload.get("parent_receipt")
-        if existing_manifest is not None
-        else None
+        existing_manifest.payload.get("parent_receipt") if existing_manifest is not None else None
     )
     if isinstance(frozen_parent, Mapping):
         if (
@@ -243,24 +381,18 @@ def _parent_binding(
             or frozen_parent.get("wave") != parent_wave
             or frozen_parent.get("record_sha256") != receipt.record_sha256
         ):
-            raise TrainingLaunchError(
-                "frozen stage manifest and current parent receipt differ"
-            )
+            raise TrainingLaunchError("frozen stage manifest and current parent receipt differ")
         frozen_checkpoint = frozen_parent.get("checkpoint")
         if not isinstance(frozen_checkpoint, Mapping):
             raise TrainingLaunchError("frozen stage parent has no checkpoint")
         checkpoint = _checkpoint_from_inventory(
             receipt,
             frozen_checkpoint,
-            inventory_sha256=frozen_parent.get(
-                "checkpoint_inventory_logical_sha256"
-            ),
+            inventory_sha256=frozen_parent.get("checkpoint_inventory_logical_sha256"),
         )
     else:
         if approval is None:
-            raise TrainingLaunchError(
-                f"{stage.stage_id} requires a selected parent checkpoint"
-            )
+            raise TrainingLaunchError(f"{stage.stage_id} requires a selected parent checkpoint")
         selected = approval.payload.get("selected_parent_checkpoint")
         if not isinstance(selected, Mapping):
             raise TrainingLaunchError(
@@ -269,9 +401,7 @@ def _parent_binding(
         checkpoint = _checkpoint_from_inventory(
             receipt,
             selected,
-            inventory_sha256=approval.payload.get(
-                "selected_parent_checkpoint_inventory_sha256"
-            ),
+            inventory_sha256=approval.payload.get("selected_parent_checkpoint_inventory_sha256"),
         )
     if approval is not None:
         claimed = approval.payload.get("parent_receipt_record_sha256")
@@ -330,20 +460,16 @@ def _approval_record(
     }
     for field, value in expected.items():
         if approval.payload.get(field) != value:
-            raise TrainingLaunchError(
-                f"{stage.stage_id}/{wave_name} approval has wrong {field}"
-            )
+            raise TrainingLaunchError(f"{stage.stage_id}/{wave_name} approval has wrong {field}")
     if gate == "clean-smoke-receipt":
         if prior_wave is None or prior is None:
             raise TrainingLaunchError("clean-smoke gate has no prior wave receipt")
         if (
             approval.payload.get("prior_wave") != prior_wave
-            or approval.payload.get("prior_receipt_record_sha256")
-            != prior.record_sha256
+            or approval.payload.get("prior_receipt_record_sha256") != prior.record_sha256
         ):
             raise TrainingLaunchError(
-                f"{stage.stage_id}/{wave_name} approval is not bound "
-                f"to its {prior_wave} receipt"
+                f"{stage.stage_id}/{wave_name} approval is not bound to its {prior_wave} receipt"
             )
     elif gate == "promotion-receipt-and-explicit-human-approval":
         if prior_wave is None or prior is None:
@@ -357,10 +483,7 @@ def _approval_record(
             "panel": "inkling-promotion",
             "training_wave_receipt_record_sha256": prior.record_sha256,
         }
-        if any(
-            evidence.get(field) != value
-            for field, value in expected_evidence.items()
-        ):
+        if any(evidence.get(field) != value for field, value in expected_evidence.items()):
             raise TrainingLaunchError(
                 f"{stage.stage_id}/{wave_name} promotion is not bound "
                 f"to its {prior_wave} evaluation"
@@ -558,9 +681,7 @@ def _resolved_launch_binding(
         "dataset_root": str((repo_root / "dataset").relative_to(repo_root)),
         "dataset_configuration": protocol["dataset"]["configuration"],
         "dataset_revision": protocol["dataset"]["revision"],
-        "dataset_logical_release_sha256": protocol["dataset"][
-            "logical_release_sha256"
-        ],
+        "dataset_logical_release_sha256": protocol["dataset"]["logical_release_sha256"],
         "schedule_seed": SCHEDULE_SEED,
         "tinker_log_relative_path": str(
             store.tinker_log_path(key).relative_to(store.external_root)
@@ -590,9 +711,7 @@ def _resolved_launch_binding(
             "epsilon": float(recipe["adam_epsilon"]),
             "lr_schedule": recipe["lr_schedule"],
             "num_epochs": int(recipe["effective_passes"]),
-            "optimizer_reset_each_stage": bool(
-                recipe["optimizer_reset_each_stage"]
-            ),
+            "optimizer_reset_each_stage": bool(recipe["optimizer_reset_each_stage"]),
         }
         common["checkpointing"] = {
             "save_every": max(
@@ -627,9 +746,7 @@ def _resolved_launch_binding(
         common["optimizer"] = {
             "loss_fn": recipe["loss_fn"],
             "kl_coefficient": float(recipe["kl_coefficient"]),
-            "remove_constant_reward_groups": bool(
-                recipe["remove_constant_reward_groups"]
-            ),
+            "remove_constant_reward_groups": bool(recipe["remove_constant_reward_groups"]),
             "reward": recipe["reward"],
         }
         common["checkpointing"] = {
@@ -668,9 +785,7 @@ def build_tinker_config(
     recipe = protocol["recipes"][stage.recipe_key]
     max_steps = int(stage.wave(wave_name)["max_steps"])
     checkpoint = parent.checkpoint if parent is not None else None
-    load_checkpoint_path = (
-        str(checkpoint["state_path"]) if checkpoint is not None else None
-    )
+    load_checkpoint_path = str(checkpoint["state_path"]) if checkpoint is not None else None
     log_path = str(store.tinker_log_path(key))
     manifest = store.load_manifest(key)
     if manifest is None:
@@ -685,18 +800,12 @@ def build_tinker_config(
         parent=parent,
         resume_batch=(
             int(invocation.payload["resume_batch"])
-            if invocation is not None
-            and invocation.payload.get("resume_batch") is not None
+            if invocation is not None and invocation.payload.get("resume_batch") is not None
             else None
         ),
     )
-    if (
-        invocation is not None
-        and invocation.payload.get("resolved_launch") != resolved_launch
-    ):
-        raise TrainingLaunchError(
-            "immutable invocation differs from the resolved Tinker launch"
-        )
+    if invocation is not None and invocation.payload.get("resolved_launch") != resolved_launch:
+        raise TrainingLaunchError("immutable invocation differs from the resolved Tinker launch")
     tracking = _tracking_binding(
         protocol=protocol,
         source_git_sha=str(manifest.payload["source_git_sha"]),
@@ -781,17 +890,11 @@ def build_tinker_config(
             attempt_metadata=(
                 {
                     "invocation_id": invocation.payload["invocation_id"],
-                    "run_manifest_record_sha256": invocation.payload[
-                        "run_manifest_record_sha256"
-                    ],
+                    "run_manifest_record_sha256": invocation.payload["run_manifest_record_sha256"],
                     "source_git_sha": invocation.payload["source_git_sha"],
-                    "protocol_logical_sha256": invocation.payload[
-                        "protocol_logical_sha256"
-                    ],
+                    "protocol_logical_sha256": invocation.payload["protocol_logical_sha256"],
                     "policy": invocation.payload["policy"],
-                    "initial_checkpoint": invocation.payload[
-                        "initial_checkpoint"
-                    ],
+                    "initial_checkpoint": invocation.payload["initial_checkpoint"],
                 }
                 if invocation is not None
                 else {}
@@ -824,12 +927,11 @@ def _checkpoint_receipt(
     manifest: TrainingRecord,
     preflight: Mapping[str, Any],
     invocation: TrainingRecord,
+    tracking: TrainingRecord | None,
 ) -> dict[str, Any]:
     records = checkpoint_utils.load_checkpoints_file(str(log_path))
     complete = [
-        item
-        for item in records
-        if item.state_path is not None and item.sampler_path is not None
+        item for item in records if item.state_path is not None and item.sampler_path is not None
     ]
     if not complete:
         raise TrainingLaunchError("training returned without a resumable checkpoint")
@@ -838,9 +940,7 @@ def _checkpoint_receipt(
     if stage.kind == "rl":
         unique_name = f"{target_steps:06d}"
         matching = [
-            item
-            for item in complete
-            if item.name == unique_name and item.batch == target_steps
+            item for item in complete if item.name == unique_name and item.batch == target_steps
         ]
         if len(matching) != 1:
             raise TrainingLaunchError(
@@ -849,12 +949,10 @@ def _checkpoint_receipt(
         checkpoint = matching[0]
     if stage.kind == "sft":
         if checkpoint.name != "final" or checkpoint.epoch != 1:
-            raise TrainingLaunchError(
-                "SFT terminal checkpoint is not the completed epoch"
-            )
-    if not _TINKER_PATH.fullmatch(
-        str(checkpoint.state_path)
-    ) or not _TINKER_PATH.fullmatch(str(checkpoint.sampler_path)):
+            raise TrainingLaunchError("SFT terminal checkpoint is not the completed epoch")
+    if not _TINKER_PATH.fullmatch(str(checkpoint.state_path)) or not _TINKER_PATH.fullmatch(
+        str(checkpoint.sampler_path)
+    ):
         raise TrainingLaunchError("checkpoint paths are not Tinker URIs")
     recipe = preflight["recipe"]
     save_every = (
@@ -866,10 +964,7 @@ def _checkpoint_receipt(
         else target_steps
     )
     expected_periodic_names = (
-        [
-            f"{step:06d}"
-            for step in range(save_every, target_steps, save_every)
-        ]
+        [f"{step:06d}" for step in range(save_every, target_steps, save_every)]
         if stage.kind == "sft"
         else []
     )
@@ -878,25 +973,17 @@ def _checkpoint_receipt(
         if item.name not in expected_periodic_names:
             continue
         if item.name in periodic_by_name:
-            raise TrainingLaunchError(
-                f"checkpoint inventory repeats {item.name}"
-            )
+            raise TrainingLaunchError(f"checkpoint inventory repeats {item.name}")
         periodic_by_name[item.name] = item
     if set(periodic_by_name) != set(expected_periodic_names):
-        raise TrainingLaunchError(
-            "periodic checkpoint inventory differs from the sealed cadence"
-        )
+        raise TrainingLaunchError("periodic checkpoint inventory differs from the sealed cadence")
 
     def checkpoint_entry(item: Any, *, role: str) -> dict[str, Any]:
-        if not _TINKER_PATH.fullmatch(
-            str(item.state_path)
-        ) or not _TINKER_PATH.fullmatch(str(item.sampler_path)):
+        if not _TINKER_PATH.fullmatch(str(item.state_path)) or not _TINKER_PATH.fullmatch(
+            str(item.sampler_path)
+        ):
             raise TrainingLaunchError("checkpoint inventory contains invalid URIs")
-        progress = (
-            1.0
-            if role == "terminal"
-            else int(item.name) / target_steps
-        )
+        progress = 1.0 if role == "terminal" else int(item.name) / target_steps
         return {
             "name": str(item.name),
             "batch": item.batch,
@@ -919,21 +1006,11 @@ def _checkpoint_receipt(
         path = log_path / name
         if path.is_file():
             local_artifacts[name] = file_sha256(path)
-    candidate_root = (
-        log_path.parent
-        / "candidates"
-        / str(invocation.payload["invocation_id"])
-    )
+    candidate_root = log_path.parent / "candidates" / str(invocation.payload["invocation_id"])
     candidate_files = (
-        sorted(candidate_root.rglob("evaluation.json"))
-        if candidate_root.is_dir()
-        else []
+        sorted(candidate_root.rglob("evaluation.json")) if candidate_root.is_dir() else []
     )
-    sample_files = (
-        sorted(candidate_root.rglob("sample.json"))
-        if candidate_root.is_dir()
-        else []
-    )
+    sample_files = sorted(candidate_root.rglob("sample.json")) if candidate_root.is_dir() else []
     candidate_inventory = [
         {
             "path": str(path.relative_to(log_path.parent)),
@@ -946,8 +1023,8 @@ def _checkpoint_receipt(
         start = int(start_batch) if start_batch is not None else 0
         policy = invocation.payload["policy"]
         expected_candidates = (
-            target_steps - start
-        ) * int(policy["groups_per_batch"]) * int(policy["group_size"])
+            (target_steps - start) * int(policy["groups_per_batch"]) * int(policy["group_size"])
+        )
         if len(candidate_inventory) != expected_candidates:
             raise TrainingLaunchError(
                 "candidate inventory does not cover every sampled rollout: "
@@ -989,6 +1066,9 @@ def _checkpoint_receipt(
         "run_manifest_record_sha256": manifest.record_sha256,
         "invocation_record_sha256": invocation.record_sha256,
         "invocation_id": invocation.payload["invocation_id"],
+        "invocation_tracking_record_sha256": (
+            tracking.record_sha256 if tracking is not None else None
+        ),
         "preflight_sha256": preflight["preflight_sha256"],
         "checkpoint": {
             key: terminal_entry[key]
@@ -1058,9 +1138,7 @@ def _validate_resume_state(
             for item in records
         )
         if not matched:
-            raise TrainingLaunchError(
-                "optimizer log does not contain the prior-wave checkpoint"
-            )
+            raise TrainingLaunchError("optimizer log does not contain the prior-wave checkpoint")
     if not records and any(log_path.iterdir()):
         raise TrainingLaunchError(
             "training log has no resumable checkpoint; reconcile it before retrying"
@@ -1151,9 +1229,6 @@ async def run_training_stage(
                 parent=parent,
             ),
         )
-        # This network check authenticates observability only. It happens
-        # after the authoritative local manifest and before any Tinker client.
-        wandb_access_validator(expected_entity=tracking["entity"])
         log_path = store.tinker_log_path(key)
         prior_wave_name = _required_prior_wave(stage, wave_name)
         prior_wave_receipt = (
@@ -1167,73 +1242,96 @@ async def run_training_stage(
             log_path=log_path,
             prior_wave_receipt=prior_wave_receipt,
         )
-        resolved_launch = _resolved_launch_binding(
-            repo_root=root,
-            protocol=protocol,
-            stage=stage,
-            wave_name=wave_name,
-            store=store,
-            key=key,
-            parent=parent,
-            resume_batch=resume_batch,
-        )
-        invocation_id = f"{wave_name}-{uuid.uuid4().hex}"
-        invocation = store.begin_invocation(
-            key,
-            invocation_id=invocation_id,
-            payload={
-                "invocation_id": invocation_id,
-                "stage_id": stage.stage_id,
-                "wave": wave_name,
-                "source_git_sha": source_git_sha,
-                "protocol_logical_sha256": protocol["logical_sha256"],
-                "run_manifest_record_sha256": manifest.record_sha256,
-                "preflight_sha256": preflight["preflight_sha256"],
-                "wandb_run_id": tracking["run_id"],
-                "resume_batch": resume_batch,
-                "resolved_launch": resolved_launch,
-                "resolved_launch_sha256": resolved_launch["logical_sha256"],
-                "policy": {
-                    "model": protocol["models"][stage.model_key]["model"],
-                    "renderer": protocol["models"][stage.model_key]["renderer"],
-                    "effort": protocol["models"][stage.model_key].get("effort"),
-                    "max_output_tokens": protocol["models"][stage.model_key][
-                        "max_output_tokens"
-                    ],
-                    "temperature": protocol["recipes"][stage.recipe_key].get(
-                        "temperature"
-                    ),
-                    "top_p": protocol["recipes"][stage.recipe_key].get("top_p"),
-                    "reward": protocol["recipes"][stage.recipe_key].get("reward"),
-                    "group_size": protocol["recipes"][stage.recipe_key].get(
-                        "group_size"
-                    ),
-                    "groups_per_batch": protocol["recipes"][stage.recipe_key].get(
-                        "groups_per_batch"
-                    ),
+        resume = resume_batch is not None
+        # Install one continuous environment before the first W&B SDK call.
+        # This avoids the SDK caching an unbound session during access
+        # validation. Programmatic init arguments below are a second,
+        # independently checked identity boundary.
+        with _wandb_environment(tracking, resume=resume):
+            wandb_access_validator(expected_entity=tracking["entity"])
+            resolved_launch = _resolved_launch_binding(
+                repo_root=root,
+                protocol=protocol,
+                stage=stage,
+                wave_name=wave_name,
+                store=store,
+                key=key,
+                parent=parent,
+                resume_batch=resume_batch,
+            )
+            invocation_id = f"{wave_name}-{uuid.uuid4().hex}"
+            invocation = store.begin_invocation(
+                key,
+                invocation_id=invocation_id,
+                payload={
+                    "invocation_id": invocation_id,
+                    "stage_id": stage.stage_id,
+                    "wave": wave_name,
+                    "source_git_sha": source_git_sha,
+                    "protocol_logical_sha256": protocol["logical_sha256"],
+                    "run_manifest_record_sha256": manifest.record_sha256,
+                    "preflight_sha256": preflight["preflight_sha256"],
+                    "wandb_run_id": tracking["run_id"],
+                    "resume_batch": resume_batch,
+                    "resolved_launch": resolved_launch,
+                    "resolved_launch_sha256": resolved_launch["logical_sha256"],
+                    "policy": {
+                        "model": protocol["models"][stage.model_key]["model"],
+                        "renderer": protocol["models"][stage.model_key]["renderer"],
+                        "effort": protocol["models"][stage.model_key].get("effort"),
+                        "max_output_tokens": protocol["models"][stage.model_key][
+                            "max_output_tokens"
+                        ],
+                        "temperature": protocol["recipes"][stage.recipe_key].get("temperature"),
+                        "top_p": protocol["recipes"][stage.recipe_key].get("top_p"),
+                        "reward": protocol["recipes"][stage.recipe_key].get("reward"),
+                        "group_size": protocol["recipes"][stage.recipe_key].get("group_size"),
+                        "groups_per_batch": protocol["recipes"][stage.recipe_key].get(
+                            "groups_per_batch"
+                        ),
+                    },
+                    "initial_checkpoint": (parent.checkpoint if parent is not None else None),
                 },
-                "initial_checkpoint": (
-                    parent.checkpoint if parent is not None else None
-                ),
-            },
-        )
-        config = build_tinker_config(
-            repo_root=root,
-            protocol=protocol,
-            stage=stage,
-            wave_name=wave_name,
-            store=store,
-            key=key,
-            parent=parent,
-            invocation=invocation,
-        )
-        with _wandb_environment(tracking, resume=resume_batch is not None):
+            )
+            config = build_tinker_config(
+                repo_root=root,
+                protocol=protocol,
+                stage=stage,
+                wave_name=wave_name,
+                store=store,
+                key=key,
+                parent=parent,
+                invocation=invocation,
+            )
+
+            def record_live_tracking(observed: Mapping[str, Any]) -> None:
+                store.write_invocation_tracking(
+                    key,
+                    invocation_id=invocation_id,
+                    payload={
+                        "invocation_record_sha256": invocation.record_sha256,
+                        "run_manifest_record_sha256": manifest.record_sha256,
+                        "source_git_sha": source_git_sha,
+                        "protocol_logical_sha256": protocol["logical_sha256"],
+                        "expected": dict(tracking),
+                        "observed": dict(observed),
+                    },
+                )
+
             if stage.kind == "sft":
                 if sft_main is None:
                     from tinker_cookbook.supervised.train import main as resolved_main
                 else:
                     resolved_main = sft_main
-                await resolved_main(config)
+                if sft_main is None:
+                    with _sealed_wandb_initialization(
+                        tracking,
+                        resume=resume,
+                        on_initialized=record_live_tracking,
+                    ):
+                        await resolved_main(config)
+                else:
+                    await resolved_main(config)
             else:
                 if stage.model_key == "inkling":
                     from rl.track_b.tml_shim import install_inkling_runtime
@@ -1243,7 +1341,22 @@ async def run_training_stage(
                     from tinker_cookbook.rl.train import main as resolved_main
                 else:
                     resolved_main = rl_main
-                await resolved_main(config)
+                if rl_main is None:
+                    with _sealed_wandb_initialization(
+                        tracking,
+                        resume=resume,
+                        on_initialized=record_live_tracking,
+                    ):
+                        await resolved_main(config)
+                else:
+                    await resolved_main(config)
+        live_tracking = store.load_invocation_tracking(
+            key,
+            invocation_id=invocation_id,
+        )
+        built_in_main = sft_main is None if stage.kind == "sft" else rl_main is None
+        if built_in_main and live_tracking is None:
+            raise TrainingLaunchError("training returned without an observed W&B tracking record")
         receipt = store.write_wave_receipt(
             key,
             wave=wave_name,
@@ -1254,6 +1367,7 @@ async def run_training_stage(
                 manifest=manifest,
                 preflight=preflight,
                 invocation=invocation,
+                tracking=live_tracking,
             ),
         )
         return {

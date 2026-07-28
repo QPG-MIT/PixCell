@@ -31,11 +31,7 @@ def _preflight(protocol: dict, stage_id: str, wave: str) -> dict:
     return {
         "protocol_file_sha256": "1" * 64,
         "prompt_assets": {"prompt": "2" * 64},
-        "dataset": {
-            "logical_release_sha256": protocol["dataset"][
-                "logical_release_sha256"
-            ]
-        },
+        "dataset": {"logical_release_sha256": protocol["dataset"]["logical_release_sha256"]},
         "runtime": {"python": "3.13"},
         "sandbox": None,
         "schedule": {
@@ -46,6 +42,79 @@ def _preflight(protocol: dict, stage_id: str, wave: str) -> dict:
         "recipe": protocol["recipes"][stage.recipe_key],
         "preflight_sha256": "4" * 64,
     }
+
+
+def _write_unit_sft_artifacts(config) -> None:
+    log = Path(config.log_path)
+    log.mkdir(parents=True, exist_ok=True)
+    checkpoints = [
+        {
+            "name": f"{step:06d}",
+            "batch": step,
+            "epoch": 0,
+            "state_path": f"tinker://unit/weights/{step:06d}",
+            "sampler_path": f"tinker://unit/sampler_weights/{step:06d}",
+        }
+        for step in (3, 6, 9)
+    ]
+    checkpoints.append(
+        {
+            "name": "final",
+            "batch": 0,
+            "epoch": 1,
+            "state_path": "tinker://unit/weights/final",
+            "sampler_path": "tinker://unit/sampler_weights/final",
+        }
+    )
+    (log / "checkpoints.jsonl").write_text(
+        "".join(json.dumps(value) + "\n" for value in checkpoints),
+        encoding="utf-8",
+    )
+    (log / "metrics.jsonl").write_text(
+        json.dumps({"step": 10, "train_mean_nll": 0.5}) + "\n",
+        encoding="utf-8",
+    )
+
+
+class _FakeRun:
+    def __init__(self, module, kwargs):
+        self._module = module
+        self.id = kwargs["id"]
+        self.entity = kwargs["entity"]
+        self.project = kwargs["project"]
+        self.name = kwargs["name"]
+        self.group = kwargs["group"]
+        self.job_type = kwargs["job_type"]
+        self.tags = kwargs["tags"]
+        self.resumed = kwargs["resume"] == "must"
+        self.url = f"https://wandb.example/{self.id}"
+        self.settings = SimpleNamespace(
+            root_dir=kwargs["dir"],
+            resume=kwargs["resume"],
+        )
+        self.dir = str(Path(kwargs["dir"]) / "wandb" / self.id / "files")
+        Path(self.dir).mkdir(parents=True, exist_ok=True)
+        self.finished = False
+
+    def finish(self):
+        self.finished = True
+        self._module.run = None
+
+
+class _FakeWandb:
+    def __init__(self):
+        self.run = None
+        self.calls = []
+        self.config = SimpleNamespace(update=lambda _value: None)
+
+    def init(self, **kwargs):
+        self.calls.append(kwargs)
+        self.run = _FakeRun(self, kwargs)
+        return self.run
+
+    def finish(self):
+        if self.run is not None:
+            self.run.finish()
 
 
 def test_sft_launch_records_before_main_and_binds_wandb(
@@ -77,6 +146,10 @@ def test_sft_launch_records_before_main_and_binds_wandb(
 
     def validate_access(*, expected_entity):
         access_calls.append(expected_entity)
+        assert os.environ["WANDB_ENTITY"] == expected_entity
+        assert os.environ["WANDB_PROJECT"] == protocol["tracking"]["project"]
+        assert os.environ["WANDB_RUN_ID"].startswith("pxct-")
+        assert os.environ["WANDB_RESUME"] == "never"
         return {"username": "test", "entity": expected_entity}
 
     async def fake_main(config):
@@ -86,34 +159,7 @@ def test_sft_launch_records_before_main_and_binds_wandb(
         assert os.environ["WANDB_RESUME"] == "never"
         assert os.environ["WANDB_MODE"] == "online"
         assert os.environ["WANDB_JOB_TYPE"] == "sft"
-        log.mkdir(parents=True)
-        checkpoints = [
-            {
-                "name": f"{step:06d}",
-                "batch": step,
-                "epoch": 0,
-                "state_path": f"tinker://unit/weights/{step:06d}",
-                "sampler_path": f"tinker://unit/sampler_weights/{step:06d}",
-            }
-            for step in (3, 6, 9)
-        ]
-        checkpoints.append(
-            {
-                "name": "final",
-                "batch": 0,
-                "epoch": 1,
-                "state_path": "tinker://unit/weights/final",
-                "sampler_path": "tinker://unit/sampler_weights/final",
-            }
-        )
-        (log / "checkpoints.jsonl").write_text(
-            "".join(json.dumps(value) + "\n" for value in checkpoints),
-            encoding="utf-8",
-        )
-        (log / "metrics.jsonl").write_text(
-            json.dumps({"step": 10, "train_mean_nll": 0.5}) + "\n",
-            encoding="utf-8",
-        )
+        _write_unit_sft_artifacts(config)
 
     report = asyncio.run(
         launcher.run_training_stage(
@@ -154,6 +200,380 @@ def test_sft_launch_records_before_main_and_binds_wandb(
     assert replay["status"] == "already_complete"
 
 
+def test_builtin_sft_records_observed_wandb_before_service_client(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from tinker_cookbook.supervised import train as supervised_train
+    from tinker_cookbook.utils import ml_log
+
+    protocol = load_protocol(REPO_ROOT)
+    source_sha = "b" * 40
+    external = tmp_path / "external"
+    fake_wandb = _FakeWandb()
+    monkeypatch.setenv("TINKER_API_KEY", "test-only")
+    monkeypatch.setenv("WANDB_API_KEY", "test-only")
+    monkeypatch.setattr(launcher, "load_protocol", lambda *_a, **_k: protocol)
+    monkeypatch.setattr(
+        launcher,
+        "validate_source_sha",
+        lambda _root, expected: expected,
+    )
+    monkeypatch.setattr(
+        launcher,
+        "stage_preflight",
+        lambda **_kwargs: _preflight(
+            protocol,
+            "qwen-l0-sft",
+            "complete",
+        ),
+    )
+    monkeypatch.setattr(ml_log, "wandb", fake_wandb)
+    monkeypatch.setattr(ml_log, "_wandb_available", True)
+    real_import = launcher.importlib.import_module
+    monkeypatch.setattr(
+        launcher.importlib,
+        "import_module",
+        lambda name: fake_wandb if name == "wandb" else real_import(name),
+    )
+    service_client_markers = []
+
+    def validate_access(*, expected_entity):
+        assert os.environ["WANDB_ENTITY"] == expected_entity
+        assert os.environ["WANDB_RUN_ID"].startswith("pxct-")
+        return {"username": "test", "entity": expected_entity}
+
+    async def fake_builtin_main(config):
+        logger = ml_log.setup_logging(
+            log_dir=config.log_path,
+            wandb_project=config.wandb_project,
+            wandb_name=config.wandb_name,
+            config=config,
+            do_configure_logging_module=False,
+        )
+        tracking_paths = list(external.rglob("tracking.json"))
+        assert len(tracking_paths) == 1
+        tracking_document = json.loads(
+            tracking_paths[0].read_text(encoding="utf-8")
+        )
+        assert (
+            tracking_document["payload"]["observed"]["run_id"]
+            == fake_wandb.calls[0]["id"]
+        )
+        assert service_client_markers == []
+        service_client_markers.append("created")
+        logger.close()
+        _write_unit_sft_artifacts(config)
+
+    monkeypatch.setattr(supervised_train, "main", fake_builtin_main)
+    report = asyncio.run(
+        launcher.run_training_stage(
+            repo_root=REPO_ROOT,
+            stage_id="qwen-l0-sft",
+            wave_name="complete",
+            replicate_id="r0",
+            expected_source_sha=source_sha,
+            external_root=external,
+            confirmation=protocol["launch"]["confirmation_token"],
+            wandb_access_validator=validate_access,
+        )
+    )
+    assert report["status"] == "complete"
+    assert service_client_markers == ["created"]
+    key = StageKey(STUDY_ID, "qwen-l0-sft", "r0")
+    store = TrainingStore(repo_root=REPO_ROOT, external_root=external)
+    tracking_paths = list(external.rglob("tracking.json"))
+    tracking_document = json.loads(tracking_paths[0].read_text(encoding="utf-8"))
+    invocation_id = tracking_document["key"]["invocation_id"]
+    tracking = store.load_invocation_tracking(
+        key,
+        invocation_id=invocation_id,
+    )
+    receipt = store.load_wave_receipt(key, wave="complete")
+    assert tracking is not None
+    assert receipt is not None
+    assert (
+        receipt.payload["invocation_tracking_record_sha256"]
+        == tracking.record_sha256
+    )
+
+
+def test_builtin_rl_records_observed_wandb_before_service_client(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from rl.track_b import tml_shim
+    from tinker_cookbook.rl import train as rl_train
+    from tinker_cookbook.utils import ml_log
+
+    protocol = load_protocol(REPO_ROOT)
+    source_sha = "c" * 40
+    external = tmp_path / "external"
+    fake_wandb = _FakeWandb()
+    monkeypatch.setenv("TINKER_API_KEY", "test-only")
+    monkeypatch.setenv("WANDB_API_KEY", "test-only")
+    monkeypatch.setattr(launcher, "load_protocol", lambda *_a, **_k: protocol)
+    monkeypatch.setattr(
+        launcher,
+        "validate_source_sha",
+        lambda _root, expected: expected,
+    )
+    monkeypatch.setattr(
+        launcher,
+        "stage_preflight",
+        lambda **_kwargs: _preflight(
+            protocol,
+            "inkling-l4-rl",
+            "smoke",
+        ),
+    )
+    monkeypatch.setattr(
+        tml_shim,
+        "install_inkling_runtime",
+        lambda **_kwargs: None,
+    )
+    monkeypatch.setattr(ml_log, "wandb", fake_wandb)
+    monkeypatch.setattr(ml_log, "_wandb_available", True)
+    real_import = launcher.importlib.import_module
+    monkeypatch.setattr(
+        launcher.importlib,
+        "import_module",
+        lambda name: fake_wandb if name == "wandb" else real_import(name),
+    )
+    service_client_markers = []
+
+    async def fake_builtin_main(config):
+        ml_log.setup_logging(
+            log_dir=config.log_path,
+            wandb_project=config.wandb_project,
+            wandb_name=config.wandb_name,
+            config=config,
+            do_configure_logging_module=False,
+        )
+        tracking_paths = list(external.rglob("tracking.json"))
+        assert len(tracking_paths) == 1
+        tracking_document = json.loads(
+            tracking_paths[0].read_text(encoding="utf-8")
+        )
+        assert (
+            tracking_document["payload"]["observed"]["run_id"]
+            == fake_wandb.calls[0]["id"]
+        )
+        service_client_markers.append("created")
+        raise RuntimeError("stop before paid RL")
+
+    monkeypatch.setattr(rl_train, "main", fake_builtin_main)
+    with pytest.raises(RuntimeError, match="stop before paid RL"):
+        asyncio.run(
+            launcher.run_training_stage(
+                repo_root=REPO_ROOT,
+                stage_id="inkling-l4-rl",
+                wave_name="smoke",
+                replicate_id="r0",
+                expected_source_sha=source_sha,
+                external_root=external,
+                confirmation=protocol["launch"]["confirmation_token"],
+                wandb_access_validator=lambda **_kwargs: {},
+            )
+        )
+    assert service_client_markers == ["created"]
+    assert fake_wandb.run is None
+    assert len(list(external.rglob("tracking.json"))) == 1
+
+
+def test_sealed_wandb_initialization_overrides_cookbook_identity(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from tinker_cookbook.utils import ml_log
+
+    wandb_dir = tmp_path / "sealed-wandb"
+    cookbook_dir = tmp_path / "cookbook-log"
+    wandb_dir.mkdir()
+    binding = {
+        "entity": "unit-entity",
+        "project": "unit-project",
+        "run_id": "pxct-unit-run",
+        "name": "unit/name",
+        "group": "unit/group",
+        "job_type": "sft",
+        "tags": ["study", "stage", "r0"],
+        "directory": str(wandb_dir),
+    }
+
+    fake = _FakeWandb()
+    monkeypatch.setenv("WANDB_API_KEY", "test-only")
+    monkeypatch.setattr(ml_log, "wandb", fake)
+    monkeypatch.setattr(ml_log, "_wandb_available", True)
+    original_init = fake.init
+    observed = []
+    with launcher._sealed_wandb_initialization(
+        binding,
+        resume=True,
+        wandb_module=fake,
+        on_initialized=observed.append,
+    ):
+        logger = ml_log.setup_logging(
+            log_dir=str(cookbook_dir),
+            wandb_project="unit-project",
+            wandb_name="unit/name",
+            config=None,
+            do_configure_logging_module=False,
+        )
+        logger.close()
+
+    assert fake.init == original_init
+    assert len(fake.calls) == 1
+    call = fake.calls[0]
+    assert call["entity"] == binding["entity"]
+    assert call["project"] == binding["project"]
+    assert call["id"] == binding["run_id"]
+    assert call["name"] == binding["name"]
+    assert call["group"] == binding["group"]
+    assert call["job_type"] == binding["job_type"]
+    assert call["tags"] == tuple(binding["tags"])
+    assert call["dir"] == binding["directory"]
+    assert call["mode"] == "online"
+    assert call["resume"] == "must"
+    assert call["save_code"] is False
+    assert call["config"] is None
+    assert observed == [
+        {
+            "run_id": binding["run_id"],
+            "entity": binding["entity"],
+            "project": binding["project"],
+            "name": binding["name"],
+            "group": binding["group"],
+            "job_type": binding["job_type"],
+            "tags": binding["tags"],
+            "resumed": True,
+            "url": f"https://wandb.example/{binding['run_id']}",
+            "requested_directory": binding["directory"],
+            "resolved_root_directory": binding["directory"],
+            "files_directory": str(
+                Path(binding["directory"])
+                / "wandb"
+                / binding["run_id"]
+                / "files"
+            ),
+            "requested_resume": "must",
+            "resolved_resume": "must",
+        }
+    ]
+
+
+def test_sealed_wandb_initialization_rejects_live_identity_mismatch(
+    tmp_path: Path,
+) -> None:
+    wandb_dir = tmp_path / "sealed-wandb"
+    wandb_dir.mkdir()
+    binding = {
+        "entity": "unit-entity",
+        "project": "unit-project",
+        "run_id": "pxct-expected",
+        "name": "unit/name",
+        "group": "unit/group",
+        "job_type": "rl",
+        "tags": ["study"],
+        "directory": str(wandb_dir),
+    }
+
+    class MismatchedRun:
+        id = "random-id"
+        entity = binding["entity"]
+        project = binding["project"]
+        name = binding["name"]
+        group = binding["group"]
+        job_type = binding["job_type"]
+        tags = tuple(binding["tags"])
+        resumed = False
+        url = "https://wandb.example/random-id"
+        settings = SimpleNamespace(
+            root_dir=binding["directory"],
+            resume="never",
+        )
+        dir = str(Path(binding["directory"]) / "wandb" / "random-id" / "files")
+
+        def __init__(self):
+            self.finished = False
+
+        def finish(self):
+            self.finished = True
+
+    run = MismatchedRun()
+    Path(run.dir).mkdir(parents=True)
+    fake = SimpleNamespace(run=None, init=lambda **_kwargs: run)
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="live W&B run differs",
+    ):
+        with launcher._sealed_wandb_initialization(
+            binding,
+            resume=False,
+            wandb_module=fake,
+        ):
+            fake.init(project=binding["project"], name=binding["name"])
+    assert run.finished is True
+
+
+def test_sealed_wandb_cleanup_does_not_mask_training_failure(
+    tmp_path: Path,
+) -> None:
+    wandb_dir = tmp_path / "sealed-wandb"
+    wandb_dir.mkdir()
+    binding = {
+        "entity": "unit-entity",
+        "project": "unit-project",
+        "run_id": "pxct-unit-run",
+        "name": "unit/name",
+        "group": "unit/group",
+        "job_type": "sft",
+        "tags": ["study"],
+        "directory": str(wandb_dir),
+    }
+
+    class FailingFinishRun:
+        id = binding["run_id"]
+        entity = binding["entity"]
+        project = binding["project"]
+        name = binding["name"]
+        group = binding["group"]
+        job_type = binding["job_type"]
+        tags = tuple(binding["tags"])
+        resumed = False
+        url = "https://wandb.example/pxct-unit-run"
+        settings = SimpleNamespace(
+            root_dir=binding["directory"],
+            resume="never",
+        )
+        dir = str(Path(binding["directory"]) / "wandb" / id / "files")
+
+        def finish(self):
+            raise RuntimeError("finish failed")
+
+    run = FailingFinishRun()
+    Path(run.dir).mkdir(parents=True)
+
+    def module_finish():
+        raise RuntimeError("module finish failed")
+
+    fake = SimpleNamespace(
+        run=None,
+        init=lambda **_kwargs: run,
+        finish=module_finish,
+    )
+    original_init = fake.init
+    with pytest.raises(RuntimeError, match="trainer failed"):
+        with launcher._sealed_wandb_initialization(
+            binding,
+            resume=False,
+            wandb_module=fake,
+        ):
+            fake.init(project=binding["project"], name=binding["name"])
+            raise RuntimeError("trainer failed")
+    assert fake.init == original_init
+
+
 def test_bad_confirmation_cannot_reach_preflight_or_main(
     tmp_path: Path,
     monkeypatch,
@@ -170,9 +590,7 @@ def test_bad_confirmation_cannot_reach_preflight_or_main(
     monkeypatch.setattr(
         launcher,
         "stage_preflight",
-        lambda **_kwargs: (_ for _ in ()).throw(
-            AssertionError("preflight should not run")
-        ),
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("preflight should not run")),
     )
     with pytest.raises(launcher.TrainingLaunchError, match="confirmation"):
         asyncio.run(
