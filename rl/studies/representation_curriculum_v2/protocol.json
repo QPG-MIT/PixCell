@@ -1,0 +1,129 @@
+{
+  "arms": {
+    "inkling-e09-60000": {
+      "context_tokens": 65536,
+      "max_image_long_edge": 1920,
+      "max_output_tokens": 60000,
+      "model": "thinkingmachines/Inkling",
+      "provider": "tinker",
+      "renderer": "tml_v0",
+      "thinking": true,
+      "thinking_effort": 0.9
+    },
+    "qwen-on-60000": {
+      "context_tokens": 65536,
+      "max_image_long_edge": 1920,
+      "max_output_tokens": 60000,
+      "model": "Qwen/Qwen3.6-35B-A3B",
+      "provider": "tinker",
+      "renderer": "qwen3_5",
+      "thinking": true,
+      "thinking_effort": null
+    }
+  },
+  "contract_version": "pixcell-direct-reconstruction-v2",
+  "hypotheses": {
+    "RC-H05": {
+      "arm_ids": [
+        "qwen-on-60000"
+      ],
+      "attempts_per_task": 4,
+      "name": "Qwen thinking-on 60k zero-shot F1-F8 baseline",
+      "status": "frozen",
+      "task_set": "f1_f8",
+      "waves": {
+        "complete": {
+          "attempt_indices": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "task_count": 8
+        },
+        "smoke": {
+          "attempt_indices": [
+            1
+          ],
+          "task_count": 8
+        }
+      }
+    },
+    "RC-H06": {
+      "arm_ids": [
+        "inkling-e09-60000"
+      ],
+      "attempts_per_task": 4,
+      "name": "Inkling effort-0.9 60k zero-shot F1-F8 baseline",
+      "status": "frozen",
+      "task_set": "f1_f8",
+      "waves": {
+        "complete": {
+          "attempt_indices": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "task_count": 8
+        },
+        "smoke": {
+          "attempt_indices": [
+            1
+          ],
+          "task_count": 8
+        }
+      }
+    }
+  },
+  "launch": {
+    "confirmation_token": "PIXCELL_BASELINE_V2",
+    "mutable_output_environment": "PIXCELL_STUDY_ROOT"
+  },
+  "logical_sha256": "ee1493e7932ae8f549ba419d7859315617b492e6c4b6c3404f6853090c374dca",
+  "pricing": {
+    "as_of": "2026-07-27",
+    "currency": "USD",
+    "models": {
+      "Qwen/Qwen3.6-35B-A3B": {
+        "prefill_cached": 0.108,
+        "prefill_uncached": 0.54,
+        "sample": 1.335
+      },
+      "thinkingmachines/Inkling": {
+        "prefill_cached": 0.374,
+        "prefill_uncached": 1.87,
+        "sample": 4.68
+      }
+    },
+    "source": "https://tinker-docs.thinkingmachines.ai/tinker/models/",
+    "unit": "per_million_tokens"
+  },
+  "purpose": {
+    "kind": "direct-policy-zero-shot-baseline",
+    "operating_point_selection": false,
+    "training": false
+  },
+  "sampling": {
+    "evaluator_workers": 8,
+    "require_candidate_isolation": true,
+    "sampling_concurrency": 8,
+    "seed_namespace": "pixcell-representation-curriculum-v2-direct-baselines",
+    "temperature": 1.0,
+    "top_p": 1.0
+  },
+  "schema_version": "pixcell-representation-curriculum-protocol-v1",
+  "study_id": "representation-curriculum-v2",
+  "task_manifest": {
+    "logical_sha256": "05ca50526df05a3a79aa785504e36c7538106e5abdb72b64e86b20cc6f94a890",
+    "path": "task_manifest.json"
+  },
+  "tracking": {
+    "entity": "aadarwal-massachusetts-institute-of-technology",
+    "group": "direct-zero-shot-v2",
+    "local_record_is_authoritative": true,
+    "mode": "online",
+    "project": "pixcell-representation-curriculum-v2",
+    "provider": "wandb"
+  }
+}

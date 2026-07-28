@@ -151,6 +151,41 @@ def test_resume_uses_receipt_without_calling_sampler_and_records_evaluation(
         )
 
 
+def test_evaluator_failures_are_diagnostic_and_do_not_block_final_evaluation(
+    roots: tuple[Path, Path],
+) -> None:
+    repo, external = roots
+    store = AttemptStore(repo_root=repo, external_root=external)
+    key = AttemptKey("study-v1", "H-QWEN-ZERO", "off-4k", "F1", 1)
+    store.write_sampling_receipt(key, {"raw_completion": "print('first')"})
+    diagnostic = {
+        "status": "worker_error",
+        "attribution": "evaluator",
+        "error": "container unavailable",
+        "retryable": True,
+        "program_sha256": _digest("print('first')"),
+        "reference_sha256": _digest("reference"),
+        "sampling_record_sha256": _digest("receipt"),
+    }
+    first = store.write_evaluator_failure(key, diagnostic)
+    repeated = store.write_evaluator_failure(key, diagnostic)
+
+    assert first == repeated
+    assert store.load_evaluation(key) is None
+    assert store.list_evaluator_failures(key) == (first,)
+
+    final = store.write_evaluation(
+        key,
+        {
+            "status": "syntax_error",
+            "attribution": "model",
+            "aggregation_iou": 0.0,
+        },
+    )
+    assert store.load_evaluation(key) == final
+    assert store.list_evaluator_failures(key) == (first,)
+
+
 def test_run_lock_is_nonblocking_across_store_instances(
     roots: tuple[Path, Path],
 ) -> None:

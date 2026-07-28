@@ -187,6 +187,29 @@ def build_task_manifest(repo_root: Path) -> dict[str, Any]:
     return manifest
 
 
+def build_benchmark_task_manifest(repo_root: Path) -> dict[str, Any]:
+    """Bind only the fixed repository benchmark without touching dataset rows."""
+
+    root = repo_root.expanduser().resolve()
+    manifest = {
+        "schema_version": TASK_MANIFEST_SCHEMA,
+        "selection": {
+            "algorithm": (
+                "ordered fixed repository fixtures "
+                "data/benchmark/final_1 through final_8"
+            ),
+            "seed": None,
+        },
+        "task_sets": {
+            BENCHMARK_TASK_SET: [
+                _benchmark_entry(root, index) for index in range(1, 9)
+            ],
+        },
+    }
+    manifest["logical_sha256"] = canonical_json_sha256(manifest)
+    return manifest
+
+
 def load_task_manifest(path: Path, *, repo_root: Path) -> dict[str, Any]:
     manifest = json.loads(path.read_text(encoding="utf-8"))
     if manifest.get("schema_version") != TASK_MANIFEST_SCHEMA:
@@ -196,7 +219,15 @@ def load_task_manifest(path: Path, *, repo_root: Path) -> dict[str, Any]:
     manifest["logical_sha256"] = logical_sha
     if logical_sha != observed_sha:
         raise ValueError("evaluation task-manifest logical SHA-256 mismatch")
-    expected = build_task_manifest(repo_root)
+    task_sets = set(manifest.get("task_sets", {}))
+    if task_sets == {BENCHMARK_TASK_SET}:
+        expected = build_benchmark_task_manifest(repo_root)
+    elif task_sets == {OPERATING_POINT_TASK_SET, BENCHMARK_TASK_SET}:
+        expected = build_task_manifest(repo_root)
+    else:
+        raise ValueError(
+            f"unsupported evaluation task-set collection: {sorted(task_sets)}"
+        )
     if manifest != expected:
         raise ValueError("evaluation task manifest does not match frozen sources")
     return manifest
@@ -293,12 +324,17 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--repo-root", type=Path, required=True)
     result.add_argument("--output", type=Path, required=True)
+    result.add_argument("--benchmark-only", action="store_true")
     return result
 
 
 def main() -> None:
     args = parser().parse_args()
-    document = build_task_manifest(args.repo_root)
+    document = (
+        build_benchmark_task_manifest(args.repo_root)
+        if args.benchmark_only
+        else build_task_manifest(args.repo_root)
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(document, indent=2, sort_keys=True) + "\n",

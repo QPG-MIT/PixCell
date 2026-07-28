@@ -24,9 +24,11 @@ from rl.evaluation.tasks import (
 
 
 PROTOCOL_SCHEMA = "pixcell-representation-curriculum-protocol-v1"
-STUDY_RELATIVE_PATH = Path("rl/studies/representation_curriculum_v1")
+STUDY_RELATIVE_PATH = Path("rl/studies/representation_curriculum_v2")
 PROTOCOL_FILENAME = "protocol.json"
 TASK_MANIFEST_FILENAME = "task_manifest.json"
+ACTIVE_STUDY_ID = "representation-curriculum-v2"
+ACTIVE_IMAGE_LONG_EDGE = 1920
 _SHA_RE = __import__("re").compile(r"^[0-9a-f]{40}$")
 
 
@@ -132,8 +134,8 @@ def _validate_arm(arm_id: str, value: dict[str, Any]) -> ArmSpec:
         raise ValueError(f"{arm_id} has invalid token limits")
     if result.max_output_tokens >= result.context_tokens:
         raise ValueError(f"{arm_id} output cap exhausts the context window")
-    if result.max_image_long_edge != 1440:
-        raise ValueError(f"{arm_id} does not use the frozen 1440px image policy")
+    if result.max_image_long_edge < 1:
+        raise ValueError(f"{arm_id} has an invalid image-size policy")
     if result.model == "thinkingmachines/Inkling":
         if result.renderer != "tml_v0" or result.thinking_effort is None:
             raise ValueError(f"{arm_id} has an invalid Inkling renderer contract")
@@ -157,12 +159,21 @@ def load_protocol(
     document = load_archived_protocol(root, protocol_file=protocol_file)
     if document.get("contract_version") != CONTRACT_VERSION:
         raise ValueError("protocol prompt contract does not match the runtime")
+    if document.get("study_id") != ACTIVE_STUDY_ID:
+        raise ValueError("protocol is not the active v2 baseline study")
     arms = {
         arm_id: _validate_arm(arm_id, value)
         for arm_id, value in document["arms"].items()
     }
     if len(arms) != len(document["arms"]):
         raise ValueError("duplicate arm IDs")
+    if any(
+        arm.max_image_long_edge != ACTIVE_IMAGE_LONG_EDGE
+        for arm in arms.values()
+    ):
+        raise ValueError(
+            "active v2 baselines require the frozen 1920px image policy"
+        )
     for hypothesis_id, hypothesis in document["hypotheses"].items():
         if not hypothesis_id.startswith("RC-H"):
             raise ValueError(f"invalid hypothesis ID: {hypothesis_id!r}")
@@ -188,14 +199,18 @@ def load_protocol(
     expected_manifest_sha = document["task_manifest"]["logical_sha256"]
     if manifest["logical_sha256"] != expected_manifest_sha:
         raise ValueError("protocol does not bind the frozen task manifest")
-    freeze = json.loads(
-        (root / "dataset/depth-v1/factory/freeze.json").read_text(encoding="utf-8")
-    )
-    if (
-        freeze["logical_release_sha256"]
-        != document["dataset"]["logical_release_sha256"]
-    ):
-        raise ValueError("protocol does not bind the local depth release")
+    dataset_binding = document.get("dataset")
+    if dataset_binding is not None:
+        freeze = json.loads(
+            (root / "dataset/depth-v1/factory/freeze.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        if (
+            freeze["logical_release_sha256"]
+            != dataset_binding["logical_release_sha256"]
+        ):
+            raise ValueError("protocol does not bind the local depth release")
     return document
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import math
 import statistics
 import time
 from contextlib import ExitStack
@@ -19,6 +20,7 @@ from rl.evaluation.attempt_store import (
     AttemptKey,
     AttemptStore,
     RunKey,
+    StoredRecord,
 )
 from rl.evaluation.protocol import (
     ArmSpec,
@@ -241,6 +243,406 @@ def _preflight_references(tasks: list[EvaluationTask], evaluator: PixCellEvaluat
             raise ValueError(f"{task.task_id} reference validation changed its digest")
 
 
+def _expected_request(
+    *,
+    arm: ArmSpec,
+    protocol: dict[str, Any],
+    job: JobSpec,
+) -> dict[str, int | float]:
+    return {
+        "max_tokens": arm.max_output_tokens,
+        "temperature": float(protocol["sampling"]["temperature"]),
+        "top_p": float(protocol["sampling"]["top_p"]),
+        "seed": job.seed,
+    }
+
+
+def _finite_number(value: Any, *, field: str, key: AttemptKey) -> float:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(float(value))
+    ):
+        raise ValueError(f"{key}: {field} must be a finite number")
+    return float(value)
+
+
+def _unit_interval(value: Any, *, field: str, key: AttemptKey) -> float:
+    result = _finite_number(value, field=field, key=key)
+    if not 0.0 <= result <= 1.0:
+        raise ValueError(f"{key}: {field} must be in [0, 1]")
+    return result
+
+
+def _validate_existing_receipt(
+    *,
+    key: AttemptKey,
+    job: JobSpec,
+    arm: ArmSpec,
+    protocol: dict[str, Any],
+    receipt: dict[str, Any],
+    expected_prompt_tokens: int,
+    run_manifest_record_sha256: str,
+) -> None:
+    expected_fields = {
+        "request",
+        "sample",
+        "sampling_seconds",
+        "raw_completion_sha256",
+        "completion_sha256",
+        "cost_estimate_usd",
+        "run_manifest_record_sha256",
+    }
+    if set(receipt) != expected_fields:
+        raise ValueError(
+            f"{key}: sampling receipt fields differ from the launch schema"
+        )
+    if receipt["run_manifest_record_sha256"] != run_manifest_record_sha256:
+        raise ValueError(
+            f"{key}: sampling receipt belongs to another launch manifest"
+        )
+    if receipt["request"] != _expected_request(
+        arm=arm,
+        protocol=protocol,
+        job=job,
+    ):
+        raise ValueError(
+            f"{key}: sampling request differs from the exact current job"
+        )
+
+    sample = receipt["sample"]
+    required_sample_fields = {
+        "prompt_tokens",
+        "completion_tokens",
+        "stop_reason",
+        "cap_hit",
+        "raw_text",
+        "completion_text",
+        "reasoning_text",
+        "answer_text",
+        "reasoning_tokens_exact",
+        "answer_tokens_exact",
+        "reasoning_tokens_estimate",
+        "answer_tokens_estimate",
+        "channel_token_count_basis",
+        "channel_parse_complete",
+    }
+    if not isinstance(sample, dict) or set(sample) != required_sample_fields:
+        raise ValueError(
+            f"{key}: sampled completion fields differ from the launch schema"
+        )
+    prompt_tokens = sample["prompt_tokens"]
+    completion_tokens = sample["completion_tokens"]
+    if (
+        isinstance(prompt_tokens, bool)
+        or not isinstance(prompt_tokens, int)
+        or prompt_tokens != expected_prompt_tokens
+    ):
+        raise ValueError(
+            f"{key}: stored prompt length differs from the current renderer"
+        )
+    if (
+        isinstance(completion_tokens, bool)
+        or not isinstance(completion_tokens, int)
+        or not 0 <= completion_tokens <= arm.max_output_tokens
+        or prompt_tokens + arm.max_output_tokens > arm.context_tokens
+    ):
+        raise ValueError(f"{key}: stored completion has invalid token accounting")
+    if (
+        not isinstance(sample["stop_reason"], str)
+        or not isinstance(sample["cap_hit"], bool)
+        or sample["cap_hit"] != (sample["stop_reason"] == "length")
+        or (sample["cap_hit"] and completion_tokens != arm.max_output_tokens)
+    ):
+        raise ValueError(
+            f"{key}: stored stop reason and cap state are inconsistent"
+        )
+    for field in ("raw_text", "completion_text", "answer_text"):
+        if not isinstance(sample[field], str):
+            raise ValueError(f"{key}: sample.{field} must be text")
+    if sample["reasoning_text"] is not None and not isinstance(
+        sample["reasoning_text"],
+        str,
+    ):
+        raise ValueError(f"{key}: sample.reasoning_text must be text or null")
+    if (
+        not isinstance(sample["channel_token_count_basis"], str)
+        or not sample["channel_token_count_basis"]
+    ):
+        raise ValueError(
+            f"{key}: sample.channel_token_count_basis must be non-empty text"
+        )
+    if not isinstance(sample["channel_parse_complete"], bool):
+        raise ValueError(
+            f"{key}: sample.channel_parse_complete must be boolean"
+        )
+
+    reasoning_exact = sample["reasoning_tokens_exact"]
+    answer_exact = sample["answer_tokens_exact"]
+    if (reasoning_exact is None) != (answer_exact is None):
+        raise ValueError(f"{key}: exact channel token accounting is partial")
+    if reasoning_exact is not None and (
+        isinstance(reasoning_exact, bool)
+        or not isinstance(reasoning_exact, int)
+        or reasoning_exact < 0
+        or isinstance(answer_exact, bool)
+        or not isinstance(answer_exact, int)
+        or answer_exact < 0
+        or reasoning_exact + answer_exact != completion_tokens
+    ):
+        raise ValueError(
+            f"{key}: exact channel tokens do not partition completion"
+        )
+    for field in ("reasoning_tokens_estimate", "answer_tokens_estimate"):
+        value = sample[field]
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, int) or value < 0
+        ):
+            raise ValueError(
+                f"{key}: sample.{field} must be nonnegative or null"
+            )
+
+    raw_text = sample["raw_text"]
+    completion_text = sample["completion_text"]
+    if receipt["raw_completion_sha256"] != _sha256_text(raw_text):
+        raise ValueError(f"{key}: raw completion digest mismatch")
+    if receipt["completion_sha256"] != _sha256_text(completion_text):
+        raise ValueError(f"{key}: completion digest mismatch")
+    if _finite_number(
+        receipt["sampling_seconds"],
+        field="sampling_seconds",
+        key=key,
+    ) < 0.0:
+        raise ValueError(f"{key}: sampling_seconds must be nonnegative")
+    expected_cost = _cost_estimate(
+        protocol,
+        arm,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+    )
+    if receipt["cost_estimate_usd"] != expected_cost:
+        raise ValueError(f"{key}: cost evidence does not reproduce")
+
+
+def _validate_existing_evaluation(
+    *,
+    key: AttemptKey,
+    task: EvaluationTask,
+    receipt: dict[str, Any],
+    evaluation: dict[str, Any],
+) -> None:
+    required_fields = {
+        "status",
+        "attribution",
+        "pure_executable",
+        "measurement_available",
+        "measured_iou",
+        "measured_dice",
+        "aggregation_iou",
+        "program",
+        "program_sha256",
+        "reference_sha256",
+        "violations",
+        "error",
+        "retryable",
+        "evaluation_seconds",
+        "diagnostics",
+    }
+    if not required_fields.issubset(evaluation) or not set(evaluation).issubset(
+        required_fields | {"render_sha256"}
+    ):
+        raise ValueError(f"{key}: evaluation fields differ from the launch schema")
+    try:
+        attribution = Attribution(str(evaluation["attribution"]))
+        status = EvaluationStatus(str(evaluation["status"]))
+    except ValueError as exc:
+        raise ValueError(
+            f"{key}: evaluation has an unknown status or attribution"
+        ) from exc
+    if attribution is not Attribution.MODEL:
+        raise RuntimeError(
+            f"{key}: existing evaluation is {attribution.value}/{status.value}; "
+            "refusing to buy more samples"
+        )
+
+    completion = str(receipt["sample"]["completion_text"])
+    program = evaluation["program"]
+    if not isinstance(program, str) or program != extract_code(completion):
+        raise ValueError(
+            f"{key}: stored program differs from deterministic extraction"
+        )
+    if evaluation["program_sha256"] != _sha256_text(program):
+        raise ValueError(f"{key}: program digest mismatch")
+    if evaluation["reference_sha256"] != task.reference.target_image_sha256:
+        raise ValueError(f"{key}: evaluation belongs to another reference")
+    if (
+        not isinstance(evaluation["pure_executable"], bool)
+        or evaluation["pure_executable"] != (status is EvaluationStatus.OK)
+    ):
+        raise ValueError(f"{key}: pure-executable flag is inconsistent")
+    if not isinstance(evaluation["measurement_available"], bool):
+        raise ValueError(
+            f"{key}: measurement-availability flag must be boolean"
+        )
+    measured_iou = evaluation["measured_iou"]
+    measured_dice = evaluation["measured_dice"]
+    if (measured_iou is None) != (measured_dice is None):
+        raise ValueError(f"{key}: geometry metrics are partial")
+    if evaluation["measurement_available"] != (measured_iou is not None):
+        raise ValueError(
+            f"{key}: measurement-availability flag is inconsistent"
+        )
+    if evaluation["measurement_available"] != (
+        status is EvaluationStatus.OK
+    ):
+        raise ValueError(
+            f"{key}: successful execution and geometry measurement disagree"
+        )
+    if not isinstance(evaluation["diagnostics"], dict):
+        raise ValueError(f"{key}: evaluation diagnostics must be an object")
+    expected_aggregation = 0.0
+    if measured_iou is not None:
+        expected_aggregation = _unit_interval(
+            measured_iou,
+            field="measured_iou",
+            key=key,
+        )
+        _unit_interval(measured_dice, field="measured_dice", key=key)
+        render_sha = evaluation.get("render_sha256")
+        if (
+            not isinstance(render_sha, str)
+            or len(render_sha) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in render_sha
+            )
+        ):
+            raise ValueError(
+                f"{key}: measured geometry has no render digest"
+            )
+        if evaluation["diagnostics"].get("render_sha256") != render_sha:
+            raise ValueError(
+                f"{key}: render digest differs from evaluator diagnostics"
+            )
+        if (
+            evaluation["diagnostics"].get("reference_sha256")
+            != task.reference.target_image_sha256
+        ):
+            raise ValueError(
+                f"{key}: diagnostics belong to another reference"
+            )
+    aggregation_iou = _unit_interval(
+        evaluation["aggregation_iou"],
+        field="aggregation_iou",
+        key=key,
+    )
+    if aggregation_iou != expected_aggregation:
+        raise ValueError(f"{key}: aggregation IoU does not reproduce")
+    if (
+        not isinstance(evaluation["violations"], list)
+        or any(
+            not isinstance(item, str) for item in evaluation["violations"]
+        )
+        or not isinstance(evaluation["retryable"], bool)
+        or not isinstance(evaluation["diagnostics"], dict)
+    ):
+        raise ValueError(
+            f"{key}: evaluation diagnostics have an invalid shape"
+        )
+    if evaluation["retryable"]:
+        raise ValueError(
+            f"{key}: model-attributed evaluation cannot be retryable"
+        )
+    if evaluation["error"] is not None and not isinstance(
+        evaluation["error"],
+        str,
+    ):
+        raise ValueError(f"{key}: evaluation error must be text or null")
+    if _finite_number(
+        evaluation["evaluation_seconds"],
+        field="evaluation_seconds",
+        key=key,
+    ) < 0.0:
+        raise ValueError(f"{key}: evaluation_seconds must be nonnegative")
+
+
+def _validate_existing_attempts_before_sampling(
+    *,
+    store: AttemptStore,
+    study_id: str,
+    jobs: list[JobSpec],
+    tasks: list[EvaluationTask],
+    arms: dict[str, ArmSpec],
+    protocol: dict[str, Any],
+    samplers: dict[str, TinkerSampler],
+    messages: dict[tuple[str, str], list[Any]],
+    run_manifest_record_sha256_by_arm: dict[str, str],
+    require_receipt_evaluations: bool = True,
+) -> None:
+    """Bind every resumed record before any remote sampling is possible."""
+
+    if not jobs:
+        raise ValueError("baseline wave contains no jobs")
+    task_by_id = {task.task_id: task for task in tasks}
+    hypothesis_ids = {job.hypothesis_id for job in jobs}
+    if len(hypothesis_ids) != 1:
+        raise ValueError("baseline wave contains multiple hypotheses")
+    hypothesis_id = next(iter(hypothesis_ids))
+    prompt_lengths: dict[tuple[str, str], int] = {}
+    for arm_id in arms:
+        run_key = RunKey(study_id, hypothesis_id, arm_id)
+        manifest = store.load_run_manifest(run_key)
+        expected_manifest_sha = run_manifest_record_sha256_by_arm[arm_id]
+        if manifest is None or manifest.record_sha256 != expected_manifest_sha:
+            raise ValueError(f"{run_key}: launch manifest is missing or stale")
+        for task in tasks:
+            prompt = samplers[arm_id].build_prompt(
+                messages[(arm_id, task.task_id)]
+            )
+            prompt_lengths[(arm_id, task.task_id)] = int(prompt.length)
+
+    seen: set[AttemptKey] = set()
+    for job in jobs:
+        key = _attempt_key(study_id, job)
+        if key in seen:
+            raise ValueError(f"duplicate launch job: {key}")
+        seen.add(key)
+        receipt = store.load_sampling_receipt(key)
+        evaluation = store.load_evaluation(key)
+        if receipt is None:
+            if evaluation is not None:
+                raise ValueError(
+                    f"{key}: evaluation exists without a sampling receipt"
+                )
+            continue
+        _validate_existing_receipt(
+            key=key,
+            job=job,
+            arm=arms[job.arm_id],
+            protocol=protocol,
+            receipt=receipt.payload,
+            expected_prompt_tokens=prompt_lengths[
+                (job.arm_id, job.task_id)
+            ],
+            run_manifest_record_sha256=(
+                run_manifest_record_sha256_by_arm[job.arm_id]
+            ),
+        )
+        if evaluation is None:
+            if require_receipt_evaluations:
+                raise RuntimeError(
+                    f"{key}: existing receipt has not been evaluated; "
+                    "refusing to buy more samples"
+                )
+            continue
+        _validate_existing_evaluation(
+            key=key,
+            task=task_by_id[job.task_id],
+            receipt=receipt.payload,
+            evaluation=evaluation.payload,
+        )
+
+
 async def _sample_missing(
     *,
     store: AttemptStore,
@@ -251,6 +653,7 @@ async def _sample_missing(
     protocol: dict[str, Any],
     samplers: dict[str, TinkerSampler],
     messages: dict[tuple[str, str], list[Any]],
+    run_manifest_record_sha256_by_arm: dict[str, str],
 ) -> None:
     semaphore = asyncio.Semaphore(int(protocol["sampling"]["sampling_concurrency"]))
 
@@ -284,6 +687,9 @@ async def _sample_missing(
             "sampling_seconds": elapsed,
             "raw_completion_sha256": _sha256_text(sample.raw_text),
             "completion_sha256": _sha256_text(sample.completion_text),
+            "run_manifest_record_sha256": run_manifest_record_sha256_by_arm[
+                job.arm_id
+            ],
             "cost_estimate_usd": _cost_estimate(
                 protocol,
                 arm,
@@ -293,7 +699,22 @@ async def _sample_missing(
         }
         store.write_sampling_receipt(key, payload)
 
-    await asyncio.gather(*(sample_one(job) for job in jobs))
+    outcomes = await asyncio.gather(
+        *(sample_one(job) for job in jobs),
+        return_exceptions=True,
+    )
+    failures = [
+        f"{jobs[index].arm_id}/{jobs[index].task_id}/"
+        f"attempt-{jobs[index].attempt_index}: {type(outcome).__name__}"
+        for index, outcome in enumerate(outcomes)
+        if isinstance(outcome, BaseException)
+    ]
+    if failures:
+        raise RuntimeError(
+            "one or more model requests failed after all sibling requests "
+            "settled and successful receipts were persisted:\n"
+            + "\n".join(failures)
+        )
 
 
 def _evaluate_missing(
@@ -303,10 +724,10 @@ def _evaluate_missing(
     jobs: list[JobSpec],
     tasks: list[EvaluationTask],
     evaluator: PixCellEvaluator,
-    tracker_by_arm: dict[str, WandbRunSession],
+    tracker_by_arm: dict[str, WandbRunSession] | None,
 ) -> None:
     task_by_id = {task.task_id: task for task in tasks}
-    pending: list[tuple[JobSpec, AttemptKey, dict[str, Any]]] = []
+    pending: list[tuple[JobSpec, AttemptKey, StoredRecord]] = []
     for job in jobs:
         key = _attempt_key(study_id, job)
         if store.load_evaluation(key) is not None:
@@ -314,7 +735,7 @@ def _evaluate_missing(
         receipt = store.load_sampling_receipt(key)
         if receipt is None:
             raise RuntimeError(f"missing sampling receipt for {key}")
-        pending.append((job, key, receipt.payload))
+        pending.append((job, key, receipt))
 
     failures: list[str] = []
     for job in jobs:
@@ -335,13 +756,14 @@ def _evaluate_missing(
         requests = [
             (
                 task_by_id[job.task_id].reference,
-                receipt["sample"]["completion_text"],
+                receipt.payload["sample"]["completion_text"],
             )
             for job, _key, receipt in batch
         ]
         results = evaluator.evaluate_batch(requests)
         for (job, key, receipt), result in zip(batch, results, strict=True):
-            completion = str(receipt["sample"]["completion_text"])
+            receipt_payload = receipt.payload
+            completion = str(receipt_payload["sample"]["completion_text"])
             program = extract_code(completion)
             measured_iou = float(result.iou) if result.iou is not None else None
             measured_dice = float(result.dice) if result.dice is not None else None
@@ -373,31 +795,57 @@ def _evaluate_missing(
             render_sha256 = result.metrics.get("render_sha256")
             if render_sha256 is not None:
                 payload["render_sha256"] = render_sha256
-            saved = store.write_evaluation(key, payload)
+            if result.attribution is not Attribution.MODEL:
+                diagnostic = store.write_evaluator_failure(
+                    key,
+                    {
+                        "status": result.status.value,
+                        "attribution": result.attribution.value,
+                        "error": result.error,
+                        "retryable": bool(result.retryable),
+                        "violations": list(result.violations),
+                        "program_sha256": _sha256_text(program),
+                        "reference_sha256": task_by_id[
+                            job.task_id
+                        ].reference.target_image_sha256,
+                        "sampling_record_sha256": receipt.record_sha256,
+                    },
+                )
+                failures.append(
+                    f"{key}: {result.attribution.value}/"
+                    f"{result.status.value}; "
+                    f"diagnostic={diagnostic.relative_path}"
+                )
+                continue
+            store.write_evaluation(key, payload)
             tracking_metrics = {
                 "attempt/iou": aggregation_iou,
                 "attempt/pure_executable": int(pure),
-                "attempt/cap_hit": int(receipt["sample"]["cap_hit"]),
-                "attempt/prompt_tokens": int(receipt["sample"]["prompt_tokens"]),
-                "attempt/completion_tokens": int(
-                    receipt["sample"]["completion_tokens"]
+                "attempt/cap_hit": int(
+                    receipt_payload["sample"]["cap_hit"]
                 ),
-                "attempt/sampling_seconds": float(receipt["sampling_seconds"]),
+                "attempt/prompt_tokens": int(
+                    receipt_payload["sample"]["prompt_tokens"]
+                ),
+                "attempt/completion_tokens": int(
+                    receipt_payload["sample"]["completion_tokens"]
+                ),
+                "attempt/sampling_seconds": float(
+                    receipt_payload["sampling_seconds"]
+                ),
                 "attempt/evaluation_seconds": float(result.latency_seconds),
                 "attempt/estimated_uncached_cost_usd": float(
-                    receipt["cost_estimate_usd"]["uncached_prefill"]
+                    receipt_payload["cost_estimate_usd"][
+                        "uncached_prefill"
+                    ]
                 ),
             }
-            tracker_by_arm[job.arm_id].mirror_saved_metrics(
-                key=key,
-                source="evaluation",
-                metrics=tracking_metrics,
-                step=_tracking_step(job, tasks=tasks),
-            )
-            if result.attribution is not Attribution.MODEL:
-                failures.append(
-                    f"{key}: {result.attribution.value}/{result.status.value}; "
-                    f"record={saved.relative_path}"
+            if tracker_by_arm is not None:
+                tracker_by_arm[job.arm_id].mirror_saved_metrics(
+                    key=key,
+                    source="evaluation",
+                    metrics=tracking_metrics,
+                    step=_tracking_step(job, tasks=tasks),
                 )
     if failures:
         raise RuntimeError(
@@ -678,13 +1126,61 @@ async def run_baseline(
     ) as evaluator:
         _preflight_references(tasks, evaluator)
         with ExitStack() as stack:
+            run_manifest_record_sha256_by_arm: dict[str, str] = {}
             for arm_id in arms:
                 run_key = RunKey(protocol["study_id"], hypothesis_id, arm_id)
                 stack.enter_context(store.acquire_run_lock(run_key))
-                store.create_or_verify_run_manifest(
+                manifest = store.create_or_verify_run_manifest(
                     run_key,
                     _run_manifest(binding, arm_id),
                 )
+                run_manifest_record_sha256_by_arm[arm_id] = (
+                    manifest.record_sha256
+                )
+            _validate_existing_attempts_before_sampling(
+                store=store,
+                study_id=protocol["study_id"],
+                jobs=jobs,
+                tasks=tasks,
+                arms=arms,
+                protocol=protocol,
+                samplers=samplers,
+                messages=messages,
+                run_manifest_record_sha256_by_arm=(
+                    run_manifest_record_sha256_by_arm
+                ),
+                require_receipt_evaluations=False,
+            )
+            resumed_jobs = [
+                job
+                for job in jobs
+                if store.load_sampling_receipt(
+                    _attempt_key(protocol["study_id"], job)
+                )
+                is not None
+            ]
+            _evaluate_missing(
+                store=store,
+                study_id=protocol["study_id"],
+                jobs=resumed_jobs,
+                tasks=tasks,
+                evaluator=evaluator,
+                tracker_by_arm=None,
+            )
+            _validate_existing_attempts_before_sampling(
+                store=store,
+                study_id=protocol["study_id"],
+                jobs=jobs,
+                tasks=tasks,
+                arms=arms,
+                protocol=protocol,
+                samplers=samplers,
+                messages=messages,
+                run_manifest_record_sha256_by_arm=(
+                    run_manifest_record_sha256_by_arm
+                ),
+                require_receipt_evaluations=True,
+            )
             await _sample_missing(
                 store=store,
                 study_id=protocol["study_id"],
@@ -694,6 +1190,9 @@ async def run_baseline(
                 protocol=protocol,
                 samplers=samplers,
                 messages=messages,
+                run_manifest_record_sha256_by_arm=(
+                    run_manifest_record_sha256_by_arm
+                ),
             )
             mirrors = {
                 arm_id: WandbMetricsMirror(

@@ -607,6 +607,54 @@ class AttemptStore:
             key=key.as_dict(),
         )
 
+    def write_evaluator_failure(
+        self,
+        key: AttemptKey,
+        payload: Mapping[str, Any],
+    ) -> StoredRecord:
+        """Preserve a verifier diagnostic without poisoning canonical results."""
+
+        if self.load_sampling_receipt(key) is None:
+            raise InvalidRecordError(
+                "evaluator failure cannot precede its sampling receipt"
+            )
+        normalized = _normalize_payload(payload)
+        failure_id = _sha256(normalized)
+        relative = (
+            self.attempt_relative_path(key)
+            / "evaluator_failures"
+            / f"{failure_id}.json"
+        )
+        return self._write_attempt_record(
+            key=key,
+            payload=normalized,
+            record_type="evaluator_failure",
+            relative=relative,
+        )
+
+    def list_evaluator_failures(
+        self,
+        key: AttemptKey,
+    ) -> tuple[StoredRecord, ...]:
+        directory = self._path(
+            self.attempt_relative_path(key) / "evaluator_failures"
+        )
+        if not directory.exists():
+            return ()
+        result: list[StoredRecord] = []
+        for path in sorted(directory.glob("*.json")):
+            relative = PurePosixPath(
+                path.relative_to(self.external_root).as_posix()
+            )
+            record = self._load(
+                relative=relative,
+                record_type="evaluator_failure",
+                key=key.as_dict(),
+            )
+            if record is not None:
+                result.append(record)
+        return tuple(result)
+
     def resume_or_sample(
         self,
         key: AttemptKey,
