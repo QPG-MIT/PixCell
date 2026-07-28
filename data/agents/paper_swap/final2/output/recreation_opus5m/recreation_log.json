@@ -1,0 +1,82 @@
+{
+  "device": "1x4 multimode interference (MMI) power splitter",
+  "worker": "recreation_opus5m",
+  "inputs": {
+    "image": "data/agents/paper_swap/final2/device_bw.png",
+    "footprint_json": "data/agents/paper_swap/final2/footprint.json",
+    "footprint_um": [25, 10]
+  },
+  "reasoning_before_coding": {
+    "what_it_is": "One input access waveguide feeding a wide rectangular multimode slab, which fans out into four output access waveguides. Classic 1x4 MMI splitter, drawn with propagation along the image vertical axis (input at the bottom, four outputs at the top).",
+    "how_it_works": "The input taper launches a field into the multimode slab. The slab supports many lateral modes whose differing propagation constants beat against each other; at the N-fold self-imaging distance (L ~ 3*L_pi/(4N) for N-fold general interference, L_pi = pi/(beta0-beta1) ~ 4*n_eff*We^2/(3*lambda)) the input field is reproduced as N=4 equal-amplitude images spread across the slab width. Placing four tapered access waveguides at those image positions extracts a 4-way equal split. Every access waveguide is tapered where it meets the slab so the launched/collected mode overlaps the self-image well and the abrupt-interface reflection is reduced.",
+    "function_defining_knobs": [
+      "mmi_length_um - which self-imaging plane the outputs sit on; the dominant knob for split balance and excess loss",
+      "mmi_width_um - sets L_pi (hence the required length) and the lateral pitch of the four self-images",
+      "out_port_offsets_um - lateral positions of the four output access guides; they must land on the image spots or power is lost / imbalanced",
+      "in_port_offset_um - launch position (0 = centered, symmetric excitation)",
+      "in_taper_wide_width_um / out_taper_wide_width_um - mode overlap and back-reflection at the slab interface",
+      "in_taper_length_um / out_taper_length_um - adiabaticity of the taper transitions",
+      "wg_width_um - access (single-mode) waveguide width",
+      "out_straight_length_um - routing only, not a function knob"
+    ]
+  },
+  "calibration": {
+    "issue": "prepare_calibration on the raw image returns bbox [123, 2, 1888, 2272] (scale 70.6 / 227.0 px per um) because the raster background carries ~2485 scattered compression-halo pixels below the 245 white threshold, spread to all four image edges. That bbox is 1765x2270 px against a device that actually occupies 1372x1682 px, so the absolute-scale renderer anchors any candidate ~196 px left of and ~100 px below the target ink. Measured consequence: this exact GDS scores IoU 0.4727 under that calibration and 0.9935 under the corrected one - the pollution, not the geometry, dominates.",
+    "what_i_did": "component.png is a byte-for-byte copy of device_bw.png and was NOT modified. For the calibration ONLY, prepare_calibration was run on a speckle-cleaned copy (component_denoised.png: every pixel >= 200 forced to pure white; device ink and its anti-aliased edges < 200 untouched). Result: bbox [318, 196, 1692, 1880], scale 54.96 / 168.4 px per um - the true device extent.",
+    "audit": {
+      "calibration.json": "from component_denoised.png (the one to gate with)",
+      "calibration_raw.json": "from the untouched image, kept for audit",
+      "iou_vs_untouched_device_bw_png_with_calibration_json": 0.9935378715114693,
+      "iou_vs_component_png_with_calibration_json": 0.9935378715114693,
+      "iou_vs_component_png_with_calibration_raw_json": 0.4727332463316086
+    },
+    "note": "Scoring the untouched source image with the corrected calibration gives exactly the same IoU as scoring the copy, so the denoising affects the ruler only, never the target."
+  },
+  "measurement_method": "Row run-length scan of the target raster. Pixel-to-micron conversion uses the calibration's anisotropic scales (x: 54.96 px/um, y: 168.4 px/um) - the image aspect (1372x1682 px) and the declared footprint (25x10 um) are not proportional, so x and y scale differently by construction of the gate's renderer. Slab body rows 818-1668, full width 319-1690. Output arms: straight width ~87 px from row 197 to ~510, then a linear taper to ~175 px at the slab edge. Input taper: ~174 px at the slab down to an 84 px tip truncated at the footprint edge (row 1879). Output arm centers 507.5 / 802 / 1184.5 / 1499 px against a slab center of 1004.5 px - the drawing is not exactly uniformly pitched, so the four offsets are carried individually.",
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9925390614422269,
+      "dice": 0.9962555622109748,
+      "sse": 11021.0,
+      "change_made": "First build from the row-scan measurements: rectangle slab (25 x 5.053 um) + one input linear taper (1.474 -> 3.166 um over 1.256 um) + four output linear tapers (3.130 -> 1.584 um over 1.826 um) each continued by a 1.865 um straight, all from gf.Path + extrude / extrude_transition."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9935378715114693,
+      "dice": 0.9967584621386544,
+      "sse": 9547.0,
+      "change_made": "Diff showed a thin blue (missing) band along every taper edge. Re-measured the taper widths AT the slab interface rather than 4 px short of it: out_taper_wide_width 3.130 -> 3.182 um, in_taper_tip 1.474 -> 1.528 um, in_taper_wide 3.166 -> 3.176 um."
+    }
+  ],
+  "stopped_because": "Residual error is a ~1 px anti-aliasing rind on the whole perimeter (FN 6883 / FP 2664, i.e. the thresholded target is uniformly ~1 px fatter than any hard-edged polygon). Closing it would mean inflating waveguide widths to chase the rasterizer - the failure mode the optimize-to-spec skill explicitly warns about ('IoU rewards fattened waveguides ... do not let IoU pick wg_width'). Two remaining real-geometry mismatches were also left alone deliberately: (a) the drawing's rightmost arm taper is ~5 px wider than the other three and (b) the slab corners are drawn with a ~10 px fillet. Both are drafting noise worth ~0.15% IoU; encoding them would make the four MMI output tapers unequal, which is physically wrong for a splitter.",
+  "final": {
+    "iou": 0.9935378715114693,
+    "dice": 0.9967584621386544,
+    "sse": 9547.0,
+    "gds": "device.gds",
+    "script": "device.py",
+    "gds_size_um": [25.0, 10.0],
+    "size_match": [true, true]
+  },
+  "purity_self_check": {
+    "homi.conductor.gate.purity_violations": [],
+    "vocabulary_used": ["gf.components.rectangle", "gf.Path", "gf.path.straight", "gf.path.extrude", "gf.path.extrude_transition", "gf.path.transition", "gf.cross_section.cross_section"],
+    "note": "No device stencils, no raw polygons, no image reads at runtime."
+  },
+  "knob_response": {
+    "file": "knob_response.json",
+    "homi.spec_optimization.verify_knob_response": "DID NOT RUN - it hard-requires an MZI-shaped lengths.json with exactly 2 arms; a 1x4 splitter has 4 path-length-balanced branches. Structurally inapplicable to this topology, not a skipped check.",
+    "homi.conductor.gate.knob_response": {
+      "mmi_length_um": "PASS - area grows 125.000 um2 for +5 um, predicted mmi_width * delta = 25 * 5 = 125.000",
+      "mmi_width_um": "PASS - area grows 25.260 um2 for +5 um, predicted mmi_length * delta = 5.053 * 5 = 25.265",
+      "out_straight_length_um": "PASS - area grows 31.680 um2 for +5 um, predicted 4 * wg_width * delta = 4 * 1.584 * 5 = 31.680",
+      "out_taper_length_um": "PASS - area grows 47.660 um2 for +5 um (four trapezoids, non-constant width, so checked for motion only)"
+    }
+  },
+  "lengths_json": {
+    "arms": "o1..o4 = 10.0 um each (input taper + slab + output taper + output straight), computed from gf.Path.length()",
+    "delta_length_um": 0.0,
+    "note": "A 1xN MMI is path-length balanced by construction; the fan-out is lateral self-imaging inside the slab, not routed arms. There is no arm-imbalance knob in this topology."
+  }
+}

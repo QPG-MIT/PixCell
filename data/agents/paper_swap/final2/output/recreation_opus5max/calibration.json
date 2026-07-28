@@ -1,0 +1,58 @@
+{
+  "bbox": [
+    316,
+    192,
+    1693,
+    1880
+  ],
+  "bbox_size_px": [
+    1377,
+    1688
+  ],
+  "offset": [
+    316,
+    192
+  ],
+  "scale_px_per_um": [
+    55.08,
+    168.8
+  ],
+  "footprint_um": [
+    25,
+    10
+  ],
+  "image_size_px": [
+    1888,
+    2272
+  ],
+  "white_threshold": 245,
+  "bbox_source": "largest connected component of the luminance < 245 mask (0.9994 of all sub-threshold pixels). The raw bbox of that mask, used by jee.core.calculate_calibration, is [123, 2, 1888, 2272] -- the whole image -- because 949 background pixels in 533 disconnected speckles (luminance 212-244) span [123, 2, 1888, 2272].",
+  "repair_stats": {
+    "device_px": 1473764,
+    "speckle_px": 949,
+    "speckle_components": 533,
+    "speckle_luminance_range": [
+      212,
+      244
+    ],
+    "speckle_bbox": [
+      123,
+      2,
+      1888,
+      2272
+    ],
+    "device_share_of_mask": 0.9993564849567339
+  },
+  "prescribed": {
+    "bbox": [
+      123,
+      2,
+      1888,
+      2272
+    ],
+    "scale_px_per_um": [
+      70.6,
+      227.0
+    ]
+  }
+}

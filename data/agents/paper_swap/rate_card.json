@@ -1,0 +1,170 @@
+{
+  "_purpose": "Published API list prices used to convert measured token counts into an API-list-price-equivalent cost per cell. Every rate is sourced; nothing is interpolated. Configurations whose model has no published per-token price carry cost = null rather than an estimate.",
+  "_checked_utc": "2026-07-27",
+  "_accounting": {
+    "anthropic": {
+      "reported_fields": "Per assistant turn the transcript reports DISJOINT buckets: input_tokens (uncached), cache_read_input_tokens, cache_creation_input_tokens (split by TTL in cache_creation), output_tokens. They are summed over turns.",
+      "formula": "cost = (input_uncached*input + cache_read*cache_read + cache_write*cache_write + output*output) / 1e6",
+      "cache_write_note": "Cache WRITES are a premium over base input: 1.25x at 5-minute TTL, 2.0x at 1-hour TTL. Measured: 100% of writes in this campaign are ephemeral_1h_input_tokens, so the 2.0x rate applies. Earlier cost code omitted cache writes entirely and undercounted accordingly.",
+      "thinking_note": "Reasoning/thinking tokens bill as ordinary output tokens (no surcharge) and are already inside output_tokens."
+    },
+    "openai": {
+      "reported_fields": "The rollout reports CUMULATIVE total_token_usage; the last record is taken. cached_input_tokens is a SUBSET of input_tokens, and reasoning_output_tokens is a SUBSET of output_tokens (verified: input+output == total_tokens exactly).",
+      "formula": "cost = ((input_tokens - cached_input_tokens)*input + cached_input_tokens*cached_input + output_tokens*output) / 1e6",
+      "double_count_warning": "Charging input_tokens in full AND cached_input_tokens separately double-counts the cached prefix (3.09M of 3.24M tokens on a sampled cell).",
+      "cache_write_note": "No cache-write charge is published; caching is automatic. The 3-tuple is structurally complete for OpenAI and structurally incomplete for Anthropic."
+    }
+  },
+  "_sources": {
+    "anthropic": "https://platform.claude.com/docs/en/about-claude/pricing",
+    "openai": "https://developers.openai.com/api/docs/pricing",
+    "openai_crosscheck": "https://learn.chatgpt.com/docs/pricing (Codex credit rate card; 1 credit = $0.04 \u2014 independently reproduces every OpenAI row)"
+  },
+  "models": {
+    "claude-opus-5": {
+      "vendor": "anthropic",
+      "input": 5.0,
+      "cache_read": 0.5,
+      "cache_write_1h": 10.0,
+      "output": 25.0
+    },
+    "claude-fable-5": {
+      "vendor": "anthropic",
+      "input": 10.0,
+      "cache_read": 1.0,
+      "cache_write_1h": 20.0,
+      "output": 50.0
+    },
+    "claude-opus-4-8": {
+      "vendor": "anthropic",
+      "input": 5.0,
+      "cache_read": 0.5,
+      "cache_write_1h": 10.0,
+      "output": 25.0
+    },
+    "claude-opus-4-5": {
+      "vendor": "anthropic",
+      "input": 5.0,
+      "cache_read": 0.5,
+      "cache_write_1h": 10.0,
+      "output": 25.0
+    },
+    "claude-sonnet-5": {
+      "vendor": "anthropic",
+      "input": 2.0,
+      "cache_read": 0.2,
+      "cache_write_1h": 4.0,
+      "output": 10.0,
+      "price_caveat": "Introductory pricing through 2026-08-31; standard rates are 3.00 / 0.30 / 6.00 / 15.00 from 2026-09-01. Rates here are as-checked on 2026-07-27."
+    },
+    "claude-sonnet-4-5": {
+      "vendor": "anthropic",
+      "input": 3.0,
+      "cache_read": 0.3,
+      "cache_write_1h": 6.0,
+      "output": 15.0
+    },
+    "claude-haiku-4-5": {
+      "vendor": "anthropic",
+      "input": 1.0,
+      "cache_read": 0.1,
+      "cache_write_1h": 2.0,
+      "output": 5.0
+    },
+    "gpt-5.6-sol": {
+      "vendor": "openai",
+      "input": 5.0,
+      "cached_input": 0.5,
+      "output": 30.0
+    },
+    "gpt-5.6-terra": {
+      "vendor": "openai",
+      "input": 2.5,
+      "cached_input": 0.25,
+      "output": 15.0
+    },
+    "gpt-5.6-luna": {
+      "vendor": "openai",
+      "input": 1.0,
+      "cached_input": 0.1,
+      "output": 6.0
+    },
+    "gpt-5.5": {
+      "vendor": "openai",
+      "input": 5.0,
+      "cached_input": 0.5,
+      "output": 30.0
+    },
+    "gpt-5.4": {
+      "vendor": "openai",
+      "input": 2.5,
+      "cached_input": 0.25,
+      "output": 15.0
+    },
+    "gpt-5.4-mini": {
+      "vendor": "openai",
+      "input": 0.75,
+      "cached_input": 0.075,
+      "output": 4.5
+    },
+    "gpt-5.3-codex-spark": {
+      "vendor": "openai",
+      "input": null,
+      "cached_input": null,
+      "output": null,
+      "unpriced_reason": "Research preview for ChatGPT Pro; not available in the API at launch and absent from the published API pricing table. Third-party aggregators quote the base gpt-5.3-codex rate for it; that is not an OpenAI-published Spark price and is not used here."
+    }
+  },
+  "config_to_model": {
+    "codex56solm": "gpt-5.6-sol",
+    "codex56solx": "gpt-5.6-sol",
+    "codex56solu": "gpt-5.6-sol",
+    "codex56terram": "gpt-5.6-terra",
+    "codex56terrax": "gpt-5.6-terra",
+    "codex56terrau": "gpt-5.6-terra",
+    "codex56lunam": "gpt-5.6-luna",
+    "codex56lunax": "gpt-5.6-luna",
+    "codex56lunau": "gpt-5.6-luna",
+    "opus5m": "claude-opus-5",
+    "opus5max": "claude-opus-5",
+    "fable5m": "claude-fable-5",
+    "fable5max": "claude-fable-5",
+    "codex55m": "gpt-5.5",
+    "codex55h": "gpt-5.5",
+    "codex55x": "gpt-5.5",
+    "codex": "gpt-5.5",
+    "codex54m": "gpt-5.4",
+    "codex54mini": "gpt-5.4-mini",
+    "codexspark": "gpt-5.3-codex-spark",
+    "opus48m": "claude-opus-4-8",
+    "opus48max": "claude-opus-4-8",
+    "opus": "claude-opus-4-8",
+    "opus45m": "claude-opus-4-5",
+    "sonnet5m": "claude-sonnet-5",
+    "sonnet45m": "claude-sonnet-4-5",
+    "haiku45h": "claude-haiku-4-5",
+    "haiku45m": "claude-haiku-4-5"
+  },
+  "_launch_conditions": {
+    "codex_extension_waves": {
+      "flags": "codex --yolo -m <model> -c model_reasoning_effort=<effort> -c service_tier=fast -c mcp_servers={}",
+      "note": "Every codex wave ran with `-c service_tier=fast`. Resolution: `fast` is not an OpenAI API service tier at all \u2014 it is a ChatGPT-side credit feature (https://learn.chatgpt.com/docs/agent-configuration/speed), and the CLI logged that it omitted the parameter as unsupported for gpt-5.6, so requests ran at the default tier. Authentication was ChatGPT-subscription (no API key), so actual consumption was ChatGPT credits at a 2.5x fast multiplier for GPT-5.6/5.5 \u2014 a rate with NO published per-token dollar price. That does not affect the figure here, which reports an API-list-price EQUIVALENT: measured tokens converted at published list rates, not an invoice. OpenAI's paid Priority tier (2x standard on all categories) was not used.",
+      "status": "RESOLVED \u2014 standard list rates are the correct basis"
+    },
+    "claude_extension_waves": {
+      "flags": "claude --dangerously-skip-permissions --model <model> --effort <effort>",
+      "note": "No fast-mode flag was set. Anthropic fast mode is double-gated (speed:'fast' plus the fast-mode-2026-02-01 beta header, research-preview access) and supports only Opus 5 and Opus 4.8 \u2014 Fable 5 has no fast rate at all. Standard rates therefore apply. Anthropic's own service_tier is a capacity commitment, not a per-token premium, and is unsupported on Opus 5 / Sonnet 5 regardless.",
+      "status": "RESOLVED \u2014 standard list rates are the correct basis"
+    },
+    "original_waves": {
+      "flags": "codex --yolo -c mcp_servers={} (tier per the July record); claude --dangerously-skip-permissions --model <model> --effort <effort>",
+      "status": "standard rates applied"
+    }
+  },
+  "_price_provenance": {
+    "checked": "2026-07-27",
+    "caveat": "These are the rates as published on the check date. The original waves ran 2026-07-01..03; no attempt was made to establish historical rates for that window, so a rate change in between would mean the earlier cost figures were correct at their time and merely stale now. All costs in compilation.json are computed on the check-date rates so that every row is comparable on one basis.",
+    "opus_tiers": "Opus 4.5, Opus 4.8 and Opus 5 all bill identically ($5 / $0.50 / $25) as checked. They are kept as separate entries so a future divergence is a one-line change. Fable 5 is distinct at $10 / $1 / $50.",
+    "superseded_model": "Earlier cost code applied $15 / $1.50 / $75 to any config whose name began with 'opus' \u2014 the historical Opus-generation rate, matching no current Opus tier \u2014 and had no entry for Fable 5 at all."
+  }
+}

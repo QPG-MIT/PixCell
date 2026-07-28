@@ -1,0 +1,54 @@
+{
+  "topology_reasoning": {
+    "device": "A symmetric, longitudinal multi-rail/slotted photonic section: five narrow central rails run through the 120 um aperture, flanked above and below by broad slab/loading regions and five repeated thin rails on each exterior side.",
+    "operation": "The repeated parallel rails and symmetric upper/lower slabs form a distributed multi-mode or metamaterial interaction region. The image does not expose ports, so this recreation preserves the observed physical topology rather than inferring a later spec-stage circuit.",
+    "function_defining_knobs": [
+      "interaction_length",
+      "rail_width",
+      "rail_pitch",
+      "slab_width",
+      "slab_gap",
+      "end_taper_length"
+    ],
+    "image_measurements": "The calibrated footprint is 120.0 um by 4.0 um. The central five rails are approximately 0.06--0.07 um wide on a 0.10 um pitch near y=2 um. Their long axis spans the full calibrated width. Upper/lower broad regions are symmetric about y=2 um and are accompanied by five repeated exterior rails.",
+    "iterations": [
+      {
+        "iter": 1,
+        "iou": 0.46614222817022866,
+        "dice": 0.6358758641744906,
+        "sse": 4935277.0,
+        "change_made": "Initial central rails, symmetric slabs, and exterior rails; terminal taper attempt was rejected by grid snapping and was corrected before measurement."
+      },
+      {
+        "iter": 2,
+        "iou": 0.6015488235784278,
+        "dice": 0.7512088482377384,
+        "sse": 3371142.0,
+        "change_made": "Added minimal top/bottom end extent markers so the generated bbox uses the calibrated 4 um height; remaining oversized taper geometry was detected."
+      },
+      {
+        "iter": 3,
+        "iou": 0.7855328671612151,
+        "dice": 0.8798862027223491,
+        "sse": 1608339.0,
+        "change_made": "Removed mispositioned terminal tapers; retained calibrated-bbox markers, aligning the repeated rail/slab core."
+      },
+      {
+        "iter": 4,
+        "iou": 0.8772612068584005,
+        "dice": 0.9346181593199792,
+        "sse": 884720.0,
+        "change_made": "Replaced artificial markers with mirror-symmetric smooth Path return turns, and applied measured sub-pitch vertical offsets to outer rails."
+      }
+    ],
+    "knob_response": {
+      "param": "delta_length",
+      "delta_um": 5.0,
+      "width_um": 0.066,
+      "delta_response_um": 5.0,
+      "area_growth_um2": 0.33,
+      "expected_area_growth_um2": 0.33,
+      "passes": true
+    }
+  }
+}

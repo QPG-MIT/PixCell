@@ -1,0 +1,124 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [
+      40.0,
+      1.7
+    ]
+  },
+  "topology_reasoning": {
+    "device": "symmetric adiabatic three-waveguide 1x2 trident splitter",
+    "visual_evidence": [
+      "A single approximately 0.27 um wide center input enters from the left and linearly narrows to a short nonzero tip near x=25 um.",
+      "Two side rails begin as narrow tips near x=3 um at centerlines approximately +/-0.27 um and widen linearly to approximately 0.245 um over the transfer region.",
+      "The opposing center and side tapers keep an approximately 0.11 um edge gap, indicating evanescent adiabatic transfer rather than a hard Y junction.",
+      "After the center guide terminates, the side rails follow mirror-symmetric smooth S-bends to centerlines approximately +/-0.73 um and finish as straight outputs at x=40 um."
+    ],
+    "operation": "The input mode begins in the wide center rail. Along the coupled transfer region, the center rail loses confinement while the two symmetric side rails gain confinement, so an adiabatically followed symmetric supermode transfers power equally into the side rails. Smooth fanout bends then separate the two output ports.",
+    "function_defining_knobs": [
+      "transfer_length",
+      "center_taper_length",
+      "side_taper_length",
+      "transfer_offset",
+      "center_tip_width",
+      "side_tip_width",
+      "transfer_gap",
+      "fanout_length",
+      "output_separation"
+    ],
+    "secondary_geometric_knobs": [
+      "input_width",
+      "output_width",
+      "side_taper_start_x",
+      "fanout_rise_shape",
+      "output_straight_length"
+    ],
+    "initial_dimension_estimates_um": {
+      "input_width": 0.27,
+      "output_width": 0.245,
+      "center_tip_width": 0.07,
+      "side_tip_width": 0.06,
+      "side_center_offset": 0.27,
+      "transfer_gap": 0.11,
+      "center_taper_end_x": 25.1,
+      "side_taper_start_x": 3.0,
+      "side_taper_end_x": 26.0,
+      "fanout_end_x": 35.5,
+      "output_center_offset": 0.73
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9715403995719474,
+      "dice": 0.9855647896263087,
+      "sse": 6755.0,
+      "change_made": "Initial calibrated primitives-only reconstruction: linear center/side tapers, constant transfer gaps, and mirror-paired quintic smoothstep fanout paths.",
+      "gds_size_um": [
+        40.0,
+        1.7
+      ],
+      "size_match": [
+        true,
+        true
+      ],
+      "decision": "Stopped because IoU exceeded the required 0.85 threshold."
+    }
+  ],
+  "best_iteration": 1,
+  "best_iou": 0.9715403995719474,
+  "knob_response": {
+    "param": "transfer_offset",
+    "why_this_knob": "It sets the relative longitudinal onset of the center taper against the side-rail tapers, which changes the adiabatic transfer profile while extending one physical input guide at its actual 0.27 um width.",
+    "delta_um": 5.0,
+    "width_um": 0.27,
+    "base_value": 3.0,
+    "base_delta_length_um": 2.3500000000000014,
+    "perturbed_delta_length_um": 7.350000000000001,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 18.536259,
+    "perturbed_area_um2": 19.891258999999998,
+    "area_growth_um2": 1.3549999999999969,
+    "expected_area_growth_um2": 1.35,
+    "area_ok": true,
+    "passes": true,
+    "audit_note": "The first response call found zero measurable area because gdsfactory metadata was the sole top cell. write_gds was changed to with_metadata=False without changing geometry, after which the evaluator measured and passed the real layer-(1,0) area response."
+  },
+  "final": {
+    "status": "done",
+    "iou": 0.9715403995719474,
+    "iterations": 1,
+    "tunables": [
+      "input_width",
+      "output_width",
+      "center_tip_width",
+      "side_tip_width",
+      "transfer_length",
+      "center_taper_length",
+      "side_taper_length",
+      "transfer_gap",
+      "transfer_offset",
+      "side_taper_start_x",
+      "transfer_vertical_offset",
+      "fanout_length",
+      "output_separation",
+      "output_straight_length",
+      "output_vertical_offset"
+    ],
+    "artifacts": [
+      "device.py",
+      "device.gds",
+      "best.py",
+      "best.gds",
+      "raster.png",
+      "diff.png",
+      "calibration.json",
+      "lengths.json",
+      "metrics.json",
+      "knob_response.json"
+    ]
+  }
+}

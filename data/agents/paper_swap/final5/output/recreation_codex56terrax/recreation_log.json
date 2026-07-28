@@ -1,0 +1,81 @@
+{
+  "topology_reasoning": {
+    "identification": "The image is a compact, four-port periodic directional/contra-directional coupling structure: two opposing folded access waveguides bring light into a pair of corrugated horizontal interaction rails, while a narrow straight central bus separates the two corrugated rails. The broad pointed sections are adiabatic slab-to-guide tapers and the large rounded returns preserve the folded-port topology.",
+    "operation": "Coupling is controlled by the long repeated-period interaction region. The folded access paths route the four ports without crossings; the central straight bus provides the visually distinct through path. This recreation models the material layout only, using paths, tapers, and rectangles on layer (1, 0).",
+    "observed_geometry": "The calibrated 18.24 um x 0.70 um frame contains a top taper/return, a lower return, two 8.7-um corrugated rails centered near visual y=0.289 and 0.399 um, a 0.025-um central straight at visual y=0.344 um, and four curved access sections. The corrugation is 55 repeated isolated rectangular material bars with approximately 0.115-um duty width and 0.160-um pitch.",
+    "function_defining_knobs": [
+      "interaction_length",
+      "grating_period",
+      "grating_count",
+      "grating_tooth_width",
+      "corrugated_rail_width",
+      "central_bus_width",
+      "access_width",
+      "access_bend_radius",
+      "taper_length",
+      "taper_tip_width",
+      "taper_wide_width",
+      "rail_gap"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.6612195408920257,
+      "dice": 0.7960652094628871,
+      "sse": 443425.0,
+      "change_made": "Initial primitives-only layout: five horizontal rails, two 55-tooth corrugated regions, tapers, and folded access paths. The absolute overlay shows the expected topology but a vertical centering offset and insufficiently smooth/accurate folded returns."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7731310246282357,
+      "dice": 0.8720517704441324,
+      "sse": 278167.0,
+      "change_made": "Added a negligible bbox-centering marker and replaced the folded returns with sampled Bezier paths; this corrected the calibrated vertical frame and substantially improved the return contours."
+    },
+    {
+      "iter": 3,
+      "iou": 0.5209405810133636,
+      "dice": 0.685024237654668,
+      "sse": 714417.0,
+      "change_made": "Tried GDSFactory width-transition extrusions for the turn flare. Their endpoint orientation was contrary to the visual-coordinate construction, expanding the return past the calibrated frame; retained only as an honest failed measurement."
+    },
+    {
+      "iter": 4,
+      "iou": 0.34230841921399485,
+      "dice": 0.5100294601659993,
+      "sse": 1092698.0,
+      "change_made": "The attempted transition-endpoint reversal expanded the opposite end and further overflowed the vertical frame; abandoned transitions in favor of stable constant-width path extrusions."
+    },
+    {
+      "iter": 5,
+      "iou": 0.808884603481496,
+      "dice": 0.89434627496377,
+      "sse": 229723.0,
+      "change_made": "Restored the best stable Bezier return geometry, retained the calibrated centering marker, and retuned the lower-right access Bezier to delay its downward turn."
+    },
+    {
+      "iter": 6,
+      "iou": 0.8232906525294306,
+      "dice": 0.9030821842774094,
+      "sse": 212326.0,
+      "change_made": "Added narrow primitive-path flare fills at the upper return coalescence and adjusted the lower-left and lower-right Bezier controls. This is the honest best after the six-iteration limit."
+    }
+  ],
+  "knob_response": {
+    "param": "interaction_length",
+    "delta_um": 5.0,
+    "width_um": 0.024,
+    "base_value": 8.702,
+    "base_delta_length_um": 8.702,
+    "perturbed_delta_length_um": 13.702,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 3.2434169999999853,
+    "perturbed_area_um2": 3.3634169999999797,
+    "area_growth_um2": 0.11999999999999433,
+    "expected_area_growth_um2": 0.12,
+    "area_ok": true,
+    "passes": true
+  }
+}

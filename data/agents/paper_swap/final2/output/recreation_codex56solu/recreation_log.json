@@ -1,0 +1,117 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [
+      25.0,
+      10.0
+    ],
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_identification": "A one-input/four-output multimode slab splitter (1x4 MMI/star-coupler-like topology). A centered lower access guide expands through a short taper into a broad rectangular multimode transfer region. Four upper tapers sample the slab field and narrow into separate output guides.",
+    "operating_principle": "The broad central region supports multiple lateral modes. Its propagation/transfer length controls their relative phase at the output plane, while the four output positions, taper widths, and inter-guide gaps set how the reproduced field is collected. The lower and upper tapers provide adiabatic transitions between single-guide ports and the slab.",
+    "observed_geometry": "The calibrated 25 x 10 um frame contains a roughly 19.43 um wide by 3.75 um long rectangular slab. Four approximately 1.22 um wide upper guides are reached through approximately 1.40 um long tapers whose slab-side widths are about 2.45 um. A centered approximately 0.92 um lower taper narrows from about 2.46 um at the slab to about 1.16 um at the port.",
+    "function_defining_knobs": [
+      "transfer_length",
+      "mmi_width",
+      "guide_width",
+      "output_taper_length",
+      "output_taper_base_width_1",
+      "output_taper_base_width_2",
+      "output_taper_base_width_3",
+      "output_taper_base_width_4",
+      "output_center_1",
+      "output_center_2",
+      "output_center_3",
+      "output_center_4",
+      "input_taper_length",
+      "input_taper_base_width",
+      "input_tip_width",
+      "phase_trim_length"
+    ],
+    "knob_response_plan": "phase_trim_length is the independently variable straight length of output 1 and therefore a real output-phase/path-length knob. Output 2 supplies the reference length. lengths.json will derive both lengths from the actual gf.Path objects; increasing phase_trim_length by 5 um must increase their measured difference by 5 um and add guide_width * 5 um of layer-(1,0) area."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.993714232294986,
+      "dice": 0.9968472072861825,
+      "sse": 9279.0,
+      "change_made": "Initial calibrated primitives-only candidate: rectangular multimode body, four independently dimensioned upper tapers and guides, one lower taper, and near-zero-area frame anchors matching the supplied absolute-calibration whitespace.",
+      "diff_observation": "Residual error is confined to antialiased boundaries, slight target corner rounding, and sub-pixel variations along taper and guide edges.",
+      "stop_reason": "IoU exceeded the required 0.85 threshold on the first scored iteration."
+    }
+  ],
+  "best_iteration": 1,
+  "knob_response": {
+    "param": "phase_trim_length",
+    "delta_um": 5.0,
+    "width_um": 1.22,
+    "attempts": [
+      {
+        "attempt": 1,
+        "passes": false,
+        "delta_response_um": 5.0,
+        "delta_length_ok": true,
+        "area_growth_um2": 0.0,
+        "expected_area_growth_um2": 6.1,
+        "area_ok": false,
+        "diagnosis": "The default GDSFactory metadata wrapper made $$$CONTEXT_INFO$$$ the only top-level cell; verify_knob_response intentionally excludes that cell and therefore saw zero area."
+      },
+      {
+        "attempt": 2,
+        "passes": true,
+        "base_value": 1.315,
+        "base_delta_length_um": 0.0,
+        "perturbed_delta_length_um": 5.0,
+        "delta_response_um": 5.0,
+        "delta_length_ok": true,
+        "base_area_um2": 91.37104099999999,
+        "perturbed_area_um2": 97.471041,
+        "area_growth_um2": 6.1000000000000085,
+        "expected_area_growth_um2": 6.1,
+        "area_ok": true,
+        "fix": "Write the same component with GDS metadata disabled so the optical device cell is the measurable top-level cell; layer-(1,0) geometry is unchanged."
+      }
+    ],
+    "passes": true
+  },
+  "final": {
+    "gds": "device.gds",
+    "script": "device.py",
+    "iou": 0.993714232294986,
+    "dice": 0.9968472072861825,
+    "sse": 9279.0,
+    "iterations": 1,
+    "layer": [
+      1,
+      0
+    ],
+    "gds_size_um": [
+      25.000000000000004,
+      10.0
+    ],
+    "knob_response_passes": true,
+    "tunables": [
+      "mmi_width",
+      "transfer_length",
+      "guide_width",
+      "output_taper_length",
+      "output_taper_base_width_1",
+      "output_taper_base_width_2",
+      "output_taper_base_width_3",
+      "output_taper_base_width_4",
+      "output_center_1",
+      "output_center_2",
+      "output_center_3",
+      "output_center_4",
+      "phase_trim_length",
+      "output_straight_length",
+      "input_taper_length",
+      "input_taper_base_width",
+      "input_tip_width"
+    ]
+  }
+}

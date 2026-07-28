@@ -3,7 +3,8 @@
 Every cell under data/agents/** carries a recorded verdict produced by the
 campaign gate. The canonical rule (homi.conductor.source_policy
 .purity_violations — what verify_cell runs) must reproduce those verdicts
-forever: 119 recorded cells pass, 36 recorded rejections reject. Any policy
+forever: 224 recorded cells pass, 36 recorded rejections reject (104 of those
+passes are the new-generation extension, which contributed no rejections). Any policy
 change that flips a frozen cell fails here instead of landing silently —
 this check has caught exactly that twice in one day.
 
@@ -16,13 +17,18 @@ from pathlib import Path
 from homi.conductor.source_policy import purity_violations, strict_purity_violations
 from homi.paths import workspace_root
 
-RECORD_SPLIT = (119, 36)  # (pass, reject) — the audited frozen-record verdicts
+RECORD_SPLIT = (224, 36)  # (pass, reject) — the audited frozen-record verdicts
 
 # Cells that exercise the exact canonical/strict boundary: recorded workers
 # imported os/gdstk for benign post-processing (boolean merges, GDS IO) and
 # the campaign gate accepted them. Strict-only bans must never leak into the
 # canonical surface and flip these.
 BOUNDARY_CELLS = (
+    # Extension cells that call __import__("json") to write their own logs: a
+    # strict-surface concern (execution safety), never a canonical one, or the
+    # shipped gate would contradict the shipped record.
+    "data/agents/paper_swap/final2/output/recreation_codex56lunax/device.py",
+    "data/agents/paper_swap/final3/output/recreation_codex56terram/device.py",
     "data/agents/paper_swap/final1/output/recreation_codex54m/device.py",
     "data/agents/paper_swap/final2/output/recreation_codex55m/device.py",
     "data/agents/paper_swap/final3/output/recreation_opus48max/device.py",

@@ -1,0 +1,92 @@
+{
+  "phase": "A",
+  "input_image": "component.png",
+  "footprint_um": [3.0, 5.5],
+  "topology_reasoning": {
+    "classification": "three-cavity coupled racetrack / multi-loop resonator",
+    "material_and_layer": "The black connected material is a single layer-(1,0) waveguide network; the white regions are the large loop cavities and four rectangular coupling windows.",
+    "observations": [
+      "The outer boundary is a tall, smoothly rounded racetrack with approximately 0.5 um waveguide width and a narrow vertical waist at the left and right sides.",
+      "Two matching inner assemblies sit above and below the centerline. Each assembly has two rectangular windows separated by a short common wall, with straight top and bottom rails and tapered side junctions.",
+      "The inner assemblies join the outer racetrack through symmetric diagonal side transitions, producing three large white cavities and four small rectangular windows.",
+      "The target is vertically symmetric to raster precision, so the base differential path knob is zero while remaining available for measured retargeting.",
+      "The dominant fidelity controls are waveguide width, outer racetrack radius/superellipse power, inner cavity dimensions, window gap, rail length, and side-junction taper length."
+    ],
+    "working_model": "A primitive-only union of one rounded outer loop, two paired rectangular inner loops, and four diagonal/tapered junction rails."
+  },
+  "tunables": {
+    "wg_width": 0.5,
+    "outer_radius": 1.5,
+    "outer_vertical_span": 5.0,
+    "inner_rail_length": 0.89,
+    "inner_cell_height": 1.03,
+    "inner_window_length": 0.33,
+    "inner_window_gap": 0.11,
+    "junction_taper_length": 0.42,
+    "delta_length": 0.0
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7612485635,
+      "dice": 0.8644419411,
+      "sse": 163295.0,
+      "change_made": "Initial primitive model: rounded outer loop, two two-window rectangular inner assemblies, and four diagonal junction paths."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7716186086,
+      "dice": 0.8710888505,
+      "sse": 152213.0,
+      "change_made": "Replaced the early-turn rounded rectangle with a superellipse outer loop and narrowed junction paths from 0.40 um to 0.28 um."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7235238297,
+      "dice": 0.8395866854,
+      "sse": 187630.0,
+      "change_made": "Trial with superellipse power 2.5 and waveguide width 0.52 um; rejected because the outer curve and footprint worsened."
+    },
+    {
+      "iter": 4,
+      "iou": 0.7832862266,
+      "dice": 0.8784750478,
+      "sse": 142615.0,
+      "change_made": "Returned to 0.50 um width, shifted the inner assembly laterally with a 0.89 um rail span, and set the outer superellipse power to 3.5."
+    },
+    {
+      "iter": 5,
+      "iou": 0.7749983611,
+      "dice": 0.8732383963,
+      "sse": 147586.0,
+      "change_made": "Trial with outer superellipse power 3.0; rejected in favor of the power-3.5 geometry."
+    },
+    {
+      "iter": 6,
+      "iou": 0.7811922774,
+      "dice": 0.8771565960,
+      "sse": 144875.0,
+      "change_made": "Trial with shifted inner rails, taller rail bars, and widened/repositioned junction paths; rejected because it was below the iteration-4 best."
+    }
+  ],
+  "best_iteration": 4,
+  "best_iou": 0.7832862266,
+  "best_dice": 0.8784750478,
+  "best_sse": 142615.0,
+  "final_geometry": "Restored to iteration 4, the honest best after the six-call cap.",
+  "knob_response": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.5,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "base_area_um2": 8.5320055,
+    "perturbed_area_um2": 11.0320055,
+    "area_growth_um2": 2.5,
+    "expected_area_growth_um2": 2.5,
+    "delta_length_ok": true,
+    "area_ok": true,
+    "passes": true
+  }
+}

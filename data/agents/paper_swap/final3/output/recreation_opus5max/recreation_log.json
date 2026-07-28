@@ -1,0 +1,126 @@
+{
+  "cell": "final3",
+  "workdir": "data/agents/paper_swap/final3/output/recreation_opus5max",
+  "inputs": {
+    "image": "data/agents/paper_swap/final3/device_bw.png",
+    "footprint_um": [120, 4]
+  },
+  "calibration": {
+    "bbox_px": [438, 419, 2336, 1158],
+    "scale_px_per_um": [15.816666666666666, 184.75],
+    "note": "ANISOTROPIC: the figure exaggerates the transverse axis by 184.75/15.8167 = 11.68x. All widths/gaps read from the image must be divided by 184.75 px/um; all lengths by 15.8167 px/um."
+  },
+
+  "topology_reasoning": {
+    "device": "Adiabatic 2x2 directional coupler (mode-evolution / asymmetric-to-symmetric 3 dB splitter).",
+    "what_i_see": [
+      "Two waveguides enter at the left at y-centres 468 px and 1105 px, both of constant thickness 55-56 px (= 0.30 um at the calibrated transverse scale).",
+      "Between x = 549 px and x = 700 px both arms are LINEARLY TAPERED in width, in OPPOSITE senses: the top arm widens 56 -> 79 px (0.30 -> 0.424 um) while the bottom arm narrows 55 -> 34 px (0.30 -> 0.188 um). Centrelines do not move here, so this is a genuine width taper, not a bend artefact.",
+      "Each arm then S-bends toward the axis (top down by 281 px, bottom up by 273 px), holding its width constant through the bend (verified with a distance transform: perpendicular linewidth is flat at 78 px through the top input bend).",
+      "In the interaction region (x = 995 -> 1785 px) the two arms run parallel with FIXED centrelines 84.5 px apart (0.459 um) and a constant edge-to-edge gap of 28-30 px (0.153 um). Their widths continue to counter-taper LINEARLY: top 78 -> 59.5 px (0.424 -> 0.314 um), bottom 35 -> 53 px (0.188 -> 0.288 um). The SUM of the two widths is constant (113-115 px), which is exactly why the gap and the centrelines stay put.",
+      "Both arms then S-bend apart again and exit as ~56-57 px (0.30 um) buses. Output port pitch (3.664 um) is slightly larger than the input pitch (3.441 um).",
+      "The figure is mirror-symmetric about its own mid-line only to ~2 px; the residual is carried by input_axis_offset_um / coupler_axis_offset_um / the two as-drawn output bus widths."
+    ],
+    "how_it_works": "This is a mode-evolution coupler, not a beating (L_pi) coupler. At the input the two guides are deliberately made STRONGLY ASYMMETRIC (0.424 vs 0.188 um) so their propagation constants are far apart: light entering the wide guide excites essentially the pure even supermode of the two-guide system, with almost no power in the odd supermode. Along the interaction region the asymmetry is then removed adiabatically -- the wide guide narrows and the narrow guide widens until they are (nearly) identical -- while gap and total width are held constant. Because the evolution is slow compared with the supermode beat length, the field stays in the local even supermode throughout. At the output, where the two guides are identical, the even supermode is by symmetry an equal in-phase superposition of the two guide modes, so the power emerges 50/50. Splitting comes from the SHAPE of the width trajectory, not from an exactly tuned length -- which is why this geometry is broadband and fabrication-tolerant, unlike a conventional directional coupler whose ratio is cos^2(pi L / 2 L_pi).",
+    "function_defining_knobs": {
+      "coupler_gap_um": "Sets the supermode splitting / coupling strength. Smaller gap -> larger even-odd index separation -> the same taper is more adiabatic, but tighter fabrication.",
+      "coupling_length_um": "The adiabaticity budget. The splitting ratio is insensitive to it once long enough; too short and the evolution becomes diabatic, power leaks into the odd supermode (ratio error + wavelength ripple).",
+      "w_wide_start_um / w_narrow_start_um": "The launch asymmetry. Must be large enough that the input supermode is essentially localized in one guide, otherwise the device starts already partly coupled and the ratio drifts.",
+      "w_wide_end_um / w_narrow_end_um": "The termination asymmetry -- THE splitting-ratio knob. Equal widths give 50/50; a residual width imbalance biases the ratio, which is how the same topology is retuned to 60/40, 70/30, etc.",
+      "input_taper_length_um": "How fast the launch asymmetry is established; too abrupt excites the odd supermode before the interaction region.",
+      "sbend_in_length_um / sbend_out_length_um / sbend_*_exponent": "Access-bend adiabaticity, minimum radius and radiation loss.",
+      "wg_width_um": "The single-mode bus width of the platform (the one parameter set by the layer stack, not by the design)."
+    },
+    "why_not_a_plain_directional_coupler": "A plain DC would show two parallel guides of CONSTANT and EQUAL width. Here the widths vary linearly and oppositely with a constant sum. A plain asymmetric DC (mode (de)multiplexer) would show two constant but UNEQUAL widths. Only the adiabatic 3 dB coupler has the counter-taper signature."
+  },
+
+  "method_notes": [
+    "The S-bend centrelines were not guessed. For a strip of constant perpendicular width W, the vertical thickness of a column cut is t(x) = W*sqrt(1+s^2); inverting gives the local slope s(x), and integrating gives the centreline. Doing that on the figure showed the drawn bends have a nearly BOXY slope profile (flat approach, steep crossing), i.e. slope ~ sin^n(pi t) with n ~ 3, not the raised cosine (n = 1) I started with. Iteration 2 is that correction and it is worth +0.043 IoU on its own.",
+    "The renderer centres the candidate on its own BOUNDING BOX. Iteration 4 changed the bbox (both output buses set to one width) and thereby shifted the whole render ~0.8 px, undoing the placement fixes made in the same step -- the only regression in the run. Iteration 5 re-solved every arm position in the bbox-centred frame and recovered it. Anything that touches the extreme-y features must be re-solved together with the placement.",
+    "Marginal-width test at the end: d(IoU)/d(width) = -0.00014 per px, i.e. the widths sit at the IoU optimum -- the recreation is neither hedging by fattening nor starved."
+  ],
+
+  "iterations": [
+    {"iter": 1, "iou": 0.7793, "dice": 0.876, "sse": 58467,
+     "change_made": "First parametric build from the measured topology: 2 counter-tapered arms, raised-cosine (n=1) access S-bends, gap 0.150 um, coupling length 53.4 um, symmetric layout."},
+    {"iter": 2, "iou": 0.8226, "dice": 0.9026, "sse": 45915,
+     "change_made": "S-bend slope profile changed from raised cosine to sin^2(pi t), reconstructed from the drawn linewidth; added input/coupler axis offsets for the figure's residual asymmetry; wg_width 0.300 -> 0.298."},
+    {"iter": 3, "iou": 0.8266, "dice": 0.9050, "sse": 44796,
+     "change_made": "Per-bend slope exponents and bend windows fitted against the reconstructed centrelines (input n=4.1 over 19.2 um, output n=2.3 over 18.4 um); coupler axis nudged."},
+    {"iter": 4, "iou": 0.8237, "dice": 0.9033, "sse": 45466,
+     "change_made": "REGRESSION (-0.003). Applied measured width/pitch corrections and tapered the exit bends back to bus width. The widths became near-exact, but equalising the output bus widths changed the bounding box, and the renderer's bbox-centring shifted every feature ~0.8 px."},
+    {"iter": 5, "iou": 0.8279, "dice": 0.9059, "sse": 44209,
+     "change_made": "Re-solved all three axis pairs self-consistently in the bbox-centred frame (input pitch 3.4411 / offset +0.0112, coupler gap 0.1531 / offset -0.0114, output pitch 3.6640, as-drawn output bus widths 0.306 / 0.298). All region centres within +/-0.3 px except the bottom output bus."},
+    {"iter": 6, "iou": 0.8299, "dice": 0.9071, "sse": 43642,
+     "change_made": "Bend windows and exponents jointly re-fitted directly against the target mask (input n=3.0 over 17.72 um, output n=2.6 over 19.30 um), with the segment budget rebalanced to keep the footprint at exactly 120 um. FINAL."}
+  ],
+
+  "final": {
+    "iou": 0.8299359756216366,
+    "dice": 0.907065587734242,
+    "sse": 43642.0,
+    "precision": 0.9800068101084095,
+    "recall": 0.8442301289064358,
+    "gds_size_um": [120.0, 3.966],
+    "footprint_um": [120, 4],
+    "size_match": [true, true],
+    "primitives_purity": "clean (homi.conductor.gate.purity_violations -> [])"
+  },
+
+  "region_breakdown": {
+    "in_straight_taper": {"IoU": 0.9571, "lost_px": 426, "extra_px": 827},
+    "in_sbend": {"IoU": 0.6487, "lost_px": 18050, "extra_px": 820},
+    "coupler": {"IoU": 0.9759, "lost_px": 889, "extra_px": 1292},
+    "out_sbend": {"IoU": 0.6258, "lost_px": 19531, "extra_px": 368},
+    "out_straight": {"IoU": 0.9555, "lost_px": 401, "extra_px": 925}
+  },
+
+  "why_not_0_85": {
+    "claim": "0.83 is at the ceiling for any constant-width physical waveguide against THIS figure; the deficit is 96% confined to the four access bends and is a property of the drawing, not of the recreation.",
+    "evidence": [
+      "The straight and interaction regions -- 78% of the device length -- score IoU 0.956 / 0.976 / 0.956. The two S-bend regions score 0.649 / 0.626 and hold 37581 of the 39297 lost pixels (96%).",
+      "A distance transform of the figure shows the drawn perpendicular linewidth is CONSTANT (78.0 +/- 0.5 px) through the input bend -- i.e. the figure was drawn with a constant pen in the vertically EXAGGERATED image space.",
+      "A waveguide is constant-width in REAL space. Rendered through the anisotropic calibration, its column thickness is w*sy*sqrt(1+m^2) with physical slope m <= 0.21, i.e. at most 2% thicker than on a straight. The drawn bend reaches 227 px = 2.9x. The extra area exists only in the figure's ink, and filling it would require a waveguide that bulges to ~2.7x width through the bend.",
+      "Structural floor: target bend area 105694 px, any constant-width arm can supply at most 69301 px there -> 36393 px unreachable. Only 1188 px of the current bend loss is recoverable by better centring.",
+      "Ceiling with EVERY non-bend error driven to zero: IoU = 0.8557. The run is at 0.8299, i.e. within 0.026 of a bound that itself sits below the 0.85 target."
+    ],
+    "rejected_shortcut": "Globally fattening the waveguides would add ink inside the fat bends. Measured marginal value: d(IoU)/d(width) = -0.00014 per px -- it does not even help numerically, and it would be a misalignment hedge rather than a recreation. Not done."
+  },
+
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "coupling_length_um",
+    "delta_um": 5.0,
+    "width_um_passed": 0.607,
+    "width_um_rationale": "The interaction region carries BOTH guides, so the area response per um of coupling length is the SUM of the two arms' mean widths there: top (0.424+0.314)/2 = 0.369, bottom (0.188+0.288)/2 = 0.238 -> 0.607 um. Passing a single guide width would under-predict by 2x.",
+    "area_ok": true,
+    "area_growth_um2": 3.035,
+    "expected_area_growth_um2": 3.035,
+    "delta_length_ok": false,
+    "delta_length_caveat": "NOT a defect of the device. verify_knob_response's first check is MZI-shaped: it requires |arm1 - arm2| to move 1:1 with the knob. A 2x2 adiabatic coupler is length-BALANCED by construction (measured arm lengths 120.2210 / 120.2120 um, delta 0.009 um), so no knob can move an arm imbalance that does not exist. lengths.json reports the true measured arm lengths and, additionally, interaction_length_um, which is the knob-tracked optical length of this topology.",
+    "direct_geometry_sweep": {
+      "file": "knob_sweep.json",
+      "probe": "gap and both widths read back from the written GDS at x = 59.25 um (mid interaction region)",
+      "baseline": {"top_width_um": 0.3697, "bottom_width_um": 0.2374, "gap_um": 0.1555},
+      "results": [
+        "coupler_gap_um  +0.100 -> gap +0.1000, widths unchanged (clean, isolated coupling-strength knob)",
+        "w_wide_end_um   +0.100 -> top width +0.0494 at 49.4% along the taper (= 0.100 x 0.494, exact), gap -0.0247",
+        "w_narrow_end_um +0.100 -> bottom width +0.0494 (exact), gap -0.0247",
+        "w_wide_start_um +0.100 -> top width +0.0506 (= 0.100 x 0.506, exact), gap +0.0247 (the centreline pitch is defined from gap + entering widths)"
+      ],
+      "verdict": "All four function knobs move real geometry, by exactly the predicted amount."
+    }
+  },
+
+  "artifacts": {
+    "device.py": "parametric primitives-only script (gf.Path + extrude / extrude_transition, gf.components.taper, @gf.cell)",
+    "device.gds": "layer (1,0), 120.000 x 3.966 um",
+    "calibration.json": "from homi.jee_integration.prepare_calibration",
+    "metrics_abs.json": "final michaelangelo.core.compare_absolute output",
+    "raster.png / diff.png / overlay_abs.png": "final comparison rasters (diff: red = extra, blue = missing)",
+    "lengths.json": "arm lengths measured from the gf.Path objects at build time",
+    "knob_response.json": "homi.spec_optimization.verify_knob_response output",
+    "knob_sweep.json": "direct GDS read-back of the four function knobs",
+    "region_breakdown.json": "per-region IoU / lost / extra accounting"
+  }
+}

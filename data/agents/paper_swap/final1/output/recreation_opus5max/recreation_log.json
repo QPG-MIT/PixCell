@@ -1,0 +1,157 @@
+{
+  "workdir": "data/agents/paper_swap/final1/output/recreation_opus5max",
+  "phase": "A",
+  "inputs": {
+    "image": "data/agents/paper_swap/final1/device_bw.png",
+    "footprint_um": [40.0, 1.7],
+    "calibration": {
+      "bbox_px": [0, 62, 1616, 584],
+      "image_size_px": [1616, 656],
+      "scale_px_per_um": [40.4, 307.0588235294118],
+      "note": "scale_y / scale_x = 7.60 -> the figure is drawn with a 7.6x vertical exaggeration; the physical device is 40.0 um long and only 1.7 um tall. All geometry below is quoted in calibrated um, not in figure pixels."
+    }
+  },
+  "topology_reasoning": {
+    "written_before_coding": true,
+    "device": "Adiabatic (mode-evolution) 1x2 power splitter built from a three-waveguide coupler, followed by two S-bends that fan the outputs apart.",
+    "what_the_image_shows": [
+      "A single wide waveguide enters at the left edge (x=0) on the device axis, constant width 0.269 um for the first ~3 um.",
+      "At x ~= 3.0 um two narrow outer waveguides appear abruptly, one above and one below the central guide, each starting with a blunt tip ~0.067 um wide, at a fixed center-to-center pitch of 0.268 um from the central guide.",
+      "Over the next ~22 um the three guides run PARALLEL (all three axes are straight, constant y) while their widths change complementarily: the central guide tapers DOWN 0.269 -> 0.070 um and each outer guide tapers UP 0.067 -> 0.240 um. Linear width profiles (LSQ residual 0.16-0.17 px).",
+      "The central guide terminates in a blunt tip at x = 25.03 um; the outer guides reach their full 0.240 um width at x ~= 25.6 um.",
+      "Each outer guide then runs through an S-bend of length 10.67 um and vertical offset 0.461 um, and finally a 3.7 um straight to the right edge at x = 40 um. The S-bend centerline is a cubic Bezier with control points at (L/2, 0) and (L/2, dY) -- a smoothstep -- which fits the measured centerline to 0.34 px RMS, clearly better than a raised-cosine (0.85 px) or a two-arc (0.45 px) S-bend."
+    ],
+    "how_it_works": [
+      "This is a mode-evolution device, not an interference device. Light enters the central guide, which at the start of the coupler has by far the highest effective index (0.269 um wide vs 0.067 um outer tips), so the local fundamental supermode of the 3-guide system is essentially the central-guide mode.",
+      "Along the coupler the central guide is narrowed and the outer guides are widened. The effective indices cross: at the end of the coupler the central guide (0.070 um tip) is far below cutoff relative to the two outer guides (0.240 um each), so the fundamental supermode of the system has become the EVEN (in-phase, symmetric) combination of the two outer-guide modes.",
+      "Because the taper is slow compared with the beat length between the fundamental and the next same-symmetry supermode, the field follows this supermode adiabatically: power leaves the central guide and ends up split 50/50 and in phase between the two outer guides. The odd supermode is never excited because the structure is mirror-symmetric about the device axis, which is why the split ratio is set by SYMMETRY rather than by an interference length.",
+      "Consequences: the splitter is broadband and fabrication-tolerant (unlike a directional coupler, whose 50/50 point depends on a resonant transfer length), at the price of length. The device is reciprocal, so run backwards it is a 2x1 combiner.",
+      "The trailing S-bends are pure routing: they take the two outputs from the 0.268 um coupler pitch out to a 0.729 um half-separation (1.458 um center-to-center) so the two guides are optically isolated. The Bezier (smoothstep) shape gives zero slope at both ends, i.e. continuous direction into the straight sections."
+    ],
+    "function_defining_knobs": {
+      "arm_taper_length_um / center_taper_length_um": "the adiabaticity knob. Too short and the mode evolution is non-adiabatic: power scatters into higher supermodes and the split degrades. The single most important knob and the reason the device is 25 um long.",
+      "coupler_gap_um": "edge-to-edge gap between the central guide and each outer guide at the coupler entrance (0.0995 um). Sets the inter-guide coupling strength and hence the supermode splitting; a larger gap needs a longer taper for the same adiabaticity.",
+      "wg_width_in": "central input width. Must start clearly ABOVE the outer-guide width so the input mode is localized in the centre; sets the starting point of the index crossing.",
+      "arm_tip_width_um": "starting width of the outer guides. Must start clearly BELOW the central width. Together with wg_width_in it fixes which side of the index crossing the device starts on.",
+      "center_tip_width_um": "terminating width of the central taper. Must end far enough below the outer widths that essentially no power is left in the centre guide; a tip that is too blunt leaves residual centre-guide power and back-reflection.",
+      "wg_width_out": "final width of each output guide -- the single-mode width of the target platform.",
+      "arm_pitch_um": "derived = coupler_gap_um + (wg_width_in + arm_tip_width_um)/2; the fixed centre-to-centre spacing held through the whole coupler (the three centrelines are parallel).",
+      "sbend_length_um / output_half_separation_um": "routing, not splitting. They set output separation and bend loss; they do not change the split ratio as long as the device stays mirror-symmetric."
+    },
+    "symmetry_note": "The two arms in the drawn figure are not exact mirror images: the coupler section sits ~0.013 um (4 px) above the midline defined by the two outputs, the centre bus sits a further ~0.004 um above the arms' own midline, the two arm pitches differ by ~0.025 um, and the two S-bends fit different Bezier lengths (10.50 um top vs 10.85 um bottom). That is figure/raster asymmetry, not physics -- a 1x2 splitter must be mirror-symmetric or it does not split 50/50. The script keeps the coupler itself mirror-symmetric and carries the drawn offsets in two explicitly-labelled, physically-zero reproduction knobs (coupler_axis_offset_um, center_bus_offset_um); the per-arm pitch and S-bend-length differences were NOT modelled, and are the dominant part of the residual error."
+  },
+  "measurements_um": {
+    "method": "column scan of the calibrated image; edges from the 245 threshold, widths and axes refined subpixel from the greyscale darkness integral; taper and S-bend parameters from least squares",
+    "input_bus_width": 0.2693,
+    "center_taper_start_x": 2.85,
+    "center_tip_x": 25.03,
+    "center_tip_width": 0.0704,
+    "arm_start_x": 3.07,
+    "arm_tip_width": 0.0671,
+    "arm_taper_slope_per_um": 0.00773,
+    "output_width": 0.2395,
+    "arm_half_separation_in_coupler": 0.2684,
+    "output_half_separation": 0.7290,
+    "centre_bus_axis_above_arm_midline": 0.0039,
+    "sbend_start_x": 25.6,
+    "sbend_length": 10.67,
+    "sbend_offset": 0.4606,
+    "sbend_shape_fit_rms_px": {"cubic_bezier": 0.34, "two_arc": 0.45, "raised_cosine": 0.85}
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8924474730266894,
+      "dice": 0.9431674968493069,
+      "sse": 26516.0,
+      "change_made": "Initial build, mirror-symmetric about y=0: bus straight 3.00 um at w=0.270 then linear taper 22.03 um to a 0.070 um blunt tip; two arms tapering 0.068 -> 0.240 um over 22.60 um at pitch 0.269; cubic-Bezier S-bend L=10.67, dY=0.461; output straight 3.73 um. Total 40.00 x 1.700 um.",
+      "diff_read": "Widths correct to +/-1 px everywhere. One clean systematic: the whole coupler section renders 3.1-4.5 px LOW (blue above / red below on all three guides), because the figure's coupler axis sits above the midline of the two outputs and the gate centres the GDS bbox (set by the outputs) on the footprint centre."
+    },
+    {
+      "iter": 2,
+      "iou": 0.969279160763678,
+      "dice": 0.9843999571780323,
+      "sse": 7286.0,
+      "change_made": "Added coupler_axis_offset_um = 0.012 (lifts the whole coupler assembly -- bus and both arms -- relative to the output midline; the coupler stays mirror-symmetric about its own axis, only the two fan-out S-bends now travel slightly different vertical distances). Replaced sbend_offset_um with output_half_separation_um = 0.7290 as the top-level routing knob so each arm's S-bend dY is derived. coupler_gap_um 0.100 -> 0.0995 (arm pitch 0.2685).",
+      "diff_read": "Coupler offsets down to sub-pixel: top +0.56 px, centre -0.86 px, bottom +0.17 px. Remaining error concentrated in (a) the centre bus, still ~0.9 px low, and (b) the bottom S-bend, ~2.5 px low through the whole bend."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9748569446852783,
+      "dice": 0.9872684168934938,
+      "sse": 5945.0,
+      "change_made": "coupler_axis_offset_um 0.012 -> 0.011 and added center_bus_offset_um = 0.004 (the figure draws the centre bus ~4 nm above the arms' own midline; physical design value is 0 and it is kept as a separate, labelled term so it can be zeroed at retarget).",
+      "diff_read": "All three coupler guides now within +/-0.3 px of the target centreline -- the anti-aliasing floor. Residual 5945 mismatched px = 2.5% of the 234,604 target px: bottom S-bend 2053 (the figure's two arms fit different Bezier lengths, 10.50 vs 10.85 um), top S-bend 701, coupler body 2596 (sub-pixel edge quantisation plus the bottom arm's 0.8 px width difference), lead/output 435.",
+      "stopped_here": "Yes. The only remaining lever that would raise IoU is fattening the arms to chase the source rasteriser's heavier anti-aliasing on slanted edges (target reads 0.2508-0.2605 um across the bends vs a true 0.2395 um measured on the straight outputs). That is exactly the 'IoU rewards fattened waveguides' hedge the optimize-to-spec skill warns against, so the widths were left at the pixel-measured values. 3 of the 6 allowed iterations used."
+    },
+    {
+      "iter": "3b (geometry-neutral)",
+      "iou": 0.9748569446852783,
+      "dice": 0.9872684168934938,
+      "sse": 5945.0,
+      "change_made": "Write the GDS from a flattened plain gf.Component instead of directly from the @gf.cell component. No geometry change (IoU/Dice/SSE bit-identical). Needed because kfactory's $$$CONTEXT_INFO$$$ metadata cell REFERENCES an @gf.cell-registered top cell, which leaves the real cell out of gdstk's top_level(); any reader that iterates top_level() and skips $$$ cells -- homi.spec_optimization._layer_area does exactly that -- then measures 0 area. Reported to the conductor as a tooling note, not worked around silently.",
+      "diff_read": "n/a"
+    }
+  ],
+  "final": {
+    "iou": 0.9748569446852783,
+    "dice": 0.9872684168934938,
+    "sse": 5945.0,
+    "accuracy": 0.9943920173267327,
+    "precision": 0.9920678301663475,
+    "recall": 0.9825152171318478,
+    "gds_size_um": [40.0, 1.698],
+    "footprint_um": [40.0, 1.7],
+    "size_match": [true, true],
+    "layer_area_um2": 18.4345,
+    "n_bodies": 3,
+    "artifacts": ["device.py", "device.gds", "calibration.json", "raster.png", "diff.png", "overlay_abs.png", "metrics_abs.json", "lengths.json", "knob_response.json", "knob_sweep.json"]
+  },
+  "primitives_purity": {
+    "gdsfactory_api_used": ["gf.cell", "gf.Component", "gf.CrossSection", "gf.cross_section.cross_section", "gf.Path", "gf.path.straight", "gf.path.transition", "gf.path.extrude", "gf.path.extrude_transition"],
+    "gf_components_stencils_used": [],
+    "raw_polygons_added": 0,
+    "layer": [1, 0],
+    "gdsfactory_version": "9.20.7",
+    "note": "Widths are snapped to the 2 nm grid kfactory requires for symmetric cross-sections (SymmetricalCrossSection rejects odd-dbu widths)."
+  },
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "results_file": "knob_response.json",
+    "runs": [
+      {"param": "arm_taper_length_um", "delta_um": 5.0, "width_um": 0.240, "area_growth_um2": 1.54, "expected_area_growth_um2": 1.20, "area_ok": false, "delta_length_ok": false, "passes": false},
+      {"param": "arm_taper_length_um", "delta_um": 5.0, "width_um": 0.308, "area_growth_um2": 1.54, "expected_area_growth_um2": 1.54, "area_ok": true, "delta_length_ok": false, "passes": false},
+      {"param": "center_taper_length_um", "delta_um": 5.0, "width_um": 0.170, "area_growth_um2": 0.85, "expected_area_growth_um2": 0.85, "area_ok": true, "delta_length_ok": false, "passes": false},
+      {"param": "input_straight_um", "delta_um": 5.0, "width_um": 0.270, "area_growth_um2": 1.35, "expected_area_growth_um2": 1.35, "area_ok": true, "delta_length_ok": false, "passes": false}
+    ],
+    "honest_reading": [
+      "AREA check: the knob does move real geometry, exactly as the geometry predicts. arm_taper_length_um +5 um adds 1.5400 um2, which is precisely 2 arms x 5 um x the mean taper width (0.068+0.240)/2 = 0.154. With width_um = 0.240 (the literal instruction: the actual output guide width) the tool's single-constant-width-guide model expects 1.20 um2, so it reports a 28% miss and area_ok=false. That is a model mismatch, not a dead knob: this knob lengthens TWO guides whose width varies along the taper. Re-run with the geometrically correct effective width (0.308 = 2 x mean taper width) the agreement is exact. Both runs are recorded rather than only the flattering one.",
+      "DELTA_LENGTH check: delta_length_ok is false for every knob, and structurally must be. verify_knob_response requires lengths.json's delta_length_um -- the MZI arm IMBALANCE -- to move by delta_um. A 1x2 adiabatic splitter has no differential arm knob by design: any knob that lengthened one output arm and not the other would break the mirror symmetry that enforces the 50/50 split. lengths.json honestly reports delta_length_um = 0.002 um (the two output arms differ only by the 2 nm of extra S-bend travel that coupler_axis_offset_um introduces) and no function knob moves it. The check is MZI-specific and does not apply to this device; lengths.json was NOT redefined to make it pass."
+    ],
+    "direct_geometry_response": {
+      "results_file": "knob_sweep.json",
+      "method": "perturb the top-level assignment, rebuild, and measure the WRITTEN GDS polygons (not anything the script reports)",
+      "baseline": {"area_um2": 18.4345, "length_um": 40.0, "height_um": 1.698, "min_gap_at_x3.05_um": 0.096, "out_axis_sep_um": 1.458, "out_width_um": 0.24},
+      "observed": [
+        "coupler_gap_um 0.0995 -> 0.150 -> 0.220 moves the measured minimum edge-to-edge gap 0.096 -> 0.146 -> 0.216 um (1:1; the 0.0035 um offset from the nominal value is center_bus_offset_um, which makes the top gap the smaller of the two).",
+        "arm_taper_length_um 22.6 -> 30.0 -> 40.0 moves total device length 40.0 -> 47.4 -> 57.4 um and layer area 18.43 -> 20.71 -> 23.79 um2.",
+        "center_tip_width_um 0.070 -> 0.120 -> 0.180 moves area 18.43 -> 18.99 -> 19.65 um2 (blunter tip = more material).",
+        "arm_tip_width_um 0.068 -> 0.110 -> 0.160 moves area 18.43 -> 19.38 -> 20.51 um2.",
+        "wg_width_out 0.240 -> 0.300 -> 0.400 moves the measured output guide width 0.240 -> 0.300 -> 0.400 um and device height 1.698 -> 1.758 -> 1.858 um.",
+        "output_half_separation_um 0.729 -> 1.200 -> 2.000 moves the measured output axis separation 1.458 -> 2.400 -> 4.000 um (exactly 2x)."
+      ],
+      "conclusion": "Every declared function knob produces the geometry change its physical meaning implies, measured from the GDS."
+    }
+  },
+  "tunables": [
+    "layer", "wg_width_in", "wg_width_out", "center_tip_width_um", "arm_tip_width_um",
+    "coupler_gap_um", "input_straight_um", "center_taper_length_um", "arm_taper_length_um",
+    "sbend_length_um", "output_half_separation_um", "output_straight_um",
+    "coupler_axis_offset_um", "center_bus_offset_um", "sbend_npoints"
+  ],
+  "conductor_notes": [
+    "homi.spec_optimization._layer_area returns 0.0 for any GDS written straight from an @gf.cell component, because kfactory's $$$CONTEXT_INFO$$$ cell references the registered top cell and _layer_area only walks gdstk top_level() while skipping $$$ cells. This script sidesteps it by writing a flattened plain gf.Component; other Phase-A scripts in the campaign that use @gf.cell will silently fail the area half of verify_knob_response.",
+    "verify_knob_response's delta_length half is MZI-specific and cannot pass for a symmetric 1x2 splitter. It is reported as a false, not engineered around.",
+    "kfactory rejects cross-section widths that are not a multiple of 2 nm (SymmetricalCrossSection), so measured widths were snapped: 0.2693 -> 0.270, 0.0671 -> 0.068, 0.0704 -> 0.070, 0.2395 -> 0.240."
+  ]
+}

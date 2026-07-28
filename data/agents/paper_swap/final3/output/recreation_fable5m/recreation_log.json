@@ -1,0 +1,45 @@
+{
+  "topology_reasoning": {
+    "device": "Symmetric directional coupler (2x2). Two single-mode waveguides enter from left and right at +/-1.74 um from the device centerline, S-bend inward to a long central coupling region where they run parallel with a sub-wavelength gap, then S-bend back apart. Mirror-symmetric about both axes.",
+    "how_it_works": "In the coupling region the evanescent fields of the two closely spaced waveguides overlap; power transfers periodically between them with beat length set by the even/odd supermode index difference. The coupling length and gap set the power splitting ratio; the S-bends adiabatically bring the guides together so coupling is dominated by the straight central section.",
+    "function_defining_knobs": [
+      "coupling_gap_um - edge-to-edge gap in the central section; exponentially controls coupling strength",
+      "coupling_length_um - length of the parallel central section; sets transfer ratio together with the gap",
+      "wg_width_um - guide width; sets mode confinement and supermode splitting",
+      "port_pitch_um - vertical separation of the input/output ports (decoupled spacing)",
+      "sbend_length_um - horizontal extent of the S-bends; adiabaticity of the approach"
+    ],
+    "measured_from_image": {
+      "footprint_um": [120, 4],
+      "calibration_anisotropic_px_per_um": [15.82, 184.75],
+      "wg_width_um": 0.29,
+      "port_center_offset_um": 1.74,
+      "coupling_center_offset_um": 0.23,
+      "coupling_gap_um": 0.17,
+      "straight_in_um": 22.5,
+      "sbend_span_um": 6.5,
+      "coupling_region_x_um": [29, 91]
+    }
+  },
+  "iterations": [
+    {"iter": 1, "iou": 0.6172, "dice": 0.7633, "sse": 108920, "change_made": "Initial arc-pair S-bend model: straight 22.75 + arc S-bend 6.5 + coupling 62, pitch 3.48, w 0.29, gap 0.17."},
+    {"iter": 2, "iou": 0.5810, "dice": 0.7349, "sse": 123769, "change_made": "pitch 3.70 (full 4um height), w 0.30, straight 22.25 — worse; bbox-height fix not the dominant error."},
+    {"iter": 3, "iou": 0.5807, "dice": 0.7347, "sse": 124109, "change_made": "straight 22.50 for exact 120um length — flat; diff showed bends systematically missed."},
+    {"iter": 4, "iou": 0.8453, "dice": 0.9162, "sse": 41246, "change_made": "Rewrote model from measured centerlines: tanh S-bends (scale 3.1, centers 25.3/94.2), per-side port pitches (3.447/3.664), per-guide coupling widths (0.34/0.22), gap 0.18 centered -0.04, and slope-dependent width (the figure is drawn with constant stroke in 11.7x vertically exaggerated space, so bends are vertically thick); guide = chain of short constant-width segment extrusions."},
+    {"iter": 5, "iou": 0.8360, "dice": 0.9106, "sse": 44505, "change_made": "Tried per-guide bend-thickening (14.5/8.5), right-bend shift +0.6, w_top 0.37 — combined change overshot, worse."},
+    {"iter": 6, "iou": 0.8472, "dice": 0.9173, "sse": 41092, "change_made": "Reverted iter-5 except w_top_coupling 0.36 — best; kept as final."}
+  ],
+  "final": {
+    "iou": 0.8472,
+    "dice": 0.9173,
+    "sse": 41092,
+    "gds": "device.gds",
+    "notes": "GDS written with with_metadata=False so gdstk top_level() sees the real cell (kfactory $$$CONTEXT_INFO$$$ otherwise hides it from homi.spec_optimization._layer_area)."
+  },
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response(param='coupling_gap_um', delta_um=5.0, width_um=0.29)",
+    "passes": false,
+    "why_tool_fails_structurally": "The checker enforces an MZI two-arm contract: lengths.json delta_length_um = |L_arm1 - L_arm2| must move by delta_um. A symmetric directional coupler has two equal-length arms; no function knob (gap, coupling length, width) changes the arm-length DIFFERENCE, so check (a) cannot pass for this device class. Area check (b) likewise assumes a length-extending knob. lengths.json contract is honored (arms computed from the built gf.Path segments at build time).",
+    "direct_geometry_proof": "Perturbed coupling_gap_um 0.18 -> 0.28 in a copied script, rebuilt, measured the actual edge-to-edge gap from GDS polygons (gdstk) in the coupling section: 0.1800 -> 0.2800 um, delta exactly 0.100. The knob moves real geometry. See knob_response.json (field direct_gap_check)."
+  }
+}

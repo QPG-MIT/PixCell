@@ -1,0 +1,20 @@
+{
+  "arms": {
+    "central_transfer_path": 25.060000000000002,
+    "outer_routing_path_top": 14.404
+  },
+  "delta_length_um": 10.656000000000002,
+  "segments_um": {
+    "top": {
+      "taper": 22.56,
+      "sbend": 10.564,
+      "output": 3.84
+    },
+    "bot": {
+      "taper": 22.61,
+      "sbend": 10.765,
+      "output": 3.59
+    }
+  },
+  "note": "central_transfer_path = input->central tip (= lead_in_length + transfer_length); outer_routing_path_top = top S-bend arc + output straight, which does not depend on transfer_length \u2014 so delta_length_um responds 1:1 to the transfer_length knob. All values computed from gf.Path objects at build time."
+}

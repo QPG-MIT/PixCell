@@ -1,0 +1,50 @@
+{
+  "phase": "A",
+  "source": {
+    "image": "component.png",
+    "footprint_um": [18.0, 3.0]
+  },
+  "topology_reasoning": {
+    "device": "symmetric directional coupler",
+    "operation": "Two identical waveguides begin widely separated, use opposed smooth S-bends to approach over the central interaction region, and diverge symmetrically. Evanescent overlap in the close central region transfers optical power between the guides; coupling is set primarily by the gap and the effective interaction length.",
+    "observations": [
+      "The binary material comprises exactly two continuous, equal-width horizontal guides.",
+      "The guides are mirror-symmetric about the horizontal midline and each has a smooth, zero-slope-looking approach/departure.",
+      "The material bounding box spans the supplied 18 by 3 um footprint, so the outside guide edges meet that footprint at the ports.",
+      "Pixel measurements indicate an approximately 0.63 um guide width, end centre separation of approximately 2.34 um, and a central edge gap of approximately 0.35 um."
+    ],
+    "function_defining_knobs": {
+      "wg_width": "guide width, controlling modal confinement",
+      "coupling_gap": "minimum central edge-to-edge gap, controlling supermode splitting",
+      "s_bend_amplitude": "inward displacement of each guide centre, determining the minimum gap",
+      "coupler_length": "full longitudinal interaction length",
+      "transition_shape": "number of sampled points describing the smooth raised-cosine S-bend centreline"
+    },
+    "implementation": "Construct one smooth raised-cosine centreline as a gf.Path and mirror it for the other guide, then extrude both at wg_width on layer (1, 0). This uses only the permitted path/extrude primitive workflow."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9575190209846928,
+      "dice": 0.9782985613115841,
+      "sse": 13618.0,
+      "change_made": "Initial primitives-only implementation: two 0.65 um gf.Path/extrude raised-cosine S-bends, with 0.30 um central gap, 7.10 um S-bends, and 2.00 um interaction region. The resulting GDS spans exactly 18.0 by 3.0 um."
+    }
+  ],
+  "knob_response": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.65,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 3.25,
+    "expected_area_growth_um2": 3.25,
+    "passes": true
+  },
+  "final": {
+    "iou": 0.9575190209846928,
+    "dice": 0.9782985613115841,
+    "sse": 13618.0,
+    "iterations": 1,
+    "stop_reason": "IoU exceeded the required 0.85 threshold on the first visual-metric iteration."
+  }
+}

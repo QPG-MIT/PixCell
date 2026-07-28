@@ -1,0 +1,41 @@
+{
+  "topology_reasoning": {
+    "device": "four-port orthogonal multimode-interference crossing / symmetric junction",
+    "observation": "The calibrated black region is a fourfold-symmetric plus shape: four straight narrow ports terminate in four convex, lens-like lobes that overlap at the center. The horizontal and vertical axes are equivalent; there are no separate metal or cladding features.",
+    "working_model": "Represent each cardinal arm as a narrow straight port followed by two opposing linear tapers, widening to a broad lobe and narrowing toward the central junction. Boolean-union the four primitive arm assemblies. This preserves the observed connected four-port topology while keeping all geometry primitive and parametric.",
+    "function_defining_knobs": [
+      "wg_width",
+      "lobe_width",
+      "lobe_half_length",
+      "port_length",
+      "taper_length"
+    ],
+    "coordinate_and_scale": "Use the 4.7 um calibrated material bbox as the intended outer span; center the junction at the origin and place equal horizontal and vertical arms on layer (1, 0)."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9564058682900701,
+      "dice": 0.9777172352544455,
+      "sse": 3337.0,
+      "change_made": "Initial primitive construction: four cardinal arms, each with four linear taper segments approximating the convex lobe, plus a straight port. Widths and lengths were selected from the calibrated 4.7 um bbox and visible pixel extents."
+    }
+  ],
+  "final": {
+    "iou": 0.9564058682900701,
+    "dice": 0.9777172352544455,
+    "sse": 3337.0,
+    "iterations": 1,
+    "tunable_parameters": [
+      "wg_width",
+      "lobe_width",
+      "lobe_half_length",
+      "port_length",
+      "taper_length"
+    ],
+    "knob_response": {
+      "requested": "verify_knob_response(param='lobe_width', delta_um=0.10, width_um=0.236)",
+      "result": "blocked by evaluator contract: this non-MZI four-port device does not write the MZI-only lengths.json arms/delta_length record"
+    }
+  }
+}

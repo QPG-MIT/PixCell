@@ -1,0 +1,165 @@
+{
+  "workdir": "data/agents/paper_swap/final4/output/recreation_opus5max",
+  "phase": "A",
+  "device_class": "directional_coupler",
+  "inputs": {
+    "image": "data/agents/paper_swap/final4/device_bw.png",
+    "footprint_json": "data/agents/paper_swap/final4/footprint.json",
+    "footprint_um": [18, 3]
+  },
+  "calibration": {
+    "bbox_px": [0, 113, 1584, 560],
+    "bbox_size_px": [1584, 447],
+    "scale_px_per_um": [88.0, 149.0],
+    "note": "anisotropic: 88 px/um in x, 149 px/um in y. The gate renders my GDS through this same anisotropic map, so all geometry below is stated in the gate frame (18 um x 3 um)."
+  },
+  "topology_reasoning": {
+    "what_is_this_device": "An evanescent directional coupler (2x2 codirectional coupler). Two single-mode waveguides run in from the left edge at a large separation, each S-bends toward the optical axis, come within a sub-wavelength gap at the midline, then S-bend symmetrically apart again and exit at the right edge. The silhouette is mirror-symmetric about both the vertical midline (x = 9 um) and the horizontal midline (y = 1.5 um), which is the signature of a symmetric (50/50-class) directional coupler rather than an asymmetric/adiabatic one (an adiabatic coupler would show unequal arm widths or a width taper across the interaction region; both arms here are the same constant width everywhere).",
+    "how_it_works": "Where the two guides are brought within a fraction of a wavelength of each other, their evanescent tails overlap and the isolated-waveguide modes are no longer eigenmodes of the pair. The composite structure supports a symmetric and an antisymmetric supermode with propagation constants beta_s and beta_a; light launched into one guide is the sum of the two supermodes and beats between the guides with coupling length Lpi = pi / (beta_s - beta_a) = lambda / (2 (n_s - n_a)). Power in the cross port is sin^2( (pi/2) L_eff / Lpi ). L_eff is NOT just the parallel section: the S-bend tails contribute coupling too, weighted by exp(-gap(x)/decay_length), because the supermode splitting falls off roughly exponentially with gap. The gap is therefore the exponentially sensitive knob and the interaction length the linear one; together they set the splitting ratio.",
+    "function_defining_knobs": [
+      {"knob": "coupler_gap", "role": "edge-to-edge gap at the midline. Sets the supermode splitting (beta_s - beta_a) ~ exp(-gap/decay). Exponentially sensitive: the primary coupling-strength knob."},
+      {"knob": "coupling_length", "role": "length of the parallel interaction section. Linear knob on accumulated coupling phase; with the gap it sets the cross/through splitting ratio."},
+      {"knob": "wg_width", "role": "guide width. Sets single-mode operation, n_eff and the evanescent decay length -> rescales Lpi. Also the phase-matching knob (equal arms = phase matched = full power transfer possible)."},
+      {"knob": "sbend_offset", "role": "lateral excursion of each arm between the port separation and the coupling separation. Sets how much coupling the bend tails contribute and the port isolation."},
+      {"knob": "sbend_length", "role": "longitudinal length of each S-bend. Trades bend/radiation loss (short) against footprint and against extra tail coupling (long); with sbend_c1/c2 it sets the gap(x) profile, i.e. the effective interaction length."},
+      {"knob": "sbend_c1, sbend_c2", "role": "cubic-Bezier control-point fractions of the S-bend. Shape of the approach, hence the gap(x) profile and the bend's curvature continuity."},
+      {"knob": "port_straight", "role": "straight lead-ins at each facet; routing/measurement, not a coupling knob."}
+    ],
+    "why_not_other_topologies": "Not an MMI (no wide multimode slab, no abrupt width step). Not a Y-branch (the two guides never merge). Not a ring (no closed loop). Not a taper/mode converter (width is constant along each guide). Two separate, constant-width, mirror-symmetric guides pinched together at the midline == directional coupler.",
+    "pixel_measurements_gate_frame_um": {
+      "waveguide_width": 0.658,
+      "centerline_separation_at_ports": 2.3378,
+      "centerline_separation_at_midline": 0.9510,
+      "edge_to_edge_gap_at_midline": 0.293,
+      "sbend_lateral_offset_per_arm": 0.6934,
+      "total_ink_area_um2": 23.543,
+      "method": "subpixel: per-column coverage centroid of each of the two black runs (2 runs in 1578/1584 columns); centerline separations converted with sy = 149 px/um; width from the flat-region binary run height, 98 px."
+    },
+    "sbend_shape_fit": {
+      "method": "least squares of a straight + shape + straight model against the centerline, with the two plateaus (port, midline) pinned to their measured values so only (bend start, bend length) are free. Fitted on all four independent copies of the S-bend separately and on their fold-average.",
+      "candidates_rms_nm": {
+        "free_cubic_bezier_c1_0.40_c2_0.39": 1.0,
+        "cubic_bezier_symmetric_c=0.5": 9.13,
+        "euler_clothoid_p0.4": 9.42,
+        "sine_curvature": 9.55,
+        "quintic_smoothstep": 9.97,
+        "raised_cosine": 11.07,
+        "circular_double_arc": 30.43
+      },
+      "pixel_noise_floor_nm": 0.8,
+      "chosen": "cubic Bezier with free control-point fractions c1 = 0.40, c2 = 0.39 (the textbook S-bend is c1 = c2 = 0.5). It fits at the pixel noise floor, an order of magnitude better than any fixed-shape family; the target bend leaves the port early and approaches the midline asymptotically.",
+      "fitted_across_the_four_copies": {
+        "fold_average": {"bend_start_um": 0.772, "bend_length_um": 8.216, "rms_nm": 1.00},
+        "top_left": {"bend_start_um": 0.767, "bend_length_um": 8.214, "rms_nm": 1.12},
+        "top_right": {"bend_start_um": 0.761, "bend_length_um": 8.217, "rms_nm": 1.26},
+        "bottom_left": {"bend_start_um": 0.783, "bend_length_um": 8.218, "rms_nm": 1.18}
+      }
+    },
+    "refinement_to_the_first_reading": "My first read of the image put a ~1.45 um parallel coupling section between the bends. The constrained shape fit, run independently on all four copies of the S-bend, put the bend end at x = 8.98 +/- 0.01 um -- i.e. the parallel section is ~0.03 um, essentially zero, and the flat ~1.2 um plateau I saw at the midline is the asymptotic tail of the two Bezier bends meeting. The device's interaction region is formed by the bend tails, not by a straight parallel run. coupling_length is kept as an explicit top-level knob at its fitted value (0.028 um) because it is the canonical linear knob of a directional coupler and is what a retarget to another stack would open up; it is verified below to move real geometry.",
+    "known_frame_artifact": "Target vertical run height is 98 px on flat sections but up to 102-103 px on the steepest slopes. A constant-perpendicular-width sweep in the (anisotropic) gate frame gives 98/cos(theta_gate) ~ 99.5 px there. The excess is consistent with the source figure having square pixels: the slope in that frame is 149/88 = 1.69x steeper, giving 98/cos(theta_orig) = 102.4 px, which is what is measured. I keep a constant physical width -- that is what the device IS -- and accept a <=2 px thinning on the steepest ~30% of the length. Chasing it would require modulating the guide width along the path, which is a physically different device (a width-modulated guide is a Bragg-like structure), so it is not done. This is the entire residual: final recall 0.9935 vs precision 0.9974."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9668428116349097,
+      "dice": 0.9831419225934335,
+      "sse": 10648.0,
+      "params": {"wg_width": 0.658, "coupler_gap": 0.292, "coupling_length": 1.45, "sbend_length": 8.11, "sbend_offset": 0.696, "port_straight": 0.165, "sbend_c1": 0.5, "sbend_c2": 0.5},
+      "change_made": "First build. Topology from the image (directional coupler), all dimensions from subpixel pixel measurement, S-bends as textbook symmetric cubic Beziers (gdsfactory bend_s shape).",
+      "diff_read": "Blue on both arms' outer edges and red on their inner edges through the bend regions: a pure centerline displacement, my arms sitting up to 3 px too close to the axis. Widths and gap already correct. Diagnosis: wrong S-bend SHAPE, not wrong dimensions."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8830102833358676,
+      "dice": 0.937870909309705,
+      "sse": 39238.0,
+      "params": {"wg_width": 0.658, "coupler_gap": 0.293, "coupling_length": 0.028, "sbend_length": 8.216, "sbend_offset": 0.6934, "port_straight": 0.770, "sbend_c1": 0.40, "sbend_c2": 0.39},
+      "change_made": "Refit the S-bend against a free-control-point cubic Bezier (rms 1.0 nm vs 9.1 nm for the best fixed-shape family) and rebuilt with c1 = 0.40, c2 = 0.39.",
+      "diff_read": "REGRESSION, and the diff said exactly why: the left half went to hairlines while the right half showed thick solid red/blue lobes. The exit S-bend was built with the same control fractions as the entrance bend, so it was NOT the mirror image the device's symmetry demands."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9909585854032225,
+      "dice": 0.9954587630988083,
+      "sse": 2868.0,
+      "params": {"wg_width": 0.658, "coupler_gap": 0.293, "coupling_length": 0.028, "sbend_length": 8.216, "sbend_offset": 0.6934, "port_straight": 0.770, "sbend_c1": 0.40, "sbend_c2": 0.39},
+      "change_made": "Mirrored the exit S-bend. Reflecting a cubic Bezier through its own midpoint maps the control fractions (c1, c2) -> (1 - c2, 1 - c1); derived algebraically and added as a `mirror` flag on sbend_path.",
+      "diff_read": "All four edges now hairlines. Measured centerline error vs target: mean +1.1 nm, rms 1.7 nm (0.25 px), against a pixel noise floor of 0.8 nm. Residual is entirely the sloped-region thickness artifact described above (target 102 px vs mine 100 px on the steepest slopes)."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9903156395804914,
+      "dice": 0.9951342589954477,
+      "sse": 3074.0,
+      "params": {"wg_width": 0.658, "coupler_gap": 0.293, "coupling_length": 0.028, "sbend_length": 8.216, "sbend_offset": 0.6955, "port_straight": 0.770, "sbend_c1": 0.40, "sbend_c2": 0.39},
+      "change_made": "Raised sbend_offset 0.6934 -> 0.6955 so the GDS bbox height is exactly the calibrated 3.000 um instead of 2.996 um.",
+      "diff_read": "Worse (-0.0006 IoU). The 4 nm shortfall is the anti-aliasing dilation of the target's binary mask, not real geometry; forcing the bbox pushes the port centerlines 0.3 px off their measured positions. REVERTED -- the direct pixel measurement wins over the bbox identity."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9909585854032225,
+      "dice": 0.9954587630988083,
+      "sse": 2868.0,
+      "params": {"wg_width": 0.658, "coupler_gap": 0.293, "coupling_length": 0.028, "sbend_length": 8.216, "sbend_offset": 0.6934, "port_straight": 0.770, "sbend_c1": 0.40, "sbend_c2": 0.39},
+      "change_made": "Reverted iteration 4. Separately, switched to write_gds(with_metadata=False): kfactory's $$$CONTEXT_INFO$$$ metadata cell REFERENCES every other cell, so it was the GDS's only top-level cell, and any polygon-area reader that (rightly) skips $$$ cells measured zero area -- which is exactly what homi.spec_optimization.verify_knob_response was doing. No geometry change; IoU identical.",
+      "diff_read": "Final. Kept as the honest best."
+    }
+  ],
+  "final": {
+    "iou": 0.9909585854032225,
+    "dice": 0.9954587630988083,
+    "sse": 2868.0,
+    "precision": 0.9974266222433762,
+    "recall": 0.9934986535860124,
+    "gds_size_um": [18.0, 2.996],
+    "size_match": [true, true],
+    "iterations_used": 5,
+    "artifacts": ["device.py", "device.gds", "lengths.json", "component.png", "calibration.json", "raster.png", "diff.png", "overlay.png", "metrics.json", "metrics_abs.json", "knob_response.json"],
+    "tunables": ["wg_width", "coupler_gap", "coupling_length", "sbend_length", "sbend_offset", "port_straight", "sbend_c1", "sbend_c2", "sbend_npoints", "layer_number", "layer_datatype"],
+    "self_run_gate": {
+      "tool": "homi.conductor.gate.verify_cell",
+      "verified": true,
+      "iou_matches_claim": true,
+      "purity_violations": []
+    }
+  },
+  "knob_verification": {
+    "tool_run": "homi.spec_optimization.verify_knob_response",
+    "results": [
+      {
+        "param": "coupling_length", "delta_um": 5.0, "width_um": 0.658,
+        "area_growth_um2": 6.58, "expected_area_growth_um2": 3.29, "area_ok": false,
+        "delta_length_ok": false, "passes": false
+      },
+      {
+        "param": "coupling_length", "delta_um": 5.0, "width_um": 1.316,
+        "area_growth_um2": 6.58, "expected_area_growth_um2": 6.58, "area_ok": true,
+        "delta_length_ok": false, "passes": false
+      },
+      {
+        "param": "sbend_length", "delta_um": 5.0, "width_um": 1.316,
+        "area_growth_um2": 13.1189, "expected_area_growth_um2": 6.58, "area_ok": false,
+        "delta_length_ok": false, "passes": false
+      }
+    ],
+    "honest_reading": [
+      "AREA CHECK. verify_knob_response predicts area growth as width_um * delta, which assumes ONE arm lengthens (the MZI case). A directional coupler has TWO congruent arms, so lengthening coupling_length by 5 um adds 2 * 0.658 * 5 = 6.58 um^2. That is exactly what was measured: 6.5800 vs 6.5800 with the correct two-arm predictor width_um = 1.316. Run with the brief's literal width_um = 0.658 the same measurement reads area_ok = false, because the predictor -- not the geometry -- is off by the factor of two. sbend_length is off by 2x again for the same reason (each arm has TWO S-bends): +5 um of bend dx per bend gives 4 * 5 * 0.658 = 13.16 um^2 predicted, 13.1189 measured (slightly under because a longer bend is a gentler bend, so arc length grows a hair less than dx).",
+      "DELTA_LENGTH CHECK. delta_length_ok is false for every knob, and no knob can make it true. lengths.json's delta_length_um is the ARM IMBALANCE, which is identically zero for this device: a symmetric directional coupler is phase matched by construction, so its two arms are congruent. That check is MZI-specific. I did not redefine delta_length_um to something that would move (e.g. the interaction length) -- that would make a downstream MZI FSR evaluation silently wrong. lengths.json reports the true arms (18.085 um each), delta_length_um = 0.0, plus the coupler's own function-defining lengths under their own names.",
+      "Because the shipped predictor cannot check this device class, the substantive proof is the direct geometric sweep below: perturb each knob, rebuild, and measure the RESULTING GDS with gdstk -- gap, widths, separations and area read off the polygons themselves, never off a number the script reports."
+    ],
+    "independent_geometric_sweep": {
+      "file": "knob_response.json",
+      "method": "for each knob: rewrite the top-level assignment, rebuild in a clean temp dir, read device.gds with gdstk, and measure (a) total layer-(1,0) area, (b) the material y-intervals on a vertical cut at x = 9.0 and x = 0.05, giving the real gap, the real guide widths and the real port separation.",
+      "baseline": {"area_um2": 23.7991, "gap_at_x9_um": 0.294, "width_at_x9_um": 0.658, "width_at_port_um": 0.658, "port_separation_um": 2.338, "total_length_um": 18.0},
+      "responses": {
+        "coupler_gap +0.10": "gap_at_x9 +0.1000 exactly, port_separation +0.1000, area unchanged -- correct: a gap change translates the arms, it does not lengthen them (which is precisely why the area-based predictor is blind to this, the coupler's most important knob)",
+        "coupling_length +2.00": "area +2.6320 = 2 arms x 0.658 x 2.0 exactly; total_length +2.0000",
+        "wg_width +0.10": "width_at_x9 +0.1000 and width_at_port +0.1000 exactly; area +3.6172 = 2 x 18.085 x 0.1; port_separation +0.1000 (outer edges move out, gap held)",
+        "sbend_offset +0.10": "port_separation +0.2000 (0.1 per arm) exactly; gap_at_x9 -0.0020 and area +0.0350 (second-order: a steeper bend is slightly longer)",
+        "sbend_length +1.00": "total_length +2.0000 (two bends per arm); area +2.6205",
+        "port_straight +0.50": "total_length +1.0000; area +1.3160 = 2 x 0.658 x 1.0 exactly"
+      },
+      "verdict": "every declared knob moves real, measured geometry, and moves it by the amount geometry predicts. The 0.001 um reads on gap_at_x9 are the 1 nm GDS database grid."
+    }
+  }
+}

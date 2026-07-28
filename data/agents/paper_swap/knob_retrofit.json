@@ -1,0 +1,550 @@
+{
+ "purpose": "Third leg of the acceptance standard (knob response) applied to the new-generation extension, which was gated on IoU + purity only.",
+ "method": "homi.conductor.gate.knob_response WITHOUT width_um \u2014 the base requirement (perturb a declared parameter; the geometry must change). The optional width x delta area formula is deliberately not applied: it assumes the knob lengthens a guide of that width and mis-fails knobs that move slabs, gaps, positions, or multiple features.",
+ "tiers": {
+  "declared-knob-pass": "worker's first declared tunable moved the geometry",
+  "alternate-knob-pass": "first declared tunable was inert or crashed under +5um, but another top-level parameter moved the geometry (weaker evidence than July's standard, which tested the worker's own nominated knob)",
+  "unresolved": "no parameter produced a response above numerical noise"
+ },
+ "counts": {
+  "declared-knob-pass": 90,
+  "alternate-knob-pass": 12,
+  "unresolved": 2
+ },
+ "cells": {
+  "final1/codex56lunam": {
+   "tier": "declared-knob-pass",
+   "knob": "input_width",
+   "area_growth_um2": 65.00000000000001
+  },
+  "final1/codex56lunau": {
+   "tier": "declared-knob-pass",
+   "knob": "delta_length",
+   "area_growth_um2": 1.339769999999998
+  },
+  "final1/codex56lunax": {
+   "tier": "declared-knob-pass",
+   "knob": "delta_length",
+   "area_growth_um2": 0.3500000000000014
+  },
+  "final1/codex56solm": {
+   "tier": "declared-knob-pass",
+   "knob": "central_input_width",
+   "area_growth_um2": 62.633340000000025
+  },
+  "final1/codex56solu": {
+   "tier": "declared-knob-pass",
+   "knob": "input_width",
+   "area_growth_um2": 70.10394
+  },
+  "final1/codex56solx": {
+   "tier": "declared-knob-pass",
+   "knob": "device_length",
+   "area_growth_um2": 2.4399999999999977
+  },
+  "final1/codex56terrau": {
+   "tier": "declared-knob-pass",
+   "knob": "device_length",
+   "area_growth_um2": 2.500000000000007
+  },
+  "final1/codex56terrax": {
+   "tier": "declared-knob-pass",
+   "knob": "total_length",
+   "area_growth_um2": 2.4200000000000017
+  },
+  "final1/fable5m": {
+   "tier": "declared-knob-pass",
+   "knob": "device_length",
+   "area_growth_um2": 2.440000000000005
+  },
+  "final1/fable5max": {
+   "tier": "declared-knob-pass",
+   "knob": "lead_in_length",
+   "area_growth_um2": 1.350000000000005
+  },
+  "final1/opus5m": {
+   "tier": "declared-knob-pass",
+   "knob": "bus_width_um",
+   "area_growth_um2": 70.8631805
+  },
+  "final1/opus5max": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width_in",
+   "area_growth_um2": 70.19852999999999
+  },
+  "final2/codex56lunam": {
+   "tier": "declared-knob-pass",
+   "knob": "body_length",
+   "area_growth_um2": 17.50000000000003
+  },
+  "final2/codex56lunau": {
+   "tier": "declared-knob-pass",
+   "knob": "body_width",
+   "area_growth_um2": 18.75
+  },
+  "final2/codex56lunax": {
+   "tier": "declared-knob-pass",
+   "knob": "body_length",
+   "area_growth_um2": 18.75
+  },
+  "final2/codex56solm": {
+   "tier": "declared-knob-pass",
+   "knob": "mmi_width",
+   "area_growth_um2": 18.75
+  },
+  "final2/codex56solu": {
+   "tier": "declared-knob-pass",
+   "knob": "mmi_width",
+   "area_growth_um2": 18.760000000000005
+  },
+  "final2/codex56solx": {
+   "tier": "declared-knob-pass",
+   "knob": "mmi_length",
+   "area_growth_um2": 97.25
+  },
+  "final2/codex56terram": {
+   "tier": "declared-knob-pass",
+   "knob": "mmi_length",
+   "area_growth_um2": 18.75
+  },
+  "final2/codex56terrau": {
+   "tier": "declared-knob-pass",
+   "knob": "slab_width",
+   "area_growth_um2": 18.74000000000001
+  },
+  "final2/codex56terrax": {
+   "tier": "declared-knob-pass",
+   "knob": "slab_length",
+   "area_growth_um2": 18.769999999999996
+  },
+  "final2/fable5m": {
+   "tier": "declared-knob-pass",
+   "knob": "mmi_width_um",
+   "area_growth_um2": 18.75
+  },
+  "final2/fable5max": {
+   "tier": "declared-knob-pass",
+   "knob": "mmi_width_um",
+   "area_growth_um2": 18.769999999999996
+  },
+  "final2/opus5m": {
+   "tier": "declared-knob-pass",
+   "knob": "mmi_width_um",
+   "area_growth_um2": 25.25999999999999
+  },
+  "final2/opus5max": {
+   "tier": "declared-knob-pass",
+   "knob": "mmi_width",
+   "area_growth_um2": 25.32000000000005
+  },
+  "final3/codex56lunam": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 1234.7232879999997
+  },
+  "final3/codex56lunau": {
+   "tier": "declared-knob-pass",
+   "knob": "transfer_length",
+   "area_growth_um2": 1.7749999999999915
+  },
+  "final3/codex56lunax": {
+   "tier": "declared-knob-pass",
+   "knob": "coupling_length",
+   "area_growth_um2": 1.1000000000000512
+  },
+  "final3/codex56solm": {
+   "tier": "declared-knob-pass",
+   "knob": "guide_width_um",
+   "area_growth_um2": 351.1455425
+  },
+  "final3/codex56solu": {
+   "tier": "declared-knob-pass",
+   "knob": "guide_width",
+   "area_growth_um2": 737.0224205000002
+  },
+  "final3/codex56solx": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 631.4578824999999
+  },
+  "final3/codex56terrau": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 236.7831595
+  },
+  "final3/codex56terrax": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 200.00000000000003
+  },
+  "final3/fable5m": {
+   "tier": "declared-knob-pass",
+   "knob": "total_length_um",
+   "area_growth_um2": 2.8798905000001582
+  },
+  "final3/fable5max": {
+   "tier": "declared-knob-pass",
+   "knob": "coupling_length",
+   "area_growth_um2": 3.049999999999997
+  },
+  "final3/opus5m": {
+   "tier": "declared-knob-pass",
+   "knob": "coupling_length",
+   "area_growth_um2": 3.040000000000049
+  },
+  "final3/opus5max": {
+   "tier": "declared-knob-pass",
+   "knob": "coupler_gap_um",
+   "area_growth_um2": -0.08213649999996164
+  },
+  "final4/codex56lunam": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 185.41199200000003
+  },
+  "final4/codex56lunau": {
+   "tier": "declared-knob-pass",
+   "knob": "total_length",
+   "area_growth_um2": 6.499999999999993
+  },
+  "final4/codex56lunax": {
+   "tier": "declared-knob-pass",
+   "knob": "footprint_length_um",
+   "area_growth_um2": 6.605019999999996
+  },
+  "final4/codex56solm": {
+   "tier": "declared-knob-pass",
+   "knob": "footprint_length",
+   "area_growth_um2": 6.499978000000002
+  },
+  "final4/codex56solu": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 77.50084000000018
+  },
+  "final4/codex56solx": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 85.42249199999996
+  },
+  "final4/codex56terram": {
+   "tier": "declared-knob-pass",
+   "knob": "device_length",
+   "area_growth_um2": 6.524144999999965
+  },
+  "final4/codex56terrau": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 180.646048
+  },
+  "final4/fable5max": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 7.957287999999998
+  },
+  "final4/opus5m": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width_um",
+   "area_growth_um2": 186.31083200000054
+  },
+  "final4/opus5max": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 180.846882
+  },
+  "final5/codex56lunam": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 144.816716
+  },
+  "final5/codex56lunau": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width_um",
+   "area_growth_um2": 89.07560000000004
+  },
+  "final5/codex56lunax": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width_um",
+   "area_growth_um2": 42.17458499999999
+  },
+  "final5/codex56solm": {
+   "tier": "declared-knob-pass",
+   "knob": "guide_width",
+   "area_growth_um2": 47.554804499999754
+  },
+  "final5/codex56solu": {
+   "tier": "declared-knob-pass",
+   "knob": "bus_length",
+   "area_growth_um2": 0.11999999999999522
+  },
+  "final5/codex56solx": {
+   "tier": "declared-knob-pass",
+   "knob": "guide_width",
+   "area_growth_um2": 134.38920399999924
+  },
+  "final5/codex56terram": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 119.08502549999999
+  },
+  "final5/opus5m": {
+   "tier": "declared-knob-pass",
+   "knob": "bus_width_um",
+   "area_growth_um2": 70.13000000000001
+  },
+  "final5/opus5max": {
+   "tier": "declared-knob-pass",
+   "knob": "swg_period_um",
+   "area_growth_um2": 38.42249599999994
+  },
+  "final6/codex56lunam": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 19.999999999999996
+  },
+  "final6/codex56lunau": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 29.099852000000006
+  },
+  "final6/codex56lunax": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 17.285616000000005
+  },
+  "final6/codex56solu": {
+   "tier": "declared-knob-pass",
+   "knob": "guide_width",
+   "area_growth_um2": 43.501963
+  },
+  "final6/codex56solx": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 9.899003999999998
+  },
+  "final6/codex56terram": {
+   "tier": "declared-knob-pass",
+   "knob": "guide_width",
+   "area_growth_um2": 20.500000000000007
+  },
+  "final6/codex56terrau": {
+   "tier": "declared-knob-pass",
+   "knob": "footprint_length",
+   "area_growth_um2": 2.3607720000000203
+  },
+  "final6/codex56terrax": {
+   "tier": "declared-knob-pass",
+   "knob": "port_width_um",
+   "area_growth_um2": 17.774576
+  },
+  "final6/fable5m": {
+   "tier": "declared-knob-pass",
+   "knob": "stub_width_um",
+   "area_growth_um2": 16.94954399999999
+  },
+  "final6/fable5max": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 42.053016
+  },
+  "final6/opus5max": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 21.730267999999985
+  },
+  "final7/codex56lunam": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 63.815228
+  },
+  "final7/codex56lunau": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 65.58982949999998
+  },
+  "final7/codex56lunax": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 133.9856059999988
+  },
+  "final7/codex56solm": {
+   "tier": "declared-knob-pass",
+   "knob": "ring_radius",
+   "area_growth_um2": 22.590881999999993
+  },
+  "final7/codex56solu": {
+   "tier": "declared-knob-pass",
+   "knob": "outer_length",
+   "area_growth_um2": 2.900391500000011
+  },
+  "final7/codex56solx": {
+   "tier": "declared-knob-pass",
+   "knob": "waveguide_width",
+   "area_growth_um2": 59.50556700000002
+  },
+  "final7/codex56terrau": {
+   "tier": "declared-knob-pass",
+   "knob": "guide_width",
+   "area_growth_um2": 65.27094400000003
+  },
+  "final7/codex56terrax": {
+   "tier": "declared-knob-pass",
+   "knob": "outer_loop_width",
+   "area_growth_um2": 66.25041100000001
+  },
+  "final7/fable5max": {
+   "tier": "declared-knob-pass",
+   "knob": "delta_length",
+   "area_growth_um2": 1.0617795000000037
+  },
+  "final8/codex56lunam": {
+   "tier": "declared-knob-pass",
+   "knob": "wg_width",
+   "area_growth_um2": 685.6966559999997
+  },
+  "final8/codex56lunau": {
+   "tier": "declared-knob-pass",
+   "knob": "guide_width_um",
+   "area_growth_um2": 8171.78976
+  },
+  "final8/codex56lunax": {
+   "tier": "declared-knob-pass",
+   "knob": "bar_length",
+   "area_growth_um2": 0.3400000000000034
+  },
+  "final8/codex56solm": {
+   "tier": "declared-knob-pass",
+   "knob": "interaction_length",
+   "area_growth_um2": 4.7599999999999625
+  },
+  "final8/codex56solu": {
+   "tier": "declared-knob-pass",
+   "knob": "transfer_length",
+   "area_growth_um2": 0.34000000000003183
+  },
+  "final8/codex56solx": {
+   "tier": "declared-knob-pass",
+   "knob": "overall_length",
+   "area_growth_um2": 14.022657000000066
+  },
+  "final8/codex56terram": {
+   "tier": "declared-knob-pass",
+   "knob": "interaction_length",
+   "area_growth_um2": 13.544707000000045
+  },
+  "final8/codex56terrau": {
+   "tier": "declared-knob-pass",
+   "knob": "device_length",
+   "area_growth_um2": 4.279999999999944
+  },
+  "final8/codex56terrax": {
+   "tier": "declared-knob-pass",
+   "knob": "delta_length",
+   "area_growth_um2": 0.3299999999999841
+  },
+  "final8/fable5m": {
+   "tier": "declared-knob-pass",
+   "knob": "coupling_gap",
+   "area_growth_um2": -80.64850400000009
+  },
+  "final8/fable5max": {
+   "tier": "declared-knob-pass",
+   "knob": "coupling_length",
+   "area_growth_um2": 4.689999999999998
+  },
+  "final8/opus5m": {
+   "tier": "declared-knob-pass",
+   "knob": "pitch_um",
+   "area_growth_um2": 3966.290341000005
+  },
+  "final8/opus5max": {
+   "tier": "declared-knob-pass",
+   "knob": "device_length",
+   "area_growth_um2": 0.38326599999993505
+  },
+  "final1/codex56terram": {
+   "tier": "alternate-knob-pass",
+   "knob": "center_input_width",
+   "area_growth_um2": 62.531,
+   "note": "first-declared knob inert or perturbation-fragile; another top-level parameter drives geometry"
+  },
+  "final3/codex56terram": {
+   "tier": "alternate-knob-pass",
+   "knob": "upper_wg_width",
+   "area_growth_um2": 581.5707,
+   "note": "first-declared knob inert or perturbation-fragile; another top-level parameter drives geometry"
+  },
+  "final4/codex56terrax": {
+   "tier": "alternate-knob-pass",
+   "knob": "footprint_width",
+   "area_growth_um2": 2.0192,
+   "note": "first-declared knob inert or perturbation-fragile; another top-level parameter drives geometry"
+  },
+  "final4/fable5m": {
+   "tier": "alternate-knob-pass",
+   "knob": "wg_width_um",
+   "area_growth_um2": 186.184,
+   "note": "first-declared knob inert or perturbation-fragile; another top-level parameter drives geometry"
+  },
+  "final5/codex56terrau": {
+   "tier": "unresolved",
+   "knob": "footprint_height",
+   "area_growth_um2": -0.0003,
+   "note": "no top-level parameter produced a geometry change above numerical noise (|delta area| <= 0.05 um^2)"
+  },
+  "final5/codex56terrax": {
+   "tier": "alternate-knob-pass",
+   "knob": "interaction_length",
+   "area_growth_um2": 0.12,
+   "note": "first-declared knob inert or perturbation-fragile; another top-level parameter drives geometry"
+  },
+  "final5/fable5m": {
+   "tier": "alternate-knob-pass",
+   "knob": "bus_width_um",
+   "area_growth_um2": 2.725,
+   "note": "first-declared knob inert or perturbation-fragile; another top-level parameter drives geometry"
+  },
+  "final5/fable5max": {
+   "tier": "unresolved",
+   "knob": "BBOX_X0_PX",
+   "area_growth_um2": -0.0012,
+   "note": "no top-level parameter produced a geometry change above numerical noise (|delta area| <= 0.05 um^2)"
+  },
+  "final6/codex56solm": {
+   "tier": "alternate-knob-pass",
+   "knob": "guide_width",
+   "area_growth_um2": 20.7999,
+   "note": "first-declared knob inert or perturbation-fragile; another top-level parameter drives geometry"
+  },
+  "final6/opus5m": {
+   "tier": "alternate-knob-pass",
+   "knob": "wg_width_um",
+   "area_growth_um2": 11.2815,
+   "note": "first-declared knob inert or perturbation-fragile; another top-level parameter drives geometry"
+  },
+  "final7/codex56terram": {
+   "tier": "alternate-knob-pass",
+   "knob": "loop_width_um",
+   "area_growth_um2": 59.5326,
+   "note": "first-declared knob inert or perturbation-fragile; another top-level parameter drives geometry"
+  },
+  "final7/fable5m": {
+   "tier": "alternate-knob-pass",
+   "knob": "delta_length",
+   "area_growth_um2": 2.182,
+   "note": "first-declared knob inert or perturbation-fragile; another top-level parameter drives geometry"
+  },
+  "final7/opus5m": {
+   "tier": "alternate-knob-pass",
+   "knob": "center_x_um",
+   "area_growth_um2": 8.6,
+   "note": "first-declared knob inert or perturbation-fragile; another top-level parameter drives geometry"
+  },
+  "final7/opus5max": {
+   "tier": "alternate-knob-pass",
+   "knob": "loop_half_length_um",
+   "area_growth_um2": 10.7185,
+   "note": "first-declared knob inert or perturbation-fragile; another top-level parameter drives geometry"
+  }
+ }
+}

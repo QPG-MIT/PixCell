@@ -1,0 +1,97 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "image": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [
+      18.24,
+      0.7
+    ]
+  },
+  "topology_reasoning_before_code": {
+    "classification": "Dual-sided subwavelength-grating-assisted coupler or mode converter around a continuous central bus.",
+    "observations": [
+      "A narrow continuous guide runs horizontally through the interaction region.",
+      "Two nearly identical segmented rails flank the bus across small, symmetric edge gaps.",
+      "Each segmented rail contains 56 cells and joins a smooth folded auxiliary path.",
+      "The upper auxiliary path folds at the right and exposes two left-side terminations; the lower path is approximately its 180-degree-rotated counterpart.",
+      "The active grating rows are strongly symmetric, while the full fanout is approximately point-symmetric rather than globally mirror-symmetric."
+    ],
+    "operating_principle": "The periodic rails support Bloch/effective-medium modes. Their small gaps to the central bus permit evanescent transfer, while period, fill factor, rail width, gap, and interaction length set phase matching and coupling strength. Smooth folded fanouts and width transitions connect the auxiliary modes with reduced reflection.",
+    "measured_seed_dimensions_um": {
+      "central_bus_length": 14.03,
+      "central_bus_width": 0.025,
+      "grating_cell_count": 56,
+      "grating_interaction_span": 8.59,
+      "grating_nominal_period": 0.157,
+      "grating_period_observed_range": [
+        0.138,
+        0.162
+      ],
+      "grating_segment_length": 0.11,
+      "grating_rail_width": 0.05,
+      "central_to_grating_edge_gap": 0.018,
+      "outer_smooth_rail_width": 0.065,
+      "outer_to_inner_clear_spacing": 0.19
+    },
+    "function_defining_knobs": [
+      "transfer_length",
+      "grating_cell_count",
+      "grating_period",
+      "grating_chirp_depth",
+      "grating_fill_factor",
+      "grating_rail_width",
+      "central_bus_width",
+      "coupling_gap",
+      "outer_rail_width",
+      "fold_radius_x",
+      "fold_radius_y",
+      "straight_taper_length",
+      "straight_tip_width",
+      "curved_taper_length",
+      "curved_tip_width"
+    ],
+    "uncertainty": "The raster alone does not distinguish a broadband effective-medium transfer regime from a wavelength-selective Bragg regime, so the reconstruction preserves geometry and parametric physics knobs without assigning an unsupported wavelength or port convention."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7530031392037632,
+      "dice": 0.8591007310412313,
+      "sse": 304969.0,
+      "change_made": "Initial primitive-only model: continuous central bus, two 56-cell chirped SWG rails, opposite folded returns, straight inverse tapers, and exponential curved fanouts."
+    },
+    {
+      "iter": 2,
+      "iou": 0.815667638993496,
+      "dice": 0.8984768153335115,
+      "sse": 221491.0,
+      "change_made": "Corrected the lower curved fanout direction, fit the lower U-fold center and radius from the raster, snapped the central bus endpoints to the measured span, narrowed curved leads slightly, and added the observed lower frame tail."
+    },
+    {
+      "iter": 3,
+      "iou": 0.8794149335540566,
+      "dice": 0.93583903996234,
+      "sse": 139566.0,
+      "change_made": "Extended the real lower-right curved taper endpoint by 7.5 nm so its thin tail reproduces the calibrated vertical frame set by the target; this aligned the remaining bus, rails, folds, and fanouts without changing topology."
+    }
+  ],
+  "best_iteration": 3,
+  "knob_response": {
+    "param": "bus_length",
+    "delta_um": 5.0,
+    "width_um": 0.024,
+    "base_value": 14.06,
+    "base_delta_length_um": 5.360000000000001,
+    "perturbed_delta_length_um": 10.36,
+    "delta_response_um": 4.999999999999998,
+    "delta_length_ok": true,
+    "base_area_um2": 3.180439499999991,
+    "perturbed_area_um2": 3.300439499999986,
+    "area_growth_um2": 0.11999999999999522,
+    "expected_area_growth_um2": 0.12,
+    "area_ok": true,
+    "passes": true,
+    "audit_note": "The first proof saw zero area because the metadata context cell was the only GDS top level. Exporting with metadata disabled made the unchanged device cell top-level; the repeated deterministic proof then passed both length and area checks."
+  }
+}

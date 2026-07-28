@@ -1,0 +1,89 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "image": "component.png",
+    "footprint_um": [
+      120.0,
+      4.0
+    ]
+  },
+  "topology_reasoning": {
+    "device": "symmetric four-port directional coupler",
+    "observations": [
+      "Two disconnected single-mode guides enter at a large vertical pitch.",
+      "Matched S-bends bring the guides into a long, close, parallel interaction region.",
+      "Matched output S-bends restore the large pitch and expose four ports.",
+      "Optical power transfers through evanescent supermode beating in the parallel region; no splitter, ring, grating, or crossing is present."
+    ],
+    "initial_geometry_estimate": {
+      "guide_width_um": 0.3,
+      "coupling_gap_um": 0.16,
+      "input_pitch_um": 3.45,
+      "output_pitch_um": 3.65,
+      "left_lead_um": 18.0,
+      "bend_transition_um": 15.0,
+      "coupling_length_um": 54.0,
+      "right_lead_um": 18.0
+    },
+    "function_defining_knobs": [
+      "wg_width",
+      "coupling_gap",
+      "coupling_length",
+      "bend_length",
+      "input_pitch",
+      "output_pitch",
+      "left_lead_length",
+      "right_lead_length"
+    ],
+    "planned_primitive_construction": "Two gf.Path centerlines made only from straight and cubic Bezier path primitives, then extruded on layer (1, 0)."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7828062536800025,
+      "dice": 0.8781731072169653,
+      "sse": 56069.0,
+      "change_made": "Initial two-path tapered coupler: measured centerline pitches, 15 um cubic S-transitions, 54 um parallel region, and complementary 0.42/0.16 um width taper."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8824821688567795,
+      "dice": 0.937572937960635,
+      "sse": 31882.0,
+      "change_made": "Kept the measured topology and centerlines fixed; added explicit, top-level transition-width envelope knobs to match the four localized stroke bulges visible in the source S-bends. Stopped because IoU exceeded 0.85."
+    }
+  ],
+  "best_iteration": 2,
+  "final_metrics": {
+    "iou": 0.8824821688567795,
+    "dice": 0.937572937960635,
+    "sse": 31882.0,
+    "precision": 0.9264061726102031,
+    "recall": 0.9490121929949737,
+    "gds_size_um": [
+      120.0,
+      3.97
+    ]
+  },
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "result": {
+      "param": "coupling_length",
+      "delta_um": 5.0,
+      "width_um": 0.29,
+      "base_value": 54.0,
+      "base_delta_length_um": 0.007999999999995566,
+      "perturbed_delta_length_um": 0.007999999999995566,
+      "delta_response_um": 0.0,
+      "delta_length_ok": false,
+      "base_area_um2": 86.9987120000001,
+      "perturbed_area_um2": 89.90380900000002,
+      "area_growth_um2": 2.9050969999999268,
+      "expected_area_growth_um2": 1.45,
+      "area_ok": false,
+      "passes": false
+    },
+    "interpretation": "The supplied checker implements a one-differential-arm MZI contract, while coupling_length coherently extends both coupler rails. The measured layer area growth is 2.905097 um2, matching the physical two-guide expectation 2 * 0.29 * 5 = 2.90 um2 to 0.18%; equal guide-length growth correctly leaves their differential length unchanged. This is direct deterministic evidence that the coupler knob moves real geometry, without misreporting the MZI-specific pass flag."
+  },
+  "status": "phase_a_complete"
+}

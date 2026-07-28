@@ -1,0 +1,100 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "image": "device_bw.png copied verbatim to component.png",
+    "footprint_json": {
+      "footprint_um": [
+        3.0,
+        5.5
+      ]
+    },
+    "calibration_note": "The generated calibration is authoritative: image x maps to 3.0 um and image y maps to 5.5 um, even though the displayed raster is landscape."
+  },
+  "topology_reasoning_before_code": {
+    "connectivity": "Thresholded black material is one connected component. The exterior plus seven enclosed white components show that the internal members are joined to the outer frame; they are not isolated through/drop buses.",
+    "device_identification": "A connected oval or racetrack annular resonator/frame loaded by two vertically mirrored perforated chord/bridge assemblies. Each bridge has a central rectangular frame with two rectangular air slots and two oblique arms that merge into the outer loop.",
+    "function_hypothesis": "The outer loop can support a circulating optical mode. The bridges and their slots load the effective index and coupling/support conditions. The supplied image alone cannot determine whether the bridges are primarily optical loading rails, mechanical supports, or a photonic-crystal-like element, so the script preserves the visible topology without claiming a standard add-drop coupler.",
+    "symmetry": "The target is approximately left-right and top-bottom symmetric; the baseline construction will enforce both symmetries.",
+    "construction_plan": "Assemble a closed parametric Bezier/racetrack centerline with gf.Path and extrude it on layer (1,0). Add two mirrored bridge bodies from rectangles plus oblique gf.Path/extrude arms. Use boolean subtraction of four rectangle primitives for the slots. The final material is the boolean union of the outer loop and bridges, so all pieces remain physically connected.",
+    "calibrated_initial_measurements_um": {
+      "overall_x": 3.0,
+      "overall_y": 5.5,
+      "outer_side_band": 0.31,
+      "outer_cap_band": 0.52,
+      "bridge_body_length": 0.89,
+      "bridge_body_height": 1.04,
+      "bridge_center_offset_y": 0.92,
+      "slot_length": 0.33,
+      "slot_height": 0.56,
+      "slot_center_pitch": 0.44,
+      "center_web": 0.11,
+      "oblique_arm_x_projection": 0.54,
+      "oblique_arm_y_shift": 0.49
+    },
+    "function_defining_knobs": [
+      "outer_length",
+      "outer_width",
+      "ring_side_width",
+      "ring_cap_width",
+      "ring_top_straight",
+      "bridge_body_length",
+      "bridge_body_height",
+      "bridge_center_offset",
+      "bridge_arm_width",
+      "bridge_arm_run",
+      "bridge_arm_rise",
+      "slot_length",
+      "slot_height",
+      "slot_pitch",
+      "transfer_length"
+    ],
+    "knob_response_plan": "transfer_length controls the material tooth intruding into one coupling slot. Increasing it adds a non-overlapping strip whose area is slot_height times the change; lengths.json will report the same live value for deterministic verify_knob_response."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7666337098021321,
+      "dice": 0.8679034092335951,
+      "sse": 147284.0,
+      "change_made": "Initial connected variable-width Bezier loop, mirrored perforated bridge bodies, and single-segment oblique arms."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8900287668035207,
+      "dice": 0.9418150479357696,
+      "sse": 64071.0,
+      "change_made": "Made the loop-width transition decay toward the side width, moved the Bezier centerline inward, clipped the exact 3.0 x 5.5 um footprint, and replaced each shallow bridge arm with a horizontal rail plus steep branch into the side hub."
+    }
+  ],
+  "knob_response": {
+    "param": "transfer_length",
+    "delta_um": 0.05,
+    "width_um": 0.56,
+    "base_value": 0.02,
+    "base_delta_length_um": 0.020000000000000018,
+    "perturbed_delta_length_um": 0.07,
+    "delta_response_um": 0.04999999999999999,
+    "delta_length_ok": true,
+    "base_area_um2": 7.275625499999996,
+    "perturbed_area_um2": 7.3036254999999946,
+    "area_growth_um2": 0.027999999999998693,
+    "expected_area_growth_um2": 0.028000000000000004,
+    "area_ok": true,
+    "passes": true,
+    "audit_note": "The first check exposed invalid one-arm metadata, and the next exposed a metadata-only GDS top cell that the evaluator deliberately excludes. Reporting exactly two path-derived loading lengths and writing without metadata fixed the measurement contract. A layer-(1,0) polygon XOR against the accepted iteration-2 GDS was exactly 0.0 um2, so neither correction changed the accepted geometry."
+  },
+  "best_iteration": 2,
+  "final_metrics": {
+    "iou": 0.8900287668035207,
+    "dice": 0.9418150479357696,
+    "sse": 64071.0,
+    "accuracy": 0.95086986660614,
+    "precision": 0.9585838960789279,
+    "recall": 0.9256227999400227,
+    "gds_size_um": [
+      3.0,
+      5.5
+    ]
+  },
+  "status": "phase_a_complete"
+}

@@ -1,0 +1,59 @@
+{
+  "topology_reasoning": {
+    "device_identification": "Symmetric three-waveguide adiabatic 1x2 splitter (trident/adiabatic coupler): one broad central input rail narrows to a terminating tip while two neighboring rails begin as narrow tips, broaden over the same transfer region, then separate through mirrored S-bends into two output guides.",
+    "operating_principle": "The long, close, width-changing three-guide region transfers the central-guide input into the symmetric supermode of the two outer guides. The central rail vanishes adiabatically while the two outer rails grow; mirrored S-bends then fan the outer guides apart, yielding nominally equal outputs.",
+    "image_measurements": {
+      "material_bbox_um": [40.0, 1.7],
+      "central_input_width_um": 0.27,
+      "central_tip_width_um": 0.07,
+      "central_taper_end_x_um": 25.0,
+      "outer_tip_start_x_um": 3.05,
+      "outer_tip_width_um": 0.07,
+      "outer_transfer_end_x_um": 26.0,
+      "outer_transfer_width_um": 0.24,
+      "outer_transfer_center_offset_um": 0.265,
+      "output_center_offset_um": 0.72,
+      "output_width_um": 0.24,
+      "s_bend_active_region_um": [26.0, 36.0]
+    },
+    "function_defining_knobs": [
+      "central_input_width",
+      "central_tip_width",
+      "central_taper_length",
+      "outer_tip_width",
+      "outer_taper_length",
+      "transfer_gap",
+      "transfer_length",
+      "s_bend_length",
+      "output_offset",
+      "output_width"
+    ],
+    "implementation_plan": "Use three independent gf.Path centerlines extruded on layer (1,0). Width transitions are primitive CrossSection transitions; the two outer centerlines are mirrored and use a smooth cubic Bezier S-bend. All function knobs are named top-level numeric assignments."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8894977355257252,
+      "dice": 0.9415176518094481,
+      "sse": 27083.0,
+      "change_made": "Initial measured three-path construction from the calibrated image. The diff shows small opposing edge bands from subpixel width/centerline differences, but the 0.85 acceptance threshold was exceeded, so iteration stopped as required."
+    }
+  ],
+  "best_iteration": 1,
+  "final_iou": 0.8894977355257252,
+  "knob_verification": {
+    "param": "central_taper_length",
+    "perturbation_um": 5.0,
+    "effective_taper_width_um": 0.17,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 0.8500000000000085,
+    "expected_area_growth_um2": 0.8500000000000001,
+    "delta_length_ok": true,
+    "area_ok": true,
+    "passes": true
+  },
+  "validation_notes": [
+    "The initial knob-proof attempt measured zero area because GDSFactory metadata made the $$$CONTEXT_INFO$$$ cell the sole top-level cell, which the evaluator intentionally excludes.",
+    "device.py was changed to write_gds(..., with_metadata=False). This serialization-only correction left the raster score unchanged and allowed the evaluator to measure the physical top cell."
+  ]
+}

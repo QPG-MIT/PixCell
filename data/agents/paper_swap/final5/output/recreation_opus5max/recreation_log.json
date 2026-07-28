@@ -1,0 +1,170 @@
+{
+  "cell": "final5",
+  "workdir": "data/agents/paper_swap/final5/output/recreation_opus5max",
+  "inputs": {
+    "image": "data/agents/paper_swap/final5/device_bw.png",
+    "image_size_px": [3712, 1152],
+    "footprint_um": [18.24, 0.7]
+  },
+  "calibration": {
+    "bbox_px": [63, 18, 3712, 1152],
+    "bbox_size_px": [3649, 1134],
+    "scale_px_per_um": [200.0548, 1620.0],
+    "note": "calculate_calibration scales x and y INDEPENDENTLY (sx = bbox_w/L, sy = bbox_h/W). The figure's device is 3649 x 1134 px but the extracted footprint is 18.24 x 0.70 um, so the calibrated layout frame is compressed 8.098x in y relative to the drawing. Every shape that is round in the figure is therefore an ELLIPSE in the GDS. This is a property of the supplied calibration, not a modelling choice; the script is written in the calibrated frame because that is the frame the IoU gate rasterises."
+  },
+  "topology_reasoning": {
+    "what_it_is": "A periodically segmented (subwavelength-grating, SWG) side-coupled waveguide filter, drawn as a doubly-symmetric pair: one continuous strip 'bus' waveguide running down the middle, flanked above and below by two identical SWG waveguides -- rows of 56 discrete rectangular segments -- separated from the bus by a narrow uniform gap. Each SWG waveguide is fed from one end by a long adiabatic tapered routing bend that leaves the figure frame, and is folded at the other end by a 180-degree U-turn into a return bar that ends in a truncated inverse taper (a terminator).",
+    "how_i_read_the_pixels": [
+      "Connected-component analysis gives 5 large bodies + 112 small ones. The 112 small bodies are the grating teeth: 56 above the bus, 56 below, at IDENTICAL x positions in both rows (first left edge 953.93 px in both rows, last right edge 2694.59 px in both).",
+      "A vertical scan at mid-device (x=1854) hits only three runs: top bar, bus, bottom bar. There is NO continuous waveguide at the SWG level in the grating region -- the teeth are fully separated from each other (pitch ~31.2 px, tooth 22.0 px, gap 9.2 px, all at the 50% crossing). So the segments ARE the waveguide: this is a segmented/SWG guide carrying a Bloch mode, not a corrugated strip.",
+      "The teeth are 81.7 px transversely and sit 28.6 px from the bus edge; the bus is 40.75 px thick. Gaps this small relative to the guides are an evanescent side-coupling geometry.",
+      "Following each arm: the SWG row continues as an unsegmented lead, then turns 180 degrees (a hairpin: right side for the top arm, left side for the bottom), returns as a thicker (106.2 px) straight bar, and ends in a linear taper truncated at ~11.9 px. A taper that narrows to a tip and simply stops is a terminator / mode radiator, not a port.",
+      "The two ports are therefore the two tapered routing bends that run off the figure edge (top-left and bottom-right) -- they enter narrow (22 px perpendicular) and widen adiabatically to the full 81.7 px SWG width, which is exactly the strip-to-SWG mode converter needed to launch the Bloch mode.",
+      "The bus has two blunt ends inside the frame; it is drawn as the passive partner of the coupler, its own ports cropped out of the figure."
+    ],
+    "how_it_works": "Light launched into an SWG arm propagates as a Bloch mode of the periodic segment chain. The periodic index modulation supplies the reciprocal-lattice momentum that phase-matches the SWG mode to the adjacent bus mode: for pitch L and effective indices n_swg, n_bus the co-directional and contra-directional resonances sit near lambda = L*(n_swg -/+ n_bus). The grating turns an otherwise phase-mismatched pair of guides into a wavelength-selective coupler; power transferred per unit length is set by the evanescent overlap across the gap, and the number of periods sets the total transfer. Folding each arm through a 180-degree U-turn into a terminator routes the un-transferred (through) power away and kills its reflection, and the symmetric two-sided arrangement doubles the available coupling to the bus while cancelling the transverse asymmetry a one-sided grating would impose on the bus mode.",
+    "function_knobs": [
+      "swg_period_um -- sets the Bragg / phase-matching wavelength. THE defining knob.",
+      "swg_duty -- segment length / pitch; sets the SWG Bloch index (equivalent-medium filling fraction), hence the phase-matching condition and the mode confinement.",
+      "swg_gap_um -- bus-to-SWG separation; sets the coupling coefficient kappa (exponentially).",
+      "swg_periods (56) x swg_period_um -- the interaction length; with kappa it sets the transfer and the extinction.",
+      "swg_width_um -- transverse width of the segments; sets the SWG mode index and confinement.",
+      "bus_width_um -- the bus mode index; the other half of the phase-matching condition.",
+      "bus_length_um -- through-path length (this is the knob verified below).",
+      "route_tip_width_um / route_taper_um -- the strip-to-SWG adiabatic converter; sets the insertion loss into the Bloch mode.",
+      "term_tip_width_um / term_taper_um -- terminator tip; sets the residual back-reflection.",
+      "uturn_extent_um -- fold radius; sets bend loss and the device footprint."
+    ],
+    "alternative_readings_considered": [
+      "Sidewall-corrugated Bragg grating on a strip: rejected -- the teeth are fully disconnected from each other, there is no continuous spine at the SWG level.",
+      "Suspended nanobeam with tether anchors: rejected -- the teeth never touch the bus, and the two rows terminate in routed ports, not anchors.",
+      "MMI / directional-coupler stencil: rejected on sight; there is no two-guide adiabatic merge anywhere in the figure."
+    ]
+  },
+  "construction_notes": {
+    "primitives_used": "rectangle (U-turn half-plane cutter), taper (the two terminators), ellipse + boolean (the two 180-degree folds, which are ELLIPTICAL annuli in this anisotropic frame), gf.Path + extrude (bus, SWG segments, leads, bars, and the two tapered routing bends via a width_function). No gf.components device stencils, no add_polygon, no runtime image reads. homi.conductor.gate.purity_violations returns [].",
+    "uturn_model": "Outer boundary = an ellipse tangent to the OUTER edges of the bar and of the SWG lead (tangency fixes yc and b; a and xc were fitted to the drawn boundary, residual rms 0.88 px top / 1.54 px bottom). Inner boundary = a second ellipse pushed inward in x, sized so it crosses the INNER edges of the bar and lead exactly at the fold plane -- so there is no step at either junction. The annulus width therefore varies 81.7 -> 86 -> 106.2 px around the fold, which is what the drawing shows (the return bar is thicker than the SWG lead).",
+    "routing_bend_model": "The drawn centreline is not a circle (circle fit rms 8-11 px). It is straight along the SWG axis for ~277 px, then flares as offset(u) = c*(exp(v/L) - 1), capped at a constant slope where the drawing runs straight out through the figure edge. Fitted rms 0.67 px (top-left) / 2.74 px (bottom-right) over ~880 px of run -- a 5x improvement on the single-exponential model used in iteration 1. Width: linear taper over a finite DRAWN arc length from the cropped tip width up to the SWG width, then uniform (fitted rms 0.61 px; the earlier taper-over-the-whole-path model ran 5-7 px thin mid-bend).",
+    "grating_is_modelled_as_strictly_periodic": "The figure's tooth positions drift from a uniform pitch by up to +/-14.7 px in a sawtooth pattern that is IDENTICAL in the top and bottom rows (correlation 0.9996, max row-to-row difference 0.41 px) -- a horizontal resampling artefact of the figure, not a chirp a designer would draw. The recreation uses one pitch. An exhaustive (pitch, phase, width) search against the real thresholded target caps the grating band's IoU at ~0.69 for ANY strictly periodic model, which alone bounds the whole-device IoU near 0.93. Pitch estimators on this array disagree because of that drift: FFT fundamental 30.93 px, FFT 2nd harmonic 31.84 px, array-span/(n-1) 31.25 px, pixel-overlap optimum 31.04 px. The shipped value is 31.042 px (0.155167 um); iteration 6 tried the span-based 31.248 px and measured 0.0082 IoU WORSE, so the overlap-optimal value was kept. Recorded here rather than fitted away.",
+    "widths_were_not_tuned_to_the_metric": "The target image has soft edges: at the 245 threshold the gate uses, the drawn teeth measure 24.75 px wide while their 50%-crossing (true) width is 22.0 px; my supersampled raster of the same 22.0 px polygon measures 23.08 px. Matching the thresholded masks would need the teeth fattened by ~1.7 px (duty 0.704 -> 0.763) and the return bars fattened by ~1.6 px. That is the 'IoU rewards fattened waveguides' trap in the optimize-to-spec skill, and duty is a real physics knob, so all widths are held at the 50%-crossing measurements. Measured price of that choice: ~15k px of unavoidable FN in the grating, 8.3k under the top bar, 5.5k around the bus, ~3.5k under the bottom bar -- together roughly 2.5-3 points of IoU left on the table by design.",
+    "frame_anchoring": "render_gds_absolute left-aligns the GDS bbox to the target bbox x0 and CENTRES it on the target bbox in y. The target bbox is inflated at the bottom-right by two stray specks (isolated sub-threshold pixels at y=1134 and y=1151, x=3709/3711), which pushes the frame centre from the device's true centre (py 572.2) to py 585 -- a 12.8 px shift that would otherwise be applied to my whole device. The bottom-right routing bend is clipped by the figure frame, so it is continued along its own trajectory until the GDS bbox centre lands on the frame centre. Cost ~1.4k px of extra material (0.12% of the target mask) on a waveguide that demonstrably continues off-figure; benefit: removes a rigid 12.8 px shift that would roughly halve the IoU of the 41 px bus. Iteration 2 -> 3 shows the effect directly: a residual 1.6 px frame error cost 0.0027 IoU on its own.",
+    "database_grid": "gdsfactory 9.20.7 has dbu = 0.001 um, which is 1.62 figure-pixels in y here. Every transverse dimension is quoted as an integer number of nm and every width as an EVEN number of nm: gf.path.extrude offsets by width/2, so an odd-nm width rounds UP (a nominal 51 nm row builds as 52 nm). Iteration 4 is that lesson -- reverting one row from 51 to 50 nm recovered 0.0005 IoU and removed 2 px of spurious FP.",
+    "asymmetry": "The drawing's two halves are not an exact 180-degree rotation: the grating and its leads are symmetric about x = 1824.3 px, the U-turns about x = 1863 px, the terminator tips about x = 1849.6 px, and the bar-to-arm separation differs by 4.5 px between halves. All shape parameters (widths, gaps, pitch, duty, taper lengths, fold radii, bend decay) are SHARED between the two arms; only per-arm placement anchors (fold lead length, terminator tip x, bar offset, bend flare amplitude and rise) carry the measured per-half values.",
+    "parametric_contract": "The fold plane is derived (uturn_x = swg_end + gap + uturn_lead), not an absolute, so raising swg_period_um lengthens the grating and carries the fold, bar and terminator with it instead of eating the lead. Verified: +0.005 um of pitch grows layer-(1,0) area by 0.0410 um2, against 0.0384 um2 predicted from teeth growth (0.0198) plus the bar extension (0.0185); the remainder is dbu snapping. The GDS is written with with_metadata=False because kfactory's $$$CONTEXT_INFO$$$ cell REFERENCES the device cell, which makes naive top-cell traversal (homi.spec_optimization._layer_area) measure zero area -- see tooling_note."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8924745577698885,
+      "dice": 0.9431826220391462,
+      "sse": 125298.0,
+      "change_made": "First build. Bus + 2x56 SWG segments + 2 folds (elliptical annuli) + 2 return bars + 2 terminators + 2 routing bends (single-exponential centreline, taper linear over the whole path). Frame anchored by continuing the clipped bottom-right routing bend."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8919413794514383,
+      "dice": 0.9428847945701716,
+      "sse": 126764.0,
+      "change_made": "Refit the routing-bend centreline: straight lead + exponential flare + slope cap (fit rms 3.5 -> 0.67 px). Also moved the SWG rows to a 51 nm width. Net regression: the SWG change shifted the GDS bbox centre 1.6 px off the render frame, which shifts the WHOLE device."
+    },
+    {
+      "iter": 3,
+      "iou": 0.8946726732221225,
+      "dice": 0.9444086948281386,
+      "sse": 123192.0,
+      "change_made": "Re-anchored the GDS bbox centre onto the render frame centre (route_rise_bot). Confirms the frame sensitivity: 1.6 px of frame error = 0.0027 IoU. Routing-bend error 19.5k -> 14.6k px."
+    },
+    {
+      "iter": 4,
+      "iou": 0.8951318489795498,
+      "dice": 0.9446644564192631,
+      "sse": 122025.0,
+      "change_made": "SWG segment width back to an even-dbu 50 nm (an odd-nm width builds 1 nm too wide because extrude rounds width/2 up), re-anchored again. Grating band error back to 79.6k px."
+    },
+    {
+      "iter": 5,
+      "iou": 0.8991665808356508,
+      "dice": 0.9469064903616925,
+      "sse": 117479.0,
+      "change_made": "Routing-bend width profile changed from taper-over-the-whole-path to a finite linear taper then uniform (fit rms 0.61 px); U-turn inner ellipse pinned to the straights' inner edges at the fold plane so neither junction steps. Routing-bend error 16.2k -> 11.1k px. BEST."
+    },
+    {
+      "iter": 6,
+      "iou": 0.8910176792820166,
+      "dice": 0.9423684284330107,
+      "sse": 127406.0,
+      "change_made": "Tried the array-span pitch estimate (31.248 px, duty 0.7042) with a refitted phase instead of the pixel-overlap optimum (31.042 px). Regression of 0.0082 -- the figure's tooth drift makes the span estimator worse in overlap terms. REVERTED to the iteration-5 configuration, which was rebuilt and re-measured at 0.8991665808 (identical)."
+    }
+  ],
+  "post_iteration_changes_verified_geometry_neutral": [
+    "write_gds(with_metadata=False) so the GDS has a single top cell -- IoU re-measured bit-identical (0.8991665808356508).",
+    "uturn_x_{top,bot} derived from the grating end plus a per-arm lead length instead of being absolute, so swg_period_um stays a physical knob -- IoU re-measured bit-identical."
+  ],
+  "knob_response": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "bus_length_um",
+    "delta_um": 5.0,
+    "width_um": 0.026,
+    "base_delta_length_um": 5.38081944954013,
+    "perturbed_delta_length_um": 10.380819449540128,
+    "delta_response_um": 4.999999999999998,
+    "delta_length_ok": true,
+    "base_area_um2": 3.294381000000007,
+    "perturbed_area_um2": 3.424381000000007,
+    "area_growth_um2": 0.1299999999999999,
+    "expected_area_growth_um2": 0.13,
+    "area_ok": true,
+    "passes": true,
+    "why_this_knob": "verify_knob_response requires a knob whose response is exactly delta_um in lengths.json AND exactly width_um*delta_um in layer area -- i.e. a straight guide of known width. On this device that is the bus. lengths.json reports the two co-propagating guides of the coupler (the continuous bus and the segmented section it couples to) as the two 'arms' the tool's schema demands, with delta_length_um = bus - swg_coupling_section, both computed from the built geometry.",
+    "second_knob_checked": {
+      "tool": "homi.conductor.gate.knob_response",
+      "param": "swg_period_um",
+      "delta_um": 0.005,
+      "area_growth_um2": 0.04101199999999672,
+      "ok_flag": false,
+      "reading": "The flag is false only because width*delta is the MZI delta_length model and does not describe a pitch knob. The measured growth is accounted for: 0.0198 um2 from the 112 segments getting longer plus 0.0185 um2 from the return bar extending as the fold rides out with the grating, plus dbu snapping. The knob moves real geometry."
+    }
+  },
+  "tooling_note": "homi.spec_optimization._layer_area uses library.top_level() and skips '$$$' cells, but kfactory's $$$CONTEXT_INFO$$$ cell REFERENCES the device cell, so it is the only top-level cell and the area comes back 0.0 -- verify_knob_response then reports area_ok=false for any correct script. homi.conductor.gate._layer_area already fixes this (it finds non-metadata cells nothing else references); spec_optimization has not been updated. Worked around here by writing the GDS with with_metadata=False. Flagging it for the conductor: any cell in this campaign that writes a default gdsfactory GDS will fail the area half of verify_knob_response for a tooling reason, not a geometry one.",
+  "gate_selfcheck": {
+    "tool": "homi.conductor.gate.verify_cell",
+    "iou": 0.8991665808356508,
+    "iou_matches_claim": true,
+    "purity": [],
+    "knob_ok": true,
+    "verified": true
+  },
+  "final": {
+    "iou": 0.8991665808356508,
+    "dice": 0.9469064903616925,
+    "sse": 117479.0,
+    "precision": 0.9615693869496177,
+    "recall": 0.9326840638134776,
+    "iterations": 6,
+    "gds_size_um": [17.803, 0.695],
+    "footprint_um": [18.24, 0.7],
+    "size_match": [false, true],
+    "size_match_note": "The width mismatch is expected and deliberate. The footprint's 18.24 um is 3649 px of target bbox, whose right edge is set by a stray single-pixel speck at x=3711; the drawn device ends at x=3610. Matching 18.24 um would mean drawing 100 px of material into empty figure. The x mapping is LEFT-aligned, so a shorter device costs nothing in IoU.",
+    "tunables": [
+      "swg_period_um", "swg_duty", "swg_periods", "swg_width_um", "swg_gap_um", "swg_start_um",
+      "bus_width_um", "bus_length_um", "bus_start_um",
+      "uturn_extent_um", "uturn_inner_extent_um", "uturn_inner_dx_um", "uturn_lead_top_um", "uturn_lead_bot_um",
+      "bar_width_um", "bar_offset_top_um", "bar_offset_bot_um",
+      "term_taper_um", "term_tip_width_um", "term_tip_x_top_um", "term_tip_x_bot_um",
+      "route_lead_top_um", "route_lead_bot_um", "route_decay_um", "route_c_top_um", "route_c_bot_um",
+      "route_slope_max", "route_rise_top_um", "route_rise_bot_um", "route_tip_width_um", "route_taper_um",
+      "figure_aspect"
+    ],
+    "residual_error_budget_px": {
+      "total_fp": 41869,
+      "total_fn": 75610,
+      "grating_both_rows": 79576,
+      "routing_bends_both": 11076,
+      "u_turns_both": 10200,
+      "top_bar_soft_edge": 8700,
+      "bus_soft_edge": 5710,
+      "bottom_bar": 6222,
+      "reading": "Two thirds of the residual is the grating, and it is bounded by two things I chose not to fake: the figure's tooth-position drift (no single pitch can fit it -- ceiling ~0.69 in that band, ~0.93 whole-device) and the target's soft edges (fattening the teeth 1.7 px would buy IoU by misstating the duty cycle). The rest is a few px of centreline and fold-boundary residual plus the 1 nm database grid, which is 1.62 figure-pixels in y in this anisotropic frame."
+    }
+  }
+}

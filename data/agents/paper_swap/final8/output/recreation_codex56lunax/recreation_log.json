@@ -1,0 +1,68 @@
+{
+  "device_reasoning": {
+    "identity": "A vertically symmetric multi-track photonic waveguide pattern: five full-length central bars, a five-rung ladder at each end, and separate broad U-shaped end bodies with curved/sloped side rails.",
+    "operation": "The central bars are parallel guides. At each end, the rungs are joined by wide side rails; the neighboring broad U-shaped body provides the larger end outline. The pattern is geometric rather than a single connected circuit, so fidelity is driven by guide widths, pitch, rail placement, and the end-turn dimensions.",
+    "function_defining_knobs": [
+      "bar_length",
+      "bar_pitch",
+      "bar_width",
+      "rung_pitch",
+      "rail_width",
+      "outer_body_height",
+      "outer_body_width",
+      "end_margin"
+    ],
+    "symmetry": "Mirror symmetry about x=60 um and y=2 um is used; the supplied mask is symmetric to raster tolerance."
+  },
+  "calibration": {
+    "source": "calibration.json generated from component.png and footprint.json",
+    "footprint_um": [120.0, 4.0]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.0026015858,
+      "dice": 0.0051896702,
+      "sse": 7388901.0,
+      "change_made": "Initial ladder/U-body build; first measurement exposed incorrect mirrored placement and right-side x symmetry."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7068485080,
+      "dice": 0.8282498472,
+      "sse": 2431132.0,
+      "change_made": "Fixed right-side symmetry and used dmirror_y for the lower half; footprint width aligned, but path caps made the vertical bbox 4.696 um."
+    },
+    {
+      "iter": 3,
+      "iou": 0.6970164407,
+      "dice": 0.8214610348,
+      "sse": 2512779.0,
+      "change_made": "Replaced the broad end-body rectangle with a taper and shortened the rail start to control bbox; this reduced the score, so it was not retained as the stopping design."
+    },
+    {
+      "iter": 4,
+      "iou": 0.7264343397,
+      "dice": 0.8415429686,
+      "sse": 2192675.0,
+      "change_made": "Replaced unstable curved rail extrusions with calibrated rectangle primitive bands and retained the tapered end bodies; exact 120 x 4 um bbox restored."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9524808269,
+      "dice": 0.9756621563,
+      "sse": 337425.0,
+      "change_made": "Moved rung_start from 0.798 to 0.764 um because the tunable is the top edge, not the rung center; all five upper and mirrored lower rungs align."
+    }
+  ],
+  "knob_response": {
+    "param": "bar_length",
+    "delta_um": 5.0,
+    "width_um": 0.068,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "area_growth_um2": 0.3400000000,
+    "expected_area_growth_um2": 0.3400000000,
+    "passes": true
+  }
+}

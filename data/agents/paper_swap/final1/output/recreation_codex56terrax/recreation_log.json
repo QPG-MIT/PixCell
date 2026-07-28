@@ -1,0 +1,54 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_um": [40.0, 1.7],
+    "calibration": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device": "symmetric adiabatic 1x2 three-waveguide coupler",
+    "operation": "A central input guide begins as the only left port. It narrows through a long linear adiabatic taper while two initially narrow, symmetrically offset rails broaden beside it. The two rails then use opposite S-bends to form well-separated output guides. The image therefore represents an adiabatic transfer/splitter, rather than a junction stencil.",
+    "observations": [
+      "The central material track occupies x=0 to approximately 25 um and tapers from about 0.27 um to a tip around 0.04 um.",
+      "The upper and lower rails begin at approximately x=3 um with about 0.07 um width, widen linearly to about 0.244 um at x=25 um, and are initially offset by about +/-0.27 um from the input centerline.",
+      "The output rails retain the 0.244 um width while opposite smooth S-bends increase their centerline separation through approximately x=36 um; they then continue straight to x=40 um."
+    ],
+    "function_defining_knobs": [
+      "input_width", "input_taper_length", "input_tip_width",
+      "rail_start_width", "rail_width", "rail_taper_length",
+      "rail_start_offset", "s_bend_length", "output_offset"
+    ],
+    "implementation": "Use only gdsfactory straight/taper primitives plus gf.Path extruded rails for the smooth S-bends, assembled in an @gf.cell component on layer (1, 0)."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8872960007618352,
+      "dice": 0.9402828177494839,
+      "sse": 28404.0,
+      "change_made": "First primitives-only assembly. Diff inspection found the input straight was erroneously 0.5 um wide because the supplied cross-section overrode its width argument; correct its cross-section width before the next deterministic comparison."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9187689576089368,
+      "dice": 0.9576650215916102,
+      "sse": 19764.0,
+      "change_made": "Corrected the input straight to 0.270 um. The diff then showed the central taper missing material toward its tip, rails about one pixel too wide on their outer edges, and S-bends beginning too early. Increase the central tip to 0.070 um, reduce rail width to the legal 0.242 um grid value, and add a 0.45 um rail straight before a correspondingly shorter smooth S-bend."
+    },
+    {
+      "iter": 3,
+      "iou": 0.956865720169069,
+      "dice": 0.9779574656623837,
+      "sse": 10348.0,
+      "change_made": "Applied the image-derived central-tip, rail-width, and delayed-S-bend corrections. This is the retained honest best: it exceeds the 0.85 Phase-A criterion and has exact calibrated 40.0 by 1.7 um bounds."
+    }
+  ],
+  "knob_response": {
+    "requested": {
+      "param": "s_bend_length",
+      "width_um": 0.242
+    },
+    "result": "unsupported for this topology by the current helper",
+    "reason": "homi.spec_optimization.verify_knob_response is explicitly an MZI-arm verifier: it requires lengths.json containing two arms and delta_length_um. This device is a directional/adiabatic coupler, not an MZI; inventing arms or delta_length would falsify the measurement contract. The helper was invoked and failed honestly with: Script device.py did not write lengths.json next to its GDS (required by the measurement contract)."
+  }
+}

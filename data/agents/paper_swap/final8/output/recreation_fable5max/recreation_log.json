@@ -1,0 +1,44 @@
+{
+  "phase": "A",
+  "device_image": "component.png (copy of data/agents/paper_swap/final8/device_bw.png)",
+  "footprint_um": [120.0, 4.0],
+  "calibration": {
+    "scale_px_per_um": [34.5417, 896.0],
+    "note": "drawing is anisotropically stretched ~26x in y; all um values below are at the calibrated absolute scale (device coords: x in [0,120], y in [-2,+2], y_dev = 2 - y_image_um)"
+  },
+  "topology_reasoning": {
+    "what_it_is": "Symmetric superlattice-clad dual-core directional coupler. Two wide multimode slab cores (drawn width 0.471 um at calibrated scale, centered at y = +/-0.502) run parallel over the device length. They are coupled through a central lattice barrier of 5 thin parallel wires (w ~ 0.066, pitch ~ 0.1007) that spans the full 120 um. On the outer side of each core sits a 5-line periodic cladding (same ~0.100 pitch, w ~ 0.068) - a Bragg-like superlattice that mirrors the barrier so the two core modes stay index-balanced. Every feature in the cross-section sits on one uniform ~0.1-um lattice grid, which is the signature of a 1D-lattice (superlattice/SWG-type) coupler figure; the drawing exaggerates y ~26x, so the drawn 68-nm lines are the calibrated-scale rendering of the paper's subwavelength lattice.",
+    "how_it_works": "The two slab cores form a two-supermode system (even/odd). Power launched into one core beats between the cores with transfer length set by the supermode index split, which is engineered by the central 5-wire lattice barrier (pitch and fill factor set the barrier strength) and by the core-to-barrier gaps. The outer 5-line claddings terminate the field symmetrically on the outside of each core, keeping the two cores degenerate so complete power transfer is possible over the 120-um interaction length. Each core is fed from the chip edge: at all four corners a bent access band (the core's own end, swept up to the edge) plus the merged end of the 5-line cladding bundle exit the top/bottom edge as two parallel bands.",
+    "connectivity_measured": "10 connected components in the target: 5 independent full-length central wires; per half, (slab + both corner feed bands) is one piece reaching the chip edge, and (5 cladding lines merged at both bent ends into a second band) is another piece; plus one 46-px noise speck (ignored).",
+    "function_defining_knobs": [
+      "coupling_length - straight interaction length of the slab cores (THE transfer-length knob; verified via verify_knob_response: delta_length 1:1 exact, area growth 4.69 vs 4.70 um^2 expected, passes=true)",
+      "slab_width / slab_y - core width and core-center offset (mode size; core-core separation)",
+      "center_pitch / center_y0 / n_center / center_widths - central lattice barrier period, position, wire count and fill (inter-core coupling strength)",
+      "clad_y_* / clad_w_* / n_clad - outer superlattice cladding geometry (mode balance)",
+      "FEED_PROFILE / BAND_PROFILE + segment widths - measured drawn centerlines of the corner access bends"
+    ]
+  },
+  "measured_geometry_um_device_coords": {
+    "central_wires": {"n": 5, "pitch": 0.1007, "center_offset_y": -0.007, "widths": "0.060-0.070", "x_span": [0.0, 120.0]},
+    "slabs": {"center_y": "+/-0.502", "width": 0.47, "straight_x": [10.2, 109.8], "feed_exit_top_edge_x_center": [4.94, 114.97], "feed_normal_width": "0.70 at exit tapering to 0.47 at the slab"},
+    "cladding_lines": {"n": 5, "pitch": "0.100 (top) / 0.1003 (bottom - drawn halves differ by ~3.5 px)", "width": 0.067, "inner_line_center_y": "+0.801 / -0.8045", "straight_tips_x_left": [7.82, 8.08, 8.37, 8.77, 9.44], "bundle_exit_top_edge_x_center": [7.19, 112.71]},
+    "asymmetries": "bottom cladding sits 0.003-0.004 lower than mirrored top; right-end curves sit 0.095 inward of a perfect mirror"
+  },
+  "plan": "Primitives only: straight rectangles for the 5 central wires and 5x2 cladding lines; slab = rectangle + measured-centerline feed paths (gf.Path + extrude_transition) swept to the chip edge at each end; cladding bundle corner mass = one band path per corner + taper-primitive fillets at every line tip; union all, boolean-AND with the 120x4 footprint box so the GDS bbox registers pixel-exactly with the calibration. Mirror in y for the bottom half (with measured per-half values), mirror in x for the right end.",
+  "iterations": [
+    {"iter": 1, "iou": 0.95348, "dice": 0.97619, "sse": 328295, "change_made": "initial model: rects for wires/slabs/clads, fitted cubic-bezier feed and bundle-band curves, constant widths, exact-mirror halves"},
+    {"iter": 2, "iou": 0.96864, "dice": 0.98407, "sse": 220443, "change_made": "bottom cladding gets its own y-list (drawn halves differ ~3.5 px = 44% of iter-1 error); tapered curve widths via extrude_transition; refit curves with top-edge anchors; taper fillets at line tips; right-end curves shifted 0.095 inward"},
+    {"iter": 3, "iou": 0.97929, "dice": 0.98954, "sse": 144713, "change_made": "replaced bezier fits with measured drawn-centerline polylines for both corner curves; empirical per-feature edge corrections from raster-vs-target band comparison (all 17 straight features)"},
+    {"iter": 4, "iou": 0.98395, "dice": 0.99191, "sse": 112367, "change_made": "end-cap clipping fix: profiles extended to y=2.4 so extrusion caps land outside the frame (was cutting a wedge from every exit); band lower section moved right/up; half-px edge bisections"},
+    {"iter": 5, "iou": 0.98624, "dice": 0.99307, "sse": 96053, "change_made": "three-segment curve widths (0.70 exit / 0.644 mid / taper to flat), -0.03 um render-bias shift on both profiles, fan-cap fillets above the outermost cladding line, nm-level edge trims -- BEST, kept"},
+    {"iter": 6, "iou": 0.98573, "dice": 0.99282, "sse": 99385, "change_made": "row-swap and fillet-shave experiment traded recall for precision unfavorably; REVERTED to iter-5 geometry (final artifacts rebuilt from it)"}
+  ],
+  "final": {
+    "iou": 0.98624,
+    "dice": 0.99307,
+    "sse_binarized_px": 96053,
+    "gds": "final8_superlattice_coupler.gds",
+    "knob_verified": {"param": "coupling_length", "delta_length_ok": true, "area_ok": true, "passes": true},
+    "notes": "SSE here is compare_absolute's binarized mismatch count. Residual error is dominated by ~1-px quantization on 51 um of diagonal stroke boundary (GDS 1-nm grid = 0.9 px at this calibration) and threshold-knife-edge rows on long horizontal edges."
+  }
+}

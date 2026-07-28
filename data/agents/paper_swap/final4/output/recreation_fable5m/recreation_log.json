@@ -1,0 +1,48 @@
+{
+  "device": "symmetric directional coupler (2x2)",
+  "topology_reasoning": {
+    "what": "Two identical waveguides, mirror-symmetric about the horizontal midline. Each enters straight, S-bends toward the center, runs briefly parallel at a small gap (the coupling region), then S-bends back out. Classic directional coupler.",
+    "how_it_works": "Light in one guide evanescently couples to the other where the guides run close; the power transfer ratio is set by the gap, the parallel coupling length, and the effective interaction added by the slowly-converging S-bends. The S-bends also set input/output port separation so the ports are optically isolated.",
+    "function_knobs": [
+      "wg_width_um: guide width, sets mode confinement (measured ~0.665 um; 0.666 on 2-dbu grid)",
+      "gap_um: edge-to-edge gap in the coupling region, dominant knob for coupling strength (final 0.30 um)",
+      "coupling_len_um: length of the close-parallel section (final 0.8 um)",
+      "sbend_len_um: S-bend length, controls adiabaticity + residual bend coupling (final 8.6 um)",
+      "io_sep_um: input/output center-to-center port separation (2.342 um)"
+    ],
+    "measurements_px": {
+      "calibration": "88.0 px/um in x, 149.0 px/um in y (anisotropic source raster), bbox 1584x447 px = 18x3 um",
+      "wg_width": "0.66-0.69 um along length",
+      "outer_center_sep": "2.342 um",
+      "center_sep_at_waist": "0.955 um -> gap ~0.29-0.30 um",
+      "profile_fit": "centerline least-squares fit strongly prefers sine S-bend y ~ t - sin(2 pi t)/(2 pi) over raised-cosine; symmetric-constrained fit: straight_in=0.006, sbend_len=8.596, coupling_len=0.796 (sse 0.035 vs 0.048)"
+    }
+  },
+  "iterations": [
+    {"iter": 1, "iou": 0.9266, "dice": 0.9619, "sse": 24180.0, "change_made": "initial build: raised-cosine S-bend, wg_width 0.666 (grid-snapped from 0.665), gap 0.29, coupling 1.4, sbend 7.3, straight_in 1.0; diff showed red outside / blue inside of every bend = my S-bend lags the target"},
+    {"iter": 2, "iou": 0.9749, "dice": 0.9873, "sse": 8058.0, "change_made": "switched to sine S-bend profile and adopted least-squares fit params: straight_in 0.0, sbend_len 8.6, coupling_len 0.8"},
+    {"iter": 3, "iou": 0.9752, "dice": 0.9875, "sse": 7972.0, "change_made": "gap 0.29 -> 0.30 (diff showed ~1px excess toward center at the waist)"},
+    {"iter": 4, "iou": 0.9742, "dice": 0.9869, "sse": 8320.0, "change_made": "tried wg_width 0.670 — worse; REVERTED to 0.666. Final = iter-3 config"}
+  ],
+  "final": {
+    "iou": 0.9752,
+    "tunables": {
+      "wg_width_um": 0.666,
+      "gap_um": 0.30,
+      "coupling_len_um": 0.8,
+      "sbend_len_um": 8.6,
+      "straight_in_um": 0.0,
+      "io_sep_um": 2.342
+    }
+  },
+  "knob_verification": {
+    "param": "coupling_len_um",
+    "delta_um": 2.0,
+    "width_um_passed": 1.332,
+    "width_um_note": "1.332 = 2 x wg_width_um (0.666): extending the coupling section lengthens BOTH guides, so area grows at twice the single-guide rate; single-guide width would mis-state the expected area growth by 2x",
+    "delta_length_ok": true,
+    "area_ok": true,
+    "passes": true,
+    "note": "gds written with with_metadata=False so the kfactory $$$CONTEXT_INFO$$$ cell does not shadow the device as the sole top cell (the area probe skips $$$ cells)"
+  }
+}

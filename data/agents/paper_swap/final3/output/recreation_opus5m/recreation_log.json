@@ -1,0 +1,164 @@
+{
+  "device": "2x2 evanescent directional coupler (symmetric, co-directional)",
+  "topology_reasoning": {
+    "what_it_is": "Two nominally identical single-mode waveguides. Each enters as a straight stub at the outer edge of the frame, S-bends toward the horizontal midline, runs parallel to its partner across a long straight section separated by a narrow gap, then S-bends back out to an outer straight stub. The two guides are mirror images of each other about the horizontal midline. There is no ring, no closed loop, no Y-junction, no MMI slab, no grating: exactly four external ports (2 in on the left, 2 out on the right) joined by two continuous curves that never touch.",
+    "how_it_works": "In the parallel section the two guides are close enough that their evanescent fields overlap. The composite structure supports a symmetric and an antisymmetric supermode with slightly different propagation constants beta_s and beta_a. Light launched into one guide is the sum of the two supermodes; they accumulate relative phase (beta_s - beta_a)*z, so optical power beats back and forth between the guides with a beat (coupling) length Lpi = pi/(beta_s - beta_a). After an interaction length L the cross-coupled power fraction is sin^2(kappa*L) with kappa = (beta_s - beta_a)/2. Choosing kappa*L = pi/4 gives a 50:50 splitter; kappa*L = pi/2 gives a full crossover. The S-bends are pure routing: they set the port pitch and must be adiabatic enough not to radiate, and they contribute a small amount of extra coupling in their tapered-gap approach regions.",
+    "function_defining_knobs": [
+      {
+        "knob": "coupling_length",
+        "why": "sets the accumulated phase kappa*L directly; this is the primary splitting-ratio knob (linear in the argument of the sin^2)."
+      },
+      {
+        "knob": "coupling_gap",
+        "why": "sets kappa itself, roughly exponentially (kappa ~ exp(-gamma*gap)); the most sensitive knob, and the one bounded below by the foundry min-feature rule."
+      },
+      {
+        "knob": "wg_width",
+        "why": "sets the mode confinement, hence both the evanescent tail (kappa) and n_eff; also the single-mode condition on a given stack."
+      },
+      {
+        "knob": "sbend_in_length / sbend_out_length",
+        "why": "bend adiabaticity and the length of the tapered-gap approach, which adds a parasitic coupling contribution to the nominal kappa*L."
+      },
+      {
+        "knob": "sbend_in_offset / sbend_out_offset",
+        "why": "port pitch at the input and output facets; the drawing is measurably asymmetric (input pitch 637.5 px vs output pitch 677.5 px), so these are kept independent."
+      }
+    ],
+    "explicitly_not_a": "Not an MZI (no recombining second coupler, no arm imbalance), not a ring resonator (no closed loop), not an adiabatic coupler (both guides are the same width throughout)."
+  },
+  "calibration": {
+    "footprint_um": [
+      120,
+      4
+    ],
+    "scale_px_per_um": [
+      15.816666666666666,
+      184.75
+    ],
+    "note": "Strongly anisotropic (11.7x). All pixel measurements below are converted with the per-axis scale, so the physically gentle S-bends look near-vertical in the raster."
+  },
+  "pixel_measurements": {
+    "threshold": 245,
+    "bbox_px": [
+      438,
+      419,
+      2336,
+      1158
+    ],
+    "waveguide_width_px": 56,
+    "coupling_gap_px": 30,
+    "coupling_centres_px": [
+      744.5,
+      830.5
+    ],
+    "input_port_centres_px": [
+      467.5,
+      1105.0
+    ],
+    "output_port_centres_px": [
+      450.0,
+      1127.5
+    ],
+    "segment_boundaries_px_x": [
+      438,
+      760,
+      950,
+      1810,
+      2020,
+      2330
+    ],
+    "segment_names": [
+      "straight_in",
+      "sbend_in",
+      "coupling",
+      "sbend_out",
+      "straight_out"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.6956784035777891,
+      "dice": 0.8205310654543285,
+      "sse": 84242.0,
+      "change_made": "First build from direct pixel metrology: 5-segment model per guide (straight -> raised-cosine S-bend -> parallel coupling -> S-bend -> straight), mirror-symmetric about the midline. wg_width 0.304 um (56 px / 184.75 px-per-um), coupling_gap 0.1615 um (30 px), segment boundaries read off the column scan at x = 438/760/950/1810/2020/2330 px. wg_width snapped to a 0.002 um multiple (kfactory rejects odd-dbu symmetric cross-sections)."
+    },
+    {
+      "iter": 2,
+      "iou": 0.724795319918275,
+      "dice": 0.8404421226660304,
+      "sse": 74892.0,
+      "change_made": "Diff showed both S-bend pairs displaced right of the target. Re-derived each bend by averaging the guide's top and bottom edge transitions (top and bottom edges of a steeply sloped stroke are offset in x, so a single edge biases the fit) and inverted the raised-cosine to solve for start/end: input bend 726->940 px, output bend 1816->2044 px. Straights and coupling length rebalanced to keep the 1892 px total. IoU +0.029."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7223985399426824,
+      "dice": 0.8388285558657316,
+      "sse": 75748.0,
+      "change_made": "Nelder-Mead least-squares fit of all seven length/offset knobs to the target's per-column upper-guide centreline (1885 samples, rms 4.15 px). REGRESSION (-0.0024): in the merged mid-bend columns the two guides' strokes touch, so the per-column 'centre' is biased and the fit trades real IoU for centreline rms. Reverted."
+    },
+    {
+      "iter": 4,
+      "iou": 0.724795319918275,
+      "dice": 0.8404421226660304,
+      "sse": 74892.0,
+      "change_made": "Reverted to the iteration-2 geometry (the honest best). Offline pre-screen of alternative S-bend profiles (smoothstep, smootherstep) against the same centreline gave rms 4.18 / 4.09 px vs 4.15 for the raised cosine -- no meaningful difference, so the profile was left as the raised cosine, which alone has zero end slope and therefore joins the straights without a kink."
+    },
+    {
+      "iter": 5,
+      "iou": 0.724795319918275,
+      "dice": 0.8404421226660304,
+      "sse": 74892.0,
+      "change_made": "write_gds(with_metadata=False). Geometry unchanged (IoU identical); the fix is that kfactory's $$$CONTEXT_INFO$$$ cell was otherwise the GDS's only top cell, so any gdstk top_level() area reader saw 0 um^2 -- which had made verify_knob_response report a false zero. Final artifacts."
+    }
+  ],
+  "convergence_analysis": {
+    "final_iou": 0.724795319918275,
+    "stopped_below_0_85": true,
+    "why": "The ceiling is set by the target raster, not by the fit. The calibration is anisotropic by 11.7x (15.82 px/um in x, 184.75 px/um in y), but the drawing's stroke has a roughly constant width in PIXEL space (measured perpendicular half-width by distance transform: 39-40 px through the input bends and the left coupling region, 29-30 px through the output bends and the right straights). A waveguide of constant PHYSICAL width w renders with a vertical pixel thickness of scale_y*w*sqrt(1+m^2) where m is the micron-space slope; in these bends m is only ~0.17, so a constant-width guide renders ~57 px thick where the drawing is 110-220 px thick. The drawn stroke therefore does not correspond to any constant-width waveguide under this calibration.",
+    "measured_ceilings": {
+      "perfect_centreline_same_stroke": 0.7368,
+      "fully_nested_stroke": 0.8605,
+      "note": "0.7368 was measured by re-centring every one of my per-column runs onto the nearest target run centre -- the best any centreline refinement could ever reach with a constant-width stroke. 0.8605 = my_area/target_area, unreachable because it needs my stroke strictly inside the target's everywhere, which the coupling region forbids (see below)."
+    },
+    "residual_error_budget_px": {
+      "input_sbend_band_x760_960": {
+        "FN": 20448,
+        "FP": 3264
+      },
+      "output_sbend_band_x1810_2050": {
+        "FN": 19785,
+        "FP": 908
+      },
+      "coupling_band_x960_1810": {
+        "FN": 10242,
+        "FP": 10868
+      },
+      "straight_bands": {
+        "FN": 4561,
+        "FP": 4816
+      }
+    },
+    "coupling_band_explanation": "In the parallel section the target's OUTER envelope is 142 px (= 2*56 + 30, matching my model to 1 px) but the drawn boundary between the two guides drifts: at x=1400 the upper guide is 68 px and the lower only 45 px. A uniform-width pair cannot cover both, and shifting the pair up or down was checked analytically to trade FN for FP one-for-one (11 px FN on the upper vs 12-13 px FP on the lower, per column, at every offset). Uniform guide width is the physically correct choice for a directional coupler, so this was left alone.",
+    "width_was_not_tuned_to_iou": "A per-column model sweep over uniform stroke scale predicted a maximum at ~1.05-1.10x for a gain of +0.0035 -- inside the noise, and the optimize-to-spec skill's known gotcha is that IoU rewards fattened waveguides. wg_width was therefore left at the 56 px pixel measurement (0.304 um) rather than at the IoU optimum."
+  },
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "knob": "coupling_length",
+    "delta_um": 5.0,
+    "result": {
+      "base_value": 55.383,
+      "base_area_um2": 72.854339,
+      "perturbed_area_um2": 75.894339,
+      "area_growth_um2": 3.04,
+      "delta_response_um": 0.0,
+      "area_ok_at_width_0.608": true,
+      "area_ok_at_width_0.304": false,
+      "delta_length_ok": false,
+      "passes": false
+    },
+    "interpretation": "The geometry half of the check passes exactly. +5 um of coupling_length grows layer-(1,0) area by 3.0400 um^2, which is exactly 2 arms x 0.304 um x 5 um -- so the knob moves real polygons on both guides, not a reported number. Passing width_um = 0.304 (one guide width, as briefed) fails only because the harness expects a single arm to grow; width_um = 0.608 (the two guides the knob actually lengthens) passes. The delta_length half fails structurally and cannot pass for this device: verify_knob_response is MZI-shaped and requires the two arms' length IMBALANCE to move, but a symmetric directional coupler has zero imbalance by construction (both arms are 119.829 um and coupling_length lengthens both equally). A non-zero delta_length_um here would mean the recreation was wrong. Cross-check with a second knob: wg_width +0.1 um grew area by 23.9695 um^2 vs the 23.9660 um^2 expected from 2 x 119.83 um of centreline -- agreement to 0.015%.",
+    "conductor_note": "If the gate requires verify_knob_response(passes=True), it will need a coupler-shaped metric; the MZI arm-imbalance contract is not satisfiable by a symmetric 2x2 coupler."
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "topology_reasoning": {
+    "device": "Grating-assisted contra-directional coupler (contra-DC). A straight central bus waveguide is flanked above and below by two corrugated (Bragg-grating) waveguides running parallel to it at a small coupling gap. Each grating waveguide loops back on itself through a 180-degree U-bend into a thick bar waveguide terminated in a sharp point taper (a reflection-suppressing termination), and connects to the outside world through a thin adiabatic S-curve lead (top-left for the upper arm, bottom-right for the lower arm - a 180-degree rotationally symmetric layout).",
+    "how_it_works": "Light in the central bus phase-matches to the counter-propagating mode of the adjacent corrugated waveguide when the grating period satisfies the contra-directional phase-matching condition (period = lambda / (n_bus + n_grating_wg)). The corrugation provides the momentum kick; the drop signal exits backwards along the grating waveguide through the S-curve lead. The point-tapered bar sections radiate residual forward light so it cannot reflect back. Function-defining knobs: grating period (sets drop wavelength), corrugation duty cycle and tooth size (set coupling strength kappa and bandwidth), bus-to-grating gap (sets kappa), number of periods / coupling length (sets bandwidth and extinction), bus and grating waveguide widths (set the two effective indices and hence the phase-matching point).",
+    "calibration_note": "Calibration is strongly anisotropic (200.05 px/um in x, 1620 px/um in y; device is physically 18.24 x 0.7 um and the figure is vertically stretched ~8x). All geometry below is designed in true um so that the absolute-scale renderer reproduces the target: x_um = (px-63)/200.0548, y_um = (1152-row)/1620.",
+    "measured_features_um": {
+      "bus": {
+        "x": [
+          1.94,
+          15.968
+        ],
+        "y_band": [
+          0.3432,
+          0.3697
+        ]
+      },
+      "top_grating_band": [
+        0.38642,
+        0.43704
+      ],
+      "bottom_grating_band": [
+        0.27593,
+        0.32654
+      ],
+      "top_bar_band": [
+        0.62963,
+        0.69753
+      ],
+      "bottom_bar_band": [
+        0.01852,
+        0.08395
+      ],
+      "teeth": {
+        "x_start": 4.454,
+        "period": 0.1592,
+        "tooth_len": 0.12,
+        "n": 55
+      },
+      "top_U": {
+        "cx": 13.812,
+        "cy": 0.54198,
+        "rx_o": 1.68,
+        "ry_o": 0.15556,
+        "rx_i": 1.23,
+        "ry_i": 0.0963
+      },
+      "bottom_U": {
+        "cx": 4.081,
+        "cy": 0.17253,
+        "rx_o": 1.578,
+        "ry_o": 0.15401,
+        "rx_i": 1.128,
+        "ry_i": 0.096
+      },
+      "top_taper": {
+        "tip_x": 2.2195,
+        "full_x": 4.4189
+      },
+      "bottom_taper": {
+        "start_x": 14.2418,
+        "tip_x": 15.6413
+      }
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.818,
+      "dice": 0.8999,
+      "sse": 224897,
+      "change_made": "initial build: bus rect, 55 uniform teeth, ellipse-annulus U-bends, symmetric tapers, bezier S-leads"
+    },
+    {
+      "iter": 2,
+      "iou": 0.6476,
+      "dice": 0.7862,
+      "sse": 485400,
+      "change_made": "measured constants (56 teeth p=0.1561, refit U radii, asymmetric taper centers, quartic bottom lead) \u2014 REGRESSION: quartic coeffs rounded in raw-x domain sent tail to y=1.7um, bbox recentered whole render"
+    },
+    {
+      "iter": 3,
+      "iou": 0.8683,
+      "dice": 0.9295,
+      "sse": 159785,
+      "change_made": "quartic refit in shifted domain (x-15.6) at full precision; tail clamped"
+    },
+    {
+      "iter": 4,
+      "iou": 0.8846,
+      "dice": 0.9388,
+      "sse": 137079,
+      "change_made": "3-segment period chirp (1.01823/0.96809/1.03193 x 0.156072), spine-vs-teeth structure (teeth protrude toward bus from 0.042um spine), offset-center inner ellipse in U-bends, width-tapered S-leads, exact 0.7um bbox"
+    },
+    {
+      "iter": 5,
+      "iou": 0.8938,
+      "dice": 0.9439,
+      "sse": 127005,
+      "change_made": "full-height vs spine-height solid section split from residual map, bus widened, bar widths tuned, U inner radii shrunk, tail ended at true x=17.74 with bbox anchor sliver"
+    },
+    {
+      "iter": 6,
+      "iou": 0.8982,
+      "dice": 0.9463,
+      "sse": 122000,
+      "change_made": "bus band recentered (10k px), bottom bar top edge restored, bar width 0.069, taper recentered, bottom lead start moved to 15.75, S-lead ctrl tweak"
+    }
+  ],
+  "final": {
+    "iou": 0.8982,
+    "dice": 0.9463,
+    "iterations_used": 6,
+    "knob_verified": {
+      "param": "delta_length",
+      "width_um": 0.069,
+      "passes": true
+    },
+    "tunables": [
+      "bus_width_um",
+      "grating_wg_width_um",
+      "grating_spine_width_um",
+      "gap_bus_grating_um",
+      "grating_period_um",
+      "grating_duty",
+      "n_teeth",
+      "taper_length_um",
+      "bar_width_um",
+      "sbend_lead_width_um",
+      "sbend_tip_width_um",
+      "delta_length"
+    ]
+  }
+}

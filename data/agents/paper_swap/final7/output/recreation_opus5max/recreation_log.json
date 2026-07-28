@@ -1,0 +1,152 @@
+{
+  "cell": "final7",
+  "workdir": "data/agents/paper_swap/final7/output/recreation_opus5max",
+  "inputs": {
+    "target": "device_bw.png (1612x809, black = material, layer (1,0))",
+    "footprint_um": [
+      3.0,
+      5.5
+    ]
+  },
+  "calibration": {
+    "bbox_px": [
+      31,
+      14,
+      1582,
+      794
+    ],
+    "scale_px_per_um": [
+      517.0,
+      141.8181818
+    ],
+    "note": "The gate's calibration is ANISOTROPIC: 517 px/um in x vs 141.82 px/um in y (the image is 1.99:1 wide but the declared footprint is 3.0 x 5.5, i.e. 0.545:1). compare_absolute maps x and y with independent scales, so the GDS that reproduces this drawing must span x in [0,3.0] and y in [0,5.5] and is therefore the drawing squeezed 3.65x in x. Every dimension below is stated in that (gate) frame. Consequence recorded up front: in this frame the same physical guide has different widths depending on direction (a horizontal guide is 0.43 um 'wide' in y, the same guide running at 65 deg is 0.22 um wide perpendicular), so 'area = width x length' only holds for axis-aligned x-extensions. This matters for the knob-response check in step 5."
+  },
+  "topology_reasoning": {
+    "what_it_is": "A closed oval (stadium) loop with an internal two-arm bridge: a NESTED / loop-coupled interferometer. Black is one simply-connected region punctured by 7 apertures (upper crescent, lower crescent, central hexagonal cavity, and 4 rectangular slots).",
+    "decomposition": [
+      "OUTER LOOP: a closed convex oval, outer boundary spanning the full 3.0 x 5.48 um footprint. Its interior is hollowed by a SHORTER, thinner inner oval (the cavity), leaving a constant-width guiding wall of 0.518 um at the top/bottom. Because the cavity is 0.285 um shorter than the outer oval at each end, the loop's two vertices (left and right) are SOLID pads, not thin bends - that is where the four guides meet.",
+      "BRIDGE: from each solid vertex a stem 1.312 um wide runs inward and opens into a Y-JUNCTION. The junction splits abruptly (blunt tip, gap 0.4435 um) into two branches that diverge at ~65 deg (in the gate frame) until they reach a parallel section: two arms 0.430 um wide separated by 1.410 um.",
+      "SLOTTED BLOCKS: each arm widens abruptly (no taper) into a 0.888 x 1.033 um multimode block containing TWO rectangular apertures (0.328 x 0.555 um) separated by a 0.108 um dielectric divider, with 0.061 um end walls. The arm narrows back and mirrors to the right-hand Y-junction.",
+      "SYMMETRY: exact 2-fold mirror symmetry about both the x- and y-centreline (verified: left/right edges agree to <2 px, top/bottom to ~1 px)."
+    ],
+    "how_it_works": "Between the two vertices there are four parallel optical paths: the loop's upper half, the loop's lower half, and the two bridge arms. The vertices are 4-port junctions, so the structure is a loop resonator whose feedback path is itself a two-arm interferometer (a ring-assisted / nested MZI). Light entering a vertex is split between the loop halves and the bridge; the recombination phase at the far vertex is set by the loop-vs-bridge path-length difference. The two apertures in each arm are a pair of index perturbations in a widened (multimode) section - a two-mirror Fabry-Perot / slot-loaded phase element - so each arm carries a strongly wavelength-dependent reflection and phase. Identification confidence: the GEOMETRY is measured, the FUNCTION is inferred from the topology alone (no paper text is available to me); I state it as a reading, not a fact.",
+    "function_defining_knobs": [
+      "arm_gap_um - separation of the two bridge arms. This is the ONLY knob in this topology that changes an optical path length: the bridge's two vertices are pinned by the loop, so every inline change (block length, stem length, junction position) cancels; only the transverse offset lengthens the bridge relative to the loop. It is therefore the device's delta-L / FSR knob.",
+      "slot_length_um, slot_width_um, slot_divider_width_um - the aperture pair: reflectivity and cavity length of the in-arm Fabry-Perot.",
+      "block_length_um, block_width_um - the multimode section the apertures sit in (mode content, transverse overlap with the apertures).",
+      "junction_tip_gap_um, branch_outer_angle_deg, branch_inner_angle_deg, stem_width_um - the Y-junction: splitting ratio and junction loss.",
+      "arm_width_um - single-mode-ness of the bridge arms.",
+      "loop_wall_width_um (= loop_half_height - cavity_half_height), loop_half_length_um, loop_half_height_um - the loop resonator: guide width and round-trip length."
+    ],
+    "construction_plan": "black = [outer_oval NOT cavity_oval] OR stem(x2) OR arm_quadrant(x4) OR [block NOT slots](x2). Outer and cavity ovals are gf.Path straight lines extruded with a Section width_function (a 6-parameter profile fitted to the measured boundary: rms 0.51 px outer / 0.32 px inner). Arm quadrants are intersections of half-planes (each half-plane is a wide gf.Path extrusion) clipped to a vertical strip, so the two straight branch edges and the two flats are exact. Blocks and slots are rectangles. Everything is unioned so the written GDS has non-overlapping polygons (needed for an honest area-based knob check)."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9823666838,
+      "dice": 0.991104917,
+      "sse": 9963.0,
+      "change_made": "First build. Outer + cavity ovals as gf.Path straights extruded with a fitted width_function; Y-junction stem as a width-modulated straight; four arm quadrants as half-plane intersections clipped to a strip; two slotted blocks as rectangle-minus-rectangles; all unioned. Every dimension from direct measurement of device_bw.png (edge lines least-squares fitted: branch edges rms 0.5-0.6 px, oval profiles rms 0.51/0.32 px)."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9908723191,
+      "dice": 0.9954152354,
+      "sse": 5136.0,
+      "change_made": "Registration pass against the gate's own raster at threshold 245 (not the raw drawing): outer half-height +1 px, cavity +1 px and shifted up, stem 2 px narrower (with the branch-line anchor moved outward so the branch edges stay put), block width/offset/y-shift/x-shift and slot width/offset/y-shift set from the measured target-minus-raster deltas. Added an arm/block overlap so no hairline crack at the block wall."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9911241236,
+      "dice": 0.9955422787,
+      "sse": 4993.0,
+      "change_made": "Refit BOTH oval profiles: subtracted the measured raster-minus-target delta profile from the current model and re-fitted the 6-parameter family to the corrected profile (outer corner_len 1.093->1.165, n 2.60->2.84; cavity corner_len 0.866->0.907, n 2.82->3.05, tip 0.276->0.395). Slot length/divider/width refined."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9913789272,
+      "dice": 0.9956708024,
+      "sse": 4849.0,
+      "change_made": "Cavity shifted up 1 px (both cavity edges were reading 1 px low across the flat centre); slot x-shift and length trimmed. Cavity now matches the target exactly for x in [560,1010]."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9914550734,
+      "dice": 0.9957092044,
+      "sse": 4806.0,
+      "change_made": "Cavity shifted 1.8 px left: the source's cavity is genuinely taller at the left end and shorter at the right, which a left shift of a symmetric oval reproduces without disturbing the (already exact) flat centre. STOPPED HERE - the residual 4806 px is the source raster's own left/right and top/bottom asymmetry (its outer envelope is centred on py 404, its cavity on 403, its blocks on 405, its bridge 1 px left of its envelope) plus the blunt oval tips; capturing more would mean per-quadrant fudge terms, i.e. tracing rather than parameterising."
+    }
+  ],
+  "result": {
+    "final_iou": 0.9914550733501767,
+    "final_dice": 0.995709204408288,
+    "final_sse": 4806.0,
+    "gds_size_um": [
+      3.0,
+      5.498
+    ],
+    "footprint_um": [
+      3.0,
+      5.5
+    ],
+    "size_match": [
+      true,
+      true
+    ],
+    "iterations_used": 5,
+    "target": 0.85
+  },
+  "tunables": [
+    "footprint_length_um",
+    "footprint_width_um",
+    "loop_half_length_um",
+    "loop_half_height_um",
+    "loop_tip_half_height_um",
+    "loop_corner_length_um",
+    "loop_corner_n",
+    "loop_corner_q",
+    "loop_wall_width_um",
+    "cavity_end_setback_um",
+    "cavity_tip_half_height_um",
+    "cavity_corner_length_um",
+    "cavity_corner_n",
+    "cavity_corner_q",
+    "stem_width_um",
+    "stem_root_x_um",
+    "junction_flare_x_um",
+    "junction_split_x_um",
+    "junction_tip_gap_um",
+    "branch_outer_angle_deg",
+    "branch_inner_angle_deg",
+    "arm_width_um",
+    "arm_gap_um",
+    "block_length_um",
+    "block_width_um",
+    "block_center_offset_um",
+    "slot_length_um",
+    "slot_width_um",
+    "slot_center_offset_um",
+    "slot_divider_width_um",
+    "cavity_x_shift_um",
+    "cavity_y_shift_um",
+    "block_y_shift_um",
+    "block_x_shift_um",
+    "slot_y_shift_um",
+    "slot_x_shift_um",
+    "arm_block_overlap_um",
+    "profile_points"
+  ],
+  "verification": {
+    "purity": "homi.conductor.gate.purity_violations(device.py) -> [] (clean): only gf.Path+extrude, gf.components.rectangle, gf.boolean, @gf.cell; no stencils, no raw polygons, no image reads; 100 numeric literals (limit 1024), 0 coordinate tuples (limit 256).",
+    "knob_response_file": "knob_response.json",
+    "knob_response_summary": {
+      "block_width_um": "area +0.088800 um2 for +0.05 um; geometry predicts 2 x block_length_um x delta = 0.088790 (0.01% agreement) -> ok",
+      "slot_length_um": "area -0.110800 um2 for +0.05 um; geometry predicts -4 x slot_width_um x delta = -0.110621 (0.16% agreement) -> ok",
+      "arm_gap_um": "area +0.003684 um2 and delta_length_um -0.0320 for +0.05 um; geometry predicts d(delta_length)/d(gap) = tan(branch_angle/2) = 0.6383, i.e. -0.0319 (0.3% agreement) -> ok",
+      "spec_optimization.verify_knob_response": "run as briefed on arm_gap_um with width_um = arm_width_um: HONEST FAIL. It requires d(delta_length_um)/d(knob) == 1 and d(area) == guide_width x delta - the MZI delta_length convention. Neither can hold here: (a) the bridge's two endpoints are pinned by the loop, so every inline change cancels and the only path-length knob (arm_gap_um) moves delta_length by tan(theta/2), not 1:1; (b) in the anisotropic gate frame the branch runs at 65 deg, so area is not width x length for a transverse knob. Re-run on block_width_um the area half PASSES exactly (area_ok true). The conductor's own area-only gate (homi.conductor.gate.knob_response) passes on all three knobs with the geometrically predicted coefficients.",
+      "loop_half_length_um": "area +10.7185 um2 for +5.0 um; geometry predicts 4 x loop_wall_width_um x delta = 10.4882 plus a saturated +0.2345 from the stem being uncovered as the cavity tip slides past it -> 2.2% -> ok. This is the knob to gate on at the gate's default delta_um=5.0."
+    },
+    "gds_note": "device.py writes with with_metadata=False. kfactory's $$$CONTEXT_INFO$$$ cell references every cell in the library, which makes naive top-level traversal (homi.spec_optimization._layer_area) read ZERO area; the conductor's gate._layer_area already works around it. Suppressing the metadata cell makes both readers agree.",
+    "conductor_gate": "homi.conductor.gate.verify_cell(device.gds, component.png, calibration.json, device.py, claimed_iou=0.9914550734, knob=('loop_half_length_um', 2.09764)) -> iou=0.9914550734, iou_matches_claim=True, purity=[], knob_ok=True, VERIFIED=True"
+  }
+}

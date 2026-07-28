@@ -1,0 +1,126 @@
+{
+  "device": "adiabatic (mode-evolution) 1x2 3-dB power splitter",
+  "topology_reasoning": {
+    "what_it_is": "A three-waveguide adiabatic coupler. One wide input bus enters at the left on the optical axis and tapers DOWN along the propagation direction to a narrow blunt tip. Two identical outer waveguides start as narrow blunt tips a short distance into the structure, straddling the bus symmetrically across a small gap, and taper UP to full width along the same length. After the bus tip terminates, the two outer guides S-bend apart and exit as two parallel straight output guides.",
+    "how_it_works": "Power evolution, not directional coupling. At the input, the bus is the widest guide, so the fundamental supermode of the three-guide system is localized on the bus. Moving right, the bus effective index falls as it narrows while the two outer guides' effective index rises as they widen; the local supermode continuously deforms until, at the crossing point, the fundamental supermode is the even (symmetric) combination of the two outer guides. Because the width variation is slow compared with the beat length between the fundamental and the next same-symmetry supermode, the light adiabatically follows this single supermode and ends up split 50/50 into the two outer arms. Antisymmetric supermodes are not excited by the symmetric input, so the split is inherently balanced and broadband, and it is tolerant of fabrication width errors -- the reason this topology is used instead of a directional coupler or an abrupt Y-junction. The S-bends after the coupler simply route the two arms to their output pitch without further power exchange (they must be gentle enough not to radiate).",
+    "function_defining_knobs": [
+      "bus_taper_length_um / arm_taper_length_um -- the adiabaticity (transfer) length: too short and the evolution is non-adiabatic (power leaks to higher supermodes, imbalance and loss); this is the dominant knob for excess loss.",
+      "coupler_gap_um -- the bus-to-arm gap sets the coupling strength between the guides, i.e. the anticrossing gap between supermodes; smaller gap = stronger anticrossing = shorter taper needed for the same adiabaticity.",
+      "bus_tip_width_um -- the width the bus must reach before its mode is fully handed off; if the tip is too wide, the bus still carries power at termination and radiates (scattering loss).",
+      "arm_tip_width_um -- the starting width of the outer guides; must be narrow enough that at the input they are far below the bus index (mode starts on the bus), otherwise the device begins mid-evolution.",
+      "bus_width_um / arm_width_um -- the terminal single-mode widths on the target platform; they set the index endpoints of the evolution and are the platform-adaptation knobs on retarget.",
+      "sbend_length_um / out_offset_um -- output routing: the S-bend run (bend loss / adiabaticity of the routing) and the output half-pitch."
+    ],
+    "symmetry": "Modelled symmetric about the optical axis in every FUNCTION knob: both arms share one gap, one taper length, one width, one S-bend length. The source drawing places its coupler region ~4 px (0.013 um) above the image midline while its outputs are exactly symmetric. That is a drawing artifact, not a device feature. It was reproduced (iter 2, +0.079 IoU) through two clearly-labelled layout-only knobs, bus_y_offset_um and arm_y_offset_um, both settable to 0.0 to recover the physically symmetric device; they induce a 2 nm arm path-length imbalance, reported honestly in lengths.json."
+  },
+  "measurement_basis": {
+    "calibration_px_per_um": [
+      40.4,
+      307.0588
+    ],
+    "notes": "Image is anisotropically scaled (7.6x vertical stretch), so all bends are nearly flat physically and vertical pixel runs equal true waveguide widths.",
+    "fits": {
+      "bus": "constant 83 px to x=130 px, then linear taper to 22 px tip ending at x=1011 px; centerline flat",
+      "arm": "blunt tip 20.5 px at x=124 px, linear width taper to 74 px at x=1033 px (fit slope 0.0589 px/px)",
+      "sbend": "sine S-bend fits the measured centerline to <2 px: x=1033->1466 px, dy=138.5 px (checked at 1074/1174/1274/1374)",
+      "output": "straight, width 74 px, centers at 98.5 / 546.5 px"
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8896498961710809,
+      "dice": 0.9416028841890146,
+      "sse": 27261.0,
+      "change_made": "Initial build from pixel measurements: bus straight + linear down-taper to a blunt tip; two arms as linear up-tapers from blunt tips into sine S-bends and output straights. Symmetric about the optical axis. Widths snapped to the 0.002 um even-dbu grid required by gdsfactory 9.20.7 cross-sections."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9690867456896551,
+      "dice": 0.9843007148476246,
+      "sse": 7344.0,
+      "change_made": "Diff showed a uniform ~4 px downward offset of the WHOLE coupler region (blue on every top edge, red on every bottom edge) while the outputs matched: the source drawing places the coupler above the midline though its outputs are symmetric. Added coupler_y_offset_um=0.0130 and re-expressed the routing as out_offset_um (output half-pitch) so each S-bend's dy is derived, absorbing the offset. Also arm_width_um 0.240 -> 0.242 (outputs rendered 1 px narrow)."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9643203160715859,
+      "dice": 0.98183611723786,
+      "sse": 8507.0,
+      "change_made": "REGRESSION (-0.0048). Bundled four changes: split the coupler offset into bus_y_offset_um=0.0163 / arm_y_offset_um=0.0106, widened coupler_gap_um 0.0999 -> 0.1031, out_offset_um 0.7311 -> 0.7295, bus_taper_length_um +0.05. Per-region analysis of the raster: outputs went to IoU 1.000 and the bus start became exact (those three helped), but the arm-separation increase hurt -- it was fitted to the arm tips at x=124 px, and the target's arm centerlines DRIFT ~3 px over the taper, so matching the narrow tip end mismatches the wide end where nearly all the arm area is."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9699052940260767,
+      "dice": 0.9847227650663266,
+      "sse": 7153.0,
+      "change_made": "Reverted only the harmful part of iter 3 (coupler_gap_um back to 0.0999, arm_y_offset_um back to 0.0130), keeping the output/bus fixes that measured as gains. Best result; kept."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9699052940260767,
+      "dice": 0.9847227650663266,
+      "sse": 7153.0,
+      "change_made": "No geometry change. Re-scored the final artifact after adding write_lengths() (measurement contract) and write_gds(with_metadata=False) -- kfactory's $$$CONTEXT_INFO$$$ cell references the top cell, leaving the GDS with no real top-level cell and making area-based checks read zero. IoU identical, confirming the on-disk artifact."
+    }
+  ],
+  "final": {
+    "iou": 0.9699052940260767,
+    "dice": 0.9847227650663266,
+    "sse": 7153.0,
+    "gds_size_um": [
+      39.995,
+      1.702
+    ],
+    "footprint_um": [
+      40.0,
+      1.7
+    ],
+    "size_match": [
+      true,
+      true
+    ],
+    "residual": "Concentrated in the S-bend region (region IoU ~0.95): the source drawing's LOWER bend starts ~30 px earlier than its upper bend and is slightly longer, i.e. the drawing's two bends are not mirror images. Not reproduced -- encoding a per-arm bend asymmetry would buy roughly +0.005 IoU at the cost of a device whose two arms are deliberately unequal, which is exactly the property this splitter depends on. Left as an honest residual.",
+    "tunables": [
+      "bus_width_um",
+      "arm_width_um",
+      "bus_tip_width_um",
+      "arm_tip_width_um",
+      "coupler_gap_um",
+      "bus_taper_length_um",
+      "arm_taper_length_um",
+      "sbend_length_um",
+      "out_offset_um",
+      "out_straight_um",
+      "bus_straight_um",
+      "arm_start_x_um",
+      "sbend_npoints",
+      "bus_y_offset_um",
+      "arm_y_offset_um",
+      "layer"
+    ]
+  },
+  "knob_response": {
+    "method": "homi.spec_optimization.verify_knob_response (+5.0 um), area leg; width_um = the MEAN width of the tapered section, because a linear taper's area grows as length x mean width, not length x terminal width",
+    "bus_taper_length_um": {
+      "width_um": 0.171,
+      "area_growth_um2": 0.855,
+      "expected_um2": 0.855,
+      "area_ok": true
+    },
+    "arm_taper_length_um": {
+      "width_um": 0.308,
+      "area_growth_um2": 1.54,
+      "expected_um2": 1.54,
+      "area_ok": true,
+      "note": "width_um is 2 x mean arm-taper width -- the knob drives both arms"
+    },
+    "coupler_gap_um": {
+      "probe": "direct GDS geometry, not the area leg (a translation knob moves no area)",
+      "requested_um": 0.05,
+      "measured_gap_response_um": 0.05,
+      "bus_unchanged": true,
+      "ok": true
+    },
+    "delta_length_leg": "FALSE for every knob, by construction and not a defect: verify_knob_response's first leg is the MZI fsr_nm contract (delta_length_um must move with the knob). This device is a splitter -- its two arms are identical by symmetry, so delta_length_um is ~0 and does not respond to any knob. lengths.json is still written from the gf.Path objects (arm path lengths, bus length, arm imbalance) so the Phase-B measurement contract is satisfied."
+  }
+}

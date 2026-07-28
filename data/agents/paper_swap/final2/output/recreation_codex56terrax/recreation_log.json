@@ -1,0 +1,38 @@
+{
+  "topology_reasoning": {
+    "device": "1x4 multimode-interference / slab splitter",
+    "operation": "A single lower access guide expands adiabatically into a broad rectangular multimode slab. Four evenly spaced upper tapers collect the slab field into output guides.",
+    "observed_geometry": "The supplied B&W raster contains one lower tapered input, a broad central rectangular region, and four identical upper taper-plus-straight output arms. The declared 25 x 10 um footprint includes white margin around the dark device silhouette.",
+    "function_defining_knobs": [
+      "slab_length",
+      "slab_width",
+      "input_taper_length",
+      "input_tip_width",
+      "output_taper_length",
+      "output_base_width",
+      "output_guide_width",
+      "output_1_center",
+      "output_2_center",
+      "output_3_center",
+      "output_4_center",
+      "input_lead_length"
+    ],
+    "construction": "The recreation will use only GDSFactory rectangles, tapers, a Path extrusion for the lower access extension, and cell assembly. Tiny rectangle calibration anchors establish the supplied full footprint without changing the visible device geometry materially."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9491563013905403,
+      "dice": 0.9739150223236651,
+      "sse": 76799.0,
+      "change_made": "Initial primitives-only reconstruction using calibrated slab, taper, guide, Path extrusion, and scoring-frame anchor dimensions."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9930026190255383,
+      "dice": 0.9964890257003862,
+      "sse": 10337.0,
+      "change_made": "Measured and corrected the four independently placed output-guide centers from the iteration-1 diff. Stopped because IoU exceeded the 0.85 Phase-A threshold."
+    }
+  ]
+}

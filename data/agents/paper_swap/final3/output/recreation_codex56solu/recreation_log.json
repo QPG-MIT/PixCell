@@ -1,0 +1,106 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [
+      120.0,
+      4.0
+    ],
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device": "asymmetric adiabatic directional coupler",
+    "visual_evidence": "Two separate strip-waveguide paths enter at a large vertical separation, use smooth mirrored S-bends to approach, remain parallel across a long interaction region, and fan back out. In the interaction region the upper guide narrows while the lower guide widens, with their combined width and edge-to-edge gap approximately constant. This is a counter-tapered adiabatic transfer section rather than a fixed-width directional coupler.",
+    "operating_principle": "The close parallel section supports coupled local supermodes. Counter-tapering the two guide widths sweeps their propagation-constant mismatch through the transfer region, enabling adiabatic power transfer while the gap controls coupling strength.",
+    "function_defining_knobs": [
+      "guide_width",
+      "wide_tip_width",
+      "narrow_tip_width",
+      "gap",
+      "transfer_length",
+      "taper_length",
+      "transition_length",
+      "port_separation"
+    ],
+    "initial_measurements_from_input": {
+      "input_guide_width_um_approx": 0.29,
+      "coupling_gap_um_approx": 0.17,
+      "upper_transfer_width_um_approx": [
+        0.41,
+        0.30
+      ],
+      "lower_transfer_width_um_approx": [
+        0.17,
+        0.29
+      ],
+      "center_separation_in_transfer_um_approx": 0.46
+    },
+    "planned_construction": "Use only gf.Path centerlines extruded with custom width transitions, plus straight primitive leads. The two mirrored cosine-like S transitions will preserve horizontal tangency; the long interaction section will use linear counter-tapers. All material is placed on layer (1, 0)."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7713793395232198,
+      "dice": 0.8709363627678331,
+      "sse": 59440.0,
+      "change_made": "Initial primitives-only counter-tapered adiabatic coupler: 0.29 um leads, 0.40/0.18 um input tips, 0.17 um gap, 54 um transfer length, and cosine S-transitions. The transfer region aligned well; the diff showed substantial missing material in the visibly broadened S-bends."
+    },
+    {
+      "iter": 2,
+      "iou": 0.851324144911582,
+      "dice": 0.9196921535879831,
+      "sse": 40247.0,
+      "change_made": "Added four live bend-width tunables and split each cosine transition into two primitive extrusions, reproducing the reference's strong S-bend broadening while leaving the high-fidelity transfer section unchanged. Reached the IoU >= 0.85 stopping threshold."
+    }
+  ],
+  "knob_response": {
+    "param": "transfer_length",
+    "delta_um": 5.0,
+    "requested_single_guide_check": {
+      "width_um": 0.29,
+      "base_value": 54.0,
+      "base_delta_length_um": 54.0,
+      "perturbed_delta_length_um": 59.0,
+      "delta_response_um": 5.0,
+      "delta_length_ok": true,
+      "base_area_um2": 83.79631549999998,
+      "perturbed_area_um2": 86.69631549999998,
+      "area_growth_um2": 2.9000000000000057,
+      "expected_area_growth_um2": 1.45,
+      "area_ok": false,
+      "passes": false
+    },
+    "two_rail_effective_check": {
+      "width_um": 0.58,
+      "base_value": 54.0,
+      "base_delta_length_um": 54.0,
+      "perturbed_delta_length_um": 59.0,
+      "delta_response_um": 5.0,
+      "delta_length_ok": true,
+      "base_area_um2": 83.79631549999998,
+      "perturbed_area_um2": 86.69631549999998,
+      "area_growth_um2": 2.9000000000000057,
+      "expected_area_growth_um2": 2.9,
+      "area_ok": true,
+      "passes": true
+    },
+    "interpretation": "The evaluator's area model is written for one perturbed strip. This directional-coupler transfer-length knob lengthens two 0.29 um rails, so the literal single-guide call correctly observed twice its expected area. Supplying the physical combined width of the two affected rails (0.58 um) makes both deterministic checks pass."
+  },
+  "final": {
+    "selected_iteration": 2,
+    "iou": 0.851324144911582,
+    "dice": 0.9196921535879831,
+    "sse": 40247.0,
+    "gds_size_um": [
+      120.0,
+      3.992
+    ],
+    "size_match": [
+      true,
+      true
+    ],
+    "stop_reason": "Reached IoU >= 0.85 after two compare_absolute calls.",
+    "gds_metadata_disabled": true
+  }
+}

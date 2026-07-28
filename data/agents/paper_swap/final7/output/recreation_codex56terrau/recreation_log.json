@@ -1,0 +1,100 @@
+{
+  "phase": "A",
+  "reference": {
+    "image": "component.png",
+    "footprint_um": [3.0, 5.5],
+    "calibration": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_hypothesis": "A symmetric nested-racetrack resonant/coupling layout: a broad closed outer guide encloses two mirrored, windowed transfer rails. Each rail couples back into the outer loop through a tapered diagonal bridge at both ends, making the material one connected circuit while retaining six enclosed dielectric windows.",
+    "image_observations": [
+      "The reference has one connected black component and seven enclosed white holes: a large upper and lower cavity, a central cavity, and four matching rectangular rail windows.",
+      "Calibration maps the 1551 px by 780 px material bounding box to 3.0 um by 5.5 um, so the physically faithful layout is vertically elongated even though the bitmap pixels are wider than tall.",
+      "The outer loop wall is approximately 0.52 um at the horizontal and vertical cardinal sections; the rail windows and bridge angles are mirror symmetric about both device axes."
+    ],
+    "primitive_plan": [
+      "Extrude a sampled elliptical gf.Path centerline for the closed outer guide.",
+      "Assemble each windowed rail from rectangles, with diagonal gf.Path extrusions for the two connecting bridges; mirror it for the lower rail.",
+      "Use only GDSFactory primitive components, gf.Path extrusion, and @gf.cell assembly on layer (1, 0)."
+    ],
+    "function_defining_knobs": [
+      "guide_width",
+      "outer_radius_x",
+      "outer_radius_y",
+      "rail_length",
+      "rail_height",
+      "window_width",
+      "window_height",
+      "bridge_width",
+      "delta_length"
+    ],
+    "knob_interpretation": "delta_length is the live differential phase/transfer extension of one resonant branch. It is implemented as a real guide-width path extension and reported from the branch centerlines in lengths.json, so its geometric response can be checked independently."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7543936012339476,
+      "dice": 0.8600049620602208,
+      "sse": 168150.0,
+      "change_made": "Initial primitives-only construction: a 0.52 um superelliptic resonator, two rectangle-built slotted rails, four diagonal path tethers, and the live phase-trim branch. The absolute footprint was exactly 3.0 by 5.5 um."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7844739604915784,
+      "dice": 0.8792215273071009,
+      "sse": 147192.0,
+      "change_made": "Raised the resonator superellipse exponent from 2.70 to 3.40 after the residual showed that both its outer and inner upper contours were too pointed. This improved the large-cavity alignment while preserving the calibrated bounding box."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7716225947578303,
+      "dice": 0.8710913905038633,
+      "sse": 147469.0,
+      "change_made": "Tested a simple harmonic variable-width annulus with broad poles and narrow diagonal transitions. It increased precision but reduced recall and slightly worsened IoU/SSE, so this profile is not retained as the best geometry."
+    },
+    {
+      "iter": 4,
+      "iou": 0.7736877193730156,
+      "dice": 0.8724057915296476,
+      "sse": 148684.0,
+      "change_made": "Replaced the simple profile with an arc-length-aware Fourier wall-width profile inferred from the measured annulus sectors. The result introduced visible side-sector bulges and was worse than the constant-width exponent-3.40 baseline."
+    },
+    {
+      "iter": 5,
+      "iou": 0.6856300036041147,
+      "dice": 0.8134999995706544,
+      "sse": 217191.0,
+      "change_made": "Added a diagonal centerline bulge to the Fourier-profiled annulus. It exceeded the 3.0 um horizontal footprint (3.168 um) and substantially worsened every fidelity metric, so it is rejected."
+    },
+    {
+      "iter": 6,
+      "iou": 0.7679118327475914,
+      "dice": 0.8687218655628829,
+      "sse": 162322.0,
+      "change_made": "Restored the constant-width exponent-3.40 annulus and moved each diagonal tether inward at its annulus attachment while extending it to the rail edge. The change overfilled the central/tether region, so it is rejected in favor of iteration 2."
+    }
+  ],
+  "best_iteration": 2,
+  "best_metrics": {
+    "iou": 0.7844739604915784,
+    "dice": 0.8792215273071009,
+    "sse": 147192.0
+  },
+  "final_artifact_note": "device.py and device.gds were restored to the iteration-2 geometry after the sixth comparison. The sixth-candidate visual artifacts were retained as iteration6_raster.png, iteration6_diff.png, and iteration6_metrics.json rather than being mislabeled as the restored best artifact. The conductor can independently rerasterize device.gds.",
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.52,
+    "base_value": 0.05,
+    "base_delta_length_um": 0.05000000000000071,
+    "perturbed_delta_length_um": 5.049999999999999,
+    "delta_response_um": 4.999999999999998,
+    "delta_length_ok": true,
+    "base_area_um2": 9.118694000000003,
+    "perturbed_area_um2": 11.718694000000003,
+    "area_growth_um2": 2.5999999999999996,
+    "expected_area_growth_um2": 2.6,
+    "area_ok": true,
+    "passes": true
+  }
+}

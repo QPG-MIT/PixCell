@@ -1,0 +1,60 @@
+{
+  "device": "2x2 adiabatic (width-mismatched) directional coupler",
+  "worker": "claude-fable-5 (recreation_fable5max)",
+  "inputs": {
+    "image": "data/agents/paper_swap/final3/device_bw.png",
+    "footprint_um": [120, 4]
+  },
+  "topology_reasoning": {
+    "what_it_is": "Two waveguides, four ports. Each guide enters on a straight access section near the footprint edge, S-bends toward the device midline, runs parallel to the other guide across a long central interaction section separated by a sub-quarter-micron gap, then S-bends back out to a widely separated output port. No junctions, no crossings: a 2x2 directional coupler. Column scans show the two guides' widths COUNTER-TAPER along the interaction section (top 0.43->0.31 um, bottom 0.18->0.30 um, sum ~constant, centerlines flat, gap ~constant 0.154 um): the coupling section is width-mismatched and adiabatically tapered, i.e. an adiabatic/asymmetric directional coupler rather than a symmetric one.",
+    "how_it_works": "In the interaction section the two guides form a coupled two-mode system. Because the widths are unequal almost everywhere, the local supermodes are asymmetric; sweeping the width mismatch through zero along the propagation direction (top guide narrows while bottom widens through the crossover) adiabatically transfers power between the guides. Transfer is set by the gap (evanescent overlap, exponential in gap), the interaction length (adiabaticity), and the width-taper endpoints (detuning trajectory). The S-bends decouple the ports by separating the guides far beyond evanescent reach; the vertical figure scale is ~11.7x exaggerated (120 x 4 um footprint), so drawn bend slopes are not physical slopes.",
+    "function_defining_knobs": [
+      "coupling_length_um - interaction-section length (adiabaticity / transfer length)",
+      "coupling_gap_um - edge-to-edge gap in the interaction section (coupling strength)",
+      "w_top_c1/w_top_c2, w_bot_c1/w_bot_c2 - counter-taper endpoint widths of the two guides (detuning trajectory; tip widths of the adiabatic taper)",
+      "port y-offsets (io separation) and sbend_dx - port decoupling geometry",
+      "port widths - access waveguide widths"
+    ]
+  },
+  "measurements_um": {
+    "calibration": {"bbox_px": [438, 419, 2336, 1158], "scale_px_per_um": [15.8167, 184.75]},
+    "note": "y values measured from ink-bbox bottom; device frame y=0 at bbox center (2.0)",
+    "port_centerlines_from_bottom": {"top_left": 3.7348, "bot_left": 0.2869, "top_right": 3.8349, "bot_right": 0.1678},
+    "coupling_centerlines_from_bottom": {"top": 2.2192, "bottom": 1.7591, "pair_center": 1.9892},
+    "coupling_widths_linear_fit": {"top": [0.428, 0.313], "bottom": [0.185, 0.295]},
+    "port_widths_median": {"top_left": 0.346, "bot_left": 0.271, "top_right": 0.309, "bot_right": 0.298},
+    "gap_edge_to_edge": {"start": 0.151, "end": 0.157, "mean": 0.154},
+    "sbend_centers_x": {"top": [25.13, 94.5], "bottom": [25.42, 94.53]},
+    "sbend_detected_dx": {"top": [12.46, 14.1], "bottom": [12.14, 13.53], "note": "6px-threshold detection underestimates smooth-bend extent; true bezier extent ~15 um"},
+    "segment_sums_check": "port + bend + coupling + bend + port = 120.0 exactly for both guides",
+    "slope_artifact_note": "apparent thickening inside S-bends (up to 0.58) is the vertical-cut 1/cos(slope) artifact of the anisotropic scale, not real width change"
+  },
+  "plan": {
+    "construction": "catalog components only: gf.c.straight ports, gf.c.bend_s S-bends (bezier), gf.c.taper for each guide's counter-tapered coupling section; @gf.cell assembly via connect(); layer (1,0); write_gds",
+    "parametrization": "top-level tunables: coupling_length, coupling_gap, gap-midline y, 4 taper widths, 4 port widths, 4 port y-offsets, sbend_dx, port_in_length; coupling centerlines derived from gap + mean taper widths so the gap knob is a true function knob",
+    "iteration_metric": "michaelangelo.core.compare_absolute IoU at calibrated absolute scale, stop at >= 0.85 or 6 iterations"
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8018,
+      "dice": 0.89,
+      "sse": 51844.0,
+      "change_made": "Initial build: straight ports + constant-width bend_s bezier S-bends + counter-taper coupling sections (gf.c.taper), all knobs from ink measurements. Two build fixes en route: kfactory port-width grid rule (widths rounded to even nm) and explicit allow_width_mismatch at the deliberate bend/taper width steps. Diff: coupling region near-perfect; ~40k of 52k error pixels in the four S-bends."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9034,
+      "dice": 0.9492,
+      "sse": 25730.0,
+      "change_made": "Root-caused the bend deficit: the figure strokes bends at near-constant PIXEL width on the 11.7x vertically exaggerated scale (plus genuine brush fattening), so the drawn bends' vertical footprint peaks at 0.74-1.27 um vs my 0.3-0.4 um constant-um extrusion. Replaced bend_s with gf.Path smoothstep centerlines extruded with a measured width bump w(u)=base(u)+amp*(sin^2(pi u))^q, amp/q least-squares fitted per bend from the ink thickness profile; per-bend dx and centers refitted from 5-95% crossing analysis; port_out lengths made explicit tunables so the coupling_length knob physically extends the device. Placement switched to axis-aligned dmove (connect() rotated instances by the sampled end-tangent 0.096 deg, off-grid). Diff now: only 1-3 px hand-wobble edge fringe, no systematic structure. Stop criterion IoU >= 0.85 met."
+    }
+  ],
+  "final": {
+    "iou": 0.9034,
+    "dice": 0.9492,
+    "sse": 25730.0,
+    "iterations_used": 2,
+    "artifacts": ["device.py", "device.gds", "lengths.json", "calibration.json", "raster.png", "diff.png", "overlay.png", "metrics_abs.json", "knob_response.json"]
+  }
+}

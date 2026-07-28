@@ -1,0 +1,11 @@
+{
+  "topology_reasoning": "The target is a symmetric two-waveguide directional/adiabatic coupler. Two constant-width material rails enter from the left with a large vertical separation, bend smoothly toward one another, run closest together around the center, and separate symmetrically toward the right. The black material is layer (1,0), and the device is horizontally oriented across an 18 um by 3 um calibrated footprint. Function-defining knobs are wg_width (rail width), min_gap (closest edge-to-edge spacing), interaction_length (central near-parallel coupling length), and transition_length (each smooth approach/departure length). The topology is assembled from parametric waveguide paths and an @gf.cell, with no pre-built device stencil or raw polygon emission.",
+  "iterations": [
+    {"iter": 1, "iou": 0.5679773022, "dice": 0.7244713318, "sse": 172978.0, "change_made": "Initial smooth() waypoint paths; wg_width=0.65, min_gap=0.30, interaction_length=10, transition_length=4, end_center_spacing=2.35."},
+    {"iter": 2, "iou": 0.6418136542, "dice": 0.7818349574, "sse": 134778.0, "change_made": "Replaced rounded-corner waypoints with sampled cosine-eased centerlines; transition_length=5, interaction_length=8; compensated endpoints for guide width."},
+    {"iter": 3, "iou": 0.8432536424, "dice": 0.9149621333, "sse": 53448.0, "change_made": "Restored full x span, extended transitions to 7 um, shortened interaction to 4 um, and temporarily increased end spacing to 2.65 um."},
+    {"iter": 4, "iou": 0.8204615849, "dice": 0.9013775316, "sse": 61907.0, "change_made": "Enforced the exact 18 x 3 um footprint by restoring end_center_spacing=2.35 um."},
+    {"iter": 5, "iou": 0.9232301868, "dice": 0.9600828784, "sse": 25045.0, "change_made": "Extended transition_length to 8 um and shortened interaction_length to 2 um to match the target's delayed convergence into the parallel region."}
+  ],
+  "knob_verification": {"param": "interaction_length", "delta_um": 1.0, "width_um": 0.65, "passes": false, "reason": "verify_knob_response is MZI arm-delta specific; this symmetric coupler has equal upper/lower path lengths, so its measured delta_length remains zero."}
+}

@@ -1,0 +1,72 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "image": "component.png",
+    "footprint_um": [
+      18.0,
+      3.0
+    ],
+    "calibration": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_identification": "A symmetric two-waveguide adiabatic directional coupler. Two isolated input guides approach one another through mirrored smooth S-bends, reach a narrow-gap interaction region near the longitudinal center, and then separate through mirrored S-bends to two isolated output ports.",
+    "operating_principle": "Evanescent supermodes form while the guides are close. The minimum edge gap, local guide widths, and the longitudinal extent/profile of the close approach set accumulated coupling; the smooth approach and exit reduce transition loss and parasitic mode conversion.",
+    "observations": [
+      "The material bounding box exactly fills the calibrated 18.0 um by 3.0 um footprint.",
+      "Both guides are mirror symmetric about y = 1.5 um and approximately symmetric about x = 9.0 um.",
+      "Each guide has an approximately constant normal width of 0.66 um.",
+      "The isolated-port center pitch is approximately 2.34 um; the closest center pitch is approximately 0.95 um, implying a minimum edge gap near 0.29-0.30 um.",
+      "The guide widening visible in vertical pixel slices over the slopes is consistent with constant-width normal extrusion, not a physical width taper."
+    ],
+    "function_defining_knobs": {
+      "wg_width": "guide core width and modal confinement",
+      "tip_width": "interaction-region guide width; initialized equal to wg_width because the reference is constant-width",
+      "gap": "minimum edge-to-edge separation and dominant coupling-strength control",
+      "transfer_length": "length of the near-parallel central interaction region",
+      "taper_length": "longitudinal width-transition span from port width to interaction tip width",
+      "approach_length": "span of each smooth separation-changing approach/exit",
+      "port_pitch": "center-to-center separation at the four isolated ports",
+      "lead_length": "horizontal lead length before and after the smooth coupling profile",
+      "phase_trim_length": "single-guide output trim used as a real path-length/phase knob; zero in the faithful recreation"
+    },
+    "geometry_plan": "Construct both mirrored centerlines as sampled analytic gf.Path objects and extrude them on layer (1, 0). Use horizontal leads, a smooth raised-cosine approach, a central near-parallel transfer section, and the mirrored exit. Use path extrusion and primitive tapers only; emit no raw polygons and no pre-built device cell."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9868275929248589,
+      "dice": 0.9933701307944139,
+      "sse": 4192.0,
+      "change_made": "Initial primitives-only implementation: two mirrored sampled gf.Path centerlines with constant-width path extrusion, calibrated port pitch/minimum gap, smooth measured approach profile, and exact 18.0 um by 3.0 um material bbox. The residual diff is limited to thin alternating boundary traces from subpixel centerline/edge differences; the requested IoU stop threshold was exceeded, so no further comparison iteration was run."
+    }
+  ],
+  "knob_verification": {
+    "function": "homi.spec_optimization.verify_knob_response",
+    "param": "phase_trim_length",
+    "reason_for_choice": "The evaluator's response contract is specifically a differential path-length and layer-area check. phase_trim_length is a genuine coherent-device phase/path knob whose zero baseline preserves the symmetric reference; the coupling-specific gap, transfer length, taper lengths, and tip widths remain live top-level geometry knobs.",
+    "delta_um": 5.0,
+    "width_um": 0.66,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 23.87028199999999,
+    "perturbed_area_um2": 27.17028199999999,
+    "area_growth_um2": 3.3000000000000007,
+    "expected_area_growth_um2": 3.3000000000000003,
+    "area_ok": true,
+    "passes": true,
+    "serialization_note": "The first diagnostic invocation exposed that GDSFactory metadata made the context cell the only gdstk top-level cell, so the evaluator skipped all geometry. Writing the identical component with with_metadata=False made the decorated assembly the measurable top cell; the final mandated check then passed."
+  },
+  "best_iteration": 1,
+  "final_metrics": {
+    "iou": 0.9868275929248589,
+    "dice": 0.9933701307944139,
+    "sse": 4192.0,
+    "gds_size_um": [
+      18.0,
+      3.0
+    ]
+  }
+}

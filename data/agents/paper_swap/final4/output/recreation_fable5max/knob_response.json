@@ -1,0 +1,45 @@
+{
+  "knob": "coupling_length",
+  "delta_um": 5.0,
+  "verify_knob_response_as_briefed_width_0.656": {
+    "param": "coupling_length",
+    "delta_um": 5.0,
+    "width_um": 0.656,
+    "base_value": 1.09,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 0.0,
+    "delta_response_um": 0.0,
+    "delta_length_ok": false,
+    "base_area_um2": 23.942552,
+    "perturbed_area_um2": 30.502551999999998,
+    "area_growth_um2": 6.559999999999999,
+    "expected_area_growth_um2": 3.2800000000000002,
+    "area_ok": false,
+    "passes": false
+  },
+  "verify_knob_response_two_arm_ribbon_width_1.312": {
+    "param": "coupling_length",
+    "delta_um": 5.0,
+    "width_um": 1.312,
+    "base_value": 1.09,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 0.0,
+    "delta_response_um": 0.0,
+    "delta_length_ok": false,
+    "base_area_um2": 23.942552,
+    "perturbed_area_um2": 30.502551999999998,
+    "area_growth_um2": 6.559999999999999,
+    "expected_area_growth_um2": 6.5600000000000005,
+    "area_ok": true,
+    "passes": false
+  },
+  "direct_span_response": {
+    "base_coupling_section_um": 1.3993389204135376,
+    "perturbed_coupling_section_um": 6.399338920413538,
+    "span_response_um": 5.0,
+    "base_device_length_um": 18.001260026756647,
+    "perturbed_device_length_um": 23.001260026756647,
+    "min_center_separation_unchanged": true
+  },
+  "interpretation": "The device is a SYMMETRIC directional coupler: its two arms always have equal length, so lengths.json delta_length_um is structurally 0 (and homi.spec_optimization._validate_arms enforces delta == |top-bottom|), meaning the MZI-shaped delta check cannot respond to any knob of this device class - delta_length_ok=false is that structural fact, not a dead knob. Real geometric response of coupling_length is proven twice: (a) the tool's own gdstk area check: polygons grow by 2*wg_width per um because the knob extends BOTH guides - with the two-arm coefficient width_um=2*0.656=1.312 the area check passes (run 2); with the briefed single-guide width it reads exactly 2x expected (run 1), which is itself the correct physics. (b) the geometry-measured central minimum-separation span responds 1:1 (+5.000 um for a +5.0 um knob move) with the coupling gap unchanged (direct probe). Note: the tool measures layer area from top-level cells only; device.py therefore writes its GDS with_metadata=False so the kfactory $$$CONTEXT_INFO$$$ cell cannot demote the device cell from top level (that artifact made area read 0.0 before the fix)."
+}

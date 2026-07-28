@@ -1,0 +1,80 @@
+{
+  "topology_reasoning": {
+    "device_type": "symmetric subwavelength-grating (fishbone) transition / metamaterial waveguide section",
+    "observations": [
+      "The calibrated 18.24 x 0.70 um image has a narrow, continuous center spine spanning the device.",
+      "Two matching rows of 56 isolated rectangular side fins sit above and below the spine; their measured pitch is about 0.160 um and each fin is about 0.115 um long by 0.051 um tall.",
+      "At both ends, the patterned section is framed by broad, smoothly curved adiabatic transition bodies. Their pointed/tapered ends and symmetric placement indicate an optical mode transition rather than independent decorative polygons.",
+      "The structure is vertically symmetric about the center spine, with the top and bottom fin rows offset from the spine by narrow air gaps."
+    ],
+    "operating_principle": "The continuous spine carries the guided mode through the short device while the periodic symmetric fins perturb and gradually reshape the effective index. The broad curved end bodies provide adiabatic access to and from the patterned section.",
+    "function_defining_knobs": [
+      "spine_width",
+      "fin_length",
+      "fin_height",
+      "fin_gap",
+      "fin_pitch",
+      "fin_count",
+      "pattern_start",
+      "pattern_length",
+      "left_transition_length",
+      "right_transition_length",
+      "transition_width",
+      "bend_radius"
+    ],
+    "geometry_strategy": "Use only GDSFactory primitive components and paths: a straight center spine, repeated rectangle fins, and paths with smoothly varying widths for the curved access transitions. Maintain every function-defining dimension as a top-level numeric assignment."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.46312811902464995,
+      "dice": 0.6330657076475029,
+      "sse": 714009.0,
+      "change_made": "Initial primitives-only assembly: five variable-width paths, center spine, and paired fin rectangles."
+    },
+    {
+      "iter": 2,
+      "iou": 0.5997432721084104,
+      "dice": 0.7497993991472994,
+      "sse": 553158.0,
+      "change_made": "Densely sampled the long hairpin paths so their width profile reaches the measured 70 nm plateau at the correct longitudinal position."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7516956210620741,
+      "dice": 0.8582491296134108,
+      "sse": 313342.0,
+      "change_made": "Added a 5 nm frame-edge primitive so the declared 0.700 um calibration frame and the source raster use the same vertical registration."
+    },
+    {
+      "iter": 4,
+      "iou": 0.6873613892207509,
+      "dice": 0.8147174560373042,
+      "sse": 371596.0,
+      "change_made": "Tested a single fitted, variable-width centerline for each broad C-bend; retained the result in the audit trail because it underfilled the three-terminal junctions."
+    },
+    {
+      "iter": 5,
+      "iou": 0.7142737864814604,
+      "dice": 0.8333252157434015,
+      "sse": 338787.0,
+      "change_made": "Modeled each broad C-bend as its measured three-branch centerline tree, using only overlapping gf.Path extrusions."
+    },
+    {
+      "iter": 6,
+      "iou": 0.8131495840256561,
+      "dice": 0.8969470485940337,
+      "sse": 225245.0,
+      "change_made": "Added explicit constant-width plateau vertices on the long top and bottom branch runs, eliminating unintended width interpolation across their multi-micron straight sections."
+    }
+  ],
+  "knob_response": {
+    "param": "delta_length",
+    "width_um": 0.05,
+    "delta_response_um": 4.999999999999998,
+    "area_growth_um2": 0.25000000000000044,
+    "expected_area_growth_um2": 0.25,
+    "passes": true,
+    "note": "The response is measured from the script's actual gf.Path arm centerlines and layer-(1,0) GDS area."
+  }
+}

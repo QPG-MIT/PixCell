@@ -1,0 +1,59 @@
+{
+  "topology_reasoning": {
+    "device": "asymmetric adiabatic directional coupler",
+    "operation": "Two four-port waveguides approach through mirrored S-bends, remain closely spaced over a long interaction region, and separate again. Opposite width tapers exchange the two guides' effective indices through an avoided crossing, enabling adiabatic modal transfer rather than relying only on one fixed coupling length.",
+    "observations": [
+      "The calibrated material footprint is 120 um by 4 um.",
+      "Both access guides are about 0.29 um wide and centered near y = +/-1.74 um.",
+      "The coupled region is about 56 um long with an edge-to-edge gap near 0.17 um.",
+      "Across the coupled region, the upper guide narrows from about 0.41 um to 0.30 um while the lower guide widens from about 0.17 um to 0.28 um.",
+      "Mirrored S-bends provide roughly 1.5 um of vertical offset per guide over about 25 um longitudinally."
+    ],
+    "function_defining_knobs": [
+      "guide_width_um",
+      "top_interaction_width_start_um",
+      "top_interaction_width_end_um",
+      "bottom_interaction_width_start_um",
+      "bottom_interaction_width_end_um",
+      "coupling_gap_um",
+      "transfer_length_um",
+      "bend_length_um",
+      "port_separation_um",
+      "input_straight_um",
+      "output_straight_um"
+    ],
+    "implementation_plan": "Construct each centerline from straight and smooth parametric Path segments, extrude only on layer (1,0), use constant-width access paths and linearly varying interaction widths, and assemble them in a gf.cell."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.5785161259677956,
+      "dice": 0.7329872865417889,
+      "sse": 124229.0,
+      "change_made": "Initial cosine-S-bend, opposite-width-taper directional-coupler reconstruction; exact 120 x 4 um GDS bounding box."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7889151306274426,
+      "dice": 0.8820039778530344,
+      "sse": 54877.0,
+      "change_made": "Separated the straight entrance width taper from the centerline bend, shortened and delayed the entrance bend, started the exit bend earlier, matched unequal input/output port separations, and added the small coupled-region vertical offset."
+    },
+    {
+      "iter": 3,
+      "iou": 0.8650102311372413,
+      "dice": 0.9276198239510757,
+      "sse": 37471.0,
+      "change_made": "Added explicit parametric width flares measured from the reference: 1.20/0.70 um upper/lower entrance bulges and 1.05/1.00 um upper/lower output bulges. Stopped after exceeding IoU 0.85."
+    }
+  ],
+  "knob_verification": {
+    "param": "transfer_length_um",
+    "delta_um": 5.0,
+    "width_um": 0.36,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 1.8010905000001145,
+    "expected_area_growth_um2": 1.7999999999999998,
+    "passes": true
+  }
+}

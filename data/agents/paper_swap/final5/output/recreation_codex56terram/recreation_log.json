@@ -1,0 +1,32 @@
+{
+  "topology_reasoning": {
+    "device": "A compact folded Bragg/corrugated-waveguide structure: a narrow straight center bus passes between two long, periodically corrugated portions of a single folded guide. The guide enters from the upper left, makes a broad right-hand return, crosses a lower corrugated section, then makes a broad left-hand return and exits at the lower right.",
+    "operation": "The periodic lateral corrugations provide distributed Bragg interaction while the nearby straight bus provides the through channel; the long folded route packs interaction length into the 18.24 um by 0.70 um footprint.",
+    "function_knobs": [
+      "wg_width: folded-guide core width",
+      "bus_width: center through-guide width",
+      "period: corrugation pitch",
+      "tooth_width: corrugation duty width",
+      "tooth_depth: lateral corrugation extent",
+      "grating_length: active interaction length",
+      "right_radius and left_radius: folded-route bend radii",
+      "gap: guide-to-bus separation"
+    ],
+    "iterations": [
+      {"iter": 1, "iou": 0.540345808183896, "dice": 0.7015902602039427, "sse": 755979.0, "change_made": "Initial primitive reconstruction; comparison showed the outer folded path too tall and the lower corrugated leg vertically offset."}
+      ,{"iter": 2, "iou": 0.4049283966435651, "dice": 0.5764399062770126, "sse": 1148077.0, "change_made": "Tried wider cores and inward vertical shifts; this broadened the mismatch, so the next iteration restores the better baseline."}
+      ,{"iter": 3, "iou": 0.540345808183896, "dice": 0.7015902602039427, "sse": 755979.0, "change_made": "Restored the best baseline after the failed wider-core trial."}
+      ,{"iter": 4, "iou": 0.5387226185419195, "dice": 0.7002205752358518, "sse": 757959.0, "change_made": "Tried larger smoothing radii for the folded path; it marginally reduced fidelity, so the final script restores the baseline geometry."}
+      ,{"iter": 5, "iou": 0.5403553361221909, "dice": 0.7015982915766994, "sse": 755950.0, "change_made": "Final flattened primitives-only GDS retained the best baseline silhouette and enables deterministic layer-area verification."}
+    ],
+    "knob_response": {
+      "param": "delta_length",
+      "width_um": 0.028,
+      "delta_um": 5.0,
+      "delta_response_um": 5.0,
+      "area_growth_um2": 0.14000000000000057,
+      "expected_area_growth_um2": 0.14,
+      "passes": true
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "cell": "final7 / recreation_fable5max",
+  "worker": "claude (fable5max)",
+  "phase": "A",
+  "topology_reasoning": {
+    "what_the_device_is": "A loop-embedded dual-arm interferometer: a closed stadium-shaped loop waveguide (rounded-rectangle ring) whose left and right inner walls, at mid-height, each launch a wide hub stub that fans out through a Y-junction into two branches. The branches feed two parallel horizontal arm waveguides (top and bottom) that bridge the left and right Y-junctions. Each arm carries, on its outer side, a slotted loading structure: an outer rail parallel to the arm, tied to the arm by three posts, forming two closed rectangular windows per arm. The whole figure is mirror-symmetric left-right and (to ~1 px) top-bottom.",
+    "how_it_works": "Read as a Sagnac/loop-mirror-embedded Mach-Zehnder: the loop carries light to the left hub, the Y-junction splits it into the two arms, and the right Y-junction recombines it back into the loop; interference between the two arm paths sets the transfer function. The two-window slotted rails on each arm's outer side read as loading segments (phase-shifter electrodes or Bragg-like perturbation segments) that set the differential phase/coupling of the arms. Function is therefore governed by the arm path-length balance, the arm separation, the guide width, and the loading-segment geometry.",
+    "anisotropy_note": "footprint.json + the deterministic calibration map the image x-axis to 3.0 um and y-axis to 5.5 um (517.0 vs 141.82 px/um). The landscape image is therefore a ~3.65x horizontally-stretched rendering of a portrait 3.0 x 5.5 um device: circular-looking arcs in the image are ellipses in um space (outer corner ellipse ~0.946 x 2.489 um), and the visually-thick ring sides are only ~0.31 um wide while top/bottom walls are ~0.52-0.54 um. All geometry below is specified in um space against this calibration.",
+    "function_defining_knobs": [
+      "delta_length (um): path-length imbalance between top and bottom arm - THE interferometer knob; 0.0 as drawn (symmetric arms). Perturbing it physically lengthens the top arm waveguide.",
+      "arm_pitch (um): center-to-center separation of the two arm guides (1.033 as drawn); with wg_width sets the arm gap.",
+      "arm_length (um): length of each arm's straight interaction section (0.892 as drawn).",
+      "wg_width (um): arm guide width (0.247 top / 0.240 bottom as drawn).",
+      "slot_len / slot_h / rail_t / post_w / mid_post_w (um): loading-structure geometry (window size, outer-rail thickness, post widths).",
+      "ring walls + corner radii: loop geometry (ring_wall_side ~0.311, ring_wall_top ~0.522, ring_wall_bot ~0.536, corner ellipse 0.946x2.489 outer / 0.708x1.735 inner)."
+    ],
+    "construction_plan": "Catalog primitives only: rounded-rect ring = boolean NOT of two stadium shapes, each the union of two rectangles + four corner ellipses (gf.components.rectangle, gf.components.ellipse); hubs, branches, arms, rails, posts = rectangles; Y-junction diagonals = 2-point gf.Path extruded at constant um width (slope 2.188, width 0.214); the four windows = rectangle subtraction from the solid rail+post box. Core mirrored about x=1.4981 (measured device center), ring about x=1.5. Script writes lengths.json (arm centerline lengths from gf.Path objects) so homi.spec_optimization.verify_knob_response can prove delta_length moves real geometry (area growth ~= wg_width * delta)."
+  },
+  "calibration": {
+    "scale_px_per_um": [517.0, 141.8181818181818],
+    "bbox_px": [31, 14, 1582, 794],
+    "mask_threshold": 245,
+    "target_black_px": 560212
+  },
+  "key_measurements_um": {
+    "ring_outer": {"x": [0.0, 3.0], "y": [0.0, 5.5], "corner_rx_ry": [0.9458, 2.4891]},
+    "ring_inner": {"x": [0.3114, 2.6847], "y": [0.5359, 4.9782], "corner_rx_ry": [0.7079, 1.7346]},
+    "top_bar": {"x": [1.0522, 1.9439], "y": [3.1378, 3.3846]},
+    "bottom_bar": {"x": [1.0522, 1.9439], "y": [2.1083, 2.3481]},
+    "top_rail": {"y": [3.9276, 4.1814]},
+    "bottom_rail": {"y": [1.3045, 1.5478]},
+    "slots_top": {"x1": [1.1161, 1.4449], "x2": [1.5551, 1.8801], "y": [3.3846, 3.9276]},
+    "slots_bottom": {"y": [1.5478, 2.1083]},
+    "hub_left": {"x": [0.2, 0.5203], "y": [2.0942, 3.4058]},
+    "branch_horiz_top": {"y": [3.4481, 3.8853], "x_start": 0.7524},
+    "branch_horiz_bottom": {"y": [1.6147, 2.0519]},
+    "diagonal": {"slope": 2.188, "width_um": 0.214, "top_left": [[0.47, 3.1135], [0.7228, 3.6667]]},
+    "mirror_axis_x": 1.4981,
+    "mirror_axis_y_core": 2.75
+  },
+  "iterations": [
+    {"iter": 1, "iou": 0.9705, "dice": 0.98503, "sse": 16863.0,
+     "change_made": "Initial parametric build from pixel measurements: elliptical-corner stadium ring (outer minus inner), hub slabs, extruded Y-junction diagonals, branch bands, arm bars, slotted loading boxes with window cuts."},
+    {"iter": 2, "iou": 0.98286, "dice": 0.99136, "sse": 9712.0,
+     "change_made": "Per-corner area-weighted ellipse fits (8 corners); half-pixel raster-bleed bias on all white-facing bottom/right edges (PIL inks the boundary line, and 1 nm dbu snap made borderline rows flip); exact per-window cut rects; elbow + hub-tip fillet patches; measured diagonal mirror axis 2.7465."},
+    {"iter": 3, "iou": 0.98457, "dice": 0.99222, "sse": 8740.0,
+     "change_made": "Fixed double-applied bias on branch bands (bias was already in the constants); top-right window top edge corrected to row 237 (bbox min-row 235 is only a 2-col sliver); bottom window bottom edges to rows 574 (BL) / 573 (BR)."},
+    {"iter": 4, "iou": 0.98714, "dice": 0.99353, "sse": 7268.0,
+     "change_made": "16 cut + 4 add micro-patch rects from a greedy net-gain search on the diff: staircase corrections where the target boundary is superelliptical vs my ellipses (flat-corner transitions, inner-wall flats)."},
+    {"iter": 5, "iou": 0.98717, "dice": 0.99354, "sse": 7253.0,
+     "change_made": "Hub-tip patch trims + bottom-left window ragged-bottom split (rows 574/573 halves). Gain mostly cancelled by a 1 nm boolean sliver at the split seam (dbu position+size rounding desync)."},
+    {"iter": 6, "iou": 0.98722, "dice": 0.99357, "sse": 7222.0,
+     "change_made": "Snap all rect coordinates to the 1 nm dbu grid before sizing so abutting rects share edges exactly; seam sliver eliminated. Final."}
+  ],
+  "final": {
+    "iou": 0.98722,
+    "dice": 0.99357,
+    "sse": 7222.0,
+    "gds": "final7_recreated.gds",
+    "note": "delta_length_um in lengths.json is 0.028 at delta_length=0.0: the honest drawn asymmetry (arm bars sit ~0.7 px below the branch axis; diagonals mirror about y=2.7465, not 2.75). The knob check verifies the response, which is exact."
+  }
+}

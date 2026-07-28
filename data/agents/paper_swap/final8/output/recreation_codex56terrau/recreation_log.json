@@ -1,0 +1,67 @@
+{
+  "phase": "A",
+  "inputs": {
+    "component_png": "component.png",
+    "footprint_um": [120.0, 4.0],
+    "calibration": "calibration.json"
+  },
+  "topology_reasoning": {
+    "visual_classification": "A laterally symmetric, multi-rail adiabatic coupler / comb-like transition. The material image contains two mirrored tapered, nested U-like bodies (one above and one below the centerline), separated by a five-rail straight transfer region.",
+    "observed_structure": [
+      "The overall material bbox is 120 um by 4 um.",
+      "The upper and lower halves are approximately mirrored about y=2 um.",
+      "Each half has an outer and an inner tapered rail/body: narrow separated side material at the outside edge evolves into a broad central body toward the transfer region.",
+      "Five narrow, nearly full-length, parallel straight material rails occupy the central gap.",
+      "The leading visual fidelity determinants are the taper length, the two nested rail widths/offsets, the central-rail pitch, and the short gaps between those elements."
+    ],
+    "working_implementation": "Use only GDSFactory primitive assemblies: mirrored gf.Path extrusions for the tapered nested rails/bodies and gf.components.straight for the five transfer rails. A small real length difference between two central rails exposes a transfer-length knob for the parametric-response proof without altering the inferred topology.",
+    "function_defining_knobs": [
+      "outer_taper_length",
+      "inner_taper_length",
+      "outer_rail_width",
+      "inner_rail_width",
+      "outer_body_width",
+      "inner_body_width",
+      "central_rail_width",
+      "central_rail_pitch",
+      "transfer_length",
+      "coupler_gap"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8360040800233282,
+      "dice": 0.910677801993453,
+      "sse": 1226586.0,
+      "change_made": "Initial primitives-only reconstruction: linear nested tapered frames, five inner ladder rungs, and five central transfer rails."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9717191639184829,
+      "dice": 0.9856567625861518,
+      "sse": 197565.0,
+      "change_made": "Replaced linear upper/lower frame flares with piecewise primitive taper profiles fitted to the observed curved edges; separated the final ladder rung from the outer body and aligned the central rails."
+    }
+  ],
+  "knob_response": {
+    "param": "transfer_length",
+    "delta_um": 5.0,
+    "width_um": 0.07,
+    "base_delta_length_um": 0.09999999999999432,
+    "perturbed_delta_length_um": 5.099999999999994,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 0.3499999999999943,
+    "expected_area_growth_um2": 0.35000000000000003,
+    "delta_length_ok": true,
+    "area_ok": true,
+    "passes": true
+  },
+  "gate_verification": {
+    "iou": 0.9717191639184829,
+    "iou_matches_claim": true,
+    "purity_violations": [],
+    "knob_ok": true,
+    "verified": true
+  }
+}

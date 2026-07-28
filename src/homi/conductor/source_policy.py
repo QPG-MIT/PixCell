@@ -6,12 +6,12 @@ published record — every cell under ``data/agents/**`` reproduces its recorded
 verdict under this function (pinned by ``tests/test_record_purity_sweep.py``).
 It rejects non-catalog components (with alias following), dynamic component
 lookup, raw-polygon emission (AST + a textual belt), image reads,
-raster-scale coordinate dumps, dynamic code execution, and gdsfactory's
-kdb/kcl geometry backdoor.
+raster-scale coordinate dumps, and gdsfactory's kdb/kcl geometry backdoor.
 
 ``strict_purity_violations`` is the EXECUTION SCREEN: everything canonical
 plus bans on process/network/dynamic-import roots, alternate geometry
-libraries (gdstk, gdspy, klayout, …), and builtin introspection. The RL
+libraries (gdstk, gdspy, klayout, …), builtin introspection, and dynamic
+code execution (compile/eval/exec/__import__). The RL
 evaluator, Track A preflight, and release validation apply it before running
 model-written code. It may grow further restrictions freely — the canonical
 surface may not, without re-verifying the frozen record.
@@ -54,6 +54,11 @@ IMAGE_IMPORT_PREFIXES = (
     "skimage",
     "matplotlib.image",
 )
+# Strict-only: dynamic code execution is an EXECUTION-safety concern, not a
+# geometric-honesty one. Recorded cells use `__import__("json").dumps(...)` to
+# write their own logs — geometrically irrelevant, and permitted by the gate
+# that certified them. Banning it canonically would make the shipped gate
+# contradict the shipped record.
 FORBIDDEN_DYNAMIC_CALLS = frozenset({"compile", "eval", "exec", "__import__"})
 
 # --- strict-only vocabulary (the execution screen) ---------------------------
@@ -234,7 +239,7 @@ def _violations(source: str, *, strict: bool) -> list[str]:
     numeric_count = 0
     for node in ast.walk(tree):
         if isinstance(node, ast.Name):
-            if node.id in FORBIDDEN_DYNAMIC_CALLS:
+            if strict and node.id in FORBIDDEN_DYNAMIC_CALLS:
                 hits.append(f"dynamic execution: {node.id}")
             if strict and node.id in FORBIDDEN_INTROSPECTION_CALLS:
                 hits.append(f"forbidden introspection call: {node.id}")

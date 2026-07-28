@@ -1,0 +1,78 @@
+{
+  "device": "symmetric two-waveguide directional coupler",
+  "topology_reasoning": {
+    "observations": [
+      "The supplied raster contains four horizontal access ports, two on the left and two on the right.",
+      "The upper and lower guides are mirror images: each access port transitions through a rounded S-bend into a long straight center section, then returns through a rounded S-bend.",
+      "The two center sections run parallel with a small constant gap, which identifies the functional coupling region.",
+      "The black-device bounding box is approximately 1898 px by 739 px and is calibrated by footprint.json to 120 um by 4 um."
+    ],
+    "operation": "Light launched into either input guide couples across the close parallel center sections; the coupling strength is set primarily by the center-section length and inter-guide gap, while bend radius and guide width control routing loss and the access transition.",
+    "function_defining_knobs": [
+      "coupling_length",
+      "coupling_gap",
+      "bend_radius",
+      "wg_width",
+      "port_separation"
+    ],
+    "construction": "Use only gf.Path/extrude waveguide primitives for two mirrored routed centerlines, assembled in a @gf.cell and written on layer (1, 0)."
+  },
+  "calibration": "calibration.json",
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.43959429766956026,
+      "dice": 0.6107196984333475,
+      "sse": 181340.0,
+      "change_made": "Initial two-path gf.Path model with constant-width coupling guides and smooth cubic S-bends."
+    },
+    {
+      "iter": 2,
+      "iou": 0.6463537487584259,
+      "dice": 0.7851942503193671,
+      "sse": 100049.0,
+      "change_made": "Corrected GDS-to-raster Y orientation, assigned the wider guide to the visual upper rail, shifted centerlines, and matched asymmetric left/right port positions."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7417605215252521,
+      "dice": 0.8517365187215239,
+      "sse": 69085.0,
+      "change_made": "Replaced cubic bend shape with measured horizontal-tangent S-bend profiles from raster landmarks."
+    },
+    {
+      "iter": 4,
+      "iou": 0.7550912795712289,
+      "dice": 0.8604581292839638,
+      "sse": 65024.0,
+      "change_made": "Tested separate guide-specific bend progressions to capture the rasterized access asymmetry."
+    },
+    {
+      "iter": 5,
+      "iou": 0.7629320782129669,
+      "dice": 0.8655263440283292,
+      "sse": 62658.0,
+      "change_made": "Corrected the visual-guide profile assignment after skeletonizing the target and retained the best per-side progression."
+    },
+    {
+      "iter": 6,
+      "iou": 0.7840730910731905,
+      "dice": 0.8789696958004557,
+      "sse": 56461.0,
+      "change_made": "Used the target skeleton's sharp common centerline turn profile and moved width transitions into the early access bends; stopped at the six-iteration limit."
+    }
+  ],
+  "knob_verification": {
+    "param": "coupling_length",
+    "delta_um": 5.0,
+    "width_um": 0.22,
+    "base_delta_length_um": 0.007999999999995566,
+    "perturbed_delta_length_um": 4.992000000000004,
+    "delta_response_um": 4.984000000000009,
+    "base_area_um2": 71.63672149999991,
+    "perturbed_area_um2": 72.73672149999996,
+    "area_growth_um2": 1.1000000000000512,
+    "expected_area_growth_um2": 1.1,
+    "passes": true
+  }
+}

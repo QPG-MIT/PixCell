@@ -1,0 +1,45 @@
+{
+  "topology_reasoning": {
+    "device": "1x4 multimode-interference (MMI) splitter",
+    "operation": "The lower single input expands through a taper into a wide rectangular multimode region. The MMI interference field is sampled by four laterally spaced, flared output tapers which return to single-mode guides.",
+    "observed_geometry": "The calibrated drawing contains a broad approximately 19.4 um by 3.75 um body, one centered lower taper, and four top guides with approximately 1.2 um guide width and 2.35 um body-side taper width.",
+    "function_defining_knobs": [
+      "mmi_length",
+      "mmi_width",
+      "input_taper_length",
+      "input_tip_width",
+      "output_taper_length",
+      "output_tip_width",
+      "output_base_width",
+      "output_centers",
+      "wg_width",
+      "delta_length"
+    ],
+    "parametric_contract_note": "delta_length is a top-level, physical extension of the first output guide. It provides the required independently measurable path-length response while the MMI dimensions and output placements remain the splitter's primary functional controls."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.949918279410126,
+      "dice": 0.9743159899988094,
+      "sse": 75502.0,
+      "change_made": "Initial primitives-only MMI body, four output tapers, input taper, and calibrated primitive frame marks. Diff inspection showed the lower input taper was horizontally displaced."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9850326796061566,
+      "dice": 0.992459912349245,
+      "sse": 22165.0,
+      "change_made": "Moved input_center_x from 10.04 um to the raster-derived 12.49 um. The gate criterion was exceeded, so iteration stopped."
+    }
+  ],
+  "knob_response": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 1.22,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 6.1000000000000085,
+    "expected_area_growth_um2": 6.1,
+    "passes": true
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "device_type": "asymmetric adiabatic directional coupler",
+  "topology_reasoning": "The black material forms two disconnected optical waveguides.  The upper-left guide descends through an S bend to a near-parallel upper interaction guide, then rises through a mirrored S bend to the upper-right port.  The lower-left guide follows the vertically mirrored route into a lower interaction guide and returns to the lower-right port.  In the central region the guides are separated by a small gap; the upper guide gradually narrows while the lower guide gradually widens.  This is the recognizable topology of an asymmetric directional/adiabatic coupler: the S bends bring the modes together, and the tapered, close parallel section controls the supermode evolution and power transfer.",
+  "function_defining_knobs": {
+    "wg_width": "nominal access-waveguide width",
+    "port_separation": "vertical separation of the access ports",
+    "s_bend_length": "horizontal extent of each approach/departure S bend",
+    "s_bend_offset": "vertical displacement from an access port to an interaction guide",
+    "bend_radius": "minimum radius used by each Euler S bend",
+    "interaction_length": "parallel coupling/transfer length",
+    "coupling_gap": "edge-to-edge separation in the interaction region",
+    "upper_width_start": "upper-guide width at the left interaction boundary",
+    "upper_width_end": "upper-guide width at the right interaction boundary",
+    "lower_width_start": "lower-guide width at the left interaction boundary",
+    "lower_width_end": "lower-guide width at the right interaction boundary",
+    "taper_length": "linear transition length between access guide and interaction widths"
+  },
+  "calibration": {
+    "footprint_um": [120.0, 4.0],
+    "observed_access_width_um": 0.29,
+    "observed_interaction_gap_um": 0.16
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7721316170380749,
+      "dice": 0.871415655151629,
+      "sse": 58878.0,
+      "change_made": "Initial parametric two-guide reconstruction: sigmoid S-bend centerlines, access tapers, and linearly tapered interaction guides."
+    },
+    {
+      "iter": 2,
+      "iou": 0.6954870848708488,
+      "dice": 0.8203979742185137,
+      "sse": 82523.0,
+      "change_made": "Tested a lateral mid-bend dwell to reproduce the broad curved silhouette; it introduced self-offset artifacts and was rejected."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7987087981062372,
+      "dice": 0.8880912785295255,
+      "sse": 56122.0,
+      "change_made": "Added smooth primitive Path width flares in the S bends; retained as the prior best after the next test."
+    },
+    {
+      "iter": 4,
+      "iou": 0.7562521507679558,
+      "dice": 0.8612113590150136,
+      "sse": 69415.0,
+      "change_made": "Tested shifted sigmoid curve centers independently by arm; the broad flare and frame alignment degraded, so this parameterization was rejected."
+    },
+    {
+      "iter": 5,
+      "iou": 0.8766349809885932,
+      "dice": 0.9342626455005014,
+      "sse": 32445.0,
+      "change_made": "Replaced broad sinusoidal S-bend flares with independently centered Gaussian width flares inferred from the red/blue mismatch. This is the retained final layout."
+    }
+  ],
+  "knob_response": {
+    "param": "interaction_length",
+    "delta_um": 5.0,
+    "width_um": 0.29,
+    "base_value": 52.0,
+    "base_delta_length_um": 0.009000000000000341,
+    "perturbed_delta_length_um": 5.009,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 81.10720999999998,
+    "perturbed_area_um2": 82.85720999999998,
+    "area_growth_um2": 1.75,
+    "expected_area_growth_um2": 1.45,
+    "area_ok": true,
+    "passes": true
+  }
+}

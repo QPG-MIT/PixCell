@@ -1,0 +1,46 @@
+{
+  "topology_reasoning": {
+    "device": "symmetric three-waveguide adiabatic/tapered coupler",
+    "operation": "A center bus enters from the left and narrows continuously over the coupling section; matching upper and lower rails begin after an input offset, widen gradually while approaching the center bus, then curve apart into two wide output rails. The three distinct material components are intentionally separated by evanescent gaps, so transfer is governed by the taper profile, the local guide widths, the two gaps, and the co-propagation length.",
+    "observations": [
+      "The calibrated material bounding box is 40.0 um by 1.7 um.",
+      "There are three disconnected black components: a center rail from the left edge ending near 25 um, and mirrored upper/lower rails beginning near 3.1 um and continuing to the right edge.",
+      "The outer rails begin narrow, widen along the common straight coupling section, then make mirrored S-bends to a large final vertical separation."
+    ],
+    "function_defining_knobs": [
+      "center_input_width", "center_tip_width", "outer_tip_width", "outer_coupling_width", "coupling_gap", "coupling_length", "outer_start_offset", "s_bend_length", "output_separation", "output_width"
+    ]
+  },
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.07,
+    "delta_response_um": 4.9999999999999964,
+    "area_growth_um2": 0.3499999999999943,
+    "expected_area_growth_um2": 0.35000000000000003,
+    "passes": true
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.5422272325316089,
+      "dice": 0.70317424189369,
+      "sse": 135628.0,
+      "change_made": "Initial primitives-only three-rail reconstruction. The footprint was exact, but the diff showed vertically symmetric rails whereas the target center rail is offset and the broad-end gaps are larger."
+    },
+    {
+      "iter": 2,
+      "iou": 0.847825481734842,
+      "dice": 0.9176467043184793,
+      "sse": 38262.0,
+      "change_made": "Placed the center rail 0.015 um above the output-pair midpoint and set the measured 0.105 um broad-end coupling gaps."
+    },
+    {
+      "iter": 3,
+      "iou": 0.896276367031536,
+      "dice": 0.9453014155680088,
+      "sse": 25329.0,
+      "change_made": "Delayed the outer S-bend by 0.70 um and used a delayed rise in its Bézier centerline, matching the nearly straight coupling exit seen in the diff."
+    }
+  ]
+}

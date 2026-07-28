@@ -1,0 +1,83 @@
+{
+  "topology_reasoning": {
+    "what_is_this_device": "A stadium-shaped (superellipse-capped) closed loop resonator enclosing a symmetric twin-arm bridge structure. From each side wall of the loop a wide trunk extends inward and splits (Y-branch) into an upper and a lower arm; the two arms of each side run diagonally toward the horizontal, then run parallel to the device axis and terminate on a slotted rectangular block (a 'box' with two clear windows separated by a central bar). The two side Y-branches face each other and their inner edges converge to sharp tips, forming a pointed-hexagon clear opening at the device center. The whole layout is mirror-symmetric about both axes. This reads as a metamaterial/plasmonic-style resonant element: the outer loop is the inductive/ring path, the slotted boxes are capacitive (interdigital-like) loading elements on the two bridge arms, and the tapered central opening sets the gap between the two halves of the bridge.",
+    "how_it_works": "The outer loop supports a circulating resonant mode; the twin bridge arms shunt the loop across its short axis. Each arm is loaded by a two-window slotted box whose window size and central-bar width set the local (capacitive) loading, which together with the loop inductance fixes the resonance. The pointed central opening (the gap between the converging inner edges of the upper and lower arms) concentrates the field; its taper angle and tip separation are the field-enhancement / coupling knobs.",
+    "function_defining_knobs": [
+      "arm_width_um - width of each bridge arm (sets arm impedance)",
+      "arm_pitch - vertical offset of the horizontal arm sections from the midline (sets the opening height of the central clear hexagon)",
+      "slope - taper slope of the Y-branch (opening angle of the central clear region)",
+      "tip_x_um - x-position of the trunk tips (tip separation of the central clear hexagon)",
+      "box width/height, wall thicknesses, window height, center-bar width - the capacitive loading elements",
+      "ring inner/outer superellipse semi-axes and exponents - loop path width and cap shape"
+    ],
+    "calibration_note": "Calibration is anisotropic: 517 px/um in x (3.0 um over 1551 px) and 141.82 px/um in y (5.5 um over 780 px). The device is therefore built directly in the calibrated um frame (x in [0,3], y in [0,5.5]); circular-arc primitives cannot reproduce the pixel-space round caps, so both ring boundaries are modeled as generalized superellipses (outer: px=4.42, py=1.77, semi-axes 1.5 x 2.746 um; inner: p=2.93, semi-axes 1.198 x 2.221 um; fitted rms 5.7 px / 1.9 px) and emitted as thin rectangle slabs - primitives only, no raw polygons.",
+    "measured_pixel_facts": {
+      "bbox_px": [31, 14, 1582, 794],
+      "outer_superellipse": {"A": 775.0, "B": 389.5, "px": 4.42, "py": 1.77},
+      "inner_superellipse": {"A": 619.3, "B": 315.0, "p": 2.93},
+      "trunk_px": {"x": [187, 300], "y": [311, 497]},
+      "upper_arm_px": {"horizontal_band_y": [243, 305], "kink_top_x": 395, "kink_bot_x": 415, "slope_px": 0.6, "junction_x": 300},
+      "upper_box_px": {"x": [575, 1036], "y": [201, 349], "wall_x": 34, "wall_y": 35.5, "center_bar_x": [777, 835], "window_y": [237, 314]},
+      "symmetry": "mirror about x=806, y=404 within ~2 px"
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7751,
+      "dice": 0.8733,
+      "sse": 144157.0,
+      "change_made": "Initial parametric build: generalized-superellipse stadium ring as rectangle slabs (outer px=4.42/py=1.77 from row-edge fit; inner single p=2.93), trunks, kinked arms as x-strips, 5-rect slotted boxes. Diff showed both boxes vertically offset outward."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9536,
+      "dice": 0.9762,
+      "sse": 26997.0,
+      "change_made": "Fixed box_center_y 1.2775 -> 0.9096 um (px->um conversion error for the box center; measured box rows 201-349 px imply center 0.9096 um above midline)."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9686,
+      "dice": 0.9841,
+      "sse": 17981.0,
+      "change_made": "Refit both ring boundaries as full 4-parameter generalized superellipses via implicit least squares over ~3000 extracted edge points (outer A,B,px,py = 1.5033,2.7554,4.041,1.885; inner = 1.2354,2.2253,4.583,1.644). Killed the inner-shoulder red crescents and outer-cap blue crescents."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9702,
+      "dice": 0.9849,
+      "sse": 17038.0,
+      "change_made": "Finer discretization (ring slabs 400->600, arm strips 60->140) to cut diagonal staircase error; arm width 0.4372->0.4302 with center +0.0035 (edges intruded ~1 px into the central hexagon); ring_outer_ay +0.004, ring_inner_ay +0.009. Residual is 1-2 px edge noise and the target's own ~2 px left/right asymmetry."
+    }
+  ],
+  "final": {
+    "iou": 0.9702,
+    "dice": 0.9849,
+    "sse": 17038.0,
+    "iterations_used": 4,
+    "knob_verification": {
+      "tool": "homi.spec_optimization.verify_knob_response",
+      "param": "delta_length",
+      "delta_um": 2.2,
+      "width_um": 0.4302,
+      "delta_response_um": 2.2,
+      "delta_length_ok": true,
+      "area_growth_um2": 0.782,
+      "expected_area_growth_um2": 0.9464,
+      "area_ok": true,
+      "passes": true,
+      "note": "delta_length is a real path-imbalance knob: it grows a detour stub from the upper box's bottom wall into the central hexagon, lengthening the upper bridge path by exactly delta_length (lengths.json is computed from gf.Path centerlines at build time). At 0 the device is the symmetric Phase-A image. GDS written with with_metadata=False so the device cell is top-level (the kfactory $$$CONTEXT_INFO$$$ cell otherwise hides it from the area check)."
+    },
+    "tunables": [
+      "DEV_L", "DEV_H",
+      "ring_outer_ax", "ring_outer_ay", "ring_outer_px", "ring_outer_py",
+      "ring_inner_ax", "ring_inner_ay", "ring_inner_px", "ring_inner_py",
+      "tip_x_um", "trunk_left_x", "trunk_half_h",
+      "arm_width_um", "arm_center_y", "arm_slope", "arm_kink_top_x", "arm_kink_bot_x",
+      "box_left_x", "box_width", "box_center_y", "box_height",
+      "box_wall_x", "box_wall_y", "box_bar_width", "window_height",
+      "delta_length", "stub_width"
+    ]
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "topology_reasoning": {
+    "device": "A four-port asymmetric adiabatic directional coupler: two independent waveguides begin at vertically separated left ports, use mirrored S-bends to enter a parallel coupling section, then S-bend back out to vertically separated right ports with crossed port ordering.",
+    "operation": "The central parallel rails are phase-matched through an approximately constant edge gap. Their widths taper oppositely along the transfer region, giving an adiabatic width-evolution/transfer function rather than a pair of constant-width rails.",
+    "image_observations": "The calibrated 120 by 4 um footprint contains about 0.30 um-wide outer leads. The central rails are separated by about 0.15 um edge gap; the upper rail is wider at the left side of the transfer section and narrows toward the right while the lower rail widens in the opposite direction. Each rail changes vertical level by roughly 1.5 um through a smooth S-bend.",
+    "function_defining_knobs": [
+      "wg_width",
+      "outer_lead_length",
+      "sbend_length",
+      "sbend_offset",
+      "gap",
+      "transfer_length",
+      "upper_width_in",
+      "upper_width_out",
+      "lower_width_in",
+      "lower_width_out",
+      "taper_length"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7753418619937612,
+      "dice": 0.8734564070077516,
+      "sse": 59128.0,
+      "change_made": "Initial primitives-only cosine S-bend model. Diff showed that the image uses longer, sharply inflected Bezier-like S-bends; central geometry and nominal widths were already close."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8003759514344704,
+      "dice": 0.8891209092153909,
+      "sse": 51824.0,
+      "change_made": "Replaced cosine paths with a high-control-point Bezier S-bend and moved the nominal coupling bounds. The score improved, but the target's S-bends begin earlier and settle later; scanline comparison also showed small central width and vertical-center errors."
+    },
+    {
+      "iter": 3,
+      "iou": 0.8241881909479251,
+      "dice": 0.9036218905897446,
+      "sse": 45149.0,
+      "change_made": "Aligned the Bezier bounds to calibrated centerline samples, corrected central rail widths/centering, and tapered the output widths. The long parallel transfer section now closely agrees; physical-distance analysis identified unmodeled local width flares in both S-bends."
+    },
+    {
+      "iter": 4,
+      "iou": 0.7455326200139913,
+      "dice": 0.8542179177470949,
+      "sse": 78934.0,
+      "change_made": "Added centered peak-width flares to the S-bends. This over-expanded the footprint to 4.124 um and lowered IoU, showing that the target flares are asymmetric and directed inward rather than centered on the guide centerline."
+    },
+    {
+      "iter": 5,
+      "iou": 0.5836600772498582,
+      "dice": 0.7371027225279642,
+      "sse": 142499.0,
+      "change_made": "Tried offsetting the flares toward the inferred interior. The cross-section offset convention moved them outward instead, producing a 4.458 um height and a worse score. The final allowed trial reverses that offset convention."
+    },
+    {
+      "iter": 6,
+      "iou": 0.7576950253914376,
+      "dice": 0.862146179451921,
+      "sse": 73384.0,
+      "change_made": "Reversed the cross-section offsets, restoring footprint height but still overfilling the bends. This confirms the unflared calibrated Bezier construction from iteration 3 is the honest best candidate."
+    }
+  ],
+  "best_iteration": 3,
+  "final_selection": {
+    "iou": 0.8241881909479251,
+    "dice": 0.9036218905897446,
+    "sse": 45149.0,
+    "note": "After the sixth permitted comparison, device.py and device.gds were restored exactly to the iteration-3 primitive construction, which is the best measured candidate."
+  },
+  "knob_response": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.3,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 1.5,
+    "expected_area_growth_um2": 1.5,
+    "passes": true
+  }
+}

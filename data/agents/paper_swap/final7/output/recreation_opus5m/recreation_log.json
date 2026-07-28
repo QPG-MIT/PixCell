@@ -1,0 +1,226 @@
+{
+  "workdir": "data/agents/paper_swap/final7/output/recreation_opus5m",
+  "inputs": {
+    "device_bw": "data/agents/paper_swap/final7/device_bw.png",
+    "footprint_um": [
+      3.0,
+      5.5
+    ],
+    "image_px": [
+      1612,
+      809
+    ]
+  },
+  "calibration": {
+    "bbox_px": [
+      31,
+      14,
+      1582,
+      794
+    ],
+    "scale_px_per_um": [
+      517.0,
+      141.8181818181818
+    ],
+    "note": "The calibration is ANISOTROPIC: 517 px/um in x, 141.8 px/um in y (ratio 3.6455). The figure was rendered with a non-square pixel aspect relative to the declared 3.0 x 5.5 um footprint. In true (um) coordinates the device is TALL: 3.0 um wide, 5.5 um high, and the interferometer runs vertically. Every dimension below is measured in image pixels and mapped with the per-axis scale, x_um=(px-31)/517, y_um=(793.5-py)/141.818. Constant-width features in the figure therefore become slope-dependent widths in um; the script carries the anisotropy factor explicitly so the waveguide width stays ONE knob."
+  },
+  "topology_reasoning": {
+    "what_it_is": "A closed oval (stadium / rounded-rectangle) resonator loop whose two ends are bridged by an internal two-arm interferometer: a theta-type resonator, i.e. a ring with a chord, where the chord is a Mach-Zehnder rather than a plain bar. The loop's left and right lobes are noticeably thicker (0.284 um wall at the extremes vs 0.518 um at the flat top/bottom in um, i.e. a wall that broadens where the curve is tightest); each lobe feeds a short wide stub that Y-splits into two waveguide arms. The two arms run diagonally outward, flatten, and each passes through a widened bar containing two rectangular etch windows before recombining at the mirrored Y-junction on the far side. The structure has exact 2-fold mirror symmetry about both the vertical (x = 1.499 um) and horizontal (y = 2.750 um) mid-planes.",
+    "how_it_works": "Light circulating in the outer loop is, at each end, split by the Y-junction into the two internal arms and recombined at the opposite junction. The internal MZI therefore acts as a tunable, wavelength-dependent transfer element inside the resonator: the round-trip amplitude and phase seen by the loop are set by the differential phase of the two arms. Because both arms are geometrically identical here (balanced MZI), the drawing is the nominal/undriven state; the windowed bars are the phase-control sections. Each bar is a widened slab pierced by two rectangular windows separated by a narrow (0.110 um) rib. Optically the pair of windows makes a short slot/low-index-perturbation region: the guided mode is squeezed into the 0.062 um outer walls and the 0.110 um central rib, which strongly raises the field overlap with the window medium. That is exactly the geometry used for (a) slot-mode phase shifters (fill the windows with an active/electro-optic medium), (b) MEMS/thermally released phase shifters (windows = release gaps), or (c) a two-element grating/Bragg perturbation along the arm. Either way the windows are what sets the per-arm phase, and the bar+windows are the function-defining feature of the interferometer.",
+    "function_knobs": [
+      "loop_outer_flat_half_um / loop_outer_corner_ax_um / loop_outer_semi_b_um and their inner counterparts: set the resonator round-trip length (FSR) and the local wall width, hence the bend loss and the confinement in the lobes.",
+      "arm_wg_width_um: the single waveguide width of the internal arms (expressed in the figure's isotropic frame; the script converts it to a perpendicular width per segment using the anisotropy factor). Sets n_eff of both arms.",
+      "arm_offset_um: half the separation between the two arms - the MZI arm spacing, which sets crosstalk/coupling between arms and the physical room for the phase sections.",
+      "arm_slope_fig / splitter_vertex_x_um / arm_corner_x_um: the Y-junction opening angle and length - the splitter's insertion loss and its 50/50-ness.",
+      "splitter_stem_len_um / splitter_stem_half_h_um: the multimode stub at the junction throat - the mode-conversion behaviour of the splitter.",
+      "bar_window_w_um, bar_window_h_um, bar_slot_rib_um, bar_end_wall_um, bar_rail_um: the phase-section geometry. bar_slot_rib_um (the narrow central rib) and bar_window_w_um are the dominant phase knobs - they set the fraction of the mode in the windows, hence dn_eff per arm and the differential phase of the MZI. bar_center_offset_um places the section on its arm.",
+      "bar_width_um / bar_height_um: the overall length of the phase section = phase accumulated per arm."
+    ],
+    "primitives_plan": "Loop annulus = boolean NOT of two filled rounded-rect shapes, each built as a vertical chain of straight tapers whose half-width follows h(y)=Lf+a*sqrt(1-((y-cy)/B)^2) (flat top/bottom of half-length Lf plus elliptical corners of semi-axes a x B). Arms = the same taper-chain helper along a 3-node polyline (diagonal, short width transition, flat run). Junction stubs = rectangles. Phase bars = rectangle MINUS two rectangle windows (boolean). No gf.components device stencils, no hand-written polygon vertex lists.",
+    "post_build_note": "The two blocks above (what_it_is / how_it_works / function_knobs / primitives_plan) were written BEFORE any code, as the pre-coding record, and are left unedited. Two things the build changed: (1) the corner family is a SUPERELLIPSE, not an ellipse (iteration 2); (2) the arm corner is a true miter, not a blend (iteration 5). Knob names in the plan that the final script renames or derives: arm_corner_x_um is now solved analytically inside _arm_geometry as the miter x; splitter_stem_len_um is splitter_stem_x1_um - splitter_stem_x0_um; bar_window_w_um and bar_window_h_um are derived from bar_width/height/rail/end_wall/slot_rib so the bar always closes exactly. The authoritative knob list is the 'tunables' key."
+  },
+  "measured_geometry_px": {
+    "loop_outer": {
+      "flat_half": 307.0,
+      "corner_ax": 468.0,
+      "semi_b_y": 389.5,
+      "note": "least-squares fit of the outer silhouette, half-width pinned to 775 px and semi-b pinned to the 14..793 px extent"
+    },
+    "loop_inner": {
+      "half_width": 638.2,
+      "top_edge_py": 87.5
+    },
+    "y_junction": {
+      "vertex_px": [
+        185,
+        405
+      ],
+      "stem_x_px": [
+        170,
+        292
+      ],
+      "stem_y_px": [
+        311,
+        496
+      ],
+      "arm_slope_dy_dx": -0.6,
+      "arm_corner_px": [
+        404,
+        273.5
+      ],
+      "arm_perp_width_px": 61.5
+    },
+    "phase_bar_upper": {
+      "x_px": [
+        575,
+        1035
+      ],
+      "y_px": [
+        201,
+        348
+      ],
+      "windows_x_px": [
+        [
+          608,
+          777
+        ],
+        [
+          835,
+          1002
+        ]
+      ],
+      "windows_y_px": [
+        236,
+        313
+      ],
+      "mid_rib_px": 56,
+      "end_wall_px": 32.5,
+      "rail_px": 34.5
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9279139348394053,
+      "dice": 0.9626092929471981,
+      "sse": 42187.0,
+      "change_made": "First build. Loop = boolean(outer fill - inner fill) with each silhouette a flat-top + ELLIPTICAL-corner rounded rectangle (least-squares fit to the silhouette, half-width and semi-b pinned to the measured bbox), built as a vertical chain of straight tapers. Y-junction stub as a rectangle, four constant-width arms (diagonal + short width transition + flat run), two phase bars as rectangle-minus-two-windows."
+    },
+    {
+      "iter": 2,
+      "iou": 0.968974516774089,
+      "dice": 0.9842428213460364,
+      "sse": 17796.0,
+      "change_made": "Diff read: red at the loop's ~45-degree shoulders, blue at its left/right extremes -> an ellipse is the wrong corner family; the silhouette is fuller at the sides and flatter at the caps. Refit both boundaries as SUPERELLIPSE corners (exponent free): outer n=2.25 (boundary rms 0.0053 um, was 0.0172), inner n=2.33. Also gave taper chains a segment overlap to kill 1-px slivers left in the ring hole by the boolean, extended the junction stub to the measured throat, and rebuilt the arm corner as an arc blend."
+    },
+    {
+      "iter": 3,
+      "iou": 0.976481467508699,
+      "dice": 0.9881008079873648,
+      "sse": 13403.0,
+      "change_made": "Bug found via sub-part bboxes: the overlap's linear width extrapolation blew up on the very short cap slices of the superellipse (inner fill bbox 3.05 um wide vs 2.43 expected, device 5.51 um tall vs 5.50). Clamped the overlap to the segment length. Device bbox back to exactly 3.000 x 5.500."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9766737575820389,
+      "dice": 0.9881992451569273,
+      "sse": 13279.0,
+      "change_made": "Reduced the join overlap from 0.010 to 0.001 um (1 dbu) and clamped it to half a segment. Edge-by-edge run comparison against the target then showed the real remaining defect: the arc-blended arm corner renders as a red/blue fan of stripes and bulges ~26 px outside the drawn edge."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9806686020937803,
+      "dice": 0.9902399634720395,
+      "sse": 10987.0,
+      "change_made": "Replaced the arc blend with a TRUE MITER: run the diagonal band past the corner and boolean-cut everything beyond the flat run's outer edge, with the miter x solved analytically from the two outer-edge lines. No blend radius can work here -- under the anisotropic frame the band's half-width is ~50 px horizontally on the diagonal but ~30 px vertically on the flat run, so any fillet bulges outside the drawn edge. Arm edges now within 3 px everywhere. BEST."
+    },
+    {
+      "iter": 6,
+      "iou": 0.9778663724184463,
+      "dice": 0.9888093412728941,
+      "sse": 12597.0,
+      "change_made": "REGRESSION, reverted. Tried three things at once: (a) refit both loop boundaries under an L1 objective (mean boundary error 2.7->1.5 px outer, 3.6->1.6 px inner), (b) bar height 148->147 px with rails 34.5 px so the upper bar's rows land on 201..348 exactly, (c) a 1-px downward offset of the whole interferometer, which the drawing really does show (the two bars' midpoint sits at py 404.5 while the loop's sits at 403.5). IoU fell 0.0028. Boundary-L1 is not IoU, and the three changes were not separable within the remaining budget, so the whole set was reverted to the iteration-5 parameters and the shipped GDS re-measured at 0.9806686 to confirm the artifact matches the reported number."
+    }
+  ],
+  "final": {
+    "iou": 0.9806686020937803,
+    "dice": 0.9902399634720395,
+    "sse": 10987.0,
+    "precision": 0.9856092208501842,
+    "recall": 0.994914425253297,
+    "gds_size_um": [
+      3.0,
+      5.5
+    ],
+    "footprint_um": [
+      3.0,
+      5.5
+    ],
+    "size_match": [
+      true,
+      true
+    ],
+    "iterations_used": 6,
+    "note": "Iteration 6 regressed and was reverted; the shipped device.gds is the iteration-5 geometry and was re-measured to confirm it scores 0.9806686. Residual error is a 1-2 px boundary band plus ~1 px of genuine asymmetry in the drawing (the interferometer sits 1 px below the loop's mid-plane) that a mirror-symmetric parameterisation cannot absorb."
+  },
+  "tunables": [
+    "footprint_x_um",
+    "footprint_y_um",
+    "center_x_um",
+    "center_y_um",
+    "figure_aspect",
+    "loop_outer_flat_half_um",
+    "loop_outer_corner_ax_um",
+    "loop_outer_semi_b_um",
+    "loop_outer_power",
+    "loop_inner_flat_half_um",
+    "loop_inner_corner_ax_um",
+    "loop_inner_semi_b_um",
+    "loop_inner_power",
+    "loop_slices",
+    "internal_dy_um",
+    "splitter_vertex_x_um",
+    "splitter_stem_x0_um",
+    "splitter_stem_x1_um",
+    "splitter_stem_half_h_um",
+    "arm_wg_width_um",
+    "arm_slope_fig",
+    "arm_offset_um",
+    "arm_diag_overrun_um",
+    "bar_center_offset_um",
+    "bar_width_um",
+    "bar_height_um",
+    "bar_rail_um",
+    "bar_end_wall_um",
+    "bar_slot_rib_um"
+  ],
+  "knob_response": {
+    "tool": "homi.spec_optimization.verify_knob_response (width_um=0.4301, the script's actual guide width)",
+    "base_area_um2": 8.10187,
+    "results": [
+      {
+        "param": "arm_wg_width_um",
+        "delta_um": 0.02,
+        "area_growth_um2": 0.06433,
+        "analytic_prediction_um2": 0.066,
+        "verdict": "MOVES REAL GEOMETRY. Predicted from the centrelines: 4 arms x (diagonal 1.008 um x 0.4849 + flat 0.336 um) x 0.02 = 0.0660 um2; measured 0.0643 (2.6% low, the miter clip trims the corner). The 0.4849 factor is the anisotropy: widening the figure-frame guide widens the diagonal's perpendicular width sub-linearly."
+      },
+      {
+        "param": "bar_slot_rib_um",
+        "delta_um": 0.02,
+        "area_growth_um2": 0.022,
+        "analytic_prediction_um2": 0.022,
+        "verdict": "MOVES REAL GEOMETRY, exactly as predicted: widening the central rib by d narrows each window by d/2, so material grows by d x window_h x 2 bars = 0.02 x 0.55 x 2 = 0.0220 um2. This is the dominant phase knob of the interferometer."
+      },
+      {
+        "param": "arm_offset_um",
+        "delta_um": 0.05,
+        "area_growth_um2": 0.0081,
+        "analytic_prediction_um2": 0.0066,
+        "verdict": "MOVES REAL GEOMETRY. Small net response by construction: widening the arm spacing lengthens each diagonal launch (+0.917 x d of area) while shortening each flat run (-0.787 x d), so the net is the small difference. Same order and sign as predicted."
+      }
+    ],
+    "fixture_flags": "verify_knob_response also returns delta_length_ok / area_ok / passes = False for all three, and that is expected, not a failure of the script. Those two flags encode the Phase-B MZI fixture: (a) delta_length_ok asks that lengths.json's delta_length_um move by exactly the perturbation, which only a delta_length knob does -- the DRAWN device is a balanced MZI whose two arms are exact mirror images, so delta_length_um is 0 and none of these knobs is an arm-length imbalance; (b) area_ok compares the area response against width_um*delta_um, the response of a knob that extends one arm by delta at the guide width, which none of these three is. The substantive check -- that each declared knob rebuilds different polygons, by the amount physics says it should -- passes for all three, and lengths.json is now written from _arm_geometry, the same helper the bands are extruded from, so it cannot drift from the GDS.",
+    "raw": "knob_response.json"
+  }
+}

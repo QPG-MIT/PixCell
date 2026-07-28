@@ -1,0 +1,48 @@
+{
+  "device": "2x2 adiabatic directional coupler (symmetric arms, two parallel guides)",
+  "primary_knob": "coupling_length",
+  "gate_area_response": {
+    "param": "coupling_length",
+    "delta_um": 5.0,
+    "base_area_um2": 85.643151,
+    "perturbed_area_um2": 88.693151,
+    "area_growth_um2": 3.049999999999997,
+    "ok": true
+  },
+  "gate_two_guide_width": {
+    "param": "coupling_length",
+    "delta_um": 5.0,
+    "base_area_um2": 85.643151,
+    "perturbed_area_um2": 88.693151,
+    "area_growth_um2": 3.049999999999997,
+    "expected_area_growth_um2": 3.05,
+    "ok": true
+  },
+  "spec_optimization_harness_as_briefed": {
+    "param": "coupling_length",
+    "delta_um": 5.0,
+    "width_um": 0.305,
+    "base_value": 55.6,
+    "base_delta_length_um": 0.006999999999990791,
+    "perturbed_delta_length_um": 0.006999999999990791,
+    "delta_response_um": 0.0,
+    "delta_length_ok": false,
+    "base_area_um2": 0.0,
+    "perturbed_area_um2": 0.0,
+    "area_growth_um2": 0.0,
+    "expected_area_growth_um2": 1.525,
+    "area_ok": false,
+    "passes": false,
+    "note": "Two known-inapplicable checks, recorded verbatim for the audit: (a) delta_length is MZI-shaped - a symmetric coupler's arm delta is 0 identically, so no knob can move it; (b) its area numbers read 0.0 because spec_optimization._layer_area uses gdstk top_level(), which the gdsfactory $$$CONTEXT_INFO$$$ metadata cell defeats (it references every cell). The conductor gate's _layer_area handles that quirk and measures the same GDS pair at 85.643 -> 88.693 um^2."
+  },
+  "gap_knob_geometric_response": {
+    "param": "coupling_gap",
+    "delta_um": 0.1,
+    "base_gap_measured_um": 0.154,
+    "perturbed_gap_measured_um": 0.254,
+    "gap_response_um": 0.1,
+    "ok": true,
+    "note": "gap knob moves centerlines, not area; verified against the written GDS at the taper midpoint"
+  },
+  "reading": "coupling_length extends TWO parallel guides, so d(area)/d(knob) = (w_top_mid + w_bot_mid) = 0.61 um: the gate check passes exactly with width_um=0.61 and reads 2x the single-guide expectation with width_um=0.305 - that factor-2 is itself quantitative proof both guides respond. The MZI-shaped delta_length check cannot pass for a symmetric coupler (delta = 0 identically); the coupler's function knobs are verified by area (length) and measured-gap (gap) responses instead."
+}

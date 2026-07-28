@@ -1,0 +1,81 @@
+{
+  "topology_reasoning": {
+    "device": "Vertically oriented racetrack resonator surrounding a symmetric, slot-patterned inner coupling structure.",
+    "visual_evidence": [
+      "The outer material is a closed capsule/racetrack loop with long vertical straights and semicircular top/bottom returns after undoing the anisotropic image calibration.",
+      "Inside are two mirror-symmetric horizontal coupling rails joined toward the racetrack sidewalls by diagonal tapers.",
+      "Each inner rail contains two rectangular etched slots, producing a short periodic/segmented interaction region."
+    ],
+    "working_principle": "Light circulating in the outer racetrack is evanescently coupled through the inner rail structure. The closed-loop optical path sets resonance spacing, while guide width, rail-to-loop gap, and the dimensions and pitch of the etched slots control effective index and coupling strength.",
+    "function_defining_knobs": [
+      "ring_radius",
+      "ring_straight_length",
+      "wg_width",
+      "coupling_gap",
+      "coupler_rail_width",
+      "coupler_length",
+      "slot_length",
+      "slot_width",
+      "slot_pitch",
+      "transition_length"
+    ],
+    "coordinate_interpretation": "footprint_um is [3.0, 5.5]; x is the narrow physical axis and y the long physical axis. The PNG display is stretched in x by the calibration, so the apparently horizontal capsule is physically a vertical racetrack."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7656249100610721,
+      "dice": 0.867256579467481,
+      "sse": 162871.0,
+      "change_made": "Initial primitives-only model: constant-width capsule loop plus two slotted coupling rails and four access paths."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8012499257892763,
+      "dice": 0.8896599126167154,
+      "sse": 137257.0,
+      "change_made": "Replaced the semicircular capsule centerline with a fourth-order superelliptic centerline to flatten the top/bottom returns."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7544543910653119,
+      "dice": 0.8600444615801087,
+      "sse": 170610.0,
+      "change_made": "Tested two effective-radius 180-degree Euler U-bends joined by vertical straights; rejected because the target returns are broader near the cardinal extrema."
+    },
+    {
+      "iter": 4,
+      "iou": 0.8040975198212967,
+      "dice": 0.8914124774152408,
+      "sse": 122604.0,
+      "change_made": "Restored the superelliptic centerline and implemented eight sine-tapered path extrusions from 0.52 um on cardinal flats to 0.31 um in curved quadrants; inspection revealed four omitted sampling intervals at the right seam."
+    },
+    {
+      "iter": 5,
+      "iou": 0.8483992512587849,
+      "dice": 0.9179826822381729,
+      "sse": 94029.0,
+      "change_made": "Corrected loop sampling to 400 intervals so all eight tapered octants meet at a fully covered seam."
+    },
+    {
+      "iter": 6,
+      "iou": 0.8104561989049727,
+      "dice": 0.8953060553413719,
+      "sse": 121305.0,
+      "change_made": "Tested a 4.8 superellipse exponent and an explicit 0.15 um loop-to-access gap; rejected because both changes reduced overlap. Restored iteration 5 as the honest best."
+    }
+  ],
+  "best_iteration": 5,
+  "final_iou": 0.8483992512587849,
+  "knob_verification": {
+    "param": "coupler_length",
+    "delta_um": 5.0,
+    "width_um": 1.03,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 5.149999999999999,
+    "expected_area_growth_um2": 5.15,
+    "delta_length_ok": true,
+    "area_ok": true,
+    "passes": true
+  }
+}

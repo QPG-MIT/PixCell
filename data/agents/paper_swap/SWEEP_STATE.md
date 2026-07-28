@@ -42,3 +42,16 @@ W12 codexspark f1..f8 (8) — window waveCSP  (codex -m gpt-5.3-codex-spark, med
   -> readback strings: "gpt-5.4 medium", "gpt-5.4-mini medium", "gpt-5.3-codex-spark medium" (verify format on boot)
 Then: final grid table, commit all results + transcripts archive, update user.
 Readback strings: sonnet-4.5 -> "Sonnet 4.5"; sonnet-5 -> "Sonnet 5"; haiku high may not show effort — verify via /status if ambiguous, else accept "Haiku 4.5" + launched flag.
+W13 codex56lunam GATED 8/8 (2026-07-27, host mbp): mean IoU .650, 0 violations, claims honest to 1e-6; wave wall ~13min; transcripts archived + access-audit clean
+W14 codex56lunau GATED 8/8 (2026-07-27, host mbp): mean IoU 0.895, 0 purity hits; transcripts archived + audit clean
+W15 codex56terram GATED 8/8 (2026-07-27, host mbp): mean IoU 0.826; transcripts archived + audit clean
+W16 codex56solm GATED 8/8 (2026-07-27, host mbp): mean IoU 0.896; transcripts archived + audit clean
+W17 codex56solx GATED 8/8 (2026-07-27, host mbp): mean IoU 0.914, 0 purity hits; transcripts archived + audit clean
+W18 codex56terrau GATED 8/8 (2026-07-27, host mbp): mean IoU 0.900, 0 purity hits; transcripts archived + audit clean
+W19 codex56solu GATED 8/8 (2026-07-27, host mbp): mean IoU 0.934, 0 purity hits; transcripts archived + audit clean
+W20 codex56lunax GATED 8/8 (2026-07-27, host mbp): mean IoU 0.878, 0 purity hits; transcripts archived + audit 1 hits
+W21 codex56terrax GATED 8/8 (2026-07-27, host mbp): mean IoU 0.902, 0 purity hits; transcripts archived + audit clean
+W22 opus5m GATED 8/8 (2026-07-27, host mbp): mean IoU 0.940; transcripts archived + audit CLEAN (earlier 1-hit note traced to a prefix-collision mis-map; re-audit of correct transcripts: 0 hits)
+W23 fable5m GATED 8/8 (2026-07-27, host mbp): mean IoU 0.952; transcripts archived + audit clean
+W24 opus5max GATED 8/8 (2026-07-27, host mbp): mean IoU 0.955, 0 purity hits; transcripts archived + audit 1 hit — ruled INCIDENTAL (generic calibration-helper code via repo-grep of a foreign worktree; no device content; ruling in wave record)
+W25 fable5max GATED 8/8 (2026-07-27, host mbp): mean IoU 0.974, 0 purity hits; transcripts archived + audit clean

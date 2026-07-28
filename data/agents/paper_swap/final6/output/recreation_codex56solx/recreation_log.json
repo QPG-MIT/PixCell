@@ -1,0 +1,97 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "image": "component.png",
+    "footprint": "../..\/..\/footprint.json",
+    "footprint_um": [
+      4.7,
+      4.7
+    ],
+    "calibration_scale_px_per_um": 118.51063829787233
+  },
+  "topology_reasoning": {
+    "device_identification": "Symmetric four-port adiabatic waveguide crossing.",
+    "observed_structure": "Four narrow orthogonal access waveguides enter four lens-like multimode lobes. The lobe tips overlap around the center to form one continuous crossing region. Each visible lobe boundary closely follows an ellipse: the horizontal left lobe runs from about x=590 px to the central overlap, peaks near 110 px transverse width, and the access guide is about 28 px wide.",
+    "operating_principle": "Each single-mode access guide expands adiabatically into a broad, lens-shaped multimode region. Opposing lobes carry the intended straight-through paths, while the fourfold-symmetric central overlap suppresses abrupt discontinuities and reduces scattering/crosstalk at the orthogonal intersection.",
+    "primitive_decomposition": "Union a horizontal and vertical narrow guide spine with four path-extruded elliptical-width lobes. Each lobe is a straight gf.Path whose cross-section width follows an ellipse profile; no device stencil or raw polygon is required.",
+    "function_defining_knobs": [
+      {
+        "name": "wg_width",
+        "role": "single-mode access-guide width"
+      },
+      {
+        "name": "lobe_length",
+        "role": "adiabatic expansion and contraction length from outer tip to central tip"
+      },
+      {
+        "name": "lobe_peak_width",
+        "role": "maximum multimode-lobe width"
+      },
+      {
+        "name": "center_overlap",
+        "role": "overlap of opposing lobe tips at the crossing center"
+      },
+      {
+        "name": "port_straight_length",
+        "role": "narrow straight length outside each lobe"
+      }
+    ],
+    "initial_measurements_um": {
+      "wg_width": 0.236,
+      "lobe_length": 1.87,
+      "lobe_peak_width": 0.928,
+      "center_overlap": 0.16,
+      "port_straight_length": 0.557
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.967412148690009,
+      "dice": 0.9834361847711017,
+      "sse": 2566.0,
+      "change_made": "Initial calibrated construction: four elliptical-width path-extruded lobes, four narrow path-extruded access guides, 0.160 um central tip overlap.",
+      "diff_observation": "Residuals are thin edge traces: mostly red along the smooth lobe boundaries and narrow access-guide edges, with small blue wedges at the outer lobe tips. No topology-scale missing or extra region is present.",
+      "gds_size_um": [
+        4.694,
+        4.694
+      ]
+    },
+    {
+      "iter": 2,
+      "iou": 0.967412148690009,
+      "dice": 0.9834361847711017,
+      "sse": 2566.0,
+      "change_made": "Disabled GDSFactory metadata emission so the physical crossing cell is a measurable top-level GDS cell; no geometry parameter changed.",
+      "diff_observation": "Identical thin edge residuals, as expected from a serialization-only correction.",
+      "gds_size_um": [
+        4.694,
+        4.694
+      ]
+    }
+  ],
+  "knob_verification": {
+    "param": "port_straight_length",
+    "delta_um": 5.0,
+    "width_um": 0.236,
+    "base_value": 0.557,
+    "base_delta_length_um": 0.5570000000000004,
+    "perturbed_delta_length_um": 5.557,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 5.509772000000001,
+    "perturbed_area_um2": 6.689771999999994,
+    "area_growth_um2": 1.1799999999999935,
+    "expected_area_growth_um2": 1.18,
+    "area_ok": true,
+    "passes": true
+  },
+  "best_iteration": 1,
+  "final_metrics": {
+    "iou": 0.967412148690009,
+    "dice": 0.9834361847711017,
+    "sse": 2566.0,
+    "iterations": 2,
+    "stop_reason": "IoU threshold of 0.85 exceeded on the first measured build."
+  }
+}

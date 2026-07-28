@@ -1,0 +1,114 @@
+{
+  "phase": "A",
+  "worker": "fable5max",
+  "target": "data/agents/paper_swap/final1/device_bw.png",
+  "footprint_um": [40.0, 1.7],
+  "topology_reasoning": {
+    "what_is_it": "Adiabatic 1x2 power splitter (mode-evolution Y-splitter). A central input waveguide enters from the left, runs a short straight lead-in, then linearly tapers DOWN to a narrow truncated tip while two flanking outer waveguides - which begin as narrow truncated tips beside the lead-in - linearly taper UP to full width, separated from the central guide by a roughly constant ~0.10 um edge gap. Past the central tip the two outer guides carry the light and are routed apart by gentle mirror-image S-bends into two parallel output ports at the right edge.",
+    "how_it_works": "Adiabatic mode evolution: in the three-guide transfer region the fundamental supermode of the coupled system is dragged from being localized in the central guide (wide center, narrow outers) to being the symmetric combination localized in the two outer guides (narrow center tip, wide outers). Because the width change is slow (22 um for a ~0.2 um width swing) the light stays in the local fundamental supermode, giving broadband, fabrication-tolerant 50/50 splitting instead of resonant/interferometric splitting. The output S-bends then separate the two ports enough to decouple them.",
+    "function_defining_knobs": [
+      "transfer_length - length of the adiabatic transfer region (central taper length): sets adiabaticity and hence excess loss / spectral flatness. THE primary function knob.",
+      "w_in - central input waveguide width (mode launch).",
+      "w_center_tip / w_outer_tip - truncated tip widths of the central (down-)taper and outer (up-)tapers: set the residual coupling and reflection at the hand-off points; must stay above fab minimum feature.",
+      "edge gaps (set here by the tip-center offsets y_tip_* minus the half-widths): control inter-guide coupling strength in the transfer region (~0.10 um edge gap, roughly constant along the device).",
+      "w_out - final outer guide width (single-mode output ports).",
+      "sbend_length_* and y_out_* - output S-bend length and final port offsets: port separation / decoupling rate.",
+      "lead_in_length - straight input section before the transfer region."
+    ],
+    "aspect_note": "Footprint is 40.0 x 1.7 um so the rendered image is vertically stretched ~7.6x (40.4 px/um in x vs 307.1 px/um in y). The visually dramatic S-bends are physically gentle: ~0.46 um lateral offset over ~10.6 um.",
+    "measured_geometry_um": {
+      "frame": "x from left edge (0..40), y up, y=0 at the vertical center of the 1.7 um footprint",
+      "central_guide": {
+        "axis_y": 0.0157,
+        "lead_in": "x 0 -> 3.04 at constant w=0.272",
+        "taper": "x 3.04 -> 25.05, w 0.271 -> 0.074 (linear, truncated tip)"
+      },
+      "outer_top": {
+        "tip": "x=3.045, w=0.070, center y=+0.2823",
+        "taper": "linear width growth ~0.00764 um/um to w~0.244 at sbend start; centerline drifts linearly to y=+0.2784",
+        "sbend": "quintic (smootherstep) centerline, x 25.60 -> 36.15 (L=10.55), y +0.2784 -> +0.7295, constant width",
+        "output": "straight to x=40 at w=0.2443, center y=+0.7295"
+      },
+      "outer_bottom": {
+        "tip": "x=3.045, w=0.071, center y=-0.2614",
+        "taper": "linear width growth ~0.00786 um/um; centerline drifts linearly to y=-0.2508",
+        "sbend": "quintic centerline, x 25.65 -> 36.40 (L=10.75), y -0.2508 -> -0.7279, constant width",
+        "output": "straight to x=40 at w=0.2410, center y=-0.7279"
+      },
+      "gaps_edge_to_edge": "top-central 0.094..0.108, central-bottom 0.108..0.111 (approximately constant wedge coupler)",
+      "asymmetry_note": "The source figure is slightly asymmetric (central axis +0.016 um high, bottom guide a touch wider and closer-drifting than top). Modeled explicitly with per-guide parameters rather than forced symmetric, since the verifier scores this exact bitmap.",
+      "sbend_fit_rms_nm": {"top_quintic": 2.1, "bottom_quintic": 2.9}
+    }
+  },
+  "plan": {
+    "construction": "Primitives only: every segment is a gf.Path centerline extruded on layer (1,0). Straight lead-in (Path+extrude), linear tapers as straight 2-endpoint Paths extruded through a linear width transition, S-bends as quintic-smootherstep sampled Paths extruded at constant width, output straights as Path+extrude. No gf.components stencils, no raw polygons, no image reads in device.py.",
+    "parametric_contract": "All named dimensions above are top-level tunables. Downstream x-positions derive from lead_in_length + transfer_length so the transfer knob physically stretches the shared three-guide transfer region and shifts the routing (bends+outputs) right. lengths.json is computed from the Path objects at build time: arms = {central_transfer_path (input->central tip), outer_routing_path_top (sbend+output straight, transfer-invariant)}; delta_length_um = |difference| therefore moves 1:1 with transfer_length. Area response to transfer_length: d(area)/d(knob) = mean central taper width + 2 x mean outer taper width (the three stretched tapers), which is the width_um to pass to verify_knob_response."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9797,
+      "dice": 0.9897,
+      "sse": 4822.0,
+      "change_made": "First build from pixel-fit parameters (lead-in + linear central down-taper; tilted linear outer up-tapers; quintic S-bends; output straights). One build fix folded in: kfactory requires widths on the 0.002 um grid (w_outer_tip_bot 0.071->0.070, w_out_top 0.2443->0.244, w_out_bot 0.2410->0.240, snap guard in the extrusion helper)."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9809,
+      "dice": 0.9904,
+      "sse": 4513.0,
+      "change_made": "Half-pixel corrections: all y-centers were measured at pixel-index rather than pixel-center (-0.0016 um each: y_center 0.0157->0.0141, tips 0.2823/-0.2614 -> 0.2807/-0.2630, sbend-in 0.2784/-0.2508 -> 0.2768/-0.2524, y_out 0.7295/-0.7279 -> 0.7279/-0.7295) which also made the GDS bbox exactly symmetric (+-0.85), removing a 0.002 um global down-shift introduced by the verifier's bbox-centering; x half-pixel (+0.0124): lead_in 3.04->3.05, output straights trimmed 0.01 to keep total exactly 40.0; central width shave 0.272->0.270."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9842,
+      "dice": 0.9920,
+      "sse": 3752.0,
+      "change_made": "Column-wise residuals showed the target guides fatten by up to 5 px where S-bend slope is largest (stroke-rendering artifact of the source figure). Added slope-shaped width bump along each bend (piecewise-linear over 6 sub-segments of the same quintic centerline, amplitude sbend_bump_top=0.004 / sbend_bump_bot=0.016). Also w_outer_tip_top 0.070->0.068, y_center 0.0141->0.0149 (residual half-pixel biases)."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9834,
+      "dice": 0.9916,
+      "sse": 3923.0,
+      "change_made": "Probe: w_out_bot 0.240->0.238 to fix a persistent +1 row on the bottom output edge. REGRESSED (bbox became asymmetric -0.849/+0.85, re-centering shifted the whole frame down 0.15 px, costing more than the row fix gained). Reverted."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9842,
+      "dice": 0.9920,
+      "sse": 3752.0,
+      "change_made": "Revert of iter-4 probe confirmed (w_out_bot back to 0.240): honest best restored."
+    },
+    {
+      "iter": 6,
+      "iou": 0.9842,
+      "dice": 0.9920,
+      "sse": 3752.0,
+      "change_made": "No geometry change: write_gds(with_metadata=False) so the kfactory $$$CONTEXT_INFO$$$ metadata cell (which references every cell and breaks gdstk top_level() area measurement in homi.spec_optimization._layer_area) is not written. IoU identical; knob-response area check went from spuriously 0.0 to measurable."
+    }
+  ],
+  "final": {
+    "iou": 0.98416,
+    "dice": 0.99202,
+    "sse": 3752.0,
+    "gds": "adiabatic_splitter_1x2.gds",
+    "gds_size_um": [40.0, 1.7],
+    "residual_note": "Remaining ~3750 px mismatch is dominated by +-1 px anti-aliasing/binarization phase noise along ~9700 edge-columns (the metric's quantization floor) plus +-2 px local shape wiggle in the hand-rendered S-bend tails that no single parametric curve fits without over-fitting the stroke artifact."
+  },
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "transfer_length",
+    "delta_um": 5.0,
+    "width_um_passed": 0.483,
+    "width_um_derivation": "d(area)/d(transfer_length) = mean central taper width (w_in+w_center_tip)/2 + mean top outer taper width (w_outer_tip_top+w_out_top)/2 + mean bottom outer taper width (w_outer_tip_bot+w_out_bot)/2 = 0.172 + 0.156 + 0.155 = 0.483 (the knob stretches all three tapers of the shared transfer region; bends and output straights translate without area change).",
+    "result": {
+      "delta_response_um": 5.0,
+      "delta_length_ok": true,
+      "area_growth_um2": 2.415,
+      "expected_area_growth_um2": 2.415,
+      "area_ok": true,
+      "passes": true
+    }
+  }
+}

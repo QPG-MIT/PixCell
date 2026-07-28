@@ -1,0 +1,98 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "image": "component.png",
+    "footprint_um": [
+      3.0,
+      5.5
+    ],
+    "calibration": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_identification": "A compound slotted racetrack resonator: one tall closed outer resonant path with two transverse, mirror-symmetric bridge/coupling sections joined into the outer sidewalls. Each bridge carries a compact two-window slotted loading section at its center.",
+    "visual_evidence": [
+      "The outer black material is a closed, vertically elongated racetrack with nearly uniform physical stroke width despite the source image's anisotropic pixel scale.",
+      "At the vertical center only the outer sidewalls remain; the upper and lower internal structures are therefore separate transverse bridges, not a second closed inner ring.",
+      "Each bridge narrows into an approximately uniform guide, widens into a rectangular central loading region, and contains two white rectangular slots separated by a narrow live material post.",
+      "The supplied 3.0 um by 5.5 um footprint and calibrated mask transitions imply an outer guide width near 0.5 um, bridge width near 0.45 um, central transfer length near 0.89 um, and slot dimensions near 0.33 um by 0.55 um."
+    ],
+    "operating_principle": "The outer loop supplies the circulating resonant path. The two transverse bridges load and partition the loop's interior, while their slotted central regions concentrate the optical field and control coupling/phase loading. Resonance and modal confinement are set mainly by the loop dimensions and guide width; transfer strength and spectral splitting are set mainly by bridge placement, taper extent, slotted transfer length, slot gap, and slot dimensions.",
+    "function_defining_knobs": {
+      "waveguide_width": "Outer-loop confinement and round-trip optical path.",
+      "outer_half_width": "Outer-loop bend span and resonant path length.",
+      "outer_half_height": "Outer-loop round-trip length and free spectral range.",
+      "outer_flat_length": "Length of the flat top and bottom loop sections.",
+      "bridge_width": "Width/confinement of each transverse bridge.",
+      "bridge_y_offset": "Bridge-to-bridge separation and cavity partitioning.",
+      "taper_length": "Transfer from the central straight bridge into the outer sidewall.",
+      "tip_width": "Live bridge stroke width at the taper/sidewall interface.",
+      "transfer_length": "Length of each central slotted loading region.",
+      "slot_length": "Longitudinal aperture length controlling material duty cycle.",
+      "slot_height": "Transverse aperture height controlling rail thickness.",
+      "coupling_gap": "Material post between the two slots, controlling near-field interaction.",
+      "bridge_imbalance": "Differential upper/lower bridge path length; the response-verification knob."
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7969460371265503,
+      "dice": 0.8870005227323643,
+      "sse": 139214.0,
+      "change_made": "Initial primitives-only build: stroked super-racetrack outer path, mirrored tapered bridges, and boolean-carved two-slot loading blocks."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8201787172208199,
+      "dice": 0.901206798498477,
+      "sse": 120037.0,
+      "change_made": "Reduced the outer super-racetrack curve power from 4 to 2, correcting the outer boundary curvature; the remaining crescent diff identified independently rounded inner and outer loop boundaries."
+    },
+    {
+      "iter": 3,
+      "iou": 0.8641000890875373,
+      "dice": 0.9270962371022767,
+      "sse": 80392.0,
+      "change_made": "Rebuilt the outer loop as a boolean difference of independently parameterized rounded solids assembled from taper primitives, matching the target's 0.52 um top/bottom walls and thinner curved sidewalls."
+    }
+  ],
+  "knob_verification": {
+    "method": "homi.spec_optimization.verify_knob_response",
+    "param": "bridge_imbalance",
+    "delta_um": 0.05,
+    "width_um": 0.43,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 0.04999999999999982,
+    "delta_response_um": 0.04999999999999982,
+    "delta_length_ok": true,
+    "base_area_um2": 7.296101999999997,
+    "perturbed_area_um2": 7.317601999999996,
+    "area_growth_um2": 0.02149999999999963,
+    "expected_area_growth_um2": 0.021500000000000002,
+    "area_ok": true,
+    "passes": true
+  },
+  "final_selection": {
+    "iteration": 3,
+    "reason": "First candidate to exceed the Phase A IoU threshold of 0.85; refinement stopped per the six-iteration discipline.",
+    "iou": 0.8641000890875373,
+    "dice": 0.9270962371022767,
+    "sse": 80392.0,
+    "gds_size_um": [
+      3.0,
+      5.5
+    ],
+    "size_match": [
+      true,
+      true
+    ],
+    "artifacts": {
+      "script": "device.py",
+      "gds": "device.gds",
+      "raster": "raster.png",
+      "diff": "diff.png",
+      "metrics": "metrics.json",
+      "knob_response": "knob_response.json"
+    }
+  }
+}

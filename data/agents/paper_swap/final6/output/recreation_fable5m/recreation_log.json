@@ -1,0 +1,46 @@
+{
+  "topology_reasoning": {
+    "device": "Low-loss waveguide crossing with lens-shaped (elliptical) mode-expander tapers — four-fold symmetric, one arm per port (N/S/E/W).",
+    "how_it_works": "A direct crossing of two single-mode wires scatters strongly at the intersection. This design expands each of the four access waveguides through a lens/ellipse-shaped taper so the mode is wide, flat-phase and self-imaging at the crossing point; the expanded beam crosses the orthogonal arm with minimal diffraction into it, then the symmetric taper refocuses back into the narrow wire. Black = material on layer (1,0).",
+    "pixel_evidence": {
+      "footprint_um": [4.7, 4.7],
+      "device_bbox_px": 555,
+      "um_per_px": 0.008453,
+      "stub_width_um": 0.237,
+      "stub_length_um": 0.57,
+      "lens_max_width_um": 0.913,
+      "peak_flat_region_um": "r=0.70..0.90 from center (~0.2 um flat top)",
+      "arm_half_length_um": 2.35,
+      "profile_shape": "widening is faster-than-sine, consistent with an elliptical (quarter-ellipse) width profile"
+    },
+    "function_defining_knobs": [
+      "stub_width_um (access waveguide width — sets the guided mode)",
+      "lens_max_width_um (expanded beam width at the lens waist — sets self-imaging quality at the crossing)",
+      "taper_up_length_um / taper_down_length_um (adiabaticity / focal condition of the lens taper)",
+      "stub_length_um (port lead length)",
+      "flat_length_um (flat-top length at max width)"
+    ],
+    "plan": "One parametric arm = straight stub + elliptical up-transition + short straight at max width + elliptical down-transition ending at the center; four rotated copies unioned. Iterate on taper lengths / max width / center tip width against IoU diff."
+  },
+  "iterations": [
+    {"iter": 1, "iou": 0.8969, "dice": 0.9457, "sse": 7895, "change_made": "Initial build: stub + quarter-ellipse up/down transitions + flat top, 4 rotated arms. (First run hit the 2-dbu port-width snap error; widths snapped in _xs.) Diff: blue crescents on every lobe flank — tapers far too slender."},
+    {"iter": 2, "iou": 0.9831, "dice": 0.9915, "sse": 1309, "change_made": "Root cause found: gf.path.straight defaults to npoints=2, so the transition width callable was sampled linearly. Dense paths (npoints=201) + empirically fitted profile w0+(w1-w0)*sin(pi*s/2)^0.8 (fit to per-column target widths). Diff flipped to a thin red rim (slightly fat)."},
+    {"iter": 3, "iou": 0.9850, "dice": 0.9924, "sse": 1157, "change_made": "taper_shape_exp 0.8 -> 0.88 (thinner flanks), lens_max_width_um 0.914 -> 0.910."},
+    {"iter": 4, "iou": 0.9863, "dice": 0.9931, "sse": 1061, "change_made": "taper_shape_exp 0.88 -> 0.84."},
+    {"iter": 5, "iou": 0.9846, "dice": null, "sse": null, "change_made": "Probe taper_shape_exp 0.80 (worse) and 0.82 (0.9857, worse)."},
+    {"iter": 6, "iou": 0.98626, "dice": 0.99308, "sse": 1059, "change_made": "taper_shape_exp 0.86 — best; kept. Also made the script contract-compliant: GDS + lengths.json written next to the script via __file__, with_metadata=False so gdstk top_level() sees the real cell (kfactory $$$CONTEXT_INFO$$$ was the only top cell otherwise)."}
+  ],
+  "final": {
+    "iou": 0.9862620968788107,
+    "dice": 0.9930835396080019,
+    "sse": 1059.0,
+    "gds": "crossing.gds",
+    "size_match": [true, true]
+  },
+  "knob_verification": {
+    "note": "verify_knob_response's pass criteria are MZI-shaped: (a) lengths.json delta_length_um must move by delta_um — identically 0 for a 4-fold symmetric crossing (both through-paths change together), and (b) area growth must equal width_um*delta_um — assumes the knob lengthens ONE single-width waveguide, but every knob here touches all 4 arms. Both checks were run honestly and the raw area numbers prove the knobs move real geometry.",
+    "lens_max_width_um": {"delta_um": 0.2, "area_growth_um2": 1.002022, "delta_length_ok": false, "area_ok": false, "passes": false, "interpretation": "primary function knob; +0.2 um on the lens waist grows layer-(1,0) area by 1.002 um2 — real geometric response across the 4 lobes"},
+    "stub_length_um": {"delta_um": 0.5, "area_growth_um2": 0.472, "delta_length_ok": false, "area_ok": false, "passes": false, "interpretation": "area growth is exactly 4 stubs x 0.236 um x 0.5 um = 0.472 um2 — geometry responds precisely as physics predicts, 4x the single-arm contract expectation"},
+    "gate_knob_response": {"param": "lens_max_width_um", "delta_um": 0.2, "area_growth_um2": 1.002022, "ok": true, "note": "homi.conductor.gate.knob_response (area-must-move form) passes"}
+  }
+}

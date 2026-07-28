@@ -1,0 +1,11 @@
+{
+  "topology_reasoning": "The binary image shows a symmetric 1x2 adiabatic splitter. A broad central input waveguide enters from the left. Two narrow outer arms begin after a short offset, linearly widen over most of the footprint, and then follow mirrored smooth S-bends to the upper and lower outputs. The central guide narrows linearly to a tip and terminates between the two arms. This is a three-guide adiabatic/Y-splitter-like topology, not a directional coupler: there is no parallel constant-width coupling section and the center guide ends before the output bends. Function-defining knobs are input width, output arm width, taper length, tip width, initial arm offset, arm separation, bend length/offset, and bend smoothing.",
+  "iterations": [
+    {"iter": 1, "iou": 0.443199026, "dice": 0.614189752, "sse": 146344.0, "change_made": "Initial primitives-only splitter with 0.216/0.192 um guides and 5.7 um S-bends; output length was short."},
+    {"iter": 2, "iou": 0.549527588, "dice": 0.709284032, "sse": 121960.0, "change_made": "Added 8.3 um straight output sections to reach the 40 um calibrated footprint."},
+    {"iter": 3, "iou": 0.624054592, "dice": 0.768514304, "sse": 107814.0, "change_made": "Scaled input/output/tip widths and arm spacing from direct target-versus-raster pixel widths."},
+    {"iter": 4, "iou": 0.661697276, "dice": 0.796411339, "sse": 94809.0, "change_made": "Lengthened mirrored S-bends from 5.7 to 7.0 um and shortened output straights to preserve footprint."},
+    {"iter": 5, "iou": 0.784006222, "dice": 0.878927677, "sse": 56372.0, "change_made": "Lengthened S-bends to 8.0 um and reduced bend offset to 0.48 um, improving curve timing and vertical extent."},
+    {"iter": 6, "iou": 0.847510962, "dice": 0.917462445, "sse": 38428.0, "change_made": "Lengthened S-bends to 9.0 um, reduced bend offset to 0.465 um, and shortened output straights to 5.0 um; calibrated footprint now matches."}
+  ]
+}

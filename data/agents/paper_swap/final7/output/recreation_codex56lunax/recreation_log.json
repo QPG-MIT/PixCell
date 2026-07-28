@@ -1,0 +1,96 @@
+{
+  "device_interpretation": "A vertically symmetric closed rounded-return waveguide enclosing two shorter central branch bars. The outer path is a racetrack-like loop with a nearly constant guide width. At the left and right, the inner branches enter the central upper and lower bars through straight-to-diagonal transitions. Each central bar is a broad rectangular interaction region containing two repeated rectangular clearances, leaving top and bottom rails around each opening.",
+  "topology_reasoning": {
+    "outer_structure": "One continuous rounded outer loop, represented as a closed polygonal centerline with straight side sections and sampled semicircular endcaps, extruded at wg_width.",
+    "inner_structure": "Two mirrored horizontal branch assemblies centered vertically about the footprint midpoint. Each has a rectangular bar and two rectangular clearances; the side transitions are diagonal centerline segments joined to short horizontal sections.",
+    "symmetry": "Mirror symmetry about both the vertical and horizontal footprint centerlines is strongly visible in the target.",
+    "working_dimensions_um": {
+      "footprint_x": 3.0,
+      "footprint_y": 5.5,
+      "guide_width": 0.5,
+      "central_bar_x_span": 0.89,
+      "central_bar_y_span": 1.04,
+      "clearance_x_span": 0.33,
+      "clearance_y_span": 0.55,
+      "outer_loop_centerline_x_span": 2.7,
+      "outer_loop_centerline_y_span": 5.0
+    }
+  },
+  "function_defining_knobs": [
+    "wg_width",
+    "outer_radius_x",
+    "outer_radius_y",
+    "branch_y_offset",
+    "branch_angle_run",
+    "central_bar_length",
+    "central_bar_height",
+    "clearance_length",
+    "clearance_gap",
+    "delta_length"
+  ],
+  "calibration": "calibration.json was generated from component.png and footprint.json before coding.",
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7692533157470506,
+      "dice": 0.8695796231103748,
+      "sse": 160599.0,
+      "change_made": "Initial rounded outer return plus four diagonal branch paths and two perforated central bars; corrected the first path-closure bug so the footprint matched 3.0 x 5.5 um."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7415906938996348,
+      "dice": 0.8516245481756939,
+      "sse": 191042.0,
+      "change_made": "Increased guide width, tightened central opening dimensions/placement, moved branch side heights outward, and moved branch entries toward the bar edges; this overfilled the transition wedges."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7803720675543259,
+      "dice": 0.8766393067785128,
+      "sse": 152413.0,
+      "change_made": "Retuned the outer loop to a taller rounded return and removed the long horizontal branch stubs, leaving only diagonal transitions. This was the best pre-final candidate."
+    },
+    {
+      "iter": 4,
+      "iou": 0.7766644224102166,
+      "dice": 0.8742950132998064,
+      "sse": 155574.0,
+      "change_made": "Tried a target-sampled outer centerline assembled from explicit symmetric gf.Path samples; it introduced a seam notch and did not improve the score."
+    },
+    {
+      "iter": 5,
+      "iou": 0.7722537328216988,
+      "dice": 0.8714934193899571,
+      "sse": 158646.0,
+      "change_made": "Removed the explicit loop-closing point as a seam experiment; the open-path cap was worse than the closed loop."
+    },
+    {
+      "iter": 6,
+      "iou": 0.7964484290849027,
+      "dice": 0.8866922269409175,
+      "sse": 139993.0,
+      "change_made": "Restored the best closed outer return, narrowed the diagonal branch width, added short narrow side connectors at the measured junction height, and applied a small entry inset."
+    }
+  ],
+  "best_iteration": 6,
+  "final_iou": 0.7964484290849027,
+  "final_dice": 0.8866922269409175,
+  "final_sse": 139993.0,
+  "knob_response": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.516,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 9.551626,
+    "perturbed_area_um2": 12.131626,
+    "area_growth_um2": 2.58,
+    "expected_area_growth_um2": 2.58,
+    "area_ok": true,
+    "passes": true
+  }
+}

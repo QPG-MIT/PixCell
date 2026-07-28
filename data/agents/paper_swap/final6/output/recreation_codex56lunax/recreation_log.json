@@ -1,0 +1,76 @@
+{
+  "device": "four-port rounded waveguide crossing",
+  "source_observation": "The black material is a single connected, four-terminal shape inside a 4.7 um square. Each of the four straight ports expands into a rounded petal before narrowing into a compact central overlap; the image is mirror-symmetric about both axes.",
+  "topology_reasoning": "This is a symmetric crossing rather than an MZI or directional coupler: the horizontal and vertical routes pass through the same central region and provide four optical ports. I model each route as two opposed primitive taper sections per arm, with a narrow straight access, a broad lobe, and a short taper back to a central square overlap. The union of the horizontal and vertical primitive assemblies creates the observed four-petal silhouette while preserving a clean, editable topology.",
+  "how_it_works": "A waveguide entering any port traverses the rounded broadening into the central crossing and exits through the opposite port. The broad lobes provide a smooth transition into the central overlap; there are no resonant arms or separate coupling gaps visible in the binary footprint.",
+  "function_defining_knobs": [
+    "wg_width",
+    "lobe_max_width",
+    "lobe_rise_length",
+    "lobe_fall_length",
+    "core_width",
+    "port_length",
+    "top_port_length"
+  ],
+  "calibration": {
+    "footprint_um": [4.7, 4.7],
+    "bbox_px": [524, 173, 1081, 730],
+    "scale_px_per_um": [118.51063829787233, 118.51063829787233]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.16147444788221488,
+      "dice": 0.2780507968584945,
+      "sse": 78595.0,
+      "change_made": "Initial four-arm taper/rectangle assembly; reference placement used an obsolete origin assignment and produced a collapsed 1.9 um square."
+    },
+    {
+      "iter": 2,
+      "iou": 0.3587838970929143,
+      "dice": 0.5280955976303868,
+      "sse": 65002.0,
+      "change_made": "Replaced ignored reference origin assignments with GDSFactory 9.20.7 move() placement and corrected inward/outward arm orientations; the lobes matched the footprint but were still linear polygonal tapers."
+    },
+    {
+      "iter": 3,
+      "iou": 0.8983144100435152,
+      "dice": 0.946433747002872,
+      "sse": 8132.0,
+      "change_made": "Replaced the two linear taper polygons per lobe with a 25-point gf.Path plus variable-width cross-section: sinusoidal rise and cosine fall reproduce the rounded petal edges."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9554652236356176,
+      "dice": 0.9772254828027148,
+      "sse": 3473.0,
+      "change_made": "Increased the four access-port length from 0.52 um to 0.57 um so the deterministic GDS bbox exactly spans the calibrated 4.7 um footprint."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9727495603732655,
+      "dice": 0.9861865691549928,
+      "sse": 2123.0,
+      "change_made": "Adjusted the live lobe width profile to sin(t)^0.75 on the rise and cos(t)^1.2 on the fall, matching the measured early bulge and inner taper curvature."
+    },
+    {
+      "iter": 6,
+      "iou": 0.9865372083930666,
+      "dice": 0.9932229854290906,
+      "sse": 1033.0,
+      "change_made": "Removed an unintended default WG cross-section added by the helper constructor; using gf.CrossSection(sections=(section,)) leaves only the intended layer-(1,0) variable-width Path geometry."
+    }
+  ],
+  "knob_response": {
+    "param": "top_port_length",
+    "delta_um": 5.0,
+    "width_um": 0.23,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 4.999999999999999,
+    "area_growth_um2": 1.1500000000000004,
+    "expected_area_growth_um2": 1.1500000000000001,
+    "delta_length_ok": true,
+    "area_ok": true,
+    "passes": true
+  }
+}

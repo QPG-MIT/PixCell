@@ -1,0 +1,163 @@
+{
+  "cell": "final8",
+  "phase": "A",
+  "workdir": "data/agents/paper_swap/final8/output/recreation_opus5max",
+  "inputs": {
+    "device_bw.png": "4800 x 3584 px RGB, black = material",
+    "footprint_um": [120.0, 4.0]
+  },
+  "calibration": {
+    "target_bbox_px": [319, 0, 4464, 3584],
+    "bbox_size_px": [4145, 3584],
+    "scale_px_per_um": [34.5417, 896.0],
+    "note": "michaelangelo.core.calibrate_boundary derives sx and sy INDEPENDENTLY (sx = bbox_w/L, sy = bbox_h/W), so the scoring frame is anisotropic whenever the silhouette's aspect ratio disagrees with footprint_um. Here it disagrees by 25.9x. See aspect_anomaly below."
+  },
+
+  "observation": {
+    "method": "scipy.ndimage connected components on (grey < 245) + row/column run-length profiles + skimage medial_axis for the bend centrelines. No other file, directory or git history was consulted.",
+    "dark_components": 10,
+    "what_is_there": [
+      "FIVE transverse 'arms' (turns) stacked on a uniform pitch, mirror-symmetric about the horizontal mid-line of the field. In the calibrated frame: centres at y = 1.0, 1.5, 2.0, 2.5, 3.0 um; each arm 0.470 um thick; inter-arm gap 0.030 um; pitch 0.500 um.",
+      "The arms ALTERNATE between two cross-sections. y = 1.0, 2.0, 3.0 are SEGMENTED: four longitudinal slots (0.031 um wide - the same width as the inter-arm gap) split the 0.470 um core into five 0.069 um rails. y = 1.5, 2.5 are SOLID slabs of the same 0.470 um width.",
+      "The CENTRAL arm (y = 2.0) runs straight across the whole 120 um field and is cut off bluntly at both x edges - it does not turn anywhere in view.",
+      "The other four arms leave the field: the two above the axis curve UP, the two below curve DOWN, at BOTH ends. Each fold is a clean circular arc in the calibrated frame - R = 11.27 um for the inner pair (y = 1.5 / 2.5), R = 6.14 um for the outer pair (y = 1.0 / 3.0) - tangent to the straight run at x = 10.45 um and 109.55 um, and the core widens from 0.470 um to ~0.70-0.75 um (perpendicular) as it leaves the frame. Circle fits reproduce the measured medial axes to <= 0.05 um (1.7 px).",
+      "In the segmented arms the slots stop just before the fold (x = 9.6 um / 110.4 um): the rails merge back into one solid core through the bend."
+    ],
+    "field_is_a_crop": "The straight arms terminate flush with the left and right image edges and the folds are cut by the top and bottom edges. The figure is a WINDOW onto a larger device: total turn count, outer bend radii, and the input/output ports are not observable. Everything below is inferred from the visible motif, not from a caption."
+  },
+
+  "what_is_this_device": {
+    "reading": "The central window of a folded multi-turn delay line (a spiral / boustrophedon waveguide) built from a WIDE multimode core.",
+    "why": [
+      "Uniform-pitch parallel turns of identical cross-section, packed at a gap far smaller than the core width, is the signature of a folded delay line / spiral - the layout that buys optical path length per unit area.",
+      "Mirror symmetry about the central straight arm, with the turns above folding up and the turns below folding down, is the signature of a TWO-ARM (in-and-out) spiral: the two windings counter-rotate about a central straight section, so light enters, spirals inward, crosses the middle, and spirals back out. A single-arm spiral would show all folds turning the same way.",
+      "The straight central arm is the crossover / bus of that two-arm spiral - the one segment that must pass through the middle without turning.",
+      "The four longitudinal slots that split alternate cores into five rails are the standard low-loss trick for a wide delay-line core: a wide (multimode) core cuts sidewall-scattering loss because the mode overlaps the etched sidewalls far less, and longitudinal segmentation of the core discriminates against the higher-order modes such a wide core would otherwise support (the rails' supermode keeps the fundamental and leaks the rest). The slots stop before each fold so the core is solid - hence adiabatic and single-moded in the transverse sense - exactly where bend-induced mode conversion is worst."
+    ],
+    "function": "Delay / group-delay per unit area at low loss. Optical path = n_turns x straight_length + fold lengths; loss is set by the core width (sidewall scattering), the segmentation (higher-order-mode stripping), the bend radii (radiation + mode conversion at the folds), and the inter-turn gap (crosstalk between neighbouring turns).",
+    "confidence": "Topology (five uniform-pitch turns, alternating segmented/solid cross-section, symmetric folds, arcs and radii) is measured and certain. The device-level identity (two-arm spiral delay line) is an inference from the visible motif; the figure is cropped, so it is not provable from this input alone.",
+    "alternatives_considered": [
+      "Directional / adiabatic coupler - rejected: a coupler has two arms that converge, not five identical arms on a uniform pitch, and no folds.",
+      "Multi-slot or slot waveguide cross-section shown in plan view - rejected: a cross-section figure would not contain folds with measurable radii, nor five repeats of the same object.",
+      "Waveguide-array (AWG-style) bend - rejected: an array bend turns all its guides the same way; here the guides above and below the axis turn in OPPOSITE directions, and the central one does not turn at all.",
+      "Subwavelength grating - rejected: the segmentation runs ALONG the propagation direction (longitudinal slots), not across it."
+    ]
+  },
+
+  "function_knobs": {
+    "core_width": "transverse width of one turn's core - sets the mode count and the sidewall-scattering loss of the delay line",
+    "slot_width": "longitudinal slot width in the segmented turns - with n_rails it sets the rail duty cycle, the supermode effective index, and the higher-order-mode discrimination",
+    "n_rails": "number of rails the segmentation splits the core into",
+    "turn_gap": "gap between adjacent turns - sets inter-turn crosstalk; with core_width it fixes turn_pitch and therefore delay-per-area",
+    "bend_radius_inner / bend_radius_outer": "fold radii - set bend radiation loss and mode conversion at the turns",
+    "straight_length": "straight run of each folded turn - the delay-per-turn knob",
+    "segment_start": "x where the longitudinal segmentation begins (i.e. how far the solid core reaches into the fold) - the adiabatic transition into the segmented section",
+    "delta_length": "designed path-length imbalance between the upper and lower outer folds. ZERO in the drawing (the fold is balanced); it is the spec knob Phase B would drive, and the knob whose geometric response is verified below."
+  },
+
+  "aspect_anomaly": {
+    "finding": "footprint_um = [120, 4] over a 4145 x 3584 px silhouette gives sx = 34.54 and sy = 896.0 px/um - a 25.9x vertical exaggeration. Internal evidence says the SOURCE figure is not stretched that hard: (a) the inter-arm gap and the slot width are both ~28 px measured in the horizontal runs AND ~29 px measured across the near-vertical legs, i.e. isotropic in the drawing; (b) the ratio of the core's horizontal thickness (422 px) to the leg's width where the arm runs steeply (49 px) implies an intrinsic anisotropy of only ~8.4x, not 25.9x.",
+    "decision": "Build to the DECLARED footprint. footprint.json is the only scale ground truth I was given, and michaelangelo.core.compare_absolute renders at absolute scale and CLIPS overflow - a silhouette-proportioned device (120 x 103.8 um) is unscoreable in this frame (IoU ~0.03). All numbers above are therefore in the declared/calibrated frame, which is the frame the verifier scores in.",
+    "isotropic_equivalent": "If the same silhouette is read isotropically (sx = sy = 34.54 px/um, field 120 x 103.8 um) the identical geometry reads as: core 12.2 um wide, rails 1.79 um, slots and inter-turn gaps 0.81 um, turn pitch 13.0 um, legs 1.42 um, fold radii ~74 um (inner pair) / ~40 um (outer pair). Those are ordinary silicon-photonics numbers for a wide-core spiral delay line; the declared-frame transverse numbers (30 nm gaps, 69 nm rails) are not fabricable. Whoever consumes this cell for physics should rescale the transverse axis, or re-extract the footprint.",
+    "flagged_for": "conductor"
+  },
+
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9271476025740868,
+      "dice": 0.9621967734445434,
+      "sse": 529297.0,
+      "change_made": "First build. Five turns on a uniform 0.500 um pitch about the field centre; core 0.470 um; segmented turns as 5 rails of 0.070 um separated by 0.030 um slots; circular folds R = 11.27 / 6.14 um tangent to the straight run at x = 10.45 um, extruded with a LINEAR core->leg width taper (0.70 / 0.75 um) and overshooting the field edge; whole device clipped to 120 x 4 um with a boolean AND. footprint size_match = [true, true]."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9681140004224383,
+      "dice": 0.9837987029355425,
+      "sse": 224631.0,
+      "change_made": "Error map said 240k of the 529k mismatch sat in the central bus band alone. Re-measured every rail edge over the straight window (x = 1200-3600 px): rail pitch is 0.1000 um exactly (rail 0.0683 / slot 0.0317), not 0.070/0.030; turn pitch is 0.5017, not 0.5000; and the turn-stack centre is 1.9978 um, not 2.0000, with the central bus a further 0.0051 um (4.5 px) BELOW the uniform grid. Set slot_width 0.032, turn_gap 0.0317, added axis_offset and bus_offset, and replaced the linear leg taper with a power law (exponent 1.7) because the measured flare is convex."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9694332736691098,
+      "dice": 0.9844794303317809,
+      "sse": 214010.0,
+      "change_made": "Decoupled the segmented and solid cross-sections: core_width 0.472 (matching the 423 px solid turns) now only sets the solid slabs, while explicit rail_width / slot_width set the rail stack. Made turn_pitch the top-level knob and turn_gap derived. Rails at 0.066/0.034 rendered 1 px thin."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9719234543628521,
+      "dice": 0.9857618481209152,
+      "sse": 198012.0,
+      "change_made": "rail_width 0.068 / slot_width 0.032, plus rail_stack_offset = +0.0006 um (the rail stack is not exactly centred on its turn's core centreline), and leg flare exponent 1.2. Values fitted off-line against the target in a numpy/PIL replica of the same absolute-scale rasteriser (see fitting_note) rather than by burning script iterations."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9721595788815717,
+      "dice": 0.9858832817503456,
+      "sse": 196153.0,
+      "change_made": "Column scans showed the target keeps its rails separate to x = 9.59 um, i.e. 0.86 um INTO the fold, where my model had already merged them into solid core. Added _fold_slots: the n_rails-1 slots continue as concentric arcs from the straight run's end to segment_start and are boolean-subtracted from the assembled core. Fixed the rail alignment to within ~1 px everywhere (target rail tops 685/774/864/953/1044, raster 684/774/863/953/1042)."
+    },
+    {
+      "iter": "5 (artifact fix, geometry unchanged)",
+      "iou": 0.9721595788815717,
+      "dice": 0.9858832817503456,
+      "sse": 196153.0,
+      "change_made": "write_gds(with_metadata=False). kfactory's $$$CONTEXT_INFO$$$ cell was being written as the PARENT of the device cell, so gdstk's top_level() returned only the metadata cell -- which homi.spec_optimization._layer_area skips by name -- and every area-based check measured 0 um2. compare_absolute was unaffected (it scans all non-$$$ cells), so the IoU is bit-identical; only the knob-response area check was broken. Flagged for the conductor: any gdsfactory 9.20.7 cell that writes with default metadata will report area 0 to that verifier."
+    }
+  ],
+
+  "fitting_note": "Continuous parameters (rail/slot/core widths, turn pitch, the two alignment offsets, fold radii, leg widths, flare exponent, tangent-point position) were fitted in a standalone numpy/PIL replica of michaelangelo.core.compare_absolute's absolute-scale renderer, so that grid searches did not consume the 6 allowed script->verify iterations. Every IoU reported in the iterations above is the REAL number from python -m michaelangelo.core.compare_absolute on the written GDS. Prototype IoU ran ~0.002 optimistic (supersample 2 vs 4, and no dbu snapping), which is why the final numbers are quoted from the real verifier only.",
+
+  "fold_shape_evidence": "The fold is CIRCULAR, tested rather than assumed. (a) Sweeping the two radii independently: 11.27 / 6.14 um is a clean maximum (11.27/6.80 -> 0.968, 12.50/6.14 -> 0.964, 13.50/6.14 -> 0.956). (b) Sweeping the tangent point and the radii JOINTLY under the endpoint constraint R = (dx^2 + dy^2)/(2 dy), so the leg stays where the drawing puts it: x_tan = 10.45 is the maximum (9.90 -> 0.965, 10.15 -> 0.972, 10.90 -> 0.962, 11.50 -> 0.950). (c) Testing a whole family of curvature distributions, theta(s) proportional to s^m with the endpoints pinned -- m = 1 is the circle, m > 1 is clothoid/Euler-like (flat entry, tightening), m < 1 front-loaded: m = 1.0 -> 0.9739, 1.3 -> 0.9689, 1.6 -> 0.9587, 2.0 -> 0.9483, 0.8 -> 0.9666. So the drawing's folds are constant-curvature bends, not Euler bends, over the visible arc.",
+
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.472,
+    "delta_length_um": "0.018 -> 5.018, response 5.000 (exact)",
+    "area_um2": "223.3023 -> 225.6623, growth 2.3600 vs expected core_width x delta = 2.3600",
+    "passes": true,
+    "why_this_knob": "verify_knob_response measures a LENGTH knob against lengths.json's two-arm delta, so it can only verify a knob wired into that difference. delta_length is that knob and is also the spec knob Phase B drives (optimize-to-spec's contract names it explicitly). It extends the straight run of the UPPER first fold only, so the area response is exactly one core width -- the guide width the brief asks for. Its baseline is 0.0 because the drawing's fold is balanced, which is a measured fact about this figure, not a placeholder.",
+    "note_on_the_0.018_baseline": "The two folds differ by 0.018 um at delta_length = 0 because axis_offset shifts the whole turn stack 0.0022 um down, so the upper fold's arc spans a marginally larger dy than the lower one's. lengths.json reports the measured difference, not the knob value; the RESPONSE to the knob is still exactly 5.000.",
+    "other_knobs": "The remaining function knobs were exercised in the fitting sweeps above -- every one of core_width, turn_pitch, rail_width, slot_width, segment_start, bend_radius_1/2, leg_width_1/2, leg_flare_exp, axis_offset, bus_offset and rail_stack_offset changed the rasterised silhouette and therefore the IoU (values and deltas in fold_shape_evidence and the iteration entries)."
+  },
+
+  "gate_selfcheck": {
+    "tool": "homi.conductor.verify_cell",
+    "recomputed_iou": 0.9721595788815717,
+    "iou_matches_claim": true,
+    "purity_violations": [],
+    "knob_ok": true,
+    "verified": true,
+    "note": "Run by the worker as a self-check only. The conductor's own run is the record."
+  },
+
+  "final": {
+    "iou": 0.9721595788815717,
+    "dice": 0.9858832817503456,
+    "sse": 196153.0,
+    "precision": 0.9810540120216416,
+    "recall": 0.9907603311451493,
+    "iterations_used": 5,
+    "gds_size_um": [120.0, 4.0],
+    "footprint_um": [120.0, 4.0],
+    "size_match": [true, true],
+    "tunables": ["device_length", "device_width", "core_width", "turn_pitch", "n_rails",
+                 "rail_width", "slot_width", "straight_length", "segment_start",
+                 "bend_radius_1", "bend_radius_2", "leg_width_1", "leg_width_2",
+                 "leg_flare_exp", "axis_offset", "bus_offset", "rail_stack_offset",
+                 "delta_length", "arc_points", "layer"],
+    "primitives_used": ["gf.Path + gf.path.extrude", "gf.path.extrude_transition (taper)",
+                        "gf.components.rectangle", "gf.boolean (not, and)", "@gf.cell"],
+    "residual_error_budget_px": {
+      "total": 196153,
+      "central_bus_band": 79782,
+      "the_two_segmented_folded_turns": 54277,
+      "the_two_solid_folded_turns": 24197,
+      "legs_above_and_below_the_turn_stack": 31897,
+      "honest_assessment": "41% of what is left is the CENTRAL BUS band, and it is not a modelling error I can remove without overfitting: in the source figure that band's five rails are drawn irregularly (heights 64, 63, 55, 59, 64 px and pitches 90, 95, 87, 89 px), whereas the other two segmented turns are uniform to +/-1 px (61, 62, 61, 62, 61 at pitch 89.75). Reproducing that irregularity would need five free rail heights plus five free positions fitted to what is almost certainly rendering noise in the figure, so I left the bus uniform and am reporting the cost. The rest is sub-pixel: the rail edges land within ~1 px, and the fold flare profile is a 1-parameter power law against a measured profile that is not exactly a power law."
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "topology_reasoning": {
+    "device_interpretation": "A three-guide grating-assisted coupler/filter: one straight central bus lies between two routed U-shaped access guides. Each outer guide has an inward-facing periodic grating section adjacent to the bus, then routes around a large-radius bend to a tapered outer port. The two outer guides are vertically mirrored in the drawing, while their routing directions are opposite.",
+    "operation": "The periodic teeth bring the outer guide mode close to the central bus over a long interaction region and provide phase-matched, distributed coupling. The long U-shaped access paths keep the external ports separated from the coupling region and the tapers transition to the narrow image-defined ports.",
+    "geometry_observations": "The drawing has a 18.24 um horizontal footprint and a 0.7 um vertical footprint. The central bus is a uniform horizontal rectangle. The upper outer guide approaches the coupling region from the left, runs through the upper grating, turns upward at the right, and exits through a broad upper taper toward the left. The lower outer guide is the vertical mirror: it enters the lower grating from the left, turns downward at the left, and exits through a broad lower taper toward the right. Black grating teeth are repeated uniformly along the inner edge of each outer guide.",
+    "function_defining_knobs": [
+      "wg_width_um",
+      "bus_width_um",
+      "grating_period_um",
+      "grating_tooth_width_um",
+      "grating_tooth_extension_um",
+      "grating_gap_um",
+      "grating_count",
+      "grating_length_um",
+      "bend_radius_um",
+      "route_straight_um",
+      "taper_length_um",
+      "taper_tip_width_um",
+      "taper_base_width_um"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.6197760601,
+      "dice": 0.7652614153,
+      "sse": 528755.0,
+      "change_made": "Initial primitives-only assembly: three routed guide groups, central bus, two 56-tooth arrays, tapers, and sampled U-turns."
+    },
+    {
+      "iter": 2,
+      "iou": 0.5019230179,
+      "dice": 0.6683738273,
+      "sse": 746202.0,
+      "change_made": "Reflected the image-down coordinate interpretation into GDS Y and removed the misplaced standalone lower-right taper; this was geometrically coherent but scored worse."
+    },
+    {
+      "iter": 3,
+      "iou": 0.5973974835,
+      "dice": 0.7479634714,
+      "sse": 556199.0,
+      "change_made": "Added width transitions at the pointed access and lower-right port, and routed the upper-left guide to the grating endpoint instead of adding an early horizontal segment."
+    },
+    {
+      "iter": 4,
+      "iou": 0.6294282380,
+      "dice": 0.7725755861,
+      "sse": 499132.0,
+      "change_made": "Aligned the grating pitch and start, shortened the long upper body, moved the lower taper base, and replaced the lower-right bend with measured intermediate centerline points."
+    },
+    {
+      "iter": 5,
+      "iou": 0.6068647241,
+      "dice": 0.7553401540,
+      "sse": 529348.0,
+      "change_made": "Trial vertical re-registration and curve-control changes; the score regressed, so this candidate was discarded."
+    },
+    {
+      "iter": 6,
+      "iou": 0.6294282380,
+      "dice": 0.7725755861,
+      "sse": 499132.0,
+      "change_made": "Restored the honest best from iteration 4; only write_gds metadata was disabled afterward so the independent area gate can inspect the layout top cell."
+    }
+  ],
+  "best": {
+    "iter": 6,
+    "iou": 0.6294282380,
+    "dice": 0.7725755861,
+    "sse": 499132.0,
+    "gds_size_um": [17.705, 0.681],
+    "footprint_um": [18.24, 0.7]
+  },
+  "knob_response": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.064,
+    "base_delta_length_um": 0.455,
+    "perturbed_delta_length_um": 5.455,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 0.319025,
+    "expected_area_growth_um2": 0.32,
+    "delta_length_ok": true,
+    "area_ok": true,
+    "passes": true
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "topology": "Two-port directional coupler formed by two symmetric S-bent waveguides. Each guide enters from the left at a separated vertical position, bends into a close parallel coupling region, then bends back out to the corresponding right-side port.",
+  "operation": "The long parallel section enables evanescent coupling between the two guides; the S-bends provide low-loss access while preserving the two-through-port layout.",
+  "function_defining_knobs": ["wg_width", "coupling_gap", "coupling_length", "bend_radius", "port_separation"],
+  "calibration": "calibration.json maps the supplied 120 um by 4 um footprint to the image bounding box.",
+  "knob_response": {"param": "coupling_length", "delta_um": 5.0, "width_um": 0.28, "passes": false, "reason": "verify_knob_response requires an MZI delta_length response; this symmetric directional coupler has equal measured arm lengths, while coupling_length changes shared coupling geometry."},
+  "iterations": [
+    {"iter": 1, "iou": 0.0329056981, "dice": 0.0637148157, "sse": 394706.0, "change_made": "Initial two-path implementation; Path x/y convenience setters centered each path and produced an 8.88 um vertical bbox."},
+    {"iter": 2, "iou": 0.0321069411, "dice": 0.0622163069, "sse": 432624.0, "change_made": "Adjusted bend radius, port separation, access length, and coupling length; retained centered-path placement, so vertical mismatch persisted."},
+    {"iter": 3, "iou": 0.4818730777, "dice": 0.6503567477, "sse": 160538.0, "change_made": "Translated each Path from its actual first point to the requested port coordinate; bbox became 120.0 x 3.88 um and topology aligned."},
+    {"iter": 4, "iou": 0.1694488556, "dice": 0.2897926742, "sse": 327929.0, "change_made": "Tested bend_radius=0.80 um for smoother image-like corners; it extended X beyond the 120 um footprint and introduced excess overlap, so retained the honest best at bend_radius=0.30 um."}
+  ]
+}

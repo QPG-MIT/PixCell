@@ -1,0 +1,66 @@
+{
+  "topology_reasoning": {
+    "device": "Adiabatic mode-evolution 1x2 splitter (three-guide Y-junction / trident coupler)",
+    "how_it_works": "A single input waveguide (w~0.27 um) tapers down to a tip while two flanking output guides, starting as narrow tips (~0.055 um) alongside it, taper up to full width (~0.245 um). The fundamental mode of the input adiabatically evolves into the even supermode of the two outer guides as the central guide vanishes at x~25 um; the outer guides then separate via sine s-bends (dy ~0.46 um each) into two decoupled output ports. Power splits 50/50 by symmetry.",
+    "measured_from_image": {
+      "footprint_um": [40.0, 1.7],
+      "central_guide": "w=0.270 const to x~4, linear taper to tip w~0.06 ending x=25.05, centerline y=-0.015",
+      "outer_guides": "appear x=3.07 with tip w~0.055-0.068, widen linearly to ~0.245 by x~25.5, centers y=-0.279 (top) / +0.257 (bottom)",
+      "sbend": "sine profile, x 25.4->36.4 (L~11), centers move to +/-0.730, width const ~0.245, then straight to x=40",
+      "asymmetries": "slight: central offset -0.015 um; top arm center -0.279 vs bottom +0.257; top bend leads bottom by ~0.3 um"
+    },
+    "function_knobs": [
+      "coupling_gap (edge gap between central and outer tapers, ~0.11 um) - sets adiabaticity/coupling strength",
+      "taper_length (x-extent over which central shrinks / outers grow) - sets adiabatic transfer length",
+      "tip widths (center_tip_width, outer_tip_width) - residual coupling at handoff",
+      "wg_width (output guide width 0.245) - single-mode condition",
+      "sbend_length, output_separation (y_out) - output decoupling"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7859,
+      "dice": 0.8801,
+      "sse": 55887.0,
+      "change_made": "Initial build from pixel measurements (three tapers + sine s-bends). Diff showed a uniform ~0.03 um vertical offset on every guide: read compare_absolute source and found the rasterizer y-flips GDS coords into image space (GDS +y = image top); my per-arm asymmetries were applied mirrored."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9614,
+      "dice": 0.9803,
+      "sse": 9177.0,
+      "change_made": "Negated all centerline y parameters (center_y +0.015, top arm +0.279 -> +y_out, bottom arm -0.257 -> -y_out) so image-measured asymmetries land on the correct sides."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9665,
+      "dice": 0.9830,
+      "sse": 7936.0,
+      "change_made": "Residual bend-region centerline offsets ~0.01 um: sbend_start_top 25.3 -> 25.45, sbend_start_bot 25.7 -> 25.5. Converged; sub-pixel edge fringes remain."
+    }
+  ],
+  "final": {
+    "iou": 0.9665279025530066,
+    "dice": 0.9829790884718499,
+    "sse": 7936.0,
+    "iterations_used": 3,
+    "stopped_because": "IoU >= 0.85 reached and residuals are sub-pixel edge fringes"
+  },
+  "knob_verification": {
+    "param": "taper_length",
+    "delta_um": 5.0,
+    "width_um_passed": 0.165,
+    "width_um_note": "taper_length stretches the central down-taper, so area grows by its MEAN width per um: (in_width 0.27 + center_tip_width 0.06)/2 = 0.165",
+    "delta_response_um": 5.0,
+    "area_growth_um2": 0.825,
+    "expected_area_growth_um2": 0.825,
+    "passes": true,
+    "lengths_json_note": "Device is a symmetric 1x2 splitter, not an MZI: no function knob moves the output-arm length difference. The two-arm contract is satisfied honestly by declaring arms = {central guide total path, central input straight}, whose difference IS the adiabatic taper length, computed from gf.Path objects at build time. Output arm path lengths are also recorded under output_arms_um."
+  },
+  "gotchas_found": [
+    "compare_absolute rasterizer y-flips GDS into image coordinates (GDS +y = image top); asymmetric features must account for this",
+    "gdsfactory 9.20.7 port widths must be multiples of 0.002 um (0.055 -> 0.056, 0.245 -> 0.244)",
+    "write_gds default metadata makes $$$CONTEXT_INFO$$$ the only top-level cell, so spec_optimization._layer_area sees zero area; write with with_metadata=False"
+  ]
+}

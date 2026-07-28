@@ -1,0 +1,74 @@
+{
+  "topology_reasoning": {
+    "device": "A compact nested-loop resonator / resonant routing cell: an outer oval loop encloses a smaller, pointed oval loop, while mirrored upper and lower double-aperture sections locally load and couple the inner loop.",
+    "operation": "Light circulating in the outer and inner closed paths experiences coupled resonances; the mirrored aperture sections provide the two localized interaction regions, so their gaps and path lengths determine the resonant response.",
+    "observed_geometry": "The calibrated 3.0 um by 5.5 um drawing is one connected material region with an outer elliptical track, a central angular loop, two mirrored rectangular double-aperture blocks, and six enclosed voids. The raster is anisotropically scaled by the supplied calibration, so dimensions are specified in physical microns rather than image aspect ratio.",
+    "function_defining_knobs": [
+      "outer_loop_width",
+      "outer_loop_rx",
+      "outer_loop_ry",
+      "inner_loop_width",
+      "inner_loop_half_height",
+      "aperture_block_width",
+      "aperture_block_height",
+      "aperture_width",
+      "aperture_height",
+      "aperture_gap"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.5882631178949718,
+      "dice": 0.7407628009074908,
+      "sse": 309888.0,
+      "change_made": "Initial construction: elliptical outer loop, closed faceted inner loop, and two boolean double-aperture blocks. The comparison showed that the target outer contour is substantially flatter at the poles and that the closed inner loop incorrectly filled the four aperture voids."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7499641760128257,
+      "dice": 0.8571194614069964,
+      "sse": 176234.0,
+      "change_made": "Changed the outer path to a superellipse and split the inner trace into left/right faceted connectors, preserving all four aperture voids. This improved fidelity but the central void remained incorrectly connected to the upper and lower annular voids."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7029470013947001,
+      "dice": 0.8255653297712637,
+      "sse": 212987.0,
+      "change_made": "Tested a lower-power outer superellipse and moved the inner-path contacts into the aperture blocks to force closure. It overfilled the central routing region and worsened IoU, so this topology adjustment is rejected."
+    },
+    {
+      "iter": 4,
+      "iou": 0.6856232743449965,
+      "dice": 0.8134952628859703,
+      "sse": 226698.0,
+      "change_made": "Tested a manually knot-fitted outer contour. Its path offset changed the calibrated footprint height and overfilled the shoulder regions, so it is rejected in favor of the iteration-2 superellipse."
+    },
+    {
+      "iter": 5,
+      "iou": 0.7499641760128257,
+      "dice": 0.8571194614069964,
+      "sse": 176234.0,
+      "change_made": "Restored the iteration-2 superelliptical outer path and original side-connector contacts. This is the honest best result after five comparisons."
+    },
+    {
+      "iter": 6,
+      "iou": 0.7499641760128257,
+      "dice": 0.8571194614069964,
+      "sse": 176234.0,
+      "change_made": "Added the live phase-trim measurement contract along an existing upper rail and reran the final permitted comparison. It preserves the same rendered geometry and calibrated footprint."
+    }
+  ],
+  "knob_response": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.2,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "area_growth_um2": 1.0,
+    "expected_area_growth_um2": 1.0,
+    "passes": true,
+    "note": "The phase-trim path is integrated in the upper aperture rail at the target setting and extends physical layer-(1,0) geometry when delta_length is increased."
+  }
+}

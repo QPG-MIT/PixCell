@@ -1,0 +1,78 @@
+{
+  "topology_reasoning": {
+    "what_is_it": "A 120 x 4 um, longitudinally-invariant multi-strip coupling section, mirror-symmetric about the horizontal midline. Center: a bundle of 5 sub-wavelength strips (~66 nm strips, ~34 nm slots) running the full 120 um. Above and below, at a ~37 nm coupling gap, sits a wide rail (~0.47 um), whose outer side carries its own 5-strip sub-wavelength cladding (same ~100 nm pitch, strip ends staggered progressively inward toward the rail). At both ends the rails and their strip claddings bend steeply away (rendered as slanted exit bars at the four corners of the anamorphic frame), terminating the interaction region.",
+    "how_it_works": "The central 5-strip bundle is an anisotropic sub-wavelength-grating (SWG-in-the-transverse-direction) core: strips far below the wavelength act as an effective-medium slot-waveguide bus. The two wide rails couple evanescently to this bus across the small gap; their outer SWG strip claddings tailor the rails' effective index / mode confinement. The structure behaves as a symmetric metamaterial-clad directional coupler: power launched in one rail transfers through the central bundle with a beat length set by the gap, rail width, and strip fill factor; the bent lead-ins/outs at the ends switch the coupling off adiabatically.",
+    "function_defining_knobs": [
+      "coupling_gap_um: rail-to-central-bundle gap (dominates coupling strength)",
+      "rail_w_um: wide-rail width (mode confinement / phase matching)",
+      "strip_w_um + strip_pitch_um: sub-wavelength strip width and pitch (effective-medium fill factor)",
+      "coupling_len_um: length of the parallel interaction region (transfer length)",
+      "n_strips: strips per bundle"
+    ],
+    "anamorphic_note": "Calibration is highly anisotropic (34.54 px/um in x, 896 px/um in y): y-placement precision dominates IoU. All y coordinates were measured from column cuts of the target mask."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9112,
+      "dice": 0.9535,
+      "sse": 635297.0,
+      "change_made": "Initial parametric model from measured mask: central 5-strip bundle, mirrored rails + 5 outer strips, straight corner exit bars. GDS bbox overhang (4.58 um tall) skewed raster anchoring."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8747,
+      "dice": 0.9331,
+      "sse": 892464.0,
+      "change_made": "Boolean-clipped to 120x4 frame, added slanted rail facets and per-strip bent ends. REGRESSION: facet-cut extrusions (w=1.4, shifted) sliced through the central bundle; per-strip thin bends too thin vs target's merged thick exits; bottom half ~8px low (target is not mirror-symmetric)."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9502,
+      "dice": 0.9745,
+      "sse": 347995.0,
+      "change_made": "Measured bottom half directly (coupling_gap_b=0.0267 vs top 0.0369, rail_w_b=0.4666); facet cuts AND-restricted to rail bands; single thick merged exit bar per bundle (rail_exit_w=0.62, strip_exit_w=0.55)."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9664,
+      "dice": 0.9829,
+      "sse": 235598.0,
+      "change_made": "Curved rail facets as 14-step staircase cut from measured edge table (straight facet over-cut fixed); exit-bar polylines through measured centerline points; explicit non-uniform central-stripe centers (alternating 0.099/0.102 pitch) + end margins. (An intermediate run of this geometry silently compared a stale GDS due to a cwd-relative output path; path made script-relative and re-verified.)"
+    },
+    {
+      "iter": 5,
+      "iou": 0.9710,
+      "dice": 0.9853,
+      "sse": 201473.0,
+      "change_made": "Exit bars rebuilt as measured curved centerlines (8/5 control points) extruded segment-by-segment with tapered widths (0.52 inner -> 0.70 at frame); bars anchored by pure mirror about y_mid (matches target's bar symmetry)."
+    },
+    {
+      "iter": 6,
+      "iou": 0.9809,
+      "dice": 0.9904,
+      "sse": 132474.0,
+      "change_made": "Central bundle trimmed 1.5px down (core_dy=-0.0017, rails stay put); bar top segments re-aimed to hit measured frame-row cuts (A end 4.67um w0.66, B end 6.92um w0.67); segments extended 0.04um past joints to remove miter notches."
+    }
+  ],
+  "final": {
+    "iou": 0.9809,
+    "dice": 0.9904,
+    "sse": 132474.0,
+    "iterations_used": 6,
+    "note": "Final GDS re-verified after switching write_gds to with_metadata=False (needed so the 'device' cell is top-level for gdstk area measurement); geometry identical to iteration 6."
+  },
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "rail_len_delta",
+    "delta_um": 5.0,
+    "width_um": 0.4688,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "area_growth_um2": 2.3165,
+    "expected_area_growth_um2": 2.344,
+    "area_ok": true,
+    "passes": true,
+    "note": "Arms = the two coupling rails (lengths recorded from built geometry into lengths.json); rail_len_delta lengthens only the top rail, so delta_length_um tracks it 1:1 and layer-(1,0) area grows by rail_w * delta. Other function knobs (coupling_gap, rail_w, strip_w/strip_pitch, coupling_len) are top-level tunables feeding the same geometry chain."
+  }
+}

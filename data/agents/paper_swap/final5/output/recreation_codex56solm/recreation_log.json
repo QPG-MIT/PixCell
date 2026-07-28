@@ -1,0 +1,66 @@
+{
+  "phase": "A",
+  "topology_reasoning": {
+    "device": "Three-guide grating-assisted folded directional-coupler structure",
+    "visual_evidence": [
+      "A narrow straight center bus spans most of the footprint.",
+      "A folded upper guide has two left-facing ends and a right-hand U-turn.",
+      "A folded lower guide has two right-facing ends and a left-hand U-turn.",
+      "The inner arms of both folded guides contain long periodic segmented sections adjacent to the center bus."
+    ],
+    "operation": "The long periodic inner sections provide distributed, phase-matched coupling between the folded outer guides and the straight center bus. The folded returns route the outer channels back to the same side while preserving a very long interaction region in a compact footprint.",
+    "function_defining_knobs": [
+      "guide_width",
+      "bus_width",
+      "grating_period",
+      "tooth_length",
+      "coupling_gap",
+      "transfer_length",
+      "bend_extent",
+      "tip_width",
+      "taper_length"
+    ],
+    "geometry_plan": "Use gf.Path plus extrude for the curved folded returns, straight/taper primitives for terminal and solid sections, and rectangle primitives for each periodic tooth. Keep all functional dimensions as live top-level numeric assignments."
+  },
+  "knob_verification": {
+    "param": "transfer_length",
+    "delta_um": 5.0,
+    "width_um": 0.026,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 0.1299999999999999,
+    "expected_area_growth_um2": 0.13,
+    "delta_length_ok": true,
+    "area_ok": true,
+    "passes": true
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.674198536199663,
+      "dice": 0.8053985493620798,
+      "sse": 398449.0,
+      "change_made": "Initial primitives-only topology: three guides, two folded returns, paired periodic coupling sections, tapers, and center bus."
+    },
+    {
+      "iter": 2,
+      "iou": 0.660995590587522,
+      "dice": 0.7959028841897368,
+      "sse": 449529.0,
+      "change_made": "Corrected grating count/phase and turn centerlines; widened return arms. The widened endpoint pushed the GDS bbox to 0.724 um and degraded vertical registration, so it was not retained unchanged."
+    },
+    {
+      "iter": 3,
+      "iou": 0.7827037959419291,
+      "dice": 0.878108632206475,
+      "sse": 262368.0,
+      "change_made": "Restored the 0.700 um vertical frame with separate curve, return, and tooth widths; retained the corrected grating phase and refined turn centerlines."
+    },
+    {
+      "iter": 4,
+      "iou": 0.8520427631130674,
+      "dice": 0.9201113279705088,
+      "sse": 173716.0,
+      "change_made": "Added two measured chirp phase corrections to the paired gratings, lengthened the lower terminal taper, and tightened the upper/right and lower/left turn centerlines. Stop criterion IoU >= 0.85 reached."
+    }
+  ]
+}

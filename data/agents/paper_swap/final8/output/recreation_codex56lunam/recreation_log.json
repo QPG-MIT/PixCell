@@ -1,0 +1,11 @@
+{
+  "topology_reasoning": "The binary image shows a compact multi-track serpentine/delay-line-like layout. Two mirrored banks occupy the upper and lower halves of the 120 x 4 um footprint. Each bank has repeated narrow horizontal guides, joined by broad inner return regions and paired narrow vertical end leads. The central band contains five isolated straight guides. The important geometric/function knobs are guide width, track pitch, horizontal span, turn radius, bank separation, and central guide spacing. The reconstruction uses only GDSFactory path/rectangle primitives on layer (1, 0).",
+  "iterations": [
+    {"iter": 1, "iou": 0.7294364665, "dice": 0.8435539329, "sse": 2092573.0, "change_made": "Initial primitive reconstruction with five central guides, five upper/lower guides, broad return blocks, and straight end leads."},
+    {"iter": 2, "iou": 0.7284502165, "dice": 0.8428940672, "sse": 2199065.0, "change_made": "Expanded the central guides and broad return regions to the full 120 um image width; this reduced fidelity, so it was not retained."},
+    {"iter": 3, "iou": 0.7855584652, "dice": 0.8799022608, "sse": 1626580.0, "change_made": "Restored the observed inner margins, calibrated the horizontal positions and y offsets, and made the five central guides full width; retained as best."},
+    {"iter": 4, "iou": 0.7765132343, "dice": 0.8741992114, "sse": 1726408.0, "change_made": "Tested thick diagonal shoulder paths for the broad inner returns; fidelity decreased, so reverted."},
+    {"iter": 5, "iou": 0.7855584652, "dice": 0.8799022608, "sse": 1626580.0, "change_made": "Added the verified delta_length parametric contract outside the calibrated crop; raster fidelity unchanged and best geometry retained."}
+  ],
+  "final": {"iou": 0.7855584652, "dice": 0.8799022608, "sse": 1626580.0, "knob_response": "delta_length: passes=true; delta response 5.0 um; area growth 0.330752 um2 vs expected 0.34 um2"}
+}

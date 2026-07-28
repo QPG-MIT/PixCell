@@ -1,0 +1,84 @@
+{
+  "purity_violations": [],
+  "A_gate_block_width_um": {
+    "param": "block_width_um",
+    "delta_um": 0.05,
+    "base_area_um2": 7.535179000000002,
+    "perturbed_area_um2": 7.623979000000003,
+    "area_growth_um2": 0.08880000000000088,
+    "expected_area_growth_um2": 0.0887898,
+    "ok": true
+  },
+  "B_gate_slot_length_um": {
+    "param": "slot_length_um",
+    "delta_um": 0.05,
+    "base_area_um2": 7.535179000000002,
+    "perturbed_area_um2": 7.424379000000001,
+    "area_growth_um2": -0.11080000000000112,
+    "ok": true
+  },
+  "C_gate_arm_gap_um": {
+    "param": "arm_gap_um",
+    "delta_um": 0.05,
+    "base_area_um2": 7.535179000000002,
+    "perturbed_area_um2": 7.538862500000007,
+    "area_growth_um2": 0.0036835000000046136,
+    "ok": true
+  },
+  "D_spec_verify_arm_gap_um": {
+    "param": "arm_gap_um",
+    "delta_um": 0.05,
+    "width_um": 0.430128,
+    "base_value": 1.410256,
+    "base_delta_length_um": 2.322,
+    "perturbed_delta_length_um": 2.29,
+    "delta_response_um": -0.03200000000000003,
+    "delta_length_ok": false,
+    "base_area_um2": 7.535179000000002,
+    "perturbed_area_um2": 7.538862500000007,
+    "area_growth_um2": 0.0036835000000046136,
+    "expected_area_growth_um2": 0.021506400000000002,
+    "area_ok": false,
+    "passes": false
+  },
+  "E_spec_verify_block_width_um": {
+    "param": "block_width_um",
+    "delta_um": 0.05,
+    "width_um": 1.775796,
+    "base_value": 1.036539,
+    "base_delta_length_um": 2.322,
+    "perturbed_delta_length_um": 2.322,
+    "delta_response_um": 0.0,
+    "delta_length_ok": false,
+    "base_area_um2": 7.535179000000002,
+    "perturbed_area_um2": 7.623979000000003,
+    "area_growth_um2": 0.08880000000000088,
+    "expected_area_growth_um2": 0.0887898,
+    "area_ok": true,
+    "passes": false
+  },
+  "notes": {
+    "predicted_responses": {
+      "block_width_um": "d(area)/d(w) = 2 x block_length_um = 1.775796 um2/um (two blocks, full length)",
+      "slot_length_um": "d(area)/d(L) = -4 x slot_width_um = -2.212428 um2/um (four apertures)",
+      "arm_gap_um": "d(delta_length)/d(gap) = tan(branch_angle/2) = 0.638 um/um (measured -0.032 for +0.05); area response is small because in the anisotropic gate frame the branch runs at 65 deg, so area is NOT width x length for a transverse knob",
+      "loop_half_length_um": "d(area)/d(half_len) = 4 x loop_wall_width_um (adding d to the half-length adds 2d of guide to EACH of the two loop halves) plus a saturating second term 2 x stem_width_um x min(d, stem_root_x - cavity_half_length) from the stem becoming exposed as the cavity tip slides out from under it. At the gate's default delta_um=5.0 the second term is saturated at 0.2345 um2, so measured 10.7185 vs predicted 10.4882 = 2.2% -> ok."
+    },
+    "why_spec_verify_fails": "homi.spec_optimization.verify_knob_response demands d(delta_length_um)/d(knob) == 1 exactly - the MZI delta_length convention. This device is a loop-plus-bridge whose two vertices are pinned by the loop, so every INLINE change cancels and no knob moves a path length 1:1; arm_gap_um is the only path-length knob and it moves delta_length by tan(theta/2) = 0.638 per um. The area half of that check is also frame-limited (see above). The conductor's own area-only check (homi.conductor.gate.knob_response, entries A-C) passes with the geometrically predicted coefficients."
+  },
+  "F_gate_loop_half_length_um": {
+    "param": "loop_half_length_um",
+    "delta_um": 5.0,
+    "base_area_um2": 7.535179000000002,
+    "perturbed_area_um2": 18.253638000000024,
+    "area_growth_um2": 10.71845900000002,
+    "expected_area_growth_um2": 10.4882,
+    "ok": true
+  },
+  "recommended_gate_knob": {
+    "param": "loop_half_length_um",
+    "width_um": 2.09764,
+    "why": "homi.conductor.gate.verify_cell perturbs by delta_um=5.0 by default. On a 3.0 x 5.5 um device only a loop-length knob stays in its linear geometric regime at that size; block/slot/arm knobs are exact at delta_um<=0.05 (entries A-C) but at +5 um the blocks would be 6 um tall and self-intersect.",
+    "verify_cell_result": "iou=0.9914550734 matches_claim=True purity=clean knob_ok=True VERIFIED=True"
+  }
+}

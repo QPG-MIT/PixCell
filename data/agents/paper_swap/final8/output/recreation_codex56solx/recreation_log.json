@@ -1,0 +1,84 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "image": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [
+      120.0,
+      4.0
+    ],
+    "material": "black pixels on layer (1, 0)"
+  },
+  "topology_reasoning_before_coding": {
+    "device_identification": "A long, mirror-symmetric multi-rail adiabatic coupler / mode-conversion structure. Five isolated narrow rails traverse the full 120 um interaction length. Above and below them are mirrored compound sections: a broad long slab and a five-rail subwavelength/slot region, with smooth end transitions that merge the rails into narrow edge stems. This is not a compact stencil-like component; its optical behavior is defined by sustained parallel propagation, rail gaps, and the adiabatic end transitions.",
+    "how_it_works": "The narrow parallel rails form strongly geometry-dependent coupled supermodes over a long transfer region. The rail widths and sub-100-nm gaps set the modal indices and coupling, the long parallel length sets accumulated phase/transfer, the broad slabs support the adjoining wider mode, and the smooth end tapers reduce abrupt scattering while converting between the edge stems, multi-rail region, and slab region. Mirror symmetry suggests balanced operation between the upper and lower compound sections.",
+    "observed_structure": [
+      "Overall calibrated material bbox is 120.0 um by 4.0 um.",
+      "Five independent center rails span essentially the full 120.0 um length.",
+      "Each compound outer half contains five approximately 0.068 um rails on approximately 0.100 um pitch.",
+      "Each compound outer half contains an approximately 0.47 um broad slab.",
+      "The left and right transition zones are approximately 10-11 um long and smoothly merge toward narrow edge stems.",
+      "The upper and lower halves are nearly exact vertical mirrors."
+    ],
+    "function_defining_knobs": [
+      "transfer_length: sustained coupled-propagation length",
+      "delta_length: differential length of the central functional rail, controlling accumulated phase",
+      "rail_width: width of the narrow coupled guides",
+      "rail_gap: edge-to-edge gap between adjacent rails",
+      "rail_count: number of narrow rails in each multi-rail section",
+      "slab_width: width of the broad adjoining guide",
+      "taper_length: length of the smooth edge conversion",
+      "tip_width: width of the narrow transition stems",
+      "compound_gap: separation between broad slabs, center rails, and outer multi-rail groups"
+    ],
+    "implementation_plan": "Construct every long rail and slab from gf.Path plus extrude on (1,0). Construct each smooth transition from parameterized gf.Path Bezier centerlines with width profiles through extrude. Use boolean union only if needed to merge legal primitive geometry. Keep all optical dimensions as top-level numeric assignments and write both device.gds and lengths.json from the actual path objects."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8749284024695083,
+      "dice": 0.9332926007383764,
+      "sse": 940908.0,
+      "change_made": "Initial primitives-only implementation: five full-length center gf.Path rails; mirrored 0.47 um slabs; mirrored five-rail interaction groups; cubic gf.Path adiabatic end transitions with width transitions and 1.40 um stems.",
+      "diff_observation": "The long interaction regions and center rails align closely. Residual red/blue is concentrated at the four transition zones because the reconstruction uses smooth cubic centerlines while the raster has slightly different edge curvature; thin paired red/blue lines also show sub-pixel width/edge differences on the narrow rails. The requested IoU >= 0.85 stop threshold was reached, so no geometry refinement was made."
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.068,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 231.73950799999997,
+    "perturbed_area_um2": 232.07950799999998,
+    "area_growth_um2": 0.3400000000000034,
+    "expected_area_growth_um2": 0.34,
+    "area_ok": true,
+    "passes": true,
+    "note": "The GDS is written without metadata so the physical multi_rail_device remains the unambiguous top cell for hierarchy-aware layer area measurement."
+  },
+  "best_iteration": 1,
+  "final_metrics": {
+    "iou": 0.8749284024695083,
+    "dice": 0.9332926007383764,
+    "sse": 940908.0,
+    "accuracy": 0.9453062220982142,
+    "precision": 0.9152334669928037,
+    "recall": 0.9520787555311518,
+    "gds_size_um": [
+      120.0,
+      4.034
+    ],
+    "footprint_um": [
+      120.0,
+      4.0
+    ],
+    "size_match": [
+      true,
+      true
+    ]
+  }
+}

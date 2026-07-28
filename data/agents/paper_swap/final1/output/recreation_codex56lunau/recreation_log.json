@@ -1,0 +1,78 @@
+{
+  "topology_reasoning": {
+    "device_class": "three-core adiabatic mode-evolution / tapered coupler",
+    "mechanism": "A broad center core narrows into an inverse-taper tip while two side cores begin as narrow tips, widen through a long taper, and gently fan outward into separate output rails. The black regions are the three material cores; the white gaps are intentional and no raw connecting polygon is present.",
+    "observed_geometry": {
+      "footprint_um": [40.0, 1.7],
+      "center_core": "starts at the left footprint edge, is nearly horizontal, and tapers from about 0.270 um to about 0.075 um by x about 25.05 um",
+      "side_cores": "begin around x=3.04 um at center offsets about +0.265 and -0.275 um, taper from about 0.072 um to about 0.244 um, then fan to output center offsets about +0.731 and -0.728 um",
+      "output_section": "upper and lower rails are nearly horizontal and full width from approximately x=36 um to the right footprint edge"
+    },
+    "function_defining_knobs": [
+      "delta_length (straight output-lead / transfer length)",
+      "center_input_width_um",
+      "center_taper_length_um",
+      "center_tip_width_um",
+      "side_tip_width_um",
+      "side_guide_width_um",
+      "side_taper_length_um",
+      "side_gap_um",
+      "fanout_length_um",
+      "bend_radius_um"
+    ],
+    "parametric_interpretation": "The center taper length, side taper length, tip widths, side-to-center gaps, fan-out, and bend radius control modal evolution and coupling; delta_length is the physical straight output-lead/transfer section and is the knob used for the required geometry-response proof."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8917046639540352,
+      "dice": 0.9427525141162331,
+      "sse": 26482.0,
+      "change_made": "Initial three-path primitive model: constant-width sampled center inverse taper plus two variable-width smooth side rails; initial output lead used delta_length."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9362009959628665,
+      "dice": 0.9670493899289591,
+      "sse": 15566.0,
+      "change_made": "Corrected the side output lead to reach x=40.0 um, sampled the center taper with 128 path points, made side_gap live, and delayed/smoothed the fanout control points."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9617607299763433,
+      "dice": 0.9805076789236586,
+      "sse": 9052.0,
+      "change_made": "Reduced center and side widths by the measured one-pixel excess and replaced the coarse fanout with target-derived sigmoid control points and a smaller Euler rounding radius."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9747448990343885,
+      "dice": 0.9872109552084622,
+      "sse": 5992.0,
+      "change_made": "Added the measured upper/lower taper centerline slopes and lower-rail asymmetry; flattened the assembled cell and disabled GDS metadata so the area proof sees top-level layer polygons."
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.267,
+    "base_value": 3.044554455,
+    "base_delta_length_um": 3.0450000000000017,
+    "perturbed_delta_length_um": 8.045000000000002,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 18.569351500000003,
+    "perturbed_area_um2": 19.9091215,
+    "area_growth_um2": 1.339769999999998,
+    "expected_area_growth_um2": 1.335,
+    "area_ok": true,
+    "passes": true
+  },
+  "final": {
+    "iter": 4,
+    "iou": 0.9747448990343885,
+    "dice": 0.9872109552084622,
+    "sse": 5992.0,
+    "gds_size_um": [40.0, 1.698]
+  }
+}

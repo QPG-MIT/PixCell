@@ -1,0 +1,63 @@
+{
+  "topology": "three-rail tapered adiabatic mode splitter / mode converter",
+  "topology_reasoning": "The calibrated B&W image contains three disconnected layer-(1,0) rails rather than a connected Y junction. A central rail enters from the left at about 0.27 um width and tapers linearly to a roughly 0.07 um tip over about 25 um. Two outer rails begin about 3.1 um from the left at roughly 0.065 um width, expand to about 0.235 um over the same active region, and then bend symmetrically outward into full-width output guides. The approximately constant clearances between the three rails and the symmetric outward routing indicate an adiabatic three-rail mode splitter/coupler: the center rail is the vanishing/tapered rail, while the two outer rails become the separated outputs.",
+  "mechanism": "Adiabatic modal transfer/coupling is controlled by the rail widths, rail-to-rail gaps, and the longitudinal taper/transfer length; the symmetric output bend only provides port separation.",
+  "calibration": {
+    "footprint_um": [40.0, 1.7],
+    "material_bbox_px": [0, 62, 1616, 584],
+    "scale_px_per_um": [40.4, 307.05882352941177]
+  },
+  "function_knobs": [
+    "delta_length",
+    "central_start_width_um",
+    "central_tip_width_um",
+    "outer_start_width_um",
+    "outer_end_width_um",
+    "rail_gap_um",
+    "output_offset_um",
+    "bend_length_um"
+  ],
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.7796886496534098,
+      "dice": 0.8762079252517032,
+      "sse": 56891.0,
+      "change_made": "Initial primitive build: linear central taper, two outer tapers, and smooth outer paths spanning the remaining footprint."
+    },
+    {
+      "iter": 2,
+      "iou": 0.8334637794590835,
+      "dice": 0.9091685244035479,
+      "sse": 42130.0,
+      "change_made": "Extended the visible central taper to the image tip and added a small vertical bias so the central/initial rail centers matched the calibrated raster."
+    },
+    {
+      "iter": 3,
+      "iou": 0.8282398391858785,
+      "dice": 0.9060516256496156,
+      "sse": 43748.0,
+      "change_made": "Tried a two-stage central taper and a full-length sampled smoothstep bend; the bend was too extended, so this lower-scoring candidate was not retained."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9307492661569844,
+      "dice": 0.9641327151811617,
+      "sse": 16703.0,
+      "change_made": "Kept the two-stage central taper, shortened the outward curve to 11 um, used a quintic smootherstep centerline, and added 3.95 um straight output leads to match the image's right-side plateaus."
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.07,
+    "base_delta_length_um": 3.0500000000000007,
+    "perturbed_delta_length_um": 8.05,
+    "delta_response_um": 5.0,
+    "base_area_um2": 18.343436999999998,
+    "perturbed_area_um2": 18.693437,
+    "area_growth_um2": 0.3500000000000014,
+    "expected_area_growth_um2": 0.35000000000000003,
+    "passes": true
+  }
+}

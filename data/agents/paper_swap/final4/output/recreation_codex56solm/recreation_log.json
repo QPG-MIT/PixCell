@@ -1,0 +1,46 @@
+{
+  "topology_reasoning": {
+    "device": "symmetric adiabatic directional coupler",
+    "observations": [
+      "Two isolated, constant-width material paths run left-to-right and never merge.",
+      "The paths begin and end widely separated, approach one another smoothly near the horizontal midpoint, and separate symmetrically.",
+      "The local material thickness is approximately 0.65 um throughout, so the apparent widening in sloped regions is raster projection rather than a taper.",
+      "The center-to-center separation changes from approximately 2.34 um at the facets to approximately 0.95 um at the closest approach, giving an edge gap near 0.30 um."
+    ],
+    "operation": "The smoothly varying separation brings the guides into an evanescent-coupling regime around the center. Optical power transfers through supermode beating while the gradual approach and departure suppress abrupt transition loss.",
+    "function_defining_knobs": [
+      "wg_width",
+      "coupling_gap",
+      "approach_offset",
+      "approach_length",
+      "transfer_length",
+      "tip_width",
+      "delta_length"
+    ],
+    "modeling_plan": "Construct both centerlines as mirrored sampled gf.Path objects with smooth raised-cosine approach/departure sections and a tunable central transfer section, then extrude on layer (1,0). Keep delta_length at zero in the recreation; it is a real one-arm extension knob retained to satisfy the independent geometry-response contract."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9460002729765612,
+      "dice": 0.9722509149801701,
+      "sse": 17408.0,
+      "change_made": "Initial primitives-only construction: two mirrored smootherstep gf.Path centerlines, 0.65 um extrusion width, 0.31 um coupling gap, 0.695 um approach offset, and zero-length central plateau. The residual is a thin, symmetric boundary mismatch from the analytic curve shape; the result exceeds the 0.85 stop threshold, so no further image-fitting iteration was performed."
+    }
+  ],
+  "knob_response": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.65,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 23.498772000000006,
+    "perturbed_area_um2": 26.748772000000002,
+    "area_growth_um2": 3.2499999999999964,
+    "expected_area_growth_um2": 3.25,
+    "area_ok": true,
+    "passes": true
+  }
+}

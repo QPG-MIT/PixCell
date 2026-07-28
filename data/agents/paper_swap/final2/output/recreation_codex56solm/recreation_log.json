@@ -1,0 +1,62 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "image": "component.png",
+    "footprint_um": [25.0, 10.0],
+    "layer": [1, 0]
+  },
+  "topology_reasoning": {
+    "identification": "A 1x4 multimode-interference splitter: a broad rectangular MMI body is fed by one centered input through a short flare at the lower edge, while four separated outputs rise from the upper edge through trapezoidal tapers into narrow straight guides.",
+    "operation": "The centered lower input excites several modes in the broad rectangular body. Their relative phase evolution over the MMI length forms four self-images at the upper interface, sampled by four tapered output guides. Body width and length set the imaging condition; inner and outer output offsets sample the four images; guide widths and taper lengths control access matching.",
+    "function_defining_knobs": [
+      "access_width",
+      "access_taper_length",
+      "mmi_width",
+      "mmi_length",
+      "output_count",
+      "output_inner_offset",
+      "output_outer_offset",
+      "output_width",
+      "output_straight_length",
+      "output_taper_length",
+      "output_taper_base_width"
+    ],
+    "construction_plan": "Use only layer-(1,0) rectangles and linear gf.Path extrusions. The MMI body and four straight output guides are rectangles. Each output taper and the lower access flare are straight centerline paths extruded with linearly varying widths. Assemble them in one @gf.cell and write device.gds.",
+    "initial_scale_observation": "Calibration maps the supplied 25 um by 10 um footprint anisotropically onto the image. The main connected black device occupies approximately 19.5 um in x and 7.4 um in y, with a roughly 19.4 um-wide by 3.75 um-long MMI body, four approximately 1.22 um output guides, approximately 1.4 um output tapers, and a centered lower access taper. The output positions are symmetric in outer/inner pairs rather than strictly periodic, supporting the 1x4 MMI interpretation."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9900626604839134,
+      "dice": 0.9950065192853425,
+      "sse": 14714.0,
+      "change_made": "Initial primitives-only 1x4 MMI reconstruction from calibrated pixel measurements: rectangular MMI body, four asymmetric paired output positions with linear tapers and straight guides, one centered input taper, plus a sub-resolution calibration-frame anchor. Residual diff is confined mainly to anti-aliased boundaries and a modest slope mismatch on the rightmost output taper; stopped because IoU exceeded 0.85."
+    }
+  ],
+  "knob_verification": {
+    "param": "mmi_length",
+    "delta_um": 5.0,
+    "width_um": 19.46,
+    "base_value": 3.75,
+    "base_delta_length_um": 3.75,
+    "perturbed_delta_length_um": 8.75,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 91.57370400000003,
+    "perturbed_area_um2": 188.87370399999998,
+    "area_growth_um2": 97.29999999999994,
+    "expected_area_growth_um2": 97.30000000000001,
+    "area_ok": true,
+    "passes": true,
+    "artifact": "knob_response.json"
+  },
+  "final": {
+    "selected_iteration": 1,
+    "iou": 0.9900626604839134,
+    "dice": 0.9950065192853425,
+    "sse": 14714.0,
+    "stopping_reason": "IoU threshold of 0.85 exceeded on the first visual iteration.",
+    "gds": "device.gds",
+    "script": "device.py"
+  }
+}

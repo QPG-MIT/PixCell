@@ -1,0 +1,80 @@
+{
+  "input": {
+    "component_png": "component.png",
+    "footprint_um": [120.0, 4.0],
+    "calibration": "calibration.json"
+  },
+  "topology_reasoning": {
+    "identified_device": "A compact, symmetric multi-rail folded delay/interconnect layout: five narrow through rails occupy the middle, while matching upper and lower five-rail banks fold at both ends around broad return rails.",
+    "operation": "The repeated rounded end transitions route parallel optical traces between the narrow rail banks and the broader return regions while preserving ordered, constant-pitch channels across the 120 um active span.",
+    "observed_structure": [
+      "five approximately 0.066 um-wide central horizontal rails at roughly 0.10 um pitch",
+      "five matching narrow rails in each upper and lower bank",
+      "one broad approximately 0.47 um return rail per upper/lower bank",
+      "symmetric rounded, tapered end transitions beginning about 8 um from each end"
+    ],
+    "function_defining_knobs": [
+      "delta_length",
+      "guide_width",
+      "guide_pitch",
+      "central_span",
+      "bank_start",
+      "bank_end",
+      "return_start",
+      "return_end",
+      "return_width",
+      "return_center_offset",
+      "fanout_start",
+      "fanout_mid",
+      "fanout_end",
+      "fanout_width",
+      "fanout_tip_width"
+    ],
+    "implementation_plan": "Assemble all material from GDSFactory straight, rectangle, taper, and gf.Path/extrude primitives. Use rounded U-like transition centerlines for narrow bank rails and broad Path/extrude return rails. delta_length will extend one real narrow arm and be measured from that arm path in lengths.json."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8482561348430072,
+      "dice": 0.9178988981579211,
+      "sse": 1111005.0,
+      "change_made": "Initial primitives-only assembly. The long bank rails and broad return rails match the central span closely; the diff shows central through rails are about 0.012 um low and end fan-outs need refinement."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7954658859787881,
+      "dice": 0.8860829851357988,
+      "sse": 1542051.0,
+      "change_made": "Tested a +0.012 um global middle-rail shift. It worsened overlap substantially because the existing alignment was already correct to the raster grid; reverted before the next topology change."
+    },
+    {
+      "iter": 3,
+      "iou": 0.8961613137635821,
+      "dice": 0.945237419684344,
+      "sse": 749063.0,
+      "change_made": "Replaced the incorrect center-connected fan-outs with separate five-rail banks, compact tapered bank feeders, and measured steep-to-shallow broad-return transitions. This is the retained best and exceeds the 0.85 Phase-A threshold."
+    },
+    {
+      "iter": 4,
+      "iou": 0.8961613137635821,
+      "dice": 0.945237419684344,
+      "sse": 749063.0,
+      "change_made": "Rewrote the GDS without metadata context so the physical cell remains top-level for deterministic layer-area verification; geometry and visual metrics are unchanged."
+    }
+  ],
+  "knob_verification": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.066,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 218.08427600000002,
+    "perturbed_area_um2": 218.414276,
+    "area_growth_um2": 0.3299999999999841,
+    "expected_area_growth_um2": 0.33,
+    "area_ok": true,
+    "passes": true
+  }
+}

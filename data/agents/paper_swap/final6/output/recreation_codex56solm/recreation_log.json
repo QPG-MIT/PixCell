@@ -1,0 +1,60 @@
+{
+  "topology_reasoning": {
+    "device_identification": "A symmetric four-port orthogonal waveguide crossing. Four narrow single-mode access guides expand into leaf-shaped adiabatic crossing lobes and meet in one shared central material region.",
+    "operating_principle": "Each input expands smoothly before the intersection so the optical mode crosses the orthogonal guide with reduced diffraction and reflection, then contracts back to the narrow output guide. Fourfold rotational symmetry makes either straight-through axis equivalent.",
+    "function_defining_knobs": [
+      "guide_width: width of all four single-mode access guides",
+      "access_length: straight narrow lead length at each edge",
+      "outer_taper_length: length of the narrow-to-wide adiabatic expansion",
+      "crossing_max_width: maximum lobe width that controls modal expansion",
+      "inner_taper_length: contraction length from maximum width toward the shared crossing",
+      "center_width: width presented by each axis at the central overlap"
+    ],
+    "measured_image_observations": {
+      "footprint_um": [4.7, 4.7],
+      "symmetry": "approximately fourfold about the footprint center",
+      "guide_width_um_estimate": 0.23,
+      "access_length_um_estimate": 0.55,
+      "maximum_lobe_width_um_estimate": 0.93,
+      "lobe_length_um_estimate": 1.8
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.5075276782317965,
+      "dice": 0.6733245240672249,
+      "sse": 49197.0,
+      "change_made": "Identified and corrected reversed radial assembly: move the center-width end to the shared crossing, then expand to maximum width, contract to guide width, and finish with the narrow outer access."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9011132087754703,
+      "dice": 0.9479847960825942,
+      "sse": 7595.0,
+      "change_made": "Corrected radial segment order. The acceptance threshold was exceeded, so no further image-fitting iterations were run."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9011132087754703,
+      "dice": 0.9479847960825942,
+      "sse": 7595.0,
+      "change_made": "Final verification after adding path-derived lengths.json output and the independently perturbable east access-length contract; baseline geometry and score remained unchanged."
+    }
+  ],
+  "knob_response_verification": {
+    "param": "access_length",
+    "delta_um": 5.0,
+    "width_um": 0.236,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "base_area_um2": 5.248232,
+    "perturbed_area_um2": 6.428232000000001,
+    "area_growth_um2": 1.1800000000000015,
+    "expected_area_growth_um2": 1.18,
+    "delta_length_ok": true,
+    "area_ok": true,
+    "passes": true
+  }
+}

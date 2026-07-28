@@ -1,0 +1,55 @@
+{
+  "topology_reasoning": {
+    "device": "symmetric two-waveguide adiabatic/directional coupler",
+    "how_it_works": "Two parallel single-mode guides use mirrored smooth S-bends to reduce their center-to-center spacing over the middle of the footprint and then restore the original spacing. The close parallel region provides evanescent coupling while the guides remain distinct and do not cross.",
+    "image_observations": {
+      "input_output_center_spacing_um": 2.34,
+      "minimum_center_spacing_um": 0.97,
+      "guide_width_um": 0.65,
+      "footprint_um": [18, 3],
+      "target_black_bbox_px": [0, 114, 1583, 558],
+      "calibration_scale_px_per_um": [88.0, 149.0]
+    },
+    "function_defining_knobs": [
+      "wg_width",
+      "outer_spacing",
+      "coupling_spacing",
+      "approach_length",
+      "coupling_length"
+    ],
+    "geometry_choice": "Each guide is a smooth centerline assembled from mirrored cubic Bezier-like transitions, then extruded with a constant-width cross-section on layer (1, 0)."
+  },
+  "calibration": "calibration.json",
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9822255909801506,
+      "dice": 0.9910331048591394,
+      "sse": 5628.0,
+      "change_made": "Initial primitive-only recreation: two mirrored sampled gf.Path centerlines extruded at constant width; fitted the supplied center-spacing profile with outer_spacing=2.35 um, coupling_spacing=0.96 um, approach_length=8.0 um, and coupling_length=2.0 um."
+    }
+  ],
+  "best_iou": 0.9822255909801506,
+  "best_artifacts": {
+    "script": "device.py",
+    "gds": "device.gds",
+    "raster": "raster_01.png",
+    "diff": "diff_01.png",
+    "metrics": "metrics_01.json"
+  },
+  "knob_verification": {
+    "param": "path_imbalance",
+    "delta_um": 5.0,
+    "width_um": 0.65,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "base_area_um2": 23.51085400000001,
+    "perturbed_area_um2": 26.76085400000001,
+    "area_growth_um2": 3.25,
+    "expected_area_growth_um2": 3.25,
+    "delta_length_ok": true,
+    "area_ok": true,
+    "passes": true
+  }
+}

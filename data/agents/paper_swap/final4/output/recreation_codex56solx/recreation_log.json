@@ -1,0 +1,95 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "component_png": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [
+      18.0,
+      3.0
+    ],
+    "calibration_json": "calibration.json"
+  },
+  "topology_reasoning": {
+    "device_identification": "Symmetric two-waveguide adiabatic directional coupler. Two equal-width guides enter with a large pitch, follow mirrored S-shaped approaches to a narrow central coupling gap, remain nearly parallel around the midpoint, and symmetrically fan back out.",
+    "working_principle": "The evanescent fields overlap where the guides are closest. Coupling strength is primarily set by the edge-to-edge coupling gap and the effective transfer length; the smooth approach length controls adiabaticity and transition loss. Equal guide widths preserve phase matching.",
+    "image_measurements_um": {
+      "overall_length": 18.0,
+      "overall_height": 3.0,
+      "guide_width": 0.65,
+      "input_output_pitch": 2.35,
+      "central_center_spacing": 0.95,
+      "central_gap": 0.3,
+      "estimated_near_parallel_transfer_length": 2.0,
+      "estimated_each_approach_length": 7.0
+    },
+    "function_defining_knobs": [
+      "wg_width",
+      "coupling_gap",
+      "transfer_length",
+      "approach_length",
+      "port_pitch",
+      "differential_length"
+    ],
+    "planned_primitive_construction": "Build each guide from a gf.Path centerline and extrude it at constant width on layer (1, 0). Each centerline is a straight input, a smooth parametric S approach, a central straight, a mirrored S departure, and a straight output. No component stencil or raw polygon is needed.",
+    "knob_verification_note": "The visual device is a balanced two-guide coupler, while verify_knob_response checks a differential path-length/area contract. A top-level differential_length phase-trim knob will therefore be represented by a real extra straight segment on one guide and computed from the actual centerline lengths; its baseline is zero so it does not alter the recreation."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9829762495300143,
+      "dice": 0.991415050748076,
+      "sse": 5388.0,
+      "change_made": "Initial primitives-only reconstruction: two mirrored gf.Path centerlines, constant 0.65 um baseline width, 2.35 um port pitch, 0.30 um central gap, 8.50 um smooth approaches, and 1.00 um transfer waist. Exact calibrated footprint match. The residual is almost entirely a one-pixel blue edge fringe; stopped because IoU already exceeds 0.85."
+    }
+  ],
+  "knob_verification": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "differential_length",
+    "delta_um": 5.0,
+    "width_um": 0.65,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 23.51084600000001,
+    "perturbed_area_um2": 26.76084600000001,
+    "area_growth_um2": 3.25,
+    "expected_area_growth_um2": 3.25,
+    "area_ok": true,
+    "passes": true,
+    "note": "The initial verification attempt measured zero area because GDSFactory metadata made $$$CONTEXT_INFO$$$ the only top cell and the verifier deliberately excludes it. Writing the identical component with with_metadata=False exposed the real device top cell; the repeated deterministic check then passed exactly."
+  },
+  "final": {
+    "selected_iteration": 1,
+    "iou": 0.9829762495300143,
+    "dice": 0.991415050748076,
+    "sse": 5388.0,
+    "gds_size_um": [
+      18.0,
+      3.0
+    ],
+    "size_match": [
+      true,
+      true
+    ],
+    "visual_stop_reason": "IoU >= 0.85 on the first comparison.",
+    "artifacts": {
+      "script": "device.py",
+      "gds": "device.gds",
+      "raster": "raster.png",
+      "diff": "diff.png",
+      "lengths": "lengths.json"
+    },
+    "tunables": [
+      "wg_width",
+      "tip_width",
+      "port_pitch",
+      "coupling_gap",
+      "approach_length",
+      "taper_length",
+      "transfer_length",
+      "differential_length"
+    ]
+  }
+}

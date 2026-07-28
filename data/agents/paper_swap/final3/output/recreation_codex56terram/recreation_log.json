@@ -1,0 +1,58 @@
+{
+  "topology_reasoning": {
+    "device": "A symmetric, contra-oriented pair of S-bent strip waveguides forming a long parallel directional-coupler interaction region.",
+    "operation": "The two ports on each side are vertically separated. Each guide moves inward through an S-bend, co-propagates beside the other guide in the central straight section for power transfer, then S-bends back outward to the opposite-side port separation.",
+    "observations_from_image": [
+      "The 120 um by 4 um calibrated footprint contains two disconnected black tracks on one material layer.",
+      "Both tracks have approximately constant width, horizontal access sections, mirrored S-bends, and a long central parallel run.",
+      "The central runs are closely spaced, so their gap and overlap length are the coupling-defining geometry."
+    ],
+    "function_defining_knobs": [
+      "wg_width", "port_separation", "coupler_gap", "coupling_length", "s_bend_radius", "access_length"
+    ],
+    "iteration_history": [
+      {
+        "iter": 1,
+        "iou": 0.439581359901511,
+        "dice": 0.6107072127296577,
+        "sse": 181630.0,
+        "change_made": "Initial primitive reconstruction: two 0.30 um cosine S-bend paths, 12.5 um bends, 70 um interaction length. The diff showed both bends completed too early."
+      },
+      {
+        "iter": 2,
+        "iou": 0.561513435353657,
+        "dice": 0.7191912956246624,
+        "sse": 131004.0,
+        "change_made": "Lengthened the bends to 15.5 um and shortened the parallel interaction to 58 um, based on calibrated left/right bend extents."
+      },
+      {
+        "iter": 3,
+        "iou": 0.6603723057516059,
+        "dice": 0.7954508798587472,
+        "sse": 96386.0,
+        "change_made": "Mapped the observed S-bend centerline profile into a parametric GF Path, fitted distinct guide widths, and corrected the central guide separation."
+      },
+      {
+        "iter": 4,
+        "iou": 0.7705916571278453,
+        "dice": 0.87043407668356,
+        "sse": 61127.0,
+        "change_made": "Used separate left/right and upper/lower centerline profiles and fitted the slight port-height asymmetry visible in the raster."
+      },
+      {
+        "iter": 5,
+        "iou": 0.7721763892645689,
+        "dice": 0.8714441676824422,
+        "sse": 60643.0,
+        "change_made": "Refined sampled bend-progress values from centerline measurements; the remaining mismatch is the source's non-parametric stroke asymmetry."
+      },
+      {
+        "iter": 6,
+        "iou": 0.7722174839284172,
+        "dice": 0.8714703369438244,
+        "sse": 60625.0,
+        "change_made": "Added path-derived arm-length reporting and made the upper interaction length independently tunable for the required geometric knob-response proof; flattened the final primitive assembly so its layer area is independently measurable."
+      }
+    ]
+  }
+}

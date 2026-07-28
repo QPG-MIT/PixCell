@@ -1,0 +1,76 @@
+{
+  "arm_taper_length_um": [
+    {
+      "param": "arm_taper_length_um",
+      "delta_um": 5.0,
+      "width_um": 0.24,
+      "base_value": 22.6,
+      "base_delta_length_um": 0.0020000000000024443,
+      "perturbed_delta_length_um": 0.0020000000000024443,
+      "delta_response_um": 0.0,
+      "delta_length_ok": false,
+      "base_area_um2": 18.434533499999997,
+      "perturbed_area_um2": 19.974533499999986,
+      "area_growth_um2": 1.5399999999999885,
+      "expected_area_growth_um2": 1.2,
+      "area_ok": false,
+      "passes": false,
+      "note": "PRIMARY function knob; width_um = actual output guide width"
+    },
+    {
+      "param": "arm_taper_length_um",
+      "delta_um": 5.0,
+      "width_um": 0.308,
+      "base_value": 22.6,
+      "base_delta_length_um": 0.0020000000000024443,
+      "perturbed_delta_length_um": 0.0020000000000024443,
+      "delta_response_um": 0.0,
+      "delta_length_ok": false,
+      "base_area_um2": 18.434533499999997,
+      "perturbed_area_um2": 19.974533499999986,
+      "area_growth_um2": 1.5399999999999885,
+      "expected_area_growth_um2": 1.54,
+      "area_ok": true,
+      "passes": false,
+      "note": "same knob, geometrically-correct effective width = 2 arms x mean taper width (0.068+0.240)/2"
+    }
+  ],
+  "center_taper_length_um": [
+    {
+      "param": "center_taper_length_um",
+      "delta_um": 5.0,
+      "width_um": 0.17,
+      "base_value": 22.03,
+      "base_delta_length_um": 0.0020000000000024443,
+      "perturbed_delta_length_um": 0.0020000000000024443,
+      "delta_response_um": 0.0,
+      "delta_length_ok": false,
+      "base_area_um2": 18.434533499999997,
+      "perturbed_area_um2": 19.284533499999995,
+      "area_growth_um2": 0.8499999999999979,
+      "expected_area_growth_um2": 0.8500000000000001,
+      "area_ok": true,
+      "passes": false,
+      "note": "centre-bus taper; effective width = mean taper width (0.270+0.070)/2"
+    }
+  ],
+  "input_straight_um": [
+    {
+      "param": "input_straight_um",
+      "delta_um": 5.0,
+      "width_um": 0.27,
+      "base_value": 3.0,
+      "base_delta_length_um": 0.0020000000000024443,
+      "perturbed_delta_length_um": 0.0020000000000024443,
+      "delta_response_um": 0.0,
+      "delta_length_ok": false,
+      "base_area_um2": 18.434533499999997,
+      "perturbed_area_um2": 19.7845335,
+      "area_growth_um2": 1.3500000000000014,
+      "expected_area_growth_um2": 1.35,
+      "area_ok": true,
+      "passes": false,
+      "note": "constant-width bus lead-in; the one knob whose area response is literally width x delta"
+    }
+  ]
+}

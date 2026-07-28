@@ -1,0 +1,99 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "image": "component.png",
+    "footprint_um": [18.24, 0.7],
+    "layer": [1, 0]
+  },
+  "topology_reasoning": {
+    "device_identification": "A folded, grating-loaded three-line coupler/filter. A straight central bus is flanked by two periodically segmented inner interaction arms. Each segmented arm transitions into a broad folded return path, with the upper structure opening toward the left and the lower structure opening toward the right.",
+    "operation": "The periodic inner arms provide distributed wavelength-selective interaction around the central bus. Their long interaction length and repeated material/slot pattern set the spectral selectivity, while the two folded return paths route the outer channels compactly and approximately mirror one another.",
+    "observed_geometry": [
+      "One uninterrupted narrow central horizontal bus.",
+      "Two long periodic rows with nearly identical pitch and duty cycle, one above and one below the bus.",
+      "A broad upper hairpin/return path connected to the right end of the upper row and two tapered/open features at the left.",
+      "A broad lower hairpin/return path connected through the left side of the lower row and tapered/open features at the right."
+    ],
+    "function_defining_knobs": [
+      "grating_period",
+      "grating_duty_cycle",
+      "grating_count",
+      "transfer_length",
+      "bus_to_grating_gap",
+      "guide_width",
+      "grating_width",
+      "return_bend_radius",
+      "input_taper_length",
+      "tip_width"
+    ],
+    "implementation_plan": "Use only layer-(1,0) rectangles for the bus and repeated grating teeth, gf.Path plus extrude for constant-width curved returns, and taper primitives for the broad-to-tip transitions. Keep every function-defining dimension as a live top-level numeric assignment."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.72052506514618,
+      "dice": 0.837564159618869,
+      "sse": 352957.0,
+      "change_made": "Initial primitives-only construction: central bus, two mirrored grating rows, two curved/tapered leads, and two folded return paths."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7277956296646227,
+      "dice": 0.8424556899775155,
+      "sse": 337657.0,
+      "change_made": "Aligned the first grating slot, corrected the lower row to use the observed common x phase, shifted the folded mirror axis, and replaced the right hairpin centerline with image-derived waypoints."
+    },
+    {
+      "iter": 3,
+      "iou": 0.655139120018085,
+      "dice": 0.7916423605659524,
+      "sse": 489689.0,
+      "change_made": "Tested a wide cross-section transition around each near-vertical return bend and corrected all rotated transition directions. The wide transition was rejected because it enlarged the GDS height to 0.93 um under absolute scaling."
+    },
+    {
+      "iter": 4,
+      "iou": 0.6871412034661845,
+      "dice": 0.8145627669509489,
+      "sse": 411623.0,
+      "change_made": "Replaced the rejected wide path with bounded bend-fill rectangles while retaining corrected lower taper directions, wider rails/bus, and chirped/apodized tooth placement."
+    },
+    {
+      "iter": 5,
+      "iou": 0.802957729564306,
+      "dice": 0.8907116527444543,
+      "sse": 241189.0,
+      "change_made": "Added the observed lower terminal continuation to reproduce the asymmetric calibrated scoring frame and reduced the local bend-fill extent. This corrected the global vertical registration without changing topology."
+    },
+    {
+      "iter": 6,
+      "iou": 0.8622859160682788,
+      "dice": 0.9260510522345204,
+      "sse": 164187.0,
+      "change_made": "Applied the image-measured grating chirp profile, widened the tooth duty cycle, and compressed the mirrored rail/grating coordinates about the observed center while preserving the calibrated frame."
+    }
+  ],
+  "knob_response": {
+    "param": "transfer_length",
+    "delta_um": 5.0,
+    "width_um": 0.026,
+    "base_value": 8.75,
+    "base_delta_length_um": 8.75,
+    "perturbed_delta_length_um": 13.749999999999998,
+    "delta_response_um": 4.999999999999998,
+    "delta_length_ok": true,
+    "base_area_um2": 3.3238059999999923,
+    "perturbed_area_um2": 3.453805999999992,
+    "area_growth_um2": 0.1299999999999999,
+    "expected_area_growth_um2": 0.13,
+    "area_ok": true,
+    "passes": true
+  },
+  "final": {
+    "best_iteration": 6,
+    "iou": 0.8622859160682788,
+    "dice": 0.9260510522345204,
+    "sse": 164187.0,
+    "gds_size_um": [17.707, 0.6930000000000001],
+    "threshold_reached": true
+  }
+}

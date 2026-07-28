@@ -1,0 +1,45 @@
+{
+  "topology_reasoning": {
+    "device_identification": "A long, narrow interdigitated/folded multi-rail coupler or slow-wave electrode structure. The layout consists of four nested rounded rectangular routed bodies (two entering from the upper side and two from the lower side) surrounding five isolated, parallel transfer rails at the center.",
+    "operating_principle": "The long parallel overlap creates distributed interaction or capacitive/evanescent coupling. Repeated nested return paths provide multiple closely spaced interaction rails while the broad outer turns route each body back without crossings. The five center rails set the local periodic loading/coupling region.",
+    "observed_topology": [
+      "Two disconnected nested rounded rectangular path bodies occupy the upper half.",
+      "Two mirrored disconnected nested rounded rectangular path bodies occupy the lower half.",
+      "Five disconnected straight horizontal rails span essentially the full calibrated length at the center.",
+      "All geometry is on layer (1,0), with left/right symmetry approximate and rounded outer turns."
+    ],
+    "function_defining_knobs": [
+      "interaction_length",
+      "guide_width",
+      "rail_gap",
+      "transfer_length",
+      "bend_radius",
+      "nested_offset",
+      "center_rail_count"
+    ],
+    "implementation_plan": "Use gf.Path centerlines extruded at named widths for the four rounded routed bodies, rectangles for the five straight transfer rails, and @gf.cell assembly. Keep the interaction/coupling length and transverse spacing as live top-level assignments."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8797736931842371,
+      "dice": 0.9360421378106926,
+      "sse": 889531.0,
+      "change_made": "Initial calibrated primitives-only construction: five full-length center rails, mirrored five-rail folded interaction regions, broad return bodies, and nested vertical returns. The diff shows the remaining error is concentrated in the source's rounded/tapered side turns and small subpixel rail-width offsets; stopped because IoU exceeded 0.85."
+    }
+  ],
+  "final_selection": {
+    "iteration": 1,
+    "iou": 0.8797736931842371,
+    "reason": "First iteration exceeded the required 0.85 stopping threshold."
+  },
+  "knob_verification": {
+    "param": "transfer_length",
+    "delta_um": 5.0,
+    "width_um": 0.068,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 0.3400000000000034,
+    "expected_area_growth_um2": 0.34,
+    "passes": true
+  }
+}

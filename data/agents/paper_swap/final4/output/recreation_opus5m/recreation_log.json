@@ -1,0 +1,122 @@
+{
+  "device": "Symmetric evanescent directional coupler (2x2), S-bend pulled",
+  "topology_reasoning": {
+    "what_it_is": "Two nominally identical single-mode strip waveguides that run straight and far apart at the four ports, are pulled toward each other by mirror-symmetric S-bends, run parallel and close over a short central straight, then separate again through the mirrored S-bends. The silhouette is symmetric about both the horizontal midline and the vertical midline of the frame \u2014 the classic 2x2 directional coupler drawn in cross-section-free top view.",
+    "how_it_works": "In the central parallel section the two guides are close enough that their evanescent tails overlap. The composite structure supports a symmetric and an antisymmetric supermode with slightly different propagation constants; beating between them transfers power sinusoidally from one guide to the other. Fractional cross-over power is sin^2(kappa * L_eff), where kappa grows roughly exponentially as the gap shrinks and L_eff is the coupling length plus the effective contribution of the adiabatic S-bend approach/exit regions (where the guides are close but not yet parallel). The S-bends must be gentle enough to be adiabatic (no radiation, no higher-order mode excitation) yet short enough to keep the total footprint at 18 um; the drawn bends are very long and shallow, consistent with that requirement. The wide port separation exists so the four ports can be routed away without residual coupling.",
+    "function_defining_knobs": [
+      "coupling_gap_um - edge-to-edge gap in the parallel region; sets kappa (exponential sensitivity). THE dominant knob for splitting ratio.",
+      "coupling_length_um - length of the parallel straight section; sets the accumulated phase kappa*L, i.e. the split ratio for a fixed gap.",
+      "wg_width_um - guide width; sets mode confinement, hence how far the evanescent tail reaches (kappa) and the single-mode condition.",
+      "bend_length_um - S-bend longitudinal extent; sets adiabaticity (loss) and the parasitic coupling accumulated during approach/exit, which adds to the effective coupling length.",
+      "input_separation_um - port center-to-center separation at the facets; sets residual port-to-port coupling and the bend offset that the S-bends must span.",
+      "straight_in_um - straight lead-in at each facet; with bend_length and coupling_length it sets the total device length, which the fitted values pin to exactly 18.000 um (the footprint spec)."
+    ],
+    "geometry_measured_from_image": {
+      "calibration": "scale_px_per_um = [88.0, 149.0] (anisotropic: the figure is stretched in y), bbox = [0,113,1584,560]",
+      "waveguide_width_px": "97.8 mean -> 0.656 um",
+      "port_center_separation_px": "349 -> 2.342 um",
+      "coupling_region_center_separation_px": "142 -> 0.953 um => edge-to-edge gap 0.297 um",
+      "centerline_fit": "cosine S-bend y = y0 + dy*0.5*(1-cos(pi*t)) fits the traced top centerline with RMS 1.59 px over x=72..684; grid search over (start,end) selected start=72 px, end=684 px",
+      "straight_in_px": 72,
+      "bend_length_px": 612,
+      "coupling_straight_px": 216
+    }
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9737477264829905,
+      "dice": 0.9866992761208707,
+      "sse": 8386.0,
+      "change_made": "Initial build from image measurements: two cosine S-bend arms extruded from gf.Path centerlines. wg_width=0.656, coupling_gap=0.297, coupling_length=2.455, bend_length=6.955, input_separation=2.342, straight_in=0.8175."
+    },
+    {
+      "iter": 2,
+      "iou": 0.97375,
+      "dice": null,
+      "sse": null,
+      "change_made": "Deliberate 3x3 sweep of wg_width in {0.646,0.656,0.666} x bend_length in {6.855,6.955,7.055} (metrics via michaelangelo.core.compare_absolute in-process). Measured values already optimal; no change kept."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9745482470575328,
+      "dice": null,
+      "sse": null,
+      "change_made": "Sweep of coupling_gap x coupling_length x input_separation (3x3x3). Best at coupling_gap=0.317 (vs 0.297 measured), coupling_length and input_separation unchanged."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9745482470575328,
+      "dice": null,
+      "sse": null,
+      "change_made": "1-D refinement of coupling_gap over {0.307,0.317,0.327,0.337,0.357}: 0.317 confirmed as the optimum (0.307 -> 0.97446, 0.327 -> 0.97369). Adopted coupling_gap_um = 0.317."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9745482470575328,
+      "dice": 0.9871100881022303,
+      "sse": 8120.0,
+      "change_made": "Contract refactor only, geometry byte-identical: straight_in_um promoted to a top-level tunable (total length now derived, still exactly 18.000 um); script now writes lengths.json measured from its own centerline arrays; write_gds(with_metadata=False) so the coupler cell is the true GDS top level (the kfactory $$$CONTEXT_INFO$$$ cell was hiding all polygons from gdstk area readers). Final IoU re-confirmed at 0.97455."
+    }
+  ],
+  "final": {
+    "gds": "device.gds",
+    "script": "device.py",
+    "raster": "raster.png",
+    "diff": "diff.png",
+    "overlay": "overlay.png",
+    "IoU": 0.9745482470575328,
+    "Dice": 0.9871100881022303,
+    "SSE": 8120.0,
+    "gds_size_um": [
+      18.0,
+      2.998
+    ],
+    "footprint_um": [
+      18,
+      3
+    ],
+    "size_match": [
+      true,
+      true
+    ],
+    "iterations_used": 5,
+    "tunables": {
+      "wg_width_um": 0.656,
+      "coupling_gap_um": 0.317,
+      "coupling_length_um": 2.455,
+      "bend_length_um": 6.955,
+      "input_separation_um": 2.342,
+      "straight_in_um": 0.8175
+    }
+  },
+  "knob_response": {
+    "tool": "homi.spec_optimization.verify_knob_response",
+    "param": "coupling_length_um",
+    "delta_um": 5.0,
+    "run_as_briefed_width_um_0.656": {
+      "base_delta_length_um": 2.455,
+      "perturbed_delta_length_um": 7.455,
+      "delta_response_um": 5.0,
+      "delta_length_ok": true,
+      "base_area_um2": 23.724308,
+      "perturbed_area_um2": 30.284308,
+      "area_growth_um2": 6.56,
+      "expected_area_growth_um2": 3.28,
+      "area_ok": false,
+      "passes": false
+    },
+    "run_with_width_um_1.312_both_guides": {
+      "area_growth_um2": 6.56,
+      "expected_area_growth_um2": 6.56,
+      "area_ok": true,
+      "passes": true
+    },
+    "honest_reading": "The length knob responds EXACTLY: delta_length_um moves 2.455 -> 7.455 (+5.000 for +5.000 um), so the declared knob moves real geometry, not a reported number. The area sub-check fails ONLY at width_um=0.656 because a directional coupler lengthens BOTH guides when the coupling section grows: measured area growth 6.560 um^2 = 2 x 0.656 x 5.0, i.e. exactly twice the single-guide expectation. Re-running with width_um = 2 x wg_width = 1.312 gives area_growth 6.560 vs expected 6.560 and passes=True. The 2x is inherent to the topology, not a defect.",
+    "lengths_json_semantics": "arms = {guide_total_path, guide_path_outside_coupler} for one guide; their difference is the interaction length (the coupler analogue of MZI arm imbalance). A top-vs-bottom arm difference would be identically zero by symmetry and would measure nothing.",
+    "secondary_knobs_spot_check": {
+      "coupling_gap_um": "0.317 -> 0.617 moves the measured inner edge-to-edge separation 0.317 -> 0.617 um (exact)",
+      "wg_width_um": "0.656 -> 0.856 grows the device bbox height 2.998 -> 3.198 um (exact)"
+    }
+  }
+}

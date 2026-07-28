@@ -1,0 +1,45 @@
+{
+  "workdir": "data/agents/paper_swap/final5/output/recreation_opus5m",
+  "inputs": {
+    "image": "data/agents/paper_swap/final5/device_bw.png",
+    "image_size_px": [3712, 1152],
+    "footprint_um": [18.24, 0.7]
+  },
+  "calibration": {
+    "scale_px_per_um": [200.05482456140354, 1620.0],
+    "note": "Strongly ANISOTROPIC (8.1x). The figure is vertically exaggerated relative to the declared footprint, so 1 px = 5.0 nm in x but only 0.617 nm in y. All geometry must therefore be authored in a y-compressed real space; a shape that is a circular U-turn in the figure is a flat ellipse in device coordinates. Every dimension below is quoted in image pixels (the measurement space) and converted with these two scales.",
+    "render_contract": "michaelangelo.core.compare_absolute.render_gds_absolute is LEFT-ALIGNED in x (gds xmin -> bbox x0 = 63 px) and CENTER-ALIGNED in y (gds bbox center -> py 585). The target's ink-bbox center at the calibration threshold is py 584.5, but its hard (<128) content is centered at py 572.5, so the y-extent of the emitted GDS must be made asymmetric by ~25 px or the whole device renders 12.5 px low."
+  },
+  "topology_reasoning": {
+    "what_it_is": "A dual grating-assisted contra-directional coupler (contra-DC): one straight central bus waveguide with, mirrored above and below it, two identical corrugated (segmented / subwavelength-grating) coupler arms. Each arm is a complete signal path: an adiabatically tapered curved access waveguide entering from the figure edge, a long periodically segmented section running alongside the bus, a 180-degree U-turn at the far end, and a return waveguide that ends in a sharp inverse taper (a radiative terminator / mode dump). The two arms are related by a 180-degree rotation about the bus centre, but their grating segmentations are drawn in phase with each other (identical x positions), i.e. the corrugation is mirror-symmetric about the bus while the routing is rotationally symmetric.",
+    "how_it_works": "The straight bus carries the forward-propagating mode. The periodic index perturbation of the segmented arm supplies the grating momentum K = 2*pi/Lambda that phase-matches the forward bus mode to the BACKWARD mode of the adjacent arm: beta_bus + beta_arm = 2*pi/Lambda. Light in a narrow band around that phase-matching wavelength is coupled contra-directionally into the arm and travels back toward the arm's input; everything else passes the bus untouched. The band centre is set by the period, the bandwidth and peak reflectivity by the number of periods and by the corrugation strength (duty cycle) and the bus-arm gap. The U-turn plus inverse-taper terminator on each arm is a dump for the un-wanted (co-propagating / residual) direction: the sharp tip radiates rather than reflecting, which keeps a spurious Fabry-Perot cavity from forming. The curved access waveguide is an adiabatic taper from a narrow tip at the chip facet up to the full arm width, so a single mode is launched with low loss.",
+    "function_defining_knobs": [
+      "grating_period_um - sets the contra-directional phase-matching wavelength (the dominant knob)",
+      "grating_gap_um (with the period, the duty cycle) - sets the corrugation strength => peak coupling and bandwidth",
+      "grating_periods - sets the total coupling strength / reflectivity and the spectral width",
+      "coupling_gap_um - bus-to-arm edge separation; sets the evanescent overlap, hence kappa",
+      "arm_width_um / bus_width_um - the two propagation constants that enter the phase-matching condition (asymmetry is what makes the contra-DC wavelength-selective rather than a plain DC)",
+      "access_tip_width_um / access taper length - adiabaticity of the input launch",
+      "terminator_taper_length_um / terminator tip width - radiative dump quality (back-reflection suppression)",
+      "uturn_x_semiaxis_um, uturn_y_semiaxis_um - the 180 degree return bend"
+    ]
+  },
+  "measurements_px": {
+    "central_bus": {"x": [452, 3257], "y": [555, 594], "width_px": 40},
+    "top_arm_centerline_y": 484.5,
+    "bottom_arm_centerline_y": 664.5,
+    "arm_width_px": 82,
+    "top_terminator_centerline_y": 75.5,
+    "bottom_terminator_centerline_y": 1069.5,
+    "terminator_width_px": 106,
+    "grating": {"first_gap_x": 946, "last_gap_end_x": 2704, "period_px": 31.232, "gap_px": 9.0, "n_gaps": 57, "duty_tooth": 0.712, "phase_identical_in_both_arms": true},
+    "top_uturn": {"apex_x": 3117, "center_y": 280.0, "y_semiaxis_px": 204.5, "x_semiaxis_px": 258, "fit": "half-ellipse (a circular arc fits poorly; medial-axis radii demand a/b = 1.26)"},
+    "bottom_uturn": {"apex_x": 608, "center_y": 867.0, "y_semiaxis_px": 202.5, "x_semiaxis_px": 266},
+    "uturn_halfwidth_profile_px": "53 at the terminator end -> 44 at the apex -> 41 at the arm end; fits hw = 41 + 12*(1-t)^1.5",
+    "top_terminator_taper": {"tip_x": 469, "full_width_x": 815},
+    "bottom_terminator_taper": {"tip_x": 3231, "full_width_x": 2892},
+    "access_curve_model": "centerline offset from the arm axis d(r) = A*r*exp(k*r) with r the normalised distance back from the arm; input A=27.7 k=2.77 over L=634 px (x 66->700), output A=20.82 k=3.334 over L=690 px (x 2960->3650). Fit residuals < 2 px over the whole curve.",
+    "access_taper": "half-width falls linearly in ARC LENGTH from 41 px at the arm end at ~0.0315 px/px (both access curves), i.e. an adiabatic inverse taper down to a ~20 px wide tip at the figure edge"
+  },
+  "iterations": []
+}

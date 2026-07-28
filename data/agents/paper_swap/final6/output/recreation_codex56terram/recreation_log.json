@@ -1,0 +1,56 @@
+{
+  "topology_reasoning": {
+    "device": "four-port adiabatic waveguide crossing",
+    "operation": "Each cardinal single-mode access waveguide broadens smoothly into a compact central crossing region. The four rotationally symmetric lobes create gradual mode expansion and recompression instead of an abrupt orthogonal intersection.",
+    "observed_geometry": "The calibrated 4.7 um square contains four equal narrow ports, each about 0.55 um long, followed by a teardrop-shaped lobe. The lobes are widest before the center and taper into a merged central region.",
+    "function_defining_knobs": [
+      "guide_width",
+      "port_length",
+      "lobe_expand_length",
+      "lobe_contract_length",
+      "lobe_max_width",
+      "center_width",
+      "delta_length"
+    ],
+    "implementation": "One arm is assembled from a straight and two sine-width gf.Path transition extrusions, then rotated four times. This uses only primitive geometry and naturally merges the overlapping central lobes. delta_length is a real narrow-guide path extension used for the parametric response proof."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.4315891135122575,
+      "dice": 0.6029510974044748,
+      "sse": 78277.0,
+      "change_made": "Initial four-arm sine-transition crossing; the rotational placement inadvertently put each broad lobe at the outside and left the center underfilled."
+    },
+    {
+      "iter": 2,
+      "iou": 0.4945366944850727,
+      "dice": 0.6617926429105981,
+      "sse": 52875.0,
+      "change_made": "Reduced lobe_max_width from 1.72 um to 0.94 um and center_width to 0.78 um after measuring the target cross-sections."
+    },
+    {
+      "iter": 3,
+      "iou": 0.46430033730429526,
+      "dice": 0.6341599813588096,
+      "sse": 54951.0,
+      "change_made": "Tested a longer expansion and shorter contraction; the metric declined, so this profile was rejected."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9039546563722516,
+      "dice": 0.9495548156536717,
+      "sse": 7439.0,
+      "change_made": "Restored the better 0.95/0.85 um lobe profile and anchored each arm's central end at the common crossing center; this corrected the reversed lobe orientation."
+    }
+  ],
+  "knob_response": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.23,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 1.1500000000000012,
+    "expected_area_growth_um2": 1.1500000000000001,
+    "passes": true
+  }
+}

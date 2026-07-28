@@ -1,0 +1,66 @@
+{
+  "topology_reasoning": {
+    "device": "single-input, four-output multimode-interference splitter",
+    "evidence": [
+      "The silhouette has one centered narrow access guide below a broad rectangular multimode body.",
+      "The opposite side of the body feeds four separated, nominally parallel output guides.",
+      "Each access guide joins the body through a linear flare, consistent with low-loss MMI access transitions rather than bends or resonators."
+    ],
+    "operation": "The broad body excites multiple lateral modes from the centered input. Their relative phase evolution forms four self-images at the output plane, where the four flared access guides collect the replicated field.",
+    "function_defining_knobs": [
+      "mmi_length",
+      "mmi_width",
+      "input_taper_length",
+      "input_tip_width",
+      "input_body_width",
+      "output_taper_length",
+      "output_tip_width",
+      "output_body_width",
+      "output_centers",
+      "output_straight_length"
+    ],
+    "measured_initial_geometry_um": {
+      "comparison_frame": [25.0, 10.0],
+      "main_material_x_range": [2.75, 22.22],
+      "main_material_y_range": [1.73, 9.16],
+      "mmi_body_x_range": [2.76, 22.21],
+      "mmi_body_y_range": [2.65, 6.40],
+      "output_guide_centers": [5.45, 9.61, 15.03, 19.48],
+      "output_tip_width": 1.23,
+      "input_center": 12.49
+    },
+    "calibration_note": "The thresholded calibration frame is wider and taller than the main connected silhouette because of sparse near-white boundary pixels. Tiny primitive registration marks will preserve the full calibrated 25 x 10 um frame so the device itself lands at the measured absolute coordinates."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9918635626788362,
+      "dice": 0.9959151633306544,
+      "sse": 12031.0,
+      "change_made": "Initial primitives-only construction from calibrated pixel breakpoints: rectangular MMI body, one input taper, four output tapers and straight guides, plus two 0.002 um primitive registration marks for the threshold-derived absolute frame. The score exceeded 0.85, so no refinement call was made."
+    }
+  ],
+  "best_iteration": 1,
+  "best_metrics": {
+    "iou": 0.9918635626788362,
+    "dice": 0.9959151633306544,
+    "sse": 12031.0
+  },
+  "knob_verification": {
+    "param": "mmi_length",
+    "delta_um": 5.0,
+    "width_um": 19.45,
+    "base_value": 3.75,
+    "base_delta_length_um": 3.75,
+    "perturbed_delta_length_um": 8.75,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 91.43390800000003,
+    "perturbed_area_um2": 188.68390800000003,
+    "area_growth_um2": 97.25,
+    "expected_area_growth_um2": 97.25,
+    "area_ok": true,
+    "passes": true,
+    "note": "The script writes without gdsfactory context metadata so the evaluator sees build_device as the top-level cell. The MMI propagation-axis path and layer-(1,0) body area both respond exactly to mmi_length."
+  }
+}

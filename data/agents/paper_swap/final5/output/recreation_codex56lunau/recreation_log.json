@@ -1,0 +1,83 @@
+{
+  "phase": "A",
+  "topology_reasoning": {
+    "device_identity": "Three-guide grating layout: two oppositely folded serpentine/U-shaped waveguides flank a centered straight rail. Each folded guide contains a long periodic transverse grating section between two solid guide sections.",
+    "operation": "The folded guides provide long optical paths with compact U-turns; the repeated transverse bars form Bragg/grating interaction regions. The isolated center rail is a straight reference or bus guide between the two grating-bearing guides.",
+    "observed_geometry": "The upper folded guide has both exposed ends on the left and bends around the right; the lower folded guide has both exposed ends on the right and bends around the left. The two grating arrays are vertically mirrored around the centered rail, and the exposed folded-guide ends include long tapered tips.",
+    "function_defining_knobs": [
+      "wg_width_um",
+      "center_rail_width_um",
+      "bend_radius_um",
+      "grating_period_um",
+      "grating_bar_width_um",
+      "grating_count",
+      "grating_bar_height_um",
+      "grating_start_um",
+      "grating_end_um",
+      "upper_grating_y_um",
+      "lower_grating_y_um",
+      "taper_length_um",
+      "taper_tip_width_um",
+      "upper_fold_y_um",
+      "lower_fold_y_um"
+    ]
+  },
+  "calibration": "calibration.json maps the black-image bounding box (3649 x 1134 px) to the supplied 18.24 x 0.70 um footprint.",
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.5267200677008927,
+      "dice": 0.6900021540872092,
+      "sse": 677823.0,
+      "change_made": "Initial primitives-only reconstruction using sampled Path centerlines, tapered upper arms, grating rectangles, and a centered rail."
+    },
+    {
+      "iter": 2,
+      "iou": 0.5381354529595253,
+      "dice": 0.6997243993357012,
+      "sse": 655789.0,
+      "change_made": "Corrected the right return segment to terminate on the lower folded branch instead of the upper turn endpoint, removing two diagonal artifacts."
+    },
+    {
+      "iter": 3,
+      "iou": 0.6956609284538701,
+      "dice": 0.8205189100962355,
+      "sse": 391468.0,
+      "change_made": "Applied the comparator's y-flip convention: reflected the upper guide in y, horizontally reflected the lower guide, and placed the two grating arrays at their image-space mirrored y positions."
+    },
+    {
+      "iter": 4,
+      "iou": 0.7954344812265769,
+      "dice": 0.8860635011121814,
+      "sse": 248632.0,
+      "change_made": "Added a sub-pixel vertical frame anchor and aligned the rail and folded-guide centers to the calibrated footprint frame."
+    },
+    {
+      "iter": 5,
+      "iou": 0.809724008227253,
+      "dice": 0.894859110611493,
+      "sse": 229055.0,
+      "change_made": "Separated the grating start from the solid-guide connection, shifted the first tooth, and tested the measured compressed pitch."
+    },
+    {
+      "iter": 6,
+      "iou": 0.8371426487686823,
+      "dice": 0.9113529091818371,
+      "sse": 194274.0,
+      "change_made": "Removed the 0.058 um horizontal bbox offset with a sub-pixel anchor, restored the observed 0.15625 um pitch, tuned guide widths, and made a small lower-path y correction."
+    }
+  ],
+  "best_iter": 6,
+  "final_iou": 0.8371426487686823,
+  "knob_response": {
+    "param": "grating_period_um",
+    "delta_um": 5.0,
+    "width_um": 0.024,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 0.1117065000000026,
+    "expected_area_growth_um2": 0.12,
+    "delta_length_ok": true,
+    "area_ok": true,
+    "passes": true
+  }
+}

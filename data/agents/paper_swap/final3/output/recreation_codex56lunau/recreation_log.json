@@ -1,0 +1,105 @@
+{
+  "topology": {
+    "device": "asymmetric two-waveguide directional coupler",
+    "reasoning": "The calibrated B&W image contains two disconnected material tracks. Each track enters as a horizontal port, follows a rounded downward/upward S-bend into a long parallel interaction region, and exits through the mirrored bend. The upper track is wider in the central parallel region and the lower track is narrower; both return to approximately the same port width at the four ends. The close central spacing is the coupling gap, and the common parallel length is the transfer/interactions length. There are no junctions, crossings, rings, or extra layers.",
+    "function": "Power transfers between the two nearby guides through evanescent coupling in the central parallel section. The primary function-defining geometry is the interaction length and gap; the taper length and the two interaction-region widths set the adiabatic/asymmetric coupling profile. Bend radius, port spacing, and straight lead lengths determine routing fidelity and footprint.",
+    "knobs": {
+      "transfer_length": "length of the central parallel interaction region",
+      "coupler_gap": "edge-to-edge spacing between the interaction-region guides",
+      "taper_length": "length over which each guide changes between port and interaction width",
+      "wide_width": "upper guide width in the interaction region",
+      "narrow_width": "lower guide width in the interaction region",
+      "port_width": "common input/output guide width",
+      "bend_radius": "radius used by the four rounded approach/departure bends",
+      "lead_length": "horizontal input/output lead length"
+    }
+  },
+  "calibration": {
+    "source": "component.png copied from device_bw.png",
+    "footprint_um": [120, 4]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.5057866901292699,
+      "dice": 0.6717906240569157,
+      "sse": 153345.0,
+      "change_made": "Initial primitives-only assembly with constant port/interaction widths; the visible wide and narrow guides were vertically exchanged by the GDS-to-image y flip."
+    },
+    {
+      "iter": 2,
+      "iou": 0.6633003347339933,
+      "dice": 0.7975713355941493,
+      "sse": 94552.0,
+      "change_made": "Flipped the GDS y placement so the wide guide is visibly upper, extended the S-bends to 17 um, and shortened the local tapers while preserving the 120 um span."
+    },
+    {
+      "iter": 3,
+      "iou": 0.5469031070421155,
+      "dice": 0.7070941994393779,
+      "sse": 129467.0,
+      "change_made": "Moved the port-to-interaction taper onto the input side and made the 60 um center an explicit width exchange; this trial omitted the full output lead and measured a 106 um bbox."
+    },
+    {
+      "iter": 4,
+      "iou": 0.6288440960470685,
+      "dice": 0.7721354027351883,
+      "sse": 106485.0,
+      "change_made": "Restored the 120 um bbox with a 15 um output lead; retained linear upper-wide/lower-narrow-to-port width exchange across the center."
+    },
+    {
+      "iter": 5,
+      "iou": 0.6465447677307277,
+      "dice": 0.785335182379277,
+      "sse": 100306.0,
+      "change_made": "Replaced the entry bends with a fitted shallow-entry sigmoid S profile, moved the input taper to x=5..15 um, and kept the central exchange widths."
+    },
+    {
+      "iter": 6,
+      "iou": 0.7992528441552945,
+      "dice": 0.8884274900568789,
+      "sse": 52178.0,
+      "change_made": "Made the exit bends start at x=87 um with a compact smoothstep profile, carried 0.31/0.29 um widths into the bend-to-port transition, and centered the interaction region at 1.99 um."
+    }
+  ],
+  "best": {
+    "iou": 0.7992528441552945,
+    "dice": 0.8884274900568789,
+    "sse": 52178.0,
+    "iterations": 6,
+    "gds": "device.gds",
+    "raster": "raster.png",
+    "diff": "diff.png",
+    "tunables": [
+      "transfer_length",
+      "coupler_gap",
+      "taper_length",
+      "wide_width",
+      "narrow_width",
+      "port_width",
+      "bend_radius",
+      "s_bend_length",
+      "lead_length",
+      "output_lead_length",
+      "interaction_center_y",
+      "input_port_offset",
+      "output_port_shift"
+    ]
+  },
+  "knob_response": {
+    "param": "transfer_length",
+    "delta_um": 5.0,
+    "width_um": 0.4,
+    "base_value": 57.0,
+    "base_delta_length_um": 0.0049999999999954525,
+    "perturbed_delta_length_um": 5.0049999999999955,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 72.127188,
+    "perturbed_area_um2": 73.902188,
+    "area_growth_um2": 1.7749999999999915,
+    "expected_area_growth_um2": 2.0,
+    "area_ok": true,
+    "passes": true
+  }
+}

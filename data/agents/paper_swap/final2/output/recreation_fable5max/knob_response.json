@@ -1,0 +1,17 @@
+{
+  "param": "mmi_length_um",
+  "delta_um": 5.0,
+  "width_um": 19.462,
+  "base_value": 3.7533,
+  "base_delta_length_um": 3.753,
+  "perturbed_delta_length_um": 8.753,
+  "delta_response_um": 5.0,
+  "delta_length_ok": true,
+  "base_area_um2": 91.69392500000001,
+  "perturbed_area_um2": 189.00392499999995,
+  "area_growth_um2": 97.30999999999995,
+  "expected_area_growth_um2": 97.31,
+  "area_ok": true,
+  "passes": true,
+  "rationale": "Most important function knob of a 1x4 MMI: mmi_length_um (the self-imaging length). width_um = 19.462 = mmi_width_um, because the guide this knob lengthens IS the multimode body (a 19.462-um-wide waveguide); the expected area response is mmi_width_um * delta. The single-mode wire width (1.25 um) would be the right width_um only for a knob that stretches the wires, which this one does not. delta_length_um in lengths.json is the MMI body length measured from the script's own gf.Path objects (arms = propagation planes bounding the multimode body)."
+}

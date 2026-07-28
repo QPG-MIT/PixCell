@@ -1,0 +1,120 @@
+{
+  "device_dir": "data/agents/paper_swap/final6",
+  "workdir": "data/agents/paper_swap/final6/output/recreation_opus5m",
+  "calibration": {
+    "bbox_px": [
+      524,
+      173,
+      1081,
+      730
+    ],
+    "scale_px_per_um": 118.51063829787233,
+    "footprint_um": [
+      4.7,
+      4.7
+    ]
+  },
+  "topology_reasoning": {
+    "what_is_it": "A four-port, four-fold-symmetric waveguide crossing. Four identical lens-shaped (vesica) slab regions radiate at 0/90/180/270 deg from a common overlapping center; each lens is fed at its outer end by a narrow single-mode strip waveguide that reaches the device edge. Silhouette is a black clover/cross on white; layer (1,0) is the guiding material.",
+    "how_it_works": "Each lens is a short multimode expansion region. Light arriving on a single-mode port flares abruptly into the widened lens, which supports a handful of transverse modes; the lens length and maximum width are chosen so the beating of those modes reproduces (self-images / refocuses) the input field back onto a narrow waist at the crossing center. Because the field is focused into a narrow, well-collimated waist exactly where the two propagation axes intersect, its transverse overlap with the orthogonal arms' guided modes is small - that is what gives low crosstalk - while the second, mirror-image lens on the far side re-expands and re-collimates the waist back into the opposite single-mode port with low insertion loss. The device is reciprocal and identical on both axes, so it works as a low-loss, low-crosstalk crossing for either polarization axis of routing.",
+    "geometry_measured_from_image": {
+      "port_waveguide_width_px": 28,
+      "port_waveguide_width_um": 0.236,
+      "lens_max_width_px": 108,
+      "lens_max_width_um": 0.911,
+      "lens_max_width_at_radius_px": 107.75,
+      "flare_start_radius_px": 215.5,
+      "device_half_size_px": 278.5,
+      "boundary_model": "circular arc; fitted sagitta 40 px over half-chord 107.75 px -> arc radius 165.1 px = 1.394 um; residuals <= 2 px over the whole unobstructed profile, so each lens is exactly the intersection of two equal disks (a vesica)"
+    },
+    "function_defining_knobs": [
+      "wg_width_um - single-mode port width; sets the input field waist and thus the mode content excited in the lens",
+      "lens_max_width_um - multimode width of the expansion region; sets how many transverse modes participate and therefore the self-imaging period",
+      "lens_length_um - full vesica length along the arm axis; together with lens_max_width_um this is the self-imaging (transfer) length that decides whether the field refocuses at the crossing center",
+      "lens_center_offset_um - where the lens waist sits relative to the crossing center; positions the focus onto the intersection point",
+      "port_length_um - straight single-mode feed length from the device edge to the flare",
+      "n_arms - rotational multiplicity (4 for a crossing)"
+    ],
+    "primitives_plan": "One arm = boolean AND of two catalog circles (radius R, centers offset +/- c transverse to the arm axis) to make the vesica, boolean OR with a rectangle for the straight feed. Four rotated copies of that arm boolean-OR'd into one polygon on layer (1,0). No device stencils, no raw polygons, no image reads."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9760720544273787,
+      "dice": 0.987891157349748,
+      "sse": 1857.0,
+      "change_made": "First build. Lens modelled as a vesica (boolean AND of two catalog circles) with parameters read straight off the image profile: lens_length=2.0615 um, lens_max_width=0.911 um, lens_center_offset=0.9092 um, wg_width=0.236 um, port_length=0.60 um; four rotated copies boolean-OR'd. Circular-arc fit residuals to the measured half-width profile were <=2.5 px."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9910344827586207,
+      "dice": 0.9954970557672325,
+      "sse": 689.0,
+      "change_made": "diff.png showed a systematic signature: red (extra) on the OUTER half of every lens arc, blue (missing) on the INNER half - the vesica waist sat slightly too far from the crossing centre and the lens was slightly short. Re-fitted the three lens knobs against the target mask by direct pixel-overlap measurement (my own numpy union model, not the evaluator), holding wg_width fixed at the measured 28 px = 0.2363 um so IoU could not fatten the guide. New values: lens_length 2.0615 -> 2.085 um, lens_max_width 0.911 -> 0.9175 um, lens_center_offset 0.9092 -> 0.8725 um; port_length 0.60 -> 0.65 um so the feed still meets the (now inward-shifted) lens shoulder. Residual is a sub-pixel outline with a ~1 px vertical bias that traces to the target's own antialiased bbox (mask spans 556 rows vs the 558 px calibration bbox), not to the geometry - stopped rather than chase rasterisation noise."
+    }
+  ],
+  "stopped_because": "IoU 0.9910 >= 0.85 target after 2 of 6 allowed iterations; remaining residual is sub-pixel boundary/antialiasing, and further tuning would risk the documented IoU-rewards-fattened-waveguides failure mode.",
+  "final": {
+    "iou": 0.9910344827586207,
+    "dice": 0.9954970557672325,
+    "sse": 689.0,
+    "gds_size_um": [
+      4.7,
+      4.7
+    ],
+    "footprint_um": [
+      4.7,
+      4.7
+    ],
+    "size_match": [
+      true,
+      true
+    ]
+  },
+  "tunables": [
+    "wg_width_um=0.2363",
+    "lens_max_width_um=0.9175",
+    "lens_length_um=2.085",
+    "lens_center_offset_um=0.8725",
+    "port_length_um=0.65",
+    "half_footprint_um=2.35",
+    "n_arms=4",
+    "arc_resolution_deg=0.2",
+    "layer=(1,0)"
+  ],
+  "purity_self_check": {
+    "tool": "homi.conductor.gate.purity_violations",
+    "violations": []
+  },
+  "knob_verification": {
+    "knob": "lens_length_um (the self-imaging / transfer length - the knob that decides whether the lens refocuses the field at the crossing centre)",
+    "spec_optimization.verify_knob_response": {
+      "call": "verify_knob_response('device.py', param='lens_length_um', delta_um=0.2, width_um=0.2363)",
+      "base_area_um2": 5.3850960000000105,
+      "perturbed_area_um2": 5.554182000000004,
+      "area_growth_um2": 0.16908599999999385,
+      "expected_area_growth_um2": 0.04726,
+      "delta_response_um": 0.0,
+      "delta_length_ok": false,
+      "area_ok": false,
+      "passes": false,
+      "honest_reading": "Both legs of this checker are MZI-shaped and do not apply to a four-fold-symmetric crossing. (a) delta_length leg: the two arms of a crossing are the two edge-to-edge through-paths, both 4.700 um, so delta_length_um is identically 0 and cannot respond to any knob - there is no arm-imbalance degree of freedom in this topology. (b) area leg: it expects one guide of width_um to lengthen by delta_um. Here the knob lengthens FOUR multimode lenses whose mean width is several times the guide width, so the true response is 0.85 um2 per um, not 0.236. The knob response is real, it just is not the response this MZI checker predicts."
+    },
+    "conductor_gate.knob_response": {
+      "call": "homi.conductor.gate.knob_response('device.py','lens_length_um',delta_um=0.2)  # topology-agnostic: requires layer-(1,0) area to move",
+      "base_area_um2": 5.3850960000000105,
+      "perturbed_area_um2": 5.554182000000004,
+      "area_growth_um2": 0.16908599999999385,
+      "ok": true
+    },
+    "linearity_sweep_layer_1_0_area_um2": {
+      "1.885": 5.20623,
+      "1.985": 5.3001,
+      "2.085": 5.3851,
+      "2.185": 5.46168,
+      "2.285": 5.55418
+    },
+    "conclusion": "lens_length_um moves real geometry: monotone and near-linear at ~0.87 um2 of layer-(1,0) area per um of lens length over a +/-0.2 um range around the fitted value."
+  },
+  "gds_note": "device.gds is written with with_metadata=False. kfactory's $$$CONTEXT_INFO$$$ cell references every cell in the library, which hides the real top cell from gdstk top_level(); homi.spec_optimization._layer_area then reads 0 um2 (homi.conductor.gate._layer_area works around it). Writing without the metadata cell makes both measurers agree."
+}

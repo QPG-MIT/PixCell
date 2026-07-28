@@ -1,0 +1,101 @@
+{
+  "phase": "A",
+  "ground_truth": {
+    "image": "component.png",
+    "footprint_json": "../../footprint.json",
+    "footprint_um": [
+      4.7,
+      4.7
+    ],
+    "calibrated_bbox_px": [
+      524,
+      173,
+      1081,
+      730
+    ],
+    "scale_px_per_um": 118.51063829787233
+  },
+  "topology_reasoning": {
+    "device_identification": "Four-port, fourfold-symmetric multimode waveguide crossing formed by two orthogonal expanded single-mode guides.",
+    "visual_evidence": [
+      "Four narrow, equal-width access guides terminate at the north, south, east, and west footprint edges.",
+      "Each access guide feeds one smooth petal-shaped expansion whose width peaks about halfway to the center and contracts back to the narrow guide width at the central crossing.",
+      "The horizontal and vertical shapes are congruent and overlap at the center; there is no etched gap between them."
+    ],
+    "operating_principle": "The smooth lobes adiabatically expand the access-guide mode into a wider multimode section and contract it at the shared orthogonal crossing. Fourfold symmetry preserves the intended straight-through paths, while the shaped expansion controls diffraction, reflection, and coupling into the orthogonal guide.",
+    "measured_seed_dimensions_um": {
+      "guide_width": 0.237,
+      "lobe_length_center_to_outer_junction": 1.78,
+      "lobe_max_width": 0.929,
+      "access_straight_length": 0.57
+    },
+    "function_defining_knobs": {
+      "guide_width": "Sets the single-mode access and central throat width.",
+      "lobe_length": "Sets the adiabatic interaction/expansion length from the center to each outer access guide.",
+      "lobe_max_width": "Sets the widest multimode cross-section and therefore modal evolution through the crossing.",
+      "profile_exponent": "Controls how rapidly each lobe opens and closes while retaining the same endpoints and peak width.",
+      "port_length": "Sets the narrow access length between each lobe and the footprint boundary."
+    },
+    "planned_construction": "Extrude one straight gf.Path with a symmetric analytic width function, add an orthogonally rotated copy, and assemble the two primitive extrusions in an @gf.cell component on layer (1, 0)."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9832526885207623,
+      "dice": 0.9915556340469509,
+      "sse": 1291.0,
+      "change_made": "Initial primitive reconstruction from the pre-code pixel measurements: two orthogonal variable-width gf.Path extrusions whose width profiles are the union of a 0.230 um guide and paired 1.807 x 0.906 um elliptical lobes centered 0.861 um from the crossing.",
+      "diff_observation": "Only thin alternating red/blue contours remain along the smooth lobe boundaries, plus isolated one-pixel footprint-edge offsets. The 0.85 stop threshold was exceeded, so no further scored refinement was performed.",
+      "gds_size_um": [
+        4.7,
+        4.7
+      ],
+      "size_match": [
+        true,
+        true
+      ]
+    }
+  ],
+  "knob_verification": {
+    "status": "passed",
+    "param": "horizontal_path_length",
+    "delta_um": 5.0,
+    "width_um": 0.23,
+    "base_value": 4.7,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 4.999999999999999,
+    "delta_response_um": 4.999999999999999,
+    "delta_length_ok": true,
+    "base_area_um2": 5.660036999999999,
+    "perturbed_area_um2": 6.809719999999997,
+    "area_growth_um2": 1.1496829999999978,
+    "expected_area_growth_um2": 1.1500000000000001,
+    "area_ok": true,
+    "passes": true,
+    "audit_note": "The first check exposed that GDSFactory metadata made $$$CONTEXT_INFO$$$ the only top-level cell, which the area evaluator correctly excludes. device.py was changed to write_gds(..., with_metadata=False); the second check measured the unchanged device geometry and passed both length and area response tests."
+  },
+  "final_selection": {
+    "selected_iteration": 1,
+    "iou": 0.9832526885207623,
+    "dice": 0.9915556340469509,
+    "sse": 1291.0,
+    "stop_reason": "IoU exceeded the binding 0.85 threshold on the first scored comparison.",
+    "implemented_function_tunables": [
+      "guide_width",
+      "lobe_length",
+      "lobe_max_width",
+      "lobe_center_offset",
+      "horizontal_path_length",
+      "vertical_path_length"
+    ],
+    "implementation_update_from_precode_plan": "Quantitative contour fitting showed that paired ellipses describe each lobed axis directly, so lobe_center_offset replaced the provisional profile_exponent and access length is represented by the live total path lengths.",
+    "purity_violations": [],
+    "final_gds_top_cell": "device",
+    "final_gds_bbox_um": [
+      -2.35,
+      -2.35,
+      2.35,
+      2.35
+    ]
+  }
+}

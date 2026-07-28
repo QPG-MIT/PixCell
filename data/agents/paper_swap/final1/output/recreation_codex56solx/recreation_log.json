@@ -1,0 +1,80 @@
+{
+  "phase": "A",
+  "topology_reasoning": {
+    "device_identification": "Symmetric three-waveguide adiabatic/trident coupler. A wide center stem narrows to a terminating tip while two disconnected outer rails begin as narrow tips, broaden through the same interaction region, and then fan out to two parallel output guides.",
+    "operating_principle": "The long counter-tapered three-guide region transfers the center-stem mode into the two symmetric outer supermodes. The outer S-bends then increase port separation without changing guide width.",
+    "observed_geometry": {
+      "footprint_um": [
+        40.0,
+        1.7
+      ],
+      "center_stem": "Runs from the left edge to about x=25.1 um and tapers from about 0.27 um to a narrow terminating tip.",
+      "outer_interaction_rails": "Begin around x=3.04 um at roughly 0.07 um width and taper to about 0.244 um near x=25.5 um.",
+      "interaction_offsets": "Outer centerlines remain near +/-0.27 um through the counter-taper region.",
+      "fanout": "Begins near x=26 um, follows mirrored smooth S-bends, and reaches output center offsets near +/-0.73 um by about x=36 um.",
+      "output_guides": "Two parallel rails of about 0.244 um width continue to the right footprint edge."
+    },
+    "function_defining_knobs": [
+      "interaction_length",
+      "center_input_width",
+      "center_tip_width",
+      "outer_tip_width",
+      "outer_guide_width",
+      "interaction_gap",
+      "fanout_length",
+      "output_separation"
+    ],
+    "implementation_plan": "Build three disconnected primitive paths on layer (1,0): one straight center path with a linear width taper, plus two mirrored outer paths whose width linearly increases over the straight interaction segment and remains constant over a cubic-Bezier S-bend and straight output segment."
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.8882139159035998,
+      "dice": 0.9407979767785446,
+      "sse": 27529.0,
+      "change_made": "Initial calibrated primitive model: linear counter-tapers, mirrored cosine S-bend fanout, and exact 40.0 x 1.7 um footprint. The diff showed a small vertical centerline bias in the interaction region, but the IoU stop threshold was already exceeded, so no further comparison iteration was run."
+    }
+  ],
+  "knob_response": {
+    "param": "center_taper_length",
+    "delta_um": 5.0,
+    "width_um": 0.1705,
+    "width_basis": "Mean physical width of the linearly tapered center guide.",
+    "base_value": 25.05,
+    "base_delta_length_um": 22.005000000000003,
+    "perturbed_delta_length_um": 27.005000000000003,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 18.318495,
+    "perturbed_area_um2": 19.173494999999996,
+    "area_growth_um2": 0.8549999999999969,
+    "expected_area_growth_um2": 0.8525,
+    "area_ok": true,
+    "passes": true
+  },
+  "final": {
+    "iou": 0.8882139159035998,
+    "dice": 0.9407979767785446,
+    "sse": 27529.0,
+    "iterations": 1,
+    "gds_size_um": [
+      40.0,
+      1.7
+    ],
+    "geometry_sha256": "61c723ce12d4203fe3300b57f392c63f9e5ca647c9e5eb6627d75e4e3b2d7854",
+    "export_note": "GDS metadata was disabled after scoring so verify_knob_response sees the real top cell. The three layer-(1,0) polygon coordinates and their SHA-256 geometry signature were identical before and after this packaging-only change.",
+    "tunables": [
+      "device_length",
+      "center_taper_length",
+      "center_input_width",
+      "center_tip_width",
+      "outer_start_offset",
+      "outer_tip_width",
+      "outer_guide_width",
+      "interaction_gap",
+      "transfer_length",
+      "fanout_length",
+      "output_separation"
+    ]
+  }
+}

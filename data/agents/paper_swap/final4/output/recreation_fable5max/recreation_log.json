@@ -1,0 +1,111 @@
+{
+  "agent": "recreation_fable5max",
+  "phase": "A",
+  "inputs": {
+    "image": "data/agents/paper_swap/final4/device_bw.png",
+    "footprint_um": [18, 3]
+  },
+  "topology_reasoning": {
+    "written_before_coding": true,
+    "what_is_this_device": "A symmetric directional coupler: two identical single-mode waveguides enter at opposite corners (top-left/bottom-left), are brought close together by mirrored smooth S-bends into a short central parallel section separated by a sub-half-micron gap, then separate again by mirrored S-bends to the output ports. The image shows exactly two constant-width strips, mirror-symmetric about the horizontal midline and left-right symmetric about the vertical midline; no tapers, no third feature.",
+    "how_it_works": "In the central section the two guides are close enough (gap ~0.29 um << wavelength) that their modal evanescent fields overlap, splitting the system into even/odd supermodes with different propagation constants. Light launched in one guide beats between the guides with transfer length L_pi = pi/(beta_even - beta_odd); the power splitting ratio is set by the effective interaction length (central parallel section plus the adiabatic contribution of the S-bend approach regions) relative to L_pi, and by the gap, which sets the supermode splitting exponentially. The S-bends bring the guides together gradually to avoid junction scattering; the port separation at the ends decouples the guides.",
+    "function_defining_knobs": [
+      "coupling_gap: edge-to-edge separation in the central section - exponentially controls the even/odd supermode splitting, hence the coupling strength per unit length",
+      "coupling_length: length of the central parallel section - the primary transfer-length knob that dials the splitting ratio",
+      "wg_width: guide width - sets modal confinement (and with the gap, the supermode splitting)",
+      "io_separation: port center-to-center separation - sets decoupling at the ports within the fixed 3 um footprint",
+      "sbend_length: horizontal extent of each cosine S-bend - controls bend adiabaticity and the parasitic coupling accumulated during approach"
+    ]
+  },
+  "measurements_from_target": {
+    "method": "column-wise black-run analysis of component.png under the calibration (88 px/um in x, 149 px/um in y, ink bbox y 113..560)",
+    "guide_width_um": 0.665,
+    "port_center_offsets_um": [1.174, -1.168],
+    "coupling_center_offsets_um": [0.477, -0.473],
+    "min_gap_um": 0.289,
+    "gap_plateau_x_um": [8.2, 9.8],
+    "straight_lead_um": 0.9,
+    "left_right_symmetric": true,
+    "up_down_symmetric": true,
+    "notes": "Width is constant along the guides (0.658-0.691 um across columns; excess on slopes is the vertical-cut widening of a slanted strip). Total ink pixels 316396 are fully explained by the two strips - no third feature, no border bar."
+  },
+  "parametric_model": {
+    "centerline": "per arm: straight lead (straight_in) at +/- io_separation/2, cosine S-bend of horizontal extent sbend_length down to +/- (coupling_gap+wg_width)/2, straight coupling_length, mirrored cosine S-bend back, straight lead; sampled centerline -> gf.Path -> extrude at wg_width on layer (1,0)",
+    "total_length_um": "2*straight_in + 2*sbend_length + coupling_length = 18.0 at baseline",
+    "initial_values": {
+      "wg_width": 0.665,
+      "coupling_gap": 0.29,
+      "coupling_length": 1.6,
+      "io_separation": 2.34,
+      "straight_in": 0.9,
+      "sbend_length": 7.25
+    },
+    "shape_choice": "raised-cosine S-bend fits the measured centerline within ~0.05 um at every probed column; the measured 1.6 um gap plateau plus the cosine's flat tails reproduces the observed 8.2-9.8 um plateau"
+  },
+  "lengths_json_semantics": "lengths.json is computed from the built paths every run, never hand-entered, and follows the two-arm contract homi.spec_optimization validates (delta_length_um == |top - bottom|, which is structurally 0 for this symmetric coupler). The coupler's own function-knob readback is coupling_section_measured_um: the geometry-measured length of the central minimum-separation section. An earlier draft put that span in delta_length_um; _validate_arms correctly rejected it and it was moved to its own field.",
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9363,
+      "dice": 0.9671,
+      "sse": 20850.0,
+      "change_made": "Initial build: cosine S-bends, wg_width 0.666 (0.665 rejected by the 2-dbu grid), gap 0.29, straight_in 0.9, sbend_length 7.25. Postmortem from diff: total length summed to 17.9 not 18.0 (arithmetic slip -> blue bar at right edge), S-bend shape systematically off (red outer / blue inner lobes: target descends faster early), ink height 3.006 vs 3.000 (outer fringes)."
+    },
+    {
+      "iter": 2,
+      "iou": 0.9766,
+      "dice": 0.9882,
+      "sse": 7532.0,
+      "change_made": "Least-squares fit of a skewed-cosine family (t^p warp) to the measured centerline: straight_in 1.478, sbend_length 6.728, skew 0.781, coupling_length 1.588 (18.000 closure), io_separation 2.334 (ink height exactly 3.0), gap 0.287; out-bend warp time-mirrored so the right half is the exact x-mirror. Residual: strips render ~2.3 px fatter than target; +/-2-3 px systematic wiggle along bends (family misfit, rms 7.7 nm)."
+    },
+    {
+      "iter": 3,
+      "iou": 0.9806,
+      "dice": 0.9902,
+      "sse": 6150.0,
+      "change_made": "Replaced the cosine family with the fitted two-arc S-bend (arc-line-arc fit collapsed the line to zero): bend_radius_in 15.781 (port side), bend_radius_out 25.959 (coupling side), angle derived from the radii and the lateral offset; centerline rms fell 7.7 -> 3.3 nm. Width cut 0.666 -> 0.650 with io_separation 2.350 keeping outer edges pinned at +/-1.5. Overcorrected: precision 0.998 / recall 0.982 -> now ~1.5-2 px net thin, worst on bends where the target widens beyond slope-projection."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9874,
+      "dice": 0.9937,
+      "sse": 3988.0,
+      "change_made": "Width 0.650 -> 0.656, io_separation 2.344, gap 0.296 (min center separation held at 0.952), coupling_length 1.090 re-closing 18.000 with straight_in 0.865. Remaining FN concentrated on the bends: target strips reach 102-103 px vertical there vs ~100 for constant-width extrusion - the source rendering fattens strokes with slope."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9905,
+      "dice": 0.9952,
+      "sse": 3013.0,
+      "change_made": "Slope-tracking width: each arc segment extruded with a linear taper from wg_width at its flat-tangent end to sbend_mid_width 0.670 at the max-slope R_in/R_out joint (gf.path.transition + extrude_transition; leads and coupling section stay at wg_width so the gap is unaffected). Segments constructed analytically (exact circles, mirrored right half) after index-slicing the composed path proved fragile. Residual is +/-1 px antialiasing noise uniformly distributed (FP 1838 / FN 1175 px, edges within 1 px everywhere); stopped here as the honest best - a 6th iteration would chase sub-pixel noise."
+    }
+  ],
+  "final": {
+    "iou": 0.9905,
+    "dice": 0.9952,
+    "precision": 0.9942,
+    "recall": 0.9963,
+    "sse": 3013.0,
+    "iterations_used": 5,
+    "gds_size_um": [18.001, 3.0],
+    "tunables": {
+      "wg_width": 0.656,
+      "coupling_gap": 0.296,
+      "coupling_length": 1.090,
+      "io_separation": 2.344,
+      "straight_in": 0.865,
+      "bend_radius_in": 15.781,
+      "bend_radius_out": 25.959,
+      "sbend_mid_width": 0.670
+    },
+    "primitives_used": "gf.path.straight + gf.path.arc composition (analytic centerlines), gf.path.extrude, gf.path.transition/extrude_transition (taper), @gf.cell assembly; no gf.components stencils, no raw polygons",
+    "knob_verification": {
+      "knob": "coupling_length",
+      "verify_knob_response_as_briefed": "delta_length_ok false (structural: symmetric arms make delta_length_um identically 0 - the MZI-shaped check cannot respond for this device class); area grew 6.56 um2 = exactly 2x the single-guide expectation because the knob extends BOTH guides",
+      "verify_knob_response_two_arm_coefficient": "with width_um = 2*wg_width = 1.312 the tool's gdstk area check passes (6.56 um2 growth, 0% error)",
+      "direct_span_probe": "coupling_section_measured_um 1.399 -> 6.399 (+5.000 for +5.0 knob), device_length +5.0, min_center_separation unchanged",
+      "artifact": "knob_response.json"
+    },
+    "gotcha_fixed": "write_gds(with_metadata=False): the kfactory $$$CONTEXT_INFO$$$ cell references the device cell, demoting it from top level, which made homi.spec_optimization._layer_area read 0.0 (it measures top-level non-$$$ cells only)"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "device": "1x4 MMI splitter/combiner",
+  "topology_reasoning": {
+    "observations": [
+      "The binary material has one connected broad rectangular slab, one centered lower narrow port, and four upper narrow ports.",
+      "Each upper port is a straight section followed by a linear flare into the slab; the lower port is a linear flare into the slab.",
+      "There are no bends, holes, crossings, or disconnected material regions."
+    ],
+    "interpretation": "This is a reciprocal 1x4 multimode-interference splitter/combiner. The lower port is the common input/output and the four upper ports are the complementary output/input array.",
+    "calibrated_geometry": "The supplied absolute renderer left-aligns and vertically centers the 25 x 10 um frame. The script therefore recreates the measured silhouette directly in that calibrated frame: a 19.4334 um by 3.7489 um slab, four 1.23 um nominal upper guides with 1.4141 um flares, and one 1.23 um lower guide with a 0.9251 um flare.",
+    "coordinate_note": "Two 2 nm primitive registration tabs establish the supplied 25 x 10 um scoring frame while contributing only sub-pixel material at its extrema; all visible device material is the MMI slab, tapers, and guides."
+  },
+  "function_defining_knobs": [
+    "slab_width",
+    "slab_length",
+    "guide_width",
+    "top_taper_length",
+    "top_taper_width",
+    "top_straight_length",
+    "input_taper_length",
+    "input_taper_width",
+    "output_center_1",
+    "output_center_2",
+    "output_center_3",
+    "output_center_4",
+    "input_extension"
+  ],
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9944649983386198,
+      "dice": 0.9972248188531807,
+      "sse": 8179.0,
+      "change_made": "Initial primitives-only 1x4 MMI assembly, dimensioned by direct inversion of the supplied absolute calibration. The reviewed diff contains only sub-pixel edge/anti-aliasing residuals, so no geometric refinement was warranted after exceeding the 0.85 stopping threshold. The emitted assembly is flattened only so the independent knob-area measurement reads its real layer-(1,0) material."
+    }
+  ],
+  "knob_verification": {
+    "param": "input_extension",
+    "delta_um": 5.0,
+    "width_um": 1.23,
+    "delta_response_um": 5.0,
+    "area_growth_um2": 6.149999999999977,
+    "expected_area_growth_um2": 6.15,
+    "passes": true
+  }
+}

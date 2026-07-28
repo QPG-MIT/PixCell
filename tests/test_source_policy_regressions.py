@@ -8,7 +8,7 @@ as strict as the pre-extraction textual gate, closing the string-literal
 escape the AST walk cannot see.
 """
 
-from homi.conductor.source_policy import purity_violations
+from homi.conductor.source_policy import purity_violations, strict_purity_violations
 
 
 def _rejects(source: str) -> bool:
@@ -36,8 +36,13 @@ def test_stencils_rejected_through_alias():
     assert _rejects("import gdsfactory as g\nc = g.components.mzi()")
 
 
-def test_dynamic_execution_rejected():
-    assert _rejects('eval("1 + 1")')
+def test_dynamic_execution_is_a_strict_concern_not_a_canonical_one():
+    """Execution safety, not geometric honesty: recorded cells legitimately use
+    __import__("json") to write their own logs, and the gate that certified them
+    permitted it. The strict surface (RL evaluation, release admission) bans it."""
+    assert strict_purity_violations('eval("1 + 1")')
+    assert strict_purity_violations('__import__("json").dumps({})')
+    assert not _rejects('__import__("json").dumps({})')
 
 
 def test_dynamic_component_resolution_rejected():

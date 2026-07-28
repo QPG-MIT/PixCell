@@ -1,0 +1,31 @@
+{
+  "topology_reasoning": {
+    "device": "symmetric directional coupler",
+    "evidence": "The black material consists of two horizontally through-going, equal-width waveguides. Their centerlines approach symmetrically from a wide separation, remain closest around the horizontal midpoint, then mirror-diverge. There are no branches, tapers to a single guide, rings, or crossings.",
+    "operation": "Evanescent coupling transfers power between the guides while their separation is small; the accumulated coupling is controlled primarily by the close-proximity interaction length and gap.",
+    "geometry_model": "Two mirrored smooth sampled centerlines made with gf.Path and variable-width extrusion. The endpoints are separated by about 2.35 um center-to-center; the midpoint separation is about 0.96 um. The apparent guide width is about 0.65 um, with a shallow central widening.",
+    "function_knobs": [
+      "guide_width",
+      "center_width",
+      "input_separation",
+      "coupling_separation",
+      "transfer_length",
+      "transition_length"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.9188803033402227,
+      "dice": 0.9577255045462862,
+      "sse": 26571.0,
+      "change_made": "Initial primitives-only reconstruction: two mirrored cosine-squared gf.Path S-bends, piecewise-extruded with the shallow calibrated central width increase. The GDS is flattened only at write time so the external area measurer sees its primitive-built geometry. The residual is a shape-profile mismatch, but the phase threshold was reached on the first valid comparison."
+    }
+  ],
+  "knob_response": {
+    "param": "transfer_length",
+    "width_um": 0.646,
+    "result_file": "knob_response.json",
+    "note": "The generic verifier is an MZI delta-length contract: it correctly observes that a symmetric directional coupler changes neither differential arm length nor total material area by width times transfer_length. It therefore reports passes=false despite the transfer-length profile changing. No artificial MZI arm/dummy geometry was added."
+  }
+}

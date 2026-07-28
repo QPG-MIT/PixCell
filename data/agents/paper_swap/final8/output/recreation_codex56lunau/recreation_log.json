@@ -1,0 +1,98 @@
+{
+  "phase": "A",
+  "device_image": "component.png",
+  "footprint_um": [120.0, 4.0],
+  "calibration": {
+    "scale_px_per_um": [34.541666666666664, 896.0],
+    "target_bbox_px": [319, 0, 4464, 3584],
+    "target_bbox_um": [120.0, 4.0]
+  },
+  "topology_reasoning": {
+    "device_class": "symmetric multi-rail folded/fanout photonic structure",
+    "observations": [
+      "The material mask is vertically symmetric about the 2 um centerline.",
+      "There are five independent, full-length horizontal rails across the center gap.",
+      "Each half contains two connected fanout/meander-like components: an outer broad tapered body and an inner five-rail fanout with rounded/sloped side transitions.",
+      "The top and bottom halves terminate at the footprint edges in four broad vertical side leads per half; the central rails span the full 120 um footprint.",
+      "The two tiny isolated pixels in the lower half are treated as raster noise rather than device topology."
+    ],
+    "working_model": "The recreation uses primitive straight/taper/rectangle assemblies for the five central rails, mirrored upper/lower broad bodies, and mirrored inner rail fanouts. The geometry is kept explicit and parametric so the rail pitch, guide width, fanout dimensions, body dimensions, and a representative arm length are real top-level knobs.",
+    "function_defining_knobs": [
+      "guide_width_um",
+      "rail_pitch_um",
+      "rail_length_um",
+      "body_length_um",
+      "body_height_um",
+      "fanout_first_y_um",
+      "fanout_inset_per_rail_um",
+      "side_lead_width_um",
+      "outer_lead_junction_width_um",
+      "inner_lead_bottom_width_um"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.015222952797189042,
+      "dice": 0.029989378698040785,
+      "sse": 8887021.0,
+      "change_made": "Initial primitive assembly; outer and inner leads were sloped paths and the lower copy used an incorrect mirror transform, producing a vertically oversized candidate."
+    },
+    {
+      "iter": 2,
+      "iou": 0.001196649888264704,
+      "dice": 0.002390439257658827,
+      "sse": 7078805.0,
+      "change_made": "Adjusted lead endpoints and attempted to correct the lower-half transform; the candidate bbox was still incorrect."
+    },
+    {
+      "iter": 3,
+      "iou": 0.3312654631612331,
+      "dice": 0.49767003250367153,
+      "sse": 7053307.0,
+      "change_made": "Switched the lower half to a 180 degree reference rotation about the 60 x 2 um center, fixing the reflection direction."
+    },
+    {
+      "iter": 4,
+      "iou": 0.9181897062248033,
+      "dice": 0.9573502592002707,
+      "sse": 602863.0,
+      "change_made": "Replaced the broad sloped side paths with segmented primitive vertical tapers; this brought the device bbox close to 120 x 4 um and matched the main side mass."
+    },
+    {
+      "iter": 5,
+      "iou": 0.9386436967421329,
+      "dice": 0.968350912877402,
+      "sse": 439288.0,
+      "change_made": "Replaced the inner lead paths with three exact-endpoint taper segments per side and flattened only the written GDS assembly for the independent area check; retained as best."
+    }
+  ],
+  "final_metrics": {
+    "iou": 0.9386436967421329,
+    "dice": 0.968350912877402,
+    "sse": 439288.0,
+    "gds_size_um": [120.0, 4.0],
+    "target_footprint_um": [120.0, 4.0]
+  },
+  "knob_response": {
+    "param": "arm_extension_um",
+    "delta_um": 5.0,
+    "width_um": 0.068,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 223.06623999999996,
+    "perturbed_area_um2": 223.40623999999997,
+    "area_growth_um2": 0.3400000000000034,
+    "expected_area_growth_um2": 0.34,
+    "area_ok": true,
+    "passes": true
+  },
+  "conductor_gate": {
+    "verified": true,
+    "iou_matches_claim": true,
+    "purity_violations": []
+  }
+}

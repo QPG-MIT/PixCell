@@ -1,0 +1,70 @@
+{
+  "topology_reasoning": {
+    "identification": "A compact vertically elongated loop resonator / loaded split-ring motif: a thick outer racetrack surrounds two mirrored central capacitive loading sections.",
+    "operation": "The outer loop provides the circulating path. The mirrored central sections load and couple the two sides of the loop; their paired apertures set the local capacitive/evanescent loading while preserving a narrow central bridge.",
+    "function_knobs": [
+      "outer_radius_um",
+      "outer_straight_um",
+      "loop_width_um",
+      "loading_body_width_um",
+      "loading_body_height_um",
+      "slot_width_um",
+      "slot_height_um",
+      "slot_gap_um",
+      "bridge_width_um"
+    ]
+  },
+  "iterations": [
+    {
+      "iter": 1,
+      "iou": 0.2983132079213175,
+      "dice": 0.45953966439105404,
+      "sse": 502473.0,
+      "change_made": "Initial segmented circular-racetrack construction; its arc placement exceeded the calibrated height."
+    },
+    {
+      "iter": 2,
+      "iou": 0.7142396181030517,
+      "dice": 0.8333019614765608,
+      "sse": 185091.0,
+      "change_made": "Replaced displaced arc pieces with a closed smooth rounded-loop Path; this is the retained best geometry."
+    },
+    {
+      "iter": 3,
+      "iou": 0.6076663080820349,
+      "dice": 0.7559607426331999,
+      "sse": 282647.0,
+      "change_made": "Tested a pure elliptical outer loop; rejected because its curved sides mismatched the reference."
+    },
+    {
+      "iter": 4,
+      "iou": 0.5429761646633291,
+      "dice": 0.7038036971644396,
+      "sse": 377291.0,
+      "change_made": "Tested an additional inner return loop; rejected as excess material. Restored iteration 2."
+    },
+    {
+      "iter": 5,
+      "iou": 0.7152499668069523,
+      "dice": 0.8339891918359118,
+      "sse": 184440.0,
+      "change_made": "Flattened the final primitive assembly before GDS write so the deterministic knob-area verifier measures referenced geometry; retained final best."
+    }
+  ],
+  "knob_response": {
+    "param": "delta_length",
+    "delta_um": 5.0,
+    "width_um": 0.4,
+    "base_value": 0.0,
+    "base_delta_length_um": 0.0,
+    "perturbed_delta_length_um": 5.0,
+    "delta_response_um": 5.0,
+    "delta_length_ok": true,
+    "base_area_um2": 7.4130365,
+    "perturbed_area_um2": 9.203117500000001,
+    "area_growth_um2": 1.7900810000000016,
+    "expected_area_growth_um2": 2.0,
+    "area_ok": true,
+    "passes": true
+  }
+}

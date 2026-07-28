@@ -1,0 +1,42 @@
+{
+  "spec_optimization.verify_knob_response(mmi_length_um, width_um=25.0)": {
+    "ran": false,
+    "error": "RuntimeError: lengths.json must contain an 'arms' dict with exactly 2 arms (an MZI has two), got {'o1': 10.0, 'o2': 10.0, 'o3': 10.0, 'o4': 10.0} \u2014 3+ arms would silently bypass the delta consistency check",
+    "note": "verify_knob_response hard-requires an MZI-shaped lengths.json (exactly 2 arms); a 1x4 MMI splitter has 4 path-length-balanced branches, so this check is structurally inapplicable. The equivalent geometry-response proof is homi.conductor.gate.knob_response (the conductor gate variant) below."
+  },
+  "gate.knob_response(mmi_length_um, width_um=25.0)": {
+    "param": "mmi_length_um",
+    "delta_um": 5.0,
+    "base_area_um2": 159.070384,
+    "perturbed_area_um2": 284.07038400000005,
+    "area_growth_um2": 125.00000000000006,
+    "expected_area_growth_um2": 125.0,
+    "ok": true
+  },
+  "gate.knob_response(mmi_width_um, width_um=5.053)": {
+    "param": "mmi_width_um",
+    "delta_um": 5.0,
+    "base_area_um2": 159.070384,
+    "perturbed_area_um2": 184.33038399999998,
+    "area_growth_um2": 25.25999999999999,
+    "expected_area_growth_um2": 25.265,
+    "ok": true
+  },
+  "gate.knob_response(out_straight_length_um, width_um=6.336)": {
+    "param": "out_straight_length_um",
+    "delta_um": 5.0,
+    "base_area_um2": 159.070384,
+    "perturbed_area_um2": 190.75038399999997,
+    "area_growth_um2": 31.67999999999998,
+    "expected_area_growth_um2": 31.68,
+    "ok": true
+  },
+  "gate.knob_response(out_taper_length_um, width_um=None)": {
+    "param": "out_taper_length_um",
+    "delta_um": 5.0,
+    "base_area_um2": 159.070384,
+    "perturbed_area_um2": 206.73038400000004,
+    "area_growth_um2": 47.66000000000005,
+    "ok": true
+  }
+}
