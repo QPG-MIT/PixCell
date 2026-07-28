@@ -6,10 +6,11 @@ training entrypoints.
 
 from __future__ import annotations
 
+import hashlib
 import math
 import random
-from collections.abc import Sequence
-from functools import partial
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import chz
@@ -20,9 +21,9 @@ from tinker_cookbook.renderers import (
     Message,
     TextPart,
     TrainOnWhat,
+    get_text_content,
     get_renderer,
 )
-from tinker_cookbook.rl.problem_env import ProblemGroupBuilder
 from tinker_cookbook.rl.types import (
     Env,
     EnvGroupBuilder,
@@ -41,14 +42,16 @@ from rl.common.batcher import AsyncEvaluationBatcher
 from rl.common.contracts import TaskRecord
 from rl.common.dataset_io import load_tasks
 from rl.common.evaluator import Attribution, EvaluationStatus, PixCellEvaluator
+from rl.common.output import extract_code
 from rl.track_a.curriculum import (
     balanced_effective_pass,
+    deterministic_rl_batch,
     hierarchical_sft_weights,
     stratified_physical_pass,
 )
 from rl.common.preprocess import model_image
 from rl.common.prompt import build_prompt_text
-from rl.track_a.reward import reward_for
+from rl.track_a.reward import REWARD_POLICIES, reward_for_policy
 from rl.track_a.recipe import (
     expected_replay_levels,
     normalize_level,
@@ -83,7 +86,29 @@ def _message(task: TaskRecord, *, max_image: int) -> Message:
     )
 
 
-def _renderer(model_name: str, renderer_name: str):
+def _renderer(
+    model_name: str,
+    renderer_name: str,
+    *,
+    effort: float | None = None,
+):
+    if model_name == "thinkingmachines/Inkling":
+        if renderer_name != "tml_v0" or effort is None:
+            raise ValueError(
+                "Inkling requires renderer_name='tml_v0' and explicit effort"
+            )
+        from rl.track_b.tml_shim import install_inkling_runtime
+
+        install_inkling_runtime(effort=effort)
+        tokenizer = get_tokenizer(model_name)
+        return get_renderer(
+            renderer_name,
+            tokenizer,
+            None,
+            model_name=model_name,
+        )
+    if effort is not None:
+        raise ValueError("effort is supported only by Inkling")
     tokenizer = get_tokenizer(model_name)
     processor = get_image_processor(model_name)
     return get_renderer(
@@ -120,6 +145,7 @@ class TrackASupervisedDataset(SupervisedDataset):
         max_length: int,
         max_image: int,
         balanced: bool,
+        schedule_seed: int = 0,
     ) -> None:
         self._source = list(tasks)
         self.renderer = renderer
@@ -127,6 +153,7 @@ class TrackASupervisedDataset(SupervisedDataset):
         self.max_length = max_length
         self.max_image = max_image
         self.balanced = balanced
+        self.schedule_seed = schedule_seed
         self._tasks = list(tasks)
         self._multipliers = (
             hierarchical_sft_weights(self._source)
@@ -140,7 +167,10 @@ class TrackASupervisedDataset(SupervisedDataset):
 
     def set_epoch(self, seed: int = 0) -> None:
         if self.balanced:
-            self._tasks = stratified_physical_pass(self._source, seed=seed)
+            self._tasks = stratified_physical_pass(
+                self._source,
+                seed=self.schedule_seed + seed,
+            )
         else:
             self._tasks = list(self._source)
             random.Random(seed).shuffle(self._tasks)
@@ -183,6 +213,9 @@ class TrackASupervisedDatasetBuilder(SupervisedDatasetBuilder):
     batch_size: int = 64
     max_length: int = 6144
     max_image: int = DEFAULT_MAX_IMAGE
+    levels: str = ""
+    include_validation: bool = True
+    schedule_seed: int = 0
 
     def __call__(self):
         renderer = _renderer(self.model_name, self.renderer_name)
@@ -192,10 +225,20 @@ class TrackASupervisedDatasetBuilder(SupervisedDatasetBuilder):
             configuration="depth",
             split="train",
         )
-        validation = load_tasks(
-            root,
-            configuration="depth",
-            split="validation",
+        validation = (
+            load_tasks(
+                root,
+                configuration="depth",
+                split="validation",
+            )
+            if self.include_validation
+            else []
+        )
+        train = _level_filter(train, self.levels)
+        validation = (
+            _level_filter(validation, self.levels)
+            if self.include_validation
+            else []
         )
         return (
             TrackASupervisedDataset(
@@ -205,14 +248,19 @@ class TrackASupervisedDatasetBuilder(SupervisedDatasetBuilder):
                 max_length=self.max_length,
                 max_image=self.max_image,
                 balanced=True,
+                schedule_seed=self.schedule_seed,
             ),
-            TrackASupervisedDataset(
-                validation,
-                renderer,
-                batch_size=self.batch_size,
-                max_length=self.max_length,
-                max_image=self.max_image,
-                balanced=False,
+            (
+                TrackASupervisedDataset(
+                    validation,
+                    renderer,
+                    batch_size=self.batch_size,
+                    max_length=self.max_length,
+                    max_image=self.max_image,
+                    balanced=False,
+                )
+                if self.include_validation
+                else None
             ),
         )
 
@@ -220,31 +268,105 @@ class TrackASupervisedDatasetBuilder(SupervisedDatasetBuilder):
 class TrackAEnv(Env):
     """Single-turn image-to-code bandit with private deterministic grading."""
 
-    def __init__(self, task: TaskRecord, renderer, max_image: int) -> None:
+    def __init__(
+        self,
+        task: TaskRecord,
+        renderer,
+        max_image: int,
+        *,
+        attempt_context: Mapping[str, object] | None = None,
+        attempt_recorder: Callable[[Mapping[str, object]], None] | None = None,
+        sample_recorder: Callable[[Mapping[str, object]], None] | None = None,
+        reward_policy: str = "validity_floor",
+    ) -> None:
         self.task = task
         self.renderer = renderer
         self.max_image = max_image
+        self.attempt_context = dict(attempt_context or {})
+        self.attempt_recorder = attempt_recorder
+        self.sample_recorder = sample_recorder
+        if reward_policy not in REWARD_POLICIES:
+            raise ValueError(f"unknown reward policy: {reward_policy!r}")
+        self.reward_policy = reward_policy
+        self.prompt_tokens: int | None = None
 
     async def initial_observation(self):
         model_input = self.renderer.build_generation_prompt(
             [_message(self.task, max_image=self.max_image)]
         )
+        self.prompt_tokens = int(model_input.length)
         return model_input, self.renderer.get_stop_sequences()
 
     async def step(self, action, *, extra=None):
-        del extra
-        decode = getattr(self.renderer, "decode_action_text", None)
-        completion = (
-            decode(action)
-            if decode is not None
-            else self.renderer.tokenizer.decode(action)
-        )
+        message, termination = self.renderer.parse_response(list(action))
+        completion = get_text_content(message)
+        raw_text = str(self.renderer.tokenizer.decode(list(action)))
+        reasoning = ""
+        content = message.get("content")
+        if isinstance(content, list):
+            reasoning = "\n".join(
+                str(part.get("thinking", ""))
+                for part in content
+                if isinstance(part, Mapping) and part.get("type") == "thinking"
+            )
+        program = extract_code(completion)
+        sample_record = {
+            **self.attempt_context,
+            "task": {
+                "opaque_id": self.task.sampler.opaque_id,
+                "level": self.task.sampler.level,
+                "representation_id": self.task.sampler.representation_id,
+                "realization_slot": self.task.sampler.realization_slot,
+                "image_sha256": self.task.observation.image_sha256,
+                "target_image_sha256": self.task.reference.target_image_sha256,
+            },
+            "sampling": {
+                "prompt_tokens": self.prompt_tokens,
+                "sampled_tokens": len(action),
+                "raw_token_ids": [int(token) for token in action],
+                "stop_reason": getattr(extra, "stop_reason", None),
+                "channel_parse_complete": bool(termination.is_clean),
+                "raw_text": raw_text,
+                "raw_text_sha256": hashlib.sha256(
+                    raw_text.encode("utf-8")
+                ).hexdigest(),
+                "reasoning_text": reasoning,
+                "reasoning_characters": len(reasoning),
+                "reasoning_sha256": hashlib.sha256(
+                    reasoning.encode("utf-8")
+                ).hexdigest(),
+            },
+            "answer_text": completion,
+            "program": program,
+            "program_sha256": hashlib.sha256(
+                program.encode("utf-8")
+            ).hexdigest(),
+        }
+        if self.sample_recorder is not None:
+            self.sample_recorder(sample_record)
         result = await _batcher().submit(self.task.reference, completion)
-        reward = reward_for(result)
+        reward = reward_for_policy(result, policy=self.reward_policy)
         if reward is None:
             if result.attribution is Attribution.REFERENCE:
                 raise BrokenReferenceError(result.error or result.status.value)
             raise EvaluationInfrastructureError(result.error or result.status.value)
+        if self.attempt_recorder is not None:
+            self.attempt_recorder(
+                {
+                    **sample_record,
+                    "evaluation": {
+                        "status": result.status.value,
+                        "attribution": result.attribution.value,
+                        "iou": result.iou,
+                        "dice": result.dice,
+                        "reward": reward,
+                        "violations": list(result.violations),
+                        "error": result.error,
+                        "latency_seconds": result.latency_seconds,
+                        "metrics": result.metrics,
+                    },
+                }
+            )
         return StepResult(
             reward=reward,
             episode_done=True,
@@ -258,8 +380,59 @@ class TrackAEnv(Env):
                     result.status is EvaluationStatus.SOURCE_REJECTED
                 ),
                 "latency_seconds": float(result.latency_seconds),
+                "channel_parse_complete": float(termination.is_clean),
+                "length_capped": float(
+                    getattr(extra, "stop_reason", None) == "length"
+                ),
             },
         )
+
+
+@dataclass(frozen=True)
+class PixCellGroupBuilder(EnvGroupBuilder):
+    """Group builder that gives every rollout an immutable candidate key."""
+
+    task: TaskRecord
+    renderer: object
+    max_image: int
+    num_envs: int
+    dataset_name: str
+    step_index: int
+    group_index: int
+    attempt_recorder: Callable[[Mapping[str, object]], None] | None = None
+    sample_recorder: Callable[[Mapping[str, object]], None] | None = None
+    reward_policy: str = "validity_floor"
+    attempt_metadata: Mapping[str, object] | None = None
+
+    async def make_envs(self) -> Sequence[Env]:
+        return [
+            TrackAEnv(
+                self.task,
+                self.renderer,
+                self.max_image,
+                attempt_context={
+                    **dict(self.attempt_metadata or {}),
+                    "step": self.step_index,
+                    "group": self.group_index,
+                    "attempt": attempt_index,
+                },
+                attempt_recorder=self.attempt_recorder,
+                sample_recorder=self.sample_recorder,
+                reward_policy=self.reward_policy,
+            )
+            for attempt_index in range(1, self.num_envs + 1)
+        ]
+
+    async def compute_group_rewards(self, trajectory_group, env_group):
+        del env_group
+        return [(0.0, {}) for _ in trajectory_group]
+
+    def logging_tags(self) -> list[str]:
+        return [
+            self.dataset_name,
+            self.task.sampler.opaque_id,
+            self.task.sampler.representation_id,
+        ]
 
 
 class TrackARLDataset(RLDataset):
@@ -274,6 +447,11 @@ class TrackARLDataset(RLDataset):
         max_image: int,
         n_batches: int,
         shuffle: bool,
+        attempt_recorder: Callable[[Mapping[str, object]], None] | None = None,
+        sample_recorder: Callable[[Mapping[str, object]], None] | None = None,
+        reward_policy: str = "validity_floor",
+        schedule_seed: int = 10_000,
+        attempt_metadata: Mapping[str, object] | None = None,
     ) -> None:
         self.current_tasks = list(current_tasks)
         self.replay_tasks = list(replay_tasks)
@@ -283,56 +461,41 @@ class TrackARLDataset(RLDataset):
         self.max_image = max_image
         self.n_batches = n_batches
         self.shuffle = shuffle
+        self.attempt_recorder = attempt_recorder
+        self.sample_recorder = sample_recorder
+        if reward_policy not in REWARD_POLICIES:
+            raise ValueError(f"unknown reward policy: {reward_policy!r}")
+        self.reward_policy = reward_policy
+        self.schedule_seed = schedule_seed
+        self.attempt_metadata = dict(attempt_metadata or {})
 
     def __len__(self) -> int:
         return self.n_batches
 
     def get_batch(self, index: int) -> Sequence[EnvGroupBuilder]:
-        count = min(self.groups_per_batch, len(self.current_tasks))
-        if self.shuffle and self.replay_tasks:
-            if self.groups_per_batch == 8:
-                replay_count = (2, 2, 2, 1, 1)[index % 5]
-            else:
-                replay_count = max(1, round(0.2 * self.groups_per_batch))
-            replay_count = min(replay_count, count, len(self.replay_tasks))
-            current_count = count - replay_count
-            current_order = stratified_physical_pass(
-                self.current_tasks,
-                seed=10_000 + index // max(1, len(self.current_tasks)),
-            )
-            replay_order = stratified_physical_pass(
-                self.replay_tasks,
-                seed=20_000 + index // max(1, len(self.replay_tasks)),
-            )
-            current_start = (index * max(1, current_count)) % len(current_order)
-            replay_start = (index * max(1, replay_count)) % len(replay_order)
-            selected = [
-                current_order[(current_start + offset) % len(current_order)]
-                for offset in range(current_count)
-            ]
-            selected.extend(
-                replay_order[(replay_start + offset) % len(replay_order)]
-                for offset in range(replay_count)
-            )
-            random.Random(30_000 + index).shuffle(selected)
-        elif self.shuffle:
-            order = stratified_physical_pass(
-                self.current_tasks,
-                seed=10_000 + index // max(1, len(self.current_tasks)),
-            )
-            start = (index * count) % len(order)
-            selected = [
-                order[(start + offset) % len(order)] for offset in range(count)
-            ]
-        else:
-            selected = self.current_tasks[:count]
+        selected = deterministic_rl_batch(
+            self.current_tasks,
+            self.replay_tasks,
+            step=index,
+            groups_per_batch=self.groups_per_batch,
+            schedule_seed=self.schedule_seed,
+            shuffle=self.shuffle,
+        )
         return [
-            ProblemGroupBuilder(
-                env_thunk=partial(TrackAEnv, task, self.renderer, self.max_image),
+            PixCellGroupBuilder(
+                task=task,
+                renderer=self.renderer,
+                max_image=self.max_image,
                 num_envs=self.group_size,
                 dataset_name=task.sampler.level,
+                step_index=index,
+                group_index=group_index,
+                attempt_recorder=self.attempt_recorder,
+                sample_recorder=self.sample_recorder,
+                reward_policy=self.reward_policy,
+                attempt_metadata=self.attempt_metadata,
             )
-            for task in selected
+            for group_index, (_role, task) in enumerate(selected)
         ]
 
 
@@ -353,29 +516,44 @@ class TrackARLDatasetBuilder(RLDatasetBuilder):
     group_size: int = 4
     model_name: str = DEFAULT_MODEL
     renderer_name: str = DEFAULT_RENDERER
+    model_effort: float | None = None
     max_image: int = DEFAULT_MAX_IMAGE
     current_level: str = ""
     replay_levels: str = ""
     validation_canaries: int = 40
+    attempt_recorder: Callable[[Mapping[str, object]], None] | None = None
+    sample_recorder: Callable[[Mapping[str, object]], None] | None = None
+    reward_policy: str = "validity_floor"
+    require_prefix_replay: bool = True
+    schedule_seed: int = 10_000
+    attempt_metadata: Mapping[str, object] | None = None
 
     async def __call__(self):
-        renderer = _renderer(self.model_name, self.renderer_name)
+        renderer = _renderer(
+            self.model_name,
+            self.renderer_name,
+            effort=self.model_effort,
+        )
         root = Path(self.dataset_root)
         if not self.current_level.strip():
             raise ValueError("current_level must be selected by the pre-RL executable gate")
         current = normalize_level(self.current_level)
         replay_levels = normalize_replay_levels(self.replay_levels)
         expected_replay = expected_replay_levels(current)
-        if replay_levels != expected_replay:
+        if self.require_prefix_replay and replay_levels != expected_replay:
             raise ValueError(
                 "replay_levels must be the complete ordered prefix before "
                 f"{current}: {','.join(expected_replay)}"
             )
         all_train = load_tasks(root, configuration="depth", split="train")
-        all_validation = load_tasks(
-            root,
-            configuration="depth",
-            split="validation",
+        all_validation = (
+            load_tasks(
+                root,
+                configuration="depth",
+                split="validation",
+            )
+            if self.validation_canaries > 0
+            else []
         )
         train = _level_filter(all_train, current)
         replay = (
@@ -384,11 +562,19 @@ class TrackARLDatasetBuilder(RLDatasetBuilder):
             else []
         )
         validation_levels = ",".join((*replay_levels, current))
-        validation = _level_filter(all_validation, validation_levels)
-        validation = balanced_effective_pass(
-            validation,
-            seed=7,
-            draws=min(self.validation_canaries, len(validation)),
+        validation = (
+            _level_filter(all_validation, validation_levels)
+            if all_validation
+            else []
+        )
+        validation = (
+            balanced_effective_pass(
+                validation,
+                seed=7,
+                draws=min(self.validation_canaries, len(validation)),
+            )
+            if self.validation_canaries > 0
+            else []
         )
         return (
             TrackARLDataset(
@@ -400,15 +586,26 @@ class TrackARLDatasetBuilder(RLDatasetBuilder):
                 max_image=self.max_image,
                 n_batches=100_000,
                 shuffle=True,
+                attempt_recorder=self.attempt_recorder,
+                sample_recorder=self.sample_recorder,
+                reward_policy=self.reward_policy,
+                schedule_seed=self.schedule_seed,
+                attempt_metadata=self.attempt_metadata,
             ),
-            TrackARLDataset(
-                validation,
-                [],
-                renderer,
-                groups_per_batch=len(validation),
-                group_size=1,
-                max_image=self.max_image,
-                n_batches=1,
-                shuffle=False,
+            (
+                TrackARLDataset(
+                    validation,
+                    [],
+                    renderer,
+                    groups_per_batch=len(validation),
+                    group_size=1,
+                    max_image=self.max_image,
+                    n_batches=1,
+                    shuffle=False,
+                    reward_policy=self.reward_policy,
+                    schedule_seed=self.schedule_seed,
+                )
+                if validation
+                else None
             ),
         )

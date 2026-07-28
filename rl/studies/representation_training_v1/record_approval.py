@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""Record one reviewed checkpoint report as an immutable wave approval."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+
+from .promotion import (
+    APPROVAL_CONFIRMATION_TOKEN,
+    record_wave_approval,
+)
+from .protocol import repository_root
+
+
+def parser() -> argparse.ArgumentParser:
+    result = argparse.ArgumentParser(description=__doc__)
+    result.add_argument("--stage", required=True)
+    result.add_argument("--wave", required=True)
+    result.add_argument("--replicate", default="r0")
+    result.add_argument("--evaluation-stage", required=True)
+    result.add_argument("--evaluation-wave", required=True)
+    result.add_argument("--evaluation-checkpoint", required=True)
+    result.add_argument("--evaluation-report-record-sha256", required=True)
+    result.add_argument("--expected-source-sha", required=True)
+    result.add_argument(
+        "--confirm-approval",
+        default="",
+        help=f"must be exactly {APPROVAL_CONFIRMATION_TOKEN}",
+    )
+    result.add_argument(
+        "--external-root",
+        type=Path,
+        default=(
+            Path(os.environ["PIXCELL_TRAINING_ROOT"])
+            if os.environ.get("PIXCELL_TRAINING_ROOT")
+            else None
+        ),
+    )
+    return result
+
+
+def main() -> None:
+    args = parser().parse_args()
+    if args.external_root is None:
+        raise SystemExit(
+            "set PIXCELL_TRAINING_ROOT or pass --external-root outside Git"
+        )
+    result = record_wave_approval(
+        repo_root=repository_root(),
+        external_root=args.external_root,
+        stage_id=args.stage,
+        wave_name=args.wave,
+        replicate_id=args.replicate,
+        evaluation_stage_id=args.evaluation_stage,
+        evaluation_wave=args.evaluation_wave,
+        evaluation_checkpoint_name=args.evaluation_checkpoint,
+        evaluation_report_record_sha256=(
+            args.evaluation_report_record_sha256
+        ),
+        expected_source_sha=args.expected_source_sha,
+        confirmation=args.confirm_approval,
+    )
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()

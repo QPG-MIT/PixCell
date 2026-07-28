@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import random
 from collections import defaultdict, deque
+from collections.abc import Sequence
 
 from rl.common.contracts import TaskRecord
 
@@ -101,3 +102,73 @@ def hierarchical_sft_weights(tasks: list[TaskRecord]) -> dict[str, float]:
     if not math.isclose(mean, 1.0, rel_tol=1e-12, abs_tol=1e-12):
         raise RuntimeError(f"SFT weight mean is {mean}, expected 1")
     return weights
+
+
+def deterministic_rl_batch(
+    current_tasks: Sequence[TaskRecord],
+    replay_tasks: Sequence[TaskRecord],
+    *,
+    step: int,
+    groups_per_batch: int,
+    schedule_seed: int,
+    shuffle: bool = True,
+) -> list[tuple[str, TaskRecord]]:
+    """Select one exact current/replay batch shared by launch and preflight."""
+
+    current = list(current_tasks)
+    replay = list(replay_tasks)
+    if not current:
+        raise ValueError("RL current-task pool is empty")
+    if step < 0 or groups_per_batch < 1:
+        raise ValueError("RL step and groups_per_batch must be nonnegative/positive")
+    count = min(groups_per_batch, len(current))
+    if shuffle and replay:
+        def replay_groups(index: int) -> int:
+            proposed = (
+                (2, 2, 2, 1, 1)[index % 5]
+                if groups_per_batch == 8
+                else max(1, round(0.2 * groups_per_batch))
+            )
+            return min(proposed, count, len(replay))
+
+        replay_count = replay_groups(step)
+        current_count = count - replay_count
+        current_order = stratified_physical_pass(
+            current,
+            seed=schedule_seed + step // max(1, len(current)),
+        )
+        replay_order = stratified_physical_pass(
+            replay,
+            seed=schedule_seed + 100_000 + step // max(1, len(replay)),
+        )
+        replay_start = sum(replay_groups(index) for index in range(step))
+        current_start = step * count - replay_start
+        current_start %= len(current_order)
+        replay_start %= len(replay_order)
+        selected = [
+            (
+                "current",
+                current_order[(current_start + offset) % len(current_order)],
+            )
+            for offset in range(current_count)
+        ]
+        selected.extend(
+            (
+                "replay",
+                replay_order[(replay_start + offset) % len(replay_order)],
+            )
+            for offset in range(replay_count)
+        )
+        random.Random(schedule_seed + 200_000 + step).shuffle(selected)
+        return selected
+    if shuffle:
+        order = stratified_physical_pass(
+            current,
+            seed=schedule_seed + step // max(1, len(current)),
+        )
+        start = (step * count) % len(order)
+        return [
+            ("current", order[(start + offset) % len(order)])
+            for offset in range(count)
+        ]
+    return [("current", task) for task in current[:count]]
