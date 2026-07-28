@@ -61,6 +61,9 @@ class CLIConfig:
 
 
 async def cli_main(cfg: CLIConfig) -> None:
+    from rl.track_a.transport import disable_pyqwest_transport
+
+    disable_pyqwest_transport()
     if cfg.confirm_spend != CONFIRM_SPEND:
         raise SystemExit(
             f"paid launch blocked: pass confirm_spend={CONFIRM_SPEND}"

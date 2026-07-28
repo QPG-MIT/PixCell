@@ -55,6 +55,9 @@ async def _sample_completions(
     max_tokens: int,
     temperature: float,
 ) -> list[str]:
+    from rl.track_a.transport import disable_pyqwest_transport
+
+    disable_pyqwest_transport()
     renderer = _renderer(model_name, renderer_name)
     service = tinker.ServiceClient()
     if model_path:
