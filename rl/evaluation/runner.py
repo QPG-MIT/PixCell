@@ -580,11 +580,16 @@ async def run_baseline(
     external_root: Path,
     confirmation: str,
     selection_path: Path | None = None,
+    protocol_file: Path | None = None,
 ) -> dict[str, Any]:
     """Run one frozen wave. No training client is ever constructed."""
 
     root = repo_root.expanduser().resolve()
-    protocol = load_protocol(root)
+    protocol = (
+        load_protocol(root)
+        if protocol_file is None
+        else load_protocol(root, protocol_file=protocol_file)
+    )
     canonical_selection = _canonical_selection_path(
         external_root=external_root,
         study_id=protocol["study_id"],
@@ -616,6 +621,7 @@ async def run_baseline(
         expected_source_sha=expected_source_sha,
         external_root=external_root,
         selection=selection,
+        protocol_file=protocol_file,
     )
     _validate_selection_provenance(
         repo_root=root,

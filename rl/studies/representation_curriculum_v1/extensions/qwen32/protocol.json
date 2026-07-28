@@ -1,0 +1,116 @@
+{
+  "arms": {
+    "qwen-on-32768": {
+      "context_tokens": 65536,
+      "max_image_long_edge": 1440,
+      "max_output_tokens": 32768,
+      "model": "Qwen/Qwen3.6-35B-A3B",
+      "provider": "tinker",
+      "renderer": "qwen3_5",
+      "thinking": true,
+      "thinking_effort": null
+    }
+  },
+  "base_study": {
+    "hypothesis": "RC-H01",
+    "protocol_sha256": "1e2869e6c640463e4cf4233a2806dadb5368c4a22a24634c755bb1d3dcc8e349",
+    "source_git_sha": "b4b56ce2929298aa0d9334d7cdaf69f227329349",
+    "study_id": "representation-curriculum-v1"
+  },
+  "contract_version": "pixcell-blind-phase-a-direct-v1",
+  "dataset": {
+    "configuration": "depth",
+    "development_split": "validation",
+    "logical_release_sha256": "676c49134d4d044c7d84426cf8eeecf09302e74ca4aa548956f14b7631a4d80b",
+    "repository": "qpaig-mit/pixcell",
+    "revision": "v2.0.0"
+  },
+  "decision": {
+    "basis": "RC-H01 smoke observed a 0.875 cap-hit rate for qwen-on-16384",
+    "canonical_selection_logical_sha256": "14e1cd1b71cf345afece19fe110c15e9c734879e3149545489e67df801e6928b",
+    "policy": "quality_first_user_directed_extension",
+    "prior_32k_confirmation": {
+      "arm_id": "qwen-on-32768-confirmation",
+      "attempts": 80,
+      "cap_hit_rate": 0.0,
+      "hypothesis_id": "RC-H00R",
+      "summary_logical_sha256": "45c291e95c3b6f1f1c7145190c36f532b4e9acb713c0f11a66225af394b2e67f"
+    },
+    "trigger_evidence": {
+      "arm_id": "qwen-on-16384",
+      "attempts": 8,
+      "cap_hit_rate": 0.875,
+      "hypothesis_id": "RC-H01",
+      "summary_logical_sha256": "241912e11d77ae5d96a9b5d7814300ff3a03dfe673670c591c5235c39e31d59c",
+      "wave": "smoke"
+    }
+  },
+  "hypotheses": {
+    "RC-H03": {
+      "arm_ids": [
+        "qwen-on-32768"
+      ],
+      "attempts_per_task": 4,
+      "name": "Qwen quality-first 32k zero-shot F1-F8 baseline",
+      "status": "frozen",
+      "task_set": "f1_f8",
+      "waves": {
+        "complete": {
+          "attempt_indices": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "task_count": 8
+        },
+        "smoke": {
+          "attempt_indices": [
+            1
+          ],
+          "task_count": 8
+        }
+      }
+    }
+  },
+  "launch": {
+    "confirmation_token": "PIXCELL_PHASE1_BASELINE",
+    "mutable_output_environment": "PIXCELL_STUDY_ROOT"
+  },
+  "logical_sha256": "bd51768349f512741080fe4f080f343d311e81c5946186a9541565737db9da33",
+  "pricing": {
+    "as_of": "2026-07-27",
+    "currency": "USD",
+    "models": {
+      "Qwen/Qwen3.6-35B-A3B": {
+        "prefill_cached": 0.108,
+        "prefill_uncached": 0.54,
+        "sample": 1.335
+      }
+    },
+    "source": "https://tinker-docs.thinkingmachines.ai/tinker/models/",
+    "unit": "per_million_tokens"
+  },
+  "sampling": {
+    "evaluator_workers": 8,
+    "require_candidate_isolation": true,
+    "sampling_concurrency": 8,
+    "seed_namespace": "pixcell-representation-curriculum-v1",
+    "temperature": 1.0,
+    "top_p": 1.0
+  },
+  "schema_version": "pixcell-representation-curriculum-protocol-v1",
+  "study_id": "representation-curriculum-v1-qwen32",
+  "task_manifest": {
+    "logical_sha256": "e32a0a1522fba3c90163e5687c65ab5e92fdb77f4f875a73cbfcdaa432b44272",
+    "path": "task_manifest.json"
+  },
+  "tracking": {
+    "entity": "aadarwal-massachusetts-institute-of-technology",
+    "group": "phase1-qwen32",
+    "local_record_is_authoritative": true,
+    "mode": "online",
+    "project": "pixcell-representation-curriculum-v1",
+    "provider": "wandb"
+  }
+}
