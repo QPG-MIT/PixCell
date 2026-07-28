@@ -94,89 +94,88 @@ device cells and raw polygon or pixel traces are outside the language.}
 \label{fig:primitives}
 \end{figure*}
 
-Multimodal foundation models increasingly combine visual perception with
-code generation and tool use~\cite{clip,gpt4,design2code,swebenchmm}. This
-combination extends agentic workflows beyond tasks whose state and outputs
-are naturally textual~\cite{swebench,sweagent,metr}. It is especially
-relevant in engineering domains where design intent is carried by geometry.
-In such settings, useful automation requires more than recognizing an
-image or naming an object. A model must convert visual structure into an
-executable representation that domain tools can measure, modify, and
-validate.
+Foundation models have increasingly been combined with code generation and
+tool use in the form of ``agents'' to solve complex and long-horizon science
+and engineering tasks~\cite{react,sweagent,metr,alphaevolve}. The interface
+for these problems has extended beyond text, with visual capabilities
+enabling multimodal agents~\cite{gpt4,design2code,swebenchmm}. Such
+multimodal intelligence has opened up new ways to approach science and
+engineering tasks for problems that are fundamentally based on
+visual-textual relationships. Photonic integrated circuit (PIC) design is a
+particularly relevant problem of this nature.
 
-Photonic integrated circuit design presents this requirement directly.
-Textual specifications and netlists describe circuit topology, but the
-behavior of an individual photonic component is determined by its
-wavelength-scale geometry. That geometry is interpreted within a process
-design kit, which defines fabrication layers, design rules, simulation
-models, and component interfaces~\cite{chrostowski,bogaerts}. At the
-component layer, entering a new design into a PDK therefore requires a
-geometric artifact: shapes assigned to layers, connected by ports, and
-controlled by parameters that remain available for process-specific
-modification. Text can describe the desired behavior, but it does not
-constitute that artifact.
+PIC design involves specifications and netlists that describe component
+connections. The behavior of each component is governed by wavelength-scale
+geometry interpreted within a process design kit (PDK). These PDKs define
+fabrication layers and design rules~\cite{chrostowski,bogaerts}. A reusable
+component is therefore represented by layered geometry, ports, and
+parameters for simulation, often expressed through parametric layout
+code~\cite{gdsfactory}. For programmatic photonic IC design, this creates a
+well-defined relationship between the visual structure of components and
+the textual code used to construct them for larger circuits.
 
-Existing language-model systems for photonic design have advanced the
-text-facing portions of this workflow. PICBench evaluates generated
-netlists over device- and circuit-level problems~\cite{picbench}. PhIDO
-translates natural-language requests into parametric netlists and GDSII
-layouts through a multi-agent workflow~\cite{phido}. Simulator-coupled
-agents can also propose and revise designs against quantitative performance
-criteria~\cite{agentic,flexblog}. These systems establish the value of
-language models for circuit assembly and optimization, and they benefit
-from code-based layout tools and accelerated electromagnetic
-solvers~\cite{gdsfactory,tidy3d}. They generally begin, however, with named
-components or an existing parametric design space. The component-authoring
-problem remains: visual geometry must become a structured, editable program
-before it can participate fully in a PDK-based workflow.
+However, much of the work towards PIC design automation has focused on
+language models operating through text-based systems. PICBench, for
+instance, evaluates model-generated netlists for device- and circuit-level
+problems~\cite{picbench}. PhIDO uses a multi-agent workflow to translate
+natural-language requests into parametric netlists and GDSII
+layouts~\cite{phido}. Even agent-based approaches involving
+simulator-coupled agents that propose and revise designs against quantitative
+performance criteria~\cite{agentic} operate through code-based layout tools
+and accelerated electromagnetic solvers~\cite{gdsfactory,tidy3d}. These
+systems support circuit assembly and optimization within named component
+libraries or predefined parametric design spaces. Visual component
+authoring lies outside their evaluated scope. That is, while textual
+specifications and netlists describe circuit topology, the behavior of a
+photonic component is governed by its physical geometry within a material
+and fabrication stack. A multimodal system could therefore enable a method
+of photonic component creation directly from visual inputs.
 
-That conversion is a representation problem. A dense polygonal trace can
-match a target shape but does not expose meaningful design variables. A
-pre-built library cell provides useful parameters, but only over the design
-space anticipated by its author. Function-specific photonic components
-often require geometric freedom beyond a canonical template~\cite{molesky}.
-A useful component representation must therefore preserve visual geometry,
-record how the geometry is constructed, and retain the dimensions needed
-for subsequent physical evaluation and retargeting.
+The crux of this relationship between the visual component and the program
+that creates it is that of correct representation. A pixel trace or dense
+polygon can reproduce a visual target while discarding the constructive
+relationships that make the component editable. A pre-built PCell exposes
+parameters only within the geometric space anticipated by its author.
+Correct representation therefore requires an executable program that
+preserves the observed geometry, records how that geometry is constructed,
+and exposes wavelength-scale dimensions as independent variables. Work on
+visual program induction and parametric CAD has established the broader
+image-to-program formulation, in which visual structures are recovered as
+executable, editable programs~\cite{chaudhuri,ellis2018,cadcodeverify}. For
+photonic components, the resulting program must also encode paths,
+cross-sections, regions, ports, layer assignments, and parameters that can
+be evaluated within a PDK.
 
-PixCell provides this visual-to-executable interface. Given a component
-silhouette and its physical footprint, a multimodal coding agent constructs
-a GDSFactory program from a restricted catalog of geometric primitives. The
-program is executed and rasterized at calibrated physical scale, allowing a
-deterministic visual verifier to measure geometric agreement and return a
-signed difference image. Once the component exists as a parameterized
-program, the same artifact can be evaluated and modified for a selected
-fabrication stack. Geometric agreement and optical validity remain separate
-claims; the latter is assessed through a tiered electromagnetic evaluator.
+An executable representation also makes the reconstruction measurable. Each
+candidate can be executed, rendered at the physical scale of the target, and
+compared directly with the reference geometry. Recent progress in
+reinforcement learning and test-time scaling has made such verifiers
+integral to model improvement. Automatically checkable outcomes can provide
+rewards during training, and verifiers can rank samples or guide search
+during inference~\cite{grpo,deepseekr1,cobbe2021verifiers,monkeys,snell}.
+These methods exploit an asymmetry between generation and verification:
+producing a correct solution may require substantial search, while checking
+a completed candidate can be comparatively inexpensive when the relevant
+property admits a reliable test~\cite{wei}. Rendered comparison has recently
+provided this signal in visual program and parametric CAD
+systems~\cite{rrvf,recad}. For component creation, geometric comparison
+provides a scalar score for selection and a spatial residual for revision.
+Generation, execution, comparison, and revision can then be repeated under a
+fixed compute budget. Additional inference can be allocated to independent
+samples or to further revisions, and their effects can be measured while the
+target, representation, and verifier remain fixed.
 
-Published component figures provide the controlled evaluation channel used
-in this study, not the intended limit of the interface. They supply external
-geometries and physical dimensions that can be standardized into blind
-targets. The resulting benchmark asks whether models can recover structured
-programs from visual component geometry without receiving device names,
-captions, or source layouts. The same interface can accept other visual
-inputs once they are represented as a silhouette with a physical footprint.
-
-This paper makes four contributions. First, it formulates
-visual-to-parametric component authoring for photonic components under a
-restricted primitive vocabulary, fixed-scale scoring, and an explicit
-parametricity contract --- a composition that, to our knowledge, is
-unoccupied, though each ingredient has precedent. Second, it evaluates 13
-coding-agent configurations on eight literature-derived devices; the two
-strongest configurations attain mean IoU values of $0.910$ and $0.912$ in
-one retained blind result per device. A separate iterative API campaign quantifies seed
-and turn variability under externally controlled verifier feedback. Third,
-the study connects representation to downstream
-utility through cross-stack retargeting and tiered electromagnetic audits,
-including cases in which missing degrees of freedom or evaluator fidelity
-prevent a valid solution. Fourth, it uses the same verifier to construct
-training tasks, select self-generated programs, and train an open-weight
-multimodal model, which reaches mean single-attempt and best-of-eight IoU
-values of $0.254$ and $0.466$ on a training-excluded development benchmark;
-a verifier-only lineage reaches $0.186$ and $0.380$.
-
-The present study is restricted to individual photonic components.
-Circuit-level composition is outside its scope (Sec.~\ref{sec:conclusion}).
+PixCell implements this mechanism for photonic component creation. Given a
+component silhouette and its physical footprint, a multimodal coding agent
+constructs a GDSFactory program from a restricted catalog of geometric
+primitives. The agent proposes and revises the program for up to six rounds.
+Deterministic tools execute it, rasterize the geometry at calibrated
+physical scale, measure intersection-over-union (IoU), and return a signed
+difference image. A conductor recomputes record-grade geometric scores from
+the archived artifacts and audits the source against the primitive
+vocabulary. For programs promoted as reusable records, it also tests whether
+a declared parameter changes the generated geometry. Only independently
+recomputed measurements enter the experimental record.
 
 \begin{figure*}[!t]
 \centering
@@ -195,6 +194,44 @@ fixed. All displayed geometry is generated by the pinned GDSFactory
 implementation, not redrawn as an illustration.}
 \label{fig:composition}
 \end{figure*}
+
+Published component figures provide the controlled evaluation channel used
+in this study. Each source panel is standardized into a binary silhouette
+and physically calibrated footprint, then presented without its device name,
+caption, or source layout. The resulting benchmark asks whether models can
+recover reusable programs from visual component geometry under a fixed
+representation and verifier. The interface can accept other visual inputs
+once they are represented as a silhouette with a physical footprint.
+
+Once a program is accepted, its named dimensions provide the interface to
+process-specific evaluation through local mode solvers and tiered
+electromagnetic simulation. Geometric agreement and optical validity remain
+separate measurements, which allows the same program to be evaluated and
+modified across fabrication stacks. The geometric verifier also supplies a
+training signal by scoring executable samples directly, connecting
+verifier-guided search during inference with verifier-derived optimization
+during training.
+
+This paper makes four contributions. First, it formulates
+visual-to-parametric photonic component creation under a restricted
+primitive vocabulary, fixed-scale geometric verification, and an explicit
+parametricity contract. Second, it evaluates 13 coding-agent configurations
+over eight literature-derived devices. The two strongest configurations
+reach mean IoU values of $0.910$ and $0.912$ with one retained blind result
+per configuration-device pair, while a separate iterative campaign
+characterizes variation across samples and revision turns. Third, it
+connects the recovered representation to downstream utility through
+cross-stack retargeting and tiered electromagnetic audits, identifying how
+available design variables and evaluator fidelity bound the resulting
+physical claims. Fourth, it uses the geometric verifier to construct
+training tasks, select generated programs, and optimize an open-weight
+multimodal model. The scorer-selected lineage reaches mean single-attempt
+and best-of-eight IoU values of $0.254$ and $0.466$ on a training-excluded
+development benchmark, while a verifier-only lineage reaches $0.186$ and
+$0.380$.
+
+The present study is restricted to individual photonic components.
+Circuit-level composition is outside its scope (Sec.~\ref{sec:conclusion}).
 
 \section{Setup}\label{sec:problem}
 
