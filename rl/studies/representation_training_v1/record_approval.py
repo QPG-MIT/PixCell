@@ -26,6 +26,24 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--evaluation-report-record-sha256", required=True)
     result.add_argument("--expected-source-sha", required=True)
     result.add_argument(
+        "--evidence-source-sha",
+        default=None,
+        help=(
+            "exact ancestor commit that produced the evaluation report; "
+            "omit for the unchanged same-source v1 approval path"
+        ),
+    )
+    result.add_argument(
+        "--approve-changed-path",
+        action="append",
+        default=None,
+        dest="approved_change_paths",
+        help=(
+            "one exact producer-to-consumer changed path reviewed for a v2 "
+            "transition; repeat for every changed path and omit for v1"
+        ),
+    )
+    result.add_argument(
         "--confirm-approval",
         default="",
         help=f"must be exactly {APPROVAL_CONFIRMATION_TOKEN}",
@@ -45,9 +63,7 @@ def parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = parser().parse_args()
     if args.external_root is None:
-        raise SystemExit(
-            "set PIXCELL_TRAINING_ROOT or pass --external-root outside Git"
-        )
+        raise SystemExit("set PIXCELL_TRAINING_ROOT or pass --external-root outside Git")
     result = record_wave_approval(
         repo_root=repository_root(),
         external_root=args.external_root,
@@ -57,10 +73,10 @@ def main() -> None:
         evaluation_stage_id=args.evaluation_stage,
         evaluation_wave=args.evaluation_wave,
         evaluation_checkpoint_name=args.evaluation_checkpoint,
-        evaluation_report_record_sha256=(
-            args.evaluation_report_record_sha256
-        ),
+        evaluation_report_record_sha256=(args.evaluation_report_record_sha256),
         expected_source_sha=args.expected_source_sha,
+        evidence_source_sha=args.evidence_source_sha,
+        approved_change_paths=args.approved_change_paths,
         confirmation=args.confirm_approval,
     )
     print(json.dumps(result, indent=2, sort_keys=True))

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import copy
 import json
 import os
-import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -42,6 +43,93 @@ def _preflight(protocol: dict, stage_id: str, wave: str) -> dict:
         "recipe": protocol["recipes"][stage.recipe_key],
         "preflight_sha256": "4" * 64,
     }
+
+
+def _cross_source_parent_records(
+    protocol: dict,
+    *,
+    producer_source_git_sha: str,
+    consumer_source_git_sha: str,
+) -> tuple[dict, SimpleNamespace, SimpleNamespace, SimpleNamespace]:
+    checkpoint = {
+        "name": "final",
+        "batch": 11,
+        "epoch": 1,
+        "final": True,
+        "state_path": "tinker://unit/weights/final",
+        "sampler_path": "tinker://unit/sampler_weights/final",
+        "role": "terminal",
+        "training_progress_fraction": 1.0,
+    }
+    inventory_sha = launcher.canonical_sha256([checkpoint])
+    parent_manifest = SimpleNamespace(
+        payload={
+            "source_git_sha": producer_source_git_sha,
+            "protocol_logical_sha256": protocol["logical_sha256"],
+            "contract_version": protocol["contract_version"],
+            "stage": {
+                "stage_id": "qwen-l0-sft",
+                "model_key": "qwen",
+            },
+        },
+        payload_sha256="1" * 64,
+        record_sha256="2" * 64,
+        relative_path=(
+            "studies/representation-training-v1/stages/qwen-l0-sft/runs/r0/run_manifest.json"
+        ),
+    )
+    receipt = SimpleNamespace(
+        payload={
+            "stage_id": "qwen-l0-sft",
+            "wave": "complete",
+            "run_manifest_record_sha256": parent_manifest.record_sha256,
+            "checkpoint": {
+                key: checkpoint[key]
+                for key in (
+                    "name",
+                    "batch",
+                    "epoch",
+                    "final",
+                    "state_path",
+                    "sampler_path",
+                )
+            },
+            "checkpoint_inventory": {
+                "count": 1,
+                "entries": [checkpoint],
+                "logical_sha256": inventory_sha,
+            },
+        },
+        payload_sha256="3" * 64,
+        record_sha256="4" * 64,
+        relative_path=(
+            "studies/representation-training-v1/stages/"
+            "qwen-l0-sft/runs/r0/waves/complete/receipt.json"
+        ),
+    )
+    approval_payload = {
+        "schema_version": (launcher.SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION),
+        "stage_id": "qwen-l0-rl-l1",
+        "wave": "smoke",
+        "source_git_sha": consumer_source_git_sha,
+        "evidence_source_git_sha": producer_source_git_sha,
+        "parent_stage_id": "qwen-l0-sft",
+        "parent_wave": "complete",
+        "parent_receipt_record_sha256": receipt.record_sha256,
+        "selected_parent_checkpoint": checkpoint,
+        "selected_parent_checkpoint_inventory_sha256": inventory_sha,
+        "source_transition": {"logical_sha256": "5" * 64},
+    }
+    approval = SimpleNamespace(
+        payload=approval_payload,
+        payload_sha256="6" * 64,
+        record_sha256="7" * 64,
+        relative_path=(
+            "studies/representation-training-v1/stages/"
+            "qwen-l0-rl-l1/runs/r0/waves/smoke/approval.json"
+        ),
+    )
+    return checkpoint, parent_manifest, receipt, approval
 
 
 def _write_unit_sft_artifacts(config) -> None:
@@ -109,15 +197,10 @@ class _FakeConfig:
     def update(self, value, allow_val_change=None):
         payload = dict(value)
         changed = [
-            key
-            for key, item in payload.items()
-            if key in self.values and self.values[key] != item
+            key for key, item in payload.items() if key in self.values and self.values[key] != item
         ]
         if changed and allow_val_change is not True:
-            raise RuntimeError(
-                "config changed without allow_val_change: "
-                + ", ".join(changed)
-            )
+            raise RuntimeError("config changed without allow_val_change: " + ", ".join(changed))
         self.values.update(payload)
         self.updates.append(
             {
@@ -228,6 +311,456 @@ def test_sft_launch_records_before_main_and_binds_wandb(
     assert replay["status"] == "already_complete"
 
 
+def test_source_is_revalidated_after_preflight_before_any_live_boundary(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    source_sha = "9" * 40
+    events: list[str] = []
+    source_checks = 0
+    monkeypatch.setenv("TINKER_API_KEY", "test-only")
+    monkeypatch.setenv("WANDB_API_KEY", "test-only")
+    monkeypatch.setattr(launcher, "load_protocol", lambda *_a, **_k: protocol)
+
+    def validate_source(_root, expected):
+        nonlocal source_checks
+        source_checks += 1
+        events.append(f"source-{source_checks}")
+        if source_checks == 1:
+            return expected
+        raise ValueError("paid training requires a completely clean worktree")
+
+    monkeypatch.setattr(launcher, "validate_source_sha", validate_source)
+    monkeypatch.setattr(
+        launcher,
+        "stage_preflight",
+        lambda **_kwargs: (
+            events.append("preflight") or _preflight(protocol, "qwen-mixed-sft", "complete")
+        ),
+    )
+
+    async def forbidden_main(_config):
+        events.append("training")
+        raise AssertionError("source race reached training")
+
+    def forbidden_wandb(**_kwargs):
+        events.append("wandb")
+        raise AssertionError("source race reached W&B")
+
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="source changed after preflight",
+    ):
+        asyncio.run(
+            launcher.run_training_stage(
+                repo_root=REPO_ROOT,
+                stage_id="qwen-mixed-sft",
+                wave_name="complete",
+                replicate_id="r0",
+                expected_source_sha=source_sha,
+                external_root=tmp_path / "external",
+                confirmation=protocol["launch"]["confirmation_token"],
+                sft_main=forbidden_main,
+                wandb_access_validator=forbidden_wandb,
+            )
+        )
+    assert events == ["source-1", "preflight", "source-2"]
+
+
+def test_already_complete_rejects_minimal_receipt_before_live_boundaries(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    source_sha = "8" * 40
+    external = tmp_path / "external"
+    stage = stage_spec(protocol, "qwen-mixed-sft")
+    key = StageKey(STUDY_ID, stage.stage_id, "r0")
+    preflight = _preflight(protocol, stage.stage_id, "complete")
+    store = TrainingStore(repo_root=REPO_ROOT, external_root=external)
+    tracking = launcher._tracking_binding(
+        protocol=protocol,
+        source_git_sha=source_sha,
+        key=key,
+        stage=stage,
+        store=store,
+    )
+    with store.acquire_stage_lock(key):
+        manifest = store.create_or_verify_manifest(
+            key,
+            launcher._manifest_payload(
+                protocol=protocol,
+                source_git_sha=source_sha,
+                stage=stage,
+                preflight=preflight,
+                tracking=tracking,
+                parent=None,
+            ),
+        )
+        store.write_wave_receipt(
+            key,
+            wave="complete",
+            payload={
+                "stage_id": stage.stage_id,
+                "wave": "complete",
+                "run_manifest_record_sha256": manifest.record_sha256,
+            },
+        )
+    monkeypatch.setenv("TINKER_API_KEY", "test-only")
+    monkeypatch.setenv("WANDB_API_KEY", "test-only")
+    monkeypatch.setattr(launcher, "load_protocol", lambda *_a, **_k: protocol)
+    monkeypatch.setattr(
+        launcher,
+        "validate_source_sha",
+        lambda _root, expected: expected,
+    )
+    monkeypatch.setattr(
+        launcher,
+        "stage_preflight",
+        lambda **_kwargs: preflight,
+    )
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="receipt fields differ",
+    ):
+        asyncio.run(
+            launcher.run_training_stage(
+                repo_root=REPO_ROOT,
+                stage_id=stage.stage_id,
+                wave_name="complete",
+                replicate_id="r0",
+                expected_source_sha=source_sha,
+                external_root=external,
+                confirmation=protocol["launch"]["confirmation_token"],
+                sft_main=lambda _config: (_ for _ in ()).throw(
+                    AssertionError("minimal receipt reached training")
+                ),
+                wandb_access_validator=lambda **_kwargs: (_ for _ in ()).throw(
+                    AssertionError("minimal receipt reached W&B")
+                ),
+            )
+        )
+
+
+def test_already_complete_rejects_forged_receipt_bindings(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    source_sha = "7" * 40
+    external = tmp_path / "external"
+    key = StageKey(STUDY_ID, "qwen-l0-sft", "r0")
+    monkeypatch.setenv("TINKER_API_KEY", "test-only")
+    monkeypatch.setenv("WANDB_API_KEY", "test-only")
+    monkeypatch.setattr(launcher, "load_protocol", lambda *_a, **_k: protocol)
+    monkeypatch.setattr(
+        launcher,
+        "validate_source_sha",
+        lambda _root, expected: expected,
+    )
+    monkeypatch.setattr(
+        launcher,
+        "stage_preflight",
+        lambda **_kwargs: _preflight(protocol, key.stage_id, "complete"),
+    )
+
+    async def fake_main(config):
+        _write_unit_sft_artifacts(config)
+
+    asyncio.run(
+        launcher.run_training_stage(
+            repo_root=REPO_ROOT,
+            stage_id=key.stage_id,
+            wave_name="complete",
+            replicate_id="r0",
+            expected_source_sha=source_sha,
+            external_root=external,
+            confirmation=protocol["launch"]["confirmation_token"],
+            sft_main=fake_main,
+            wandb_access_validator=lambda **_kwargs: {"entity": "unit"},
+        )
+    )
+    store = TrainingStore(repo_root=REPO_ROOT, external_root=external)
+    original = store.load_wave_receipt(key, wave="complete")
+    assert original is not None
+    receipt_path = external.joinpath(*original.relative_path.parts)
+    cases = [
+        (
+            "final optimizer metric",
+            lambda payload: payload["final_training_metric"].update({"step": 0}),
+        ),
+        (
+            "canonical training artifacts",
+            lambda payload: payload["final_training_metric"].update({"train_mean_nll": 0.125}),
+        ),
+        (
+            "canonical training artifacts",
+            lambda payload: payload["local_artifact_sha256"].update({"metrics.jsonl": "f" * 64}),
+        ),
+        (
+            "candidate_inventory",
+            lambda payload: payload["candidate_inventory"].update({"expected_count": 1}),
+        ),
+        (
+            "invocation is missing or differs",
+            lambda payload: payload.update({"invocation_record_sha256": "0" * 64}),
+        ),
+    ]
+    for message, mutate in cases:
+        receipt_path.unlink()
+        forged = copy.deepcopy(original.payload)
+        mutate(forged)
+        with store.acquire_stage_lock(key):
+            store.write_wave_receipt(
+                key,
+                wave="complete",
+                payload=forged,
+            )
+        with pytest.raises(launcher.TrainingLaunchError, match=message):
+            asyncio.run(
+                launcher.run_training_stage(
+                    repo_root=REPO_ROOT,
+                    stage_id=key.stage_id,
+                    wave_name="complete",
+                    replicate_id="r0",
+                    expected_source_sha=source_sha,
+                    external_root=external,
+                    confirmation=protocol["launch"]["confirmation_token"],
+                    sft_main=lambda _config: (_ for _ in ()).throw(
+                        AssertionError("forged receipt reached training")
+                    ),
+                    wandb_access_validator=lambda **_kwargs: (_ for _ in ()).throw(
+                        AssertionError("forged receipt reached W&B")
+                    ),
+                )
+            )
+
+    receipt_path.unlink()
+    with store.acquire_stage_lock(key):
+        store.write_wave_receipt(
+            key,
+            wave="complete",
+            payload=original.payload,
+        )
+    metrics_path = store.tinker_log_path(key) / "metrics.jsonl"
+    original_metrics = metrics_path.read_bytes()
+    metrics_path.write_text(
+        json.dumps({"step": 10, "train_mean_nll": 0.125}) + "\n",
+        encoding="utf-8",
+    )
+    try:
+        with pytest.raises(
+            launcher.TrainingLaunchError,
+            match="canonical training artifacts",
+        ):
+            asyncio.run(
+                launcher.run_training_stage(
+                    repo_root=REPO_ROOT,
+                    stage_id=key.stage_id,
+                    wave_name="complete",
+                    replicate_id="r0",
+                    expected_source_sha=source_sha,
+                    external_root=external,
+                    confirmation=protocol["launch"]["confirmation_token"],
+                    sft_main=lambda _config: (_ for _ in ()).throw(
+                        AssertionError("mutated metrics reached training")
+                    ),
+                    wandb_access_validator=lambda **_kwargs: (_ for _ in ()).throw(
+                        AssertionError("mutated metrics reached W&B")
+                    ),
+                )
+            )
+    finally:
+        metrics_path.write_bytes(original_metrics)
+
+
+def test_completed_rl_receipt_requires_every_candidate_and_sample(
+    tmp_path: Path,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    source_sha = "6" * 40
+    external = tmp_path / "external"
+    stage = stage_spec(protocol, "inkling-l4-rl")
+    key = StageKey(STUDY_ID, stage.stage_id, "r0")
+    wave = "smoke"
+    preflight = _preflight(protocol, stage.stage_id, wave)
+    store = TrainingStore(repo_root=REPO_ROOT, external_root=external)
+    tracking = launcher._tracking_binding(
+        protocol=protocol,
+        source_git_sha=source_sha,
+        key=key,
+        stage=stage,
+        store=store,
+    )
+    invocation_id = "smoke-unit"
+    with store.acquire_stage_lock(key):
+        manifest = store.create_or_verify_manifest(
+            key,
+            launcher._manifest_payload(
+                protocol=protocol,
+                source_git_sha=source_sha,
+                stage=stage,
+                preflight=preflight,
+                tracking=tracking,
+                parent=None,
+            ),
+        )
+        resolved = launcher._resolved_launch_binding(
+            repo_root=REPO_ROOT,
+            protocol=protocol,
+            stage=stage,
+            wave_name=wave,
+            store=store,
+            key=key,
+            parent=None,
+            resume_batch=None,
+        )
+        invocation = store.begin_invocation(
+            key,
+            invocation_id=invocation_id,
+            payload=launcher._invocation_payload(
+                protocol=protocol,
+                stage=stage,
+                wave_name=wave,
+                source_git_sha=source_sha,
+                invocation_id=invocation_id,
+                manifest=manifest,
+                preflight=preflight,
+                tracking=tracking,
+                resume_batch=None,
+                resolved_launch=resolved,
+                parent=None,
+            ),
+        )
+        recipe = protocol["recipes"][stage.recipe_key]
+        expected = int(recipe["groups_per_batch"]) * int(recipe["group_size"])
+        for index in range(expected):
+            task_id = f"unit-{index:02d}"
+            store.write_candidate_sample(
+                key,
+                invocation_id=invocation_id,
+                step=0,
+                task_id=task_id,
+                attempt=1,
+                payload={"index": index},
+            )
+            store.write_candidate(
+                key,
+                invocation_id=invocation_id,
+                step=0,
+                task_id=task_id,
+                attempt=1,
+                payload={"index": index},
+            )
+        candidate_root = store.tinker_log_path(key).parent / "candidates" / invocation_id
+        candidate_files = sorted(candidate_root.rglob("evaluation.json"))
+        log_path = store.tinker_log_path(key)
+        log_path.mkdir(parents=True, exist_ok=True)
+        (log_path / "checkpoints.jsonl").write_text(
+            json.dumps(
+                {
+                    "name": "000001",
+                    "batch": 1,
+                    "epoch": None,
+                    "state_path": "tinker://unit/weights/000001",
+                    "sampler_path": "tinker://unit/sampler_weights/000001",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (log_path / "metrics.jsonl").write_text(
+            json.dumps({"step": 0, "optim/entropy": 0.5}) + "\n",
+            encoding="utf-8",
+        )
+        receipt = store.write_wave_receipt(
+            key,
+            wave=wave,
+            payload=launcher._checkpoint_receipt(
+                stage=stage,
+                wave_name=wave,
+                log_path=log_path,
+                manifest=manifest,
+                preflight=preflight,
+                invocation=invocation,
+                tracking=None,
+            ),
+        )
+    launcher._validate_completed_wave_receipt(
+        repo_root=REPO_ROOT,
+        protocol=protocol,
+        store=store,
+        key=key,
+        stage=stage,
+        wave_name=wave,
+        manifest=manifest,
+        preflight=preflight,
+        parent=None,
+        receipt=receipt,
+    )
+    metrics_path = log_path / "metrics.jsonl"
+    original_metrics = metrics_path.read_bytes()
+    metrics_path.write_text(
+        json.dumps({"step": 0, "optim/entropy": 0.25}) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="canonical training artifacts",
+    ):
+        launcher._validate_completed_wave_receipt(
+            repo_root=REPO_ROOT,
+            protocol=protocol,
+            store=store,
+            key=key,
+            stage=stage,
+            wave_name=wave,
+            manifest=manifest,
+            preflight=preflight,
+            parent=None,
+            receipt=receipt,
+        )
+    metrics_path.write_bytes(original_metrics)
+    checkpoints_path = log_path / "checkpoints.jsonl"
+    original_checkpoints = checkpoints_path.read_bytes()
+    checkpoints_path.unlink()
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="without a resumable checkpoint",
+    ):
+        launcher._validate_completed_wave_receipt(
+            repo_root=REPO_ROOT,
+            protocol=protocol,
+            store=store,
+            key=key,
+            stage=stage,
+            wave_name=wave,
+            manifest=manifest,
+            preflight=preflight,
+            parent=None,
+            receipt=receipt,
+        )
+    checkpoints_path.write_bytes(original_checkpoints)
+    candidate_files[0].unlink()
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="candidate_inventory",
+    ):
+        launcher._validate_completed_wave_receipt(
+            repo_root=REPO_ROOT,
+            protocol=protocol,
+            store=store,
+            key=key,
+            stage=stage,
+            wave_name=wave,
+            manifest=manifest,
+            preflight=preflight,
+            parent=None,
+            receipt=receipt,
+        )
+
+
 def test_builtin_sft_records_observed_wandb_before_service_client(
     tmp_path: Path,
     monkeypatch,
@@ -281,13 +814,8 @@ def test_builtin_sft_records_observed_wandb_before_service_client(
         )
         tracking_paths = list(external.rglob("tracking.json"))
         assert len(tracking_paths) == 1
-        tracking_document = json.loads(
-            tracking_paths[0].read_text(encoding="utf-8")
-        )
-        assert (
-            tracking_document["payload"]["observed"]["run_id"]
-            == fake_wandb.calls[0]["id"]
-        )
+        tracking_document = json.loads(tracking_paths[0].read_text(encoding="utf-8"))
+        assert tracking_document["payload"]["observed"]["run_id"] == fake_wandb.calls[0]["id"]
         assert service_client_markers == []
         service_client_markers.append("created")
         logger.close()
@@ -312,10 +840,7 @@ def test_builtin_sft_records_observed_wandb_before_service_client(
     assert len(fake_wandb.config.updates) == 2
     assert fake_wandb.config.updates[0]["allow_val_change"] is False
     assert fake_wandb.config.updates[1]["allow_val_change"] is None
-    assert (
-        fake_wandb.config.updates[0]["value"]
-        == fake_wandb.config.updates[1]["value"]
-    )
+    assert fake_wandb.config.updates[0]["value"] == fake_wandb.config.updates[1]["value"]
     assert "dataset_builder" in fake_wandb.config.values
     key = StageKey(STUDY_ID, "qwen-l0-sft", "r0")
     store = TrainingStore(repo_root=REPO_ROOT, external_root=external)
@@ -329,10 +854,7 @@ def test_builtin_sft_records_observed_wandb_before_service_client(
     receipt = store.load_wave_receipt(key, wave="complete")
     assert tracking is not None
     assert receipt is not None
-    assert (
-        receipt.payload["invocation_tracking_record_sha256"]
-        == tracking.record_sha256
-    )
+    assert receipt.payload["invocation_tracking_record_sha256"] == tracking.record_sha256
 
 
 def test_builtin_rl_records_observed_wandb_before_service_client(
@@ -389,13 +911,8 @@ def test_builtin_rl_records_observed_wandb_before_service_client(
         )
         tracking_paths = list(external.rglob("tracking.json"))
         assert len(tracking_paths) == 1
-        tracking_document = json.loads(
-            tracking_paths[0].read_text(encoding="utf-8")
-        )
-        assert (
-            tracking_document["payload"]["observed"]["run_id"]
-            == fake_wandb.calls[0]["id"]
-        )
+        tracking_document = json.loads(tracking_paths[0].read_text(encoding="utf-8"))
+        assert tracking_document["payload"]["observed"]["run_id"] == fake_wandb.calls[0]["id"]
         service_client_markers.append("created")
         raise RuntimeError("stop before paid RL")
 
@@ -419,10 +936,7 @@ def test_builtin_rl_records_observed_wandb_before_service_client(
     assert len(fake_wandb.config.updates) == 2
     assert fake_wandb.config.updates[0]["allow_val_change"] is False
     assert fake_wandb.config.updates[1]["allow_val_change"] is None
-    assert (
-        fake_wandb.config.updates[0]["value"]
-        == fake_wandb.config.updates[1]["value"]
-    )
+    assert fake_wandb.config.updates[0]["value"] == fake_wandb.config.updates[1]["value"]
     assert "dataset_builder" in fake_wandb.config.values
     assert len(list(external.rglob("tracking.json"))) == 1
 
@@ -497,10 +1011,7 @@ def test_sealed_wandb_initialization_overrides_cookbook_identity(
             "requested_directory": binding["directory"],
             "resolved_root_directory": binding["directory"],
             "files_directory": str(
-                Path(binding["directory"])
-                / "wandb"
-                / binding["run_id"]
-                / "files"
+                Path(binding["directory"]) / "wandb" / binding["run_id"] / "files"
             ),
             "requested_resume": "must",
             "resolved_resume": "must",
@@ -862,6 +1373,7 @@ def test_inkling_extension_rechecks_exact_pilot_evidence() -> None:
         payload={"checkpoint": checkpoint},
     )
     approval_payload = {
+        "schema_version": launcher.APPROVAL_SCHEMA_VERSION,
         "decision": "approve",
         "approval_gate": "promotion-receipt-and-explicit-human-approval",
         "stage_id": stage.stage_id,
@@ -896,6 +1408,7 @@ def test_inkling_extension_rechecks_exact_pilot_evidence() -> None:
     approval = SimpleNamespace(payload=approval_payload)
     assert (
         launcher._approval_record(
+            repo_root=REPO_ROOT,
             store=FakeStore(approval),
             key=key,
             stage=stage,
@@ -913,10 +1426,282 @@ def test_inkling_extension_rechecks_exact_pilot_evidence() -> None:
     }
     with pytest.raises(launcher.TrainingLaunchError, match="not bound"):
         launcher._approval_record(
+            repo_root=REPO_ROOT,
             store=FakeStore(SimpleNamespace(payload=changed)),
             key=key,
             stage=stage,
             wave_name="coverage-extension",
             source_git_sha="a" * 40,
             protocol=protocol,
+        )
+
+
+def test_cross_source_parent_requires_v2_and_child_manifest_records_it() -> None:
+    protocol = load_protocol(REPO_ROOT)
+    producer = "b" * 40
+    consumer = "c" * 40
+    checkpoint, parent_manifest, receipt, approval = _cross_source_parent_records(
+        protocol,
+        producer_source_git_sha=producer,
+        consumer_source_git_sha=consumer,
+    )
+    key = StageKey(STUDY_ID, "qwen-l0-rl-l1", "r0")
+    stage = stage_spec(protocol, key.stage_id)
+    parent_key = StageKey(STUDY_ID, "qwen-l0-sft", "r0")
+
+    class ParentStore:
+        def load_manifest(self, observed_key):
+            assert observed_key == parent_key
+            return parent_manifest
+
+        def load_wave_receipt(self, observed_key, *, wave):
+            assert observed_key == parent_key
+            assert wave == "complete"
+            return receipt
+
+    v1_payload = {
+        key: value
+        for key, value in approval.payload.items()
+        if key not in {"evidence_source_git_sha", "source_transition"}
+    }
+    v1_payload["schema_version"] = launcher.APPROVAL_SCHEMA_VERSION
+    v1 = SimpleNamespace(
+        payload=v1_payload,
+        payload_sha256=approval.payload_sha256,
+        record_sha256=approval.record_sha256,
+        relative_path=approval.relative_path,
+    )
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="requires a v2 transition approval",
+    ):
+        launcher._parent_binding(
+            repo_root=REPO_ROOT,
+            protocol=protocol,
+            store=ParentStore(),
+            key=key,
+            stage=stage,
+            source_git_sha=consumer,
+            approval=v1,
+            existing_manifest=None,
+        )
+
+    parent = launcher._parent_binding(
+        repo_root=REPO_ROOT,
+        protocol=protocol,
+        store=ParentStore(),
+        key=key,
+        stage=stage,
+        source_git_sha=consumer,
+        approval=approval,
+        existing_manifest=None,
+    )
+    assert parent is not None
+    assert parent.source_git_sha == producer
+    assert parent.checkpoint == checkpoint
+    assert parent.entry_approval is approval
+    manifest = launcher._manifest_payload(
+        protocol=protocol,
+        source_git_sha=consumer,
+        stage=stage,
+        preflight=_preflight(protocol, stage.stage_id, "smoke"),
+        tracking={"run_id": "unit"},
+        parent=parent,
+    )
+    assert manifest["source_transition"] == (launcher._child_source_transition_binding(approval))
+    assert manifest["source_transition"]["producer_source_git_sha"] == (producer)
+    assert manifest["source_transition"]["consumer_source_git_sha"] == (consumer)
+    assert manifest["source_transition"]["authorized_child_wave"] == "smoke"
+    assert manifest["parent_receipt"]["record_sha256"] == (receipt.record_sha256)
+
+
+def test_existing_child_manifest_revalidates_exact_v2_transition(
+    monkeypatch,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    producer = "d" * 40
+    consumer = "e" * 40
+    checkpoint, parent_manifest, receipt, approval = _cross_source_parent_records(
+        protocol,
+        producer_source_git_sha=producer,
+        consumer_source_git_sha=consumer,
+    )
+    key = StageKey(STUDY_ID, "qwen-l0-rl-l1", "r0")
+    parent_key = StageKey(STUDY_ID, "qwen-l0-sft", "r0")
+    stage = stage_spec(protocol, key.stage_id)
+    transition_binding = launcher._child_source_transition_binding(approval)
+    existing_manifest = SimpleNamespace(
+        payload={
+            "source_git_sha": consumer,
+            "parent_receipt": {
+                "stage_id": "qwen-l0-sft",
+                "wave": "complete",
+                "record_sha256": receipt.record_sha256,
+                "checkpoint": checkpoint,
+                "checkpoint_inventory_logical_sha256": (
+                    receipt.payload["checkpoint_inventory"]["logical_sha256"]
+                ),
+            },
+            "source_transition": transition_binding,
+        },
+    )
+    validation_calls: list[dict] = []
+    monkeypatch.setattr(
+        launcher,
+        "validate_source_transition_approval",
+        lambda **kwargs: validation_calls.append(dict(kwargs)),
+    )
+
+    class ExistingStore:
+        def load_manifest(self, observed_key):
+            assert observed_key == parent_key
+            return parent_manifest
+
+        def load_wave_receipt(self, observed_key, *, wave):
+            assert observed_key == parent_key
+            assert wave == "complete"
+            return receipt
+
+        def load_wave_approval(self, observed_key, *, wave):
+            assert observed_key == key
+            assert wave == "smoke"
+            return approval
+
+    parent = launcher._parent_binding(
+        repo_root=REPO_ROOT,
+        protocol=protocol,
+        store=ExistingStore(),
+        key=key,
+        stage=stage,
+        source_git_sha=consumer,
+        approval=None,
+        existing_manifest=existing_manifest,
+    )
+    assert parent is not None
+    assert parent.entry_approval is approval
+    assert len(validation_calls) == 1
+    assert validation_calls[0]["replicate_id"] == "r0"
+    assert validation_calls[0]["wave_name"] == "smoke"
+
+    tampered_manifest = SimpleNamespace(payload=copy.deepcopy(existing_manifest.payload))
+    tampered_manifest.payload["source_transition"]["source_transition_logical_sha256"] = "0" * 64
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="differs from its v2 approval",
+    ):
+        launcher._parent_binding(
+            repo_root=REPO_ROOT,
+            protocol=protocol,
+            store=ExistingStore(),
+            key=key,
+            stage=stage,
+            source_git_sha=consumer,
+            approval=None,
+            existing_manifest=tampered_manifest,
+        )
+
+
+def test_completed_wave_cannot_bypass_transition_checks_or_preflight(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    protocol = load_protocol(REPO_ROOT)
+    source_sha = "f" * 40
+    external = tmp_path / "external"
+    key = StageKey(STUDY_ID, "qwen-l0-rl-l1", "r0")
+    store = TrainingStore(repo_root=REPO_ROOT, external_root=external)
+    with store.acquire_stage_lock(key):
+        manifest = store.create_or_verify_manifest(
+            key,
+            {"source_git_sha": source_sha},
+        )
+        store.write_wave_receipt(
+            key,
+            wave="smoke",
+            payload={
+                "stage_id": key.stage_id,
+                "wave": "smoke",
+                "run_manifest_record_sha256": manifest.record_sha256,
+            },
+        )
+    monkeypatch.setenv("TINKER_API_KEY", "test-only")
+    monkeypatch.setenv("WANDB_API_KEY", "test-only")
+    monkeypatch.setattr(
+        launcher,
+        "load_protocol",
+        lambda *_args, **_kwargs: protocol,
+    )
+    monkeypatch.setattr(
+        launcher,
+        "validate_source_sha",
+        lambda _root, expected: expected,
+    )
+    events: list[str] = []
+    monkeypatch.setattr(
+        launcher,
+        "stage_preflight",
+        lambda **_kwargs: events.append("preflight") or _preflight(protocol, key.stage_id, "smoke"),
+    )
+
+    def reject_transition(**_kwargs):
+        events.append("approval")
+        raise launcher.TrainingLaunchError("v2 transition required")
+
+    monkeypatch.setattr(launcher, "_approval_record", reject_transition)
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="v2 transition required",
+    ):
+        asyncio.run(
+            launcher.run_training_stage(
+                repo_root=REPO_ROOT,
+                stage_id=key.stage_id,
+                wave_name="smoke",
+                replicate_id="r0",
+                expected_source_sha=source_sha,
+                external_root=external,
+                confirmation=protocol["launch"]["confirmation_token"],
+                rl_main=lambda _config: (_ for _ in ()).throw(
+                    AssertionError("completed bypass reached Tinker")
+                ),
+                wandb_access_validator=lambda **_kwargs: (_ for _ in ()).throw(
+                    AssertionError("completed bypass reached W&B")
+                ),
+            )
+        )
+    assert events == ["preflight", "approval"]
+
+    wrong_source_root = tmp_path / "wrong-source"
+    wrong_store = TrainingStore(
+        repo_root=REPO_ROOT,
+        external_root=wrong_source_root,
+    )
+    with wrong_store.acquire_stage_lock(key):
+        wrong_manifest = wrong_store.create_or_verify_manifest(
+            key,
+            {"source_git_sha": "0" * 40},
+        )
+        wrong_store.write_wave_receipt(
+            key,
+            wave="smoke",
+            payload={
+                "stage_id": key.stage_id,
+                "wave": "smoke",
+                "run_manifest_record_sha256": (wrong_manifest.record_sha256),
+            },
+        )
+    with pytest.raises(
+        launcher.TrainingLaunchError,
+        match="another source commit",
+    ):
+        asyncio.run(
+            launcher.run_training_stage(
+                repo_root=REPO_ROOT,
+                stage_id=key.stage_id,
+                wave_name="smoke",
+                replicate_id="r0",
+                expected_source_sha=source_sha,
+                external_root=wrong_source_root,
+                confirmation=protocol["launch"]["confirmation_token"],
+            )
         )

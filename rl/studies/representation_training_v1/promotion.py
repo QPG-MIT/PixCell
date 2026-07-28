@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 import re
+import subprocess
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -34,9 +35,16 @@ from .store import (
     TrainingStore,
     canonical_sha256,
 )
+from .source_transition import (
+    SourceTransitionError,
+    approved_change_scope,
+    build_source_transition,
+    source_transition_git_facts,
+)
 
 
 APPROVAL_SCHEMA_VERSION = "pixcell-training-wave-approval-v1"
+SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION = "pixcell-training-wave-approval-v2"
 APPROVAL_CONFIRMATION_TOKEN = "PIXCELL_APPROVE_TRAINING_V1"
 MASTERED_MINIMUM_IOU = 0.80
 MASTERED_MINIMUM_PURE_EXECUTABLE_RATE = 0.95
@@ -53,9 +61,7 @@ EXPECTED_PANEL_ROWS = {
 _REPORT_SCHEMA = "pixcell-training-checkpoint-evaluation-v1"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _TINKER_PATH = re.compile(r"^tinker://[^\s]+$")
-_IMMUTABLE_IMAGE = re.compile(
-    r"^(?:sha256:[0-9a-f]{64}|[^\s@]+@sha256:[0-9a-f]{64})$"
-)
+_IMMUTABLE_IMAGE = re.compile(r"^(?:sha256:[0-9a-f]{64}|[^\s@]+@sha256:[0-9a-f]{64})$")
 
 
 class PromotionError(RuntimeError):
@@ -87,6 +93,9 @@ class EvaluationEvidence:
     report_record_sha256: str
     report_payload_sha256: str
     report_relative_path: str
+    evaluation_manifest_payload_sha256: str
+    evaluation_manifest_record_sha256: str
+    evaluation_manifest_relative_path: str
     training_manifest: TrainingRecord
     training_receipt: TrainingRecord
 
@@ -150,10 +159,7 @@ def _mixed_allowed_checkpoints(current_level: str) -> tuple[tuple[str, str], ...
     index = LEVELS.index(current_level)
     return (
         ("qwen-mixed-sft", "complete"),
-        *tuple(
-            (f"qwen-mixed-rl-l{prior}", "complete")
-            for prior in range(index)
-        ),
+        *tuple((f"qwen-mixed-rl-l{prior}", "complete") for prior in range(index)),
     )
 
 
@@ -205,18 +211,13 @@ def approval_plan(stage: StageSpec, wave_name: str) -> ApprovalPlan:
         )
 
     if gate == "first-unmastered-entry-receipt":
-        if (
-            stage.current_level not in LEVELS
-            or not stage.stage_id.startswith("qwen-mixed-rl-")
-        ):
+        if stage.current_level not in LEVELS or not stage.stage_id.startswith("qwen-mixed-rl-"):
             raise PromotionError("first-unmastered gate is not a mixed-Qwen stage")
         return ApprovalPlan(
             gate=gate,
             storage_wave=wave_name,
             expected_panel=PANEL_DEPTH_VALIDATION,
-            allowed_evaluation_checkpoints=_mixed_allowed_checkpoints(
-                stage.current_level
-            ),
+            allowed_evaluation_checkpoints=_mixed_allowed_checkpoints(stage.current_level),
         )
 
     raise PromotionError(f"unsupported approval gate: {gate!r}")
@@ -311,9 +312,7 @@ def _validate_aggregate(
     for field in ("tasks", "pure_executable"):
         actual = _integer(value.get(field), f"{path}.{field}")
         if actual != expected[field]:
-            raise PromotionError(
-                f"{path}.{field}={actual}; expected {expected[field]}"
-            )
+            raise PromotionError(f"{path}.{field}={actual}; expected {expected[field]}")
     _close(
         value.get("mean_raw_absolute_scale_iou"),
         float(expected["mean_raw_absolute_scale_iou"]),
@@ -336,13 +335,9 @@ def _validate_report_metrics(
 ) -> None:
     raw_records = report.get("records")
     if not isinstance(raw_records, list) or len(raw_records) != len(expected_tasks):
-        raise PromotionError(
-            f"report.records must contain all {len(expected_tasks)} tasks"
-        )
+        raise PromotionError(f"report.records must contain all {len(expected_tasks)} tasks")
     records: list[Mapping[str, Any]] = []
-    for index, (raw, task) in enumerate(
-        zip(raw_records, expected_tasks, strict=True)
-    ):
+    for index, (raw, task) in enumerate(zip(raw_records, expected_tasks, strict=True)):
         path = f"records[{index}]"
         record = _mapping(raw, path)
         expected_identity = {
@@ -352,9 +347,7 @@ def _validate_report_metrics(
         }
         for field, expected in expected_identity.items():
             if record.get(field) != expected:
-                raise PromotionError(
-                    f"{path}.{field}={record.get(field)!r}; expected {expected!r}"
-                )
+                raise PromotionError(f"{path}.{field}={record.get(field)!r}; expected {expected!r}")
         _unit(
             record.get("raw_absolute_scale_iou"),
             f"{path}.raw_absolute_scale_iou",
@@ -387,9 +380,7 @@ def _validate_report_metrics(
         by_level[str(record["level"])].append(record)
         by_representation[str(record["representation_id"])].append(record)
     observed_levels = _mapping(report.get("levels"), "levels")
-    expected_levels = {
-        key: _aggregate(values) for key, values in sorted(by_level.items())
-    }
+    expected_levels = {key: _aggregate(values) for key, values in sorted(by_level.items())}
     if set(observed_levels) != set(expected_levels):
         raise PromotionError("report.levels differs from the panel")
     for key, expected in expected_levels.items():
@@ -400,8 +391,7 @@ def _validate_report_metrics(
         "representations",
     )
     expected_representations = {
-        key: _aggregate(values)
-        for key, values in sorted(by_representation.items())
+        key: _aggregate(values) for key, values in sorted(by_representation.items())
     }
     if set(observed_representations) != set(expected_representations):
         raise PromotionError("report.representations differs from the panel")
@@ -412,8 +402,7 @@ def _validate_report_metrics(
             path=f"representations.{key}",
         )
     macro = sum(
-        value["mean_raw_absolute_scale_iou"]
-        for value in expected_representations.values()
+        value["mean_raw_absolute_scale_iou"] for value in expected_representations.values()
     ) / len(expected_representations)
     _close(
         report.get("representation_macro_mean_iou"),
@@ -456,8 +445,7 @@ def _validate_report_payload(
     expected_rows = EXPECTED_PANEL_ROWS[panel]
     if len(expected_tasks) != expected_rows:
         raise PromotionError(
-            f"{panel} local task set has {len(expected_tasks)} rows, "
-            f"expected {expected_rows}"
+            f"{panel} local task set has {len(expected_tasks)} rows, expected {expected_rows}"
         )
     panel_document = _panel_manifest(expected_tasks, panel=panel)
     provenance = _mapping(report.get("provenance"), "provenance")
@@ -505,9 +493,7 @@ def _validate_report_payload(
     )
     for field, expected in manifest_dataset.items():
         if dataset.get(field) != expected:
-            raise PromotionError(
-                f"report and evaluation-manifest dataset {field} differ"
-            )
+            raise PromotionError(f"report and evaluation-manifest dataset {field} differ")
     expected_dataset = {
         "repo_id": protocol["dataset"]["repo_id"],
         "revision": protocol["dataset"]["revision"],
@@ -527,8 +513,7 @@ def _validate_report_payload(
 
     if (
         training_manifest.payload.get("source_git_sha") != expected_source_sha
-        or training_manifest.payload.get("protocol_logical_sha256")
-        != protocol["logical_sha256"]
+        or training_manifest.payload.get("protocol_logical_sha256") != protocol["logical_sha256"]
     ):
         raise PromotionError("training manifest provenance differs")
     manifest_training_dataset = _mapping(
@@ -560,10 +545,7 @@ def _validate_report_payload(
     for field, expected in expected_sampler.items():
         if sampler.get(field) != expected or evaluation_sampler.get(field) != expected:
             raise PromotionError(f"evaluation sampler {field} differs")
-    if (
-        sampler.get("training_wave_receipt_relative_path")
-        != str(training_receipt.relative_path)
-    ):
+    if sampler.get("training_wave_receipt_relative_path") != str(training_receipt.relative_path):
         raise PromotionError("evaluation sampler receipt path differs")
 
     evaluated_stage = stage_spec(protocol, key.stage_id)
@@ -600,9 +582,8 @@ def _validate_report_payload(
         raise PromotionError("evaluation sandbox image_ref is not immutable")
     if not re.fullmatch(r"sha256:[0-9a-f]{64}", str(sandbox.get("image_id", ""))):
         raise PromotionError("evaluation sandbox image_id is not immutable")
-    if (
-        provenance.get("evaluation_manifest_record_sha256")
-        != evaluation_manifest.get("record_sha256")
+    if provenance.get("evaluation_manifest_record_sha256") != evaluation_manifest.get(
+        "record_sha256"
     ):
         raise PromotionError("report is not bound to its evaluation manifest")
 
@@ -640,9 +621,7 @@ def validate_checkpoint_report(
     training_manifest = store.load_manifest(key)
     training_receipt = store.load_wave_receipt(key, wave=wave)
     if training_manifest is None or training_receipt is None:
-        raise PromotionError(
-            f"{stage_id}/{wave}/{replicate_id} has no training receipt"
-        )
+        raise PromotionError(f"{stage_id}/{wave}/{replicate_id} has no training receipt")
 
     from .evaluation import (
         CheckpointEvaluationError,
@@ -660,9 +639,7 @@ def validate_checkpoint_report(
     evaluation_manifest = evaluation_store.load_manifest()
     report = evaluation_store.load_report()
     if evaluation_manifest is None or report is None:
-        raise PromotionError(
-            f"{stage_id}/{wave}/{panel} has no complete evaluation report"
-        )
+        raise PromotionError(f"{stage_id}/{wave}/{panel} has no complete evaluation report")
     if report.get("record_sha256") != expected_report_record_sha256:
         raise PromotionError("evaluation report digest differs from the reviewed one")
     expected_tasks = _expected_panel_tasks(
@@ -728,6 +705,24 @@ def validate_checkpoint_report(
                 / "report.json"
             )
         ),
+        evaluation_manifest_payload_sha256=_sha(
+            evaluation_manifest.get("payload_sha256"),
+            "evaluation_manifest.payload_sha256",
+        ),
+        evaluation_manifest_record_sha256=_sha(
+            evaluation_manifest.get("record_sha256"),
+            "evaluation_manifest.record_sha256",
+        ),
+        evaluation_manifest_relative_path=str(
+            (
+                TrainingStore.stage_relative_path(key)
+                / "evaluations"
+                / wave
+                / checkpoint_name
+                / panel
+                / "manifest.json"
+            )
+        ),
         training_manifest=training_manifest,
         training_receipt=training_receipt,
     )
@@ -737,9 +732,7 @@ def first_unmastered_level(
     report: Mapping[str, Any],
     *,
     minimum_iou: float = MASTERED_MINIMUM_IOU,
-    minimum_pure_executable_rate: float = (
-        MASTERED_MINIMUM_PURE_EXECUTABLE_RATE
-    ),
+    minimum_pure_executable_rate: float = (MASTERED_MINIMUM_PURE_EXECUTABLE_RATE),
 ) -> str | None:
     """Return the first L0→L4 level missing either established threshold."""
 
@@ -777,14 +770,10 @@ def _terminal_checkpoint(evidence: EvaluationEvidence) -> None:
         "state_path",
         "sampler_path",
     )
-    selected_alias = {
-        field: evidence.checkpoint.get(field)
-        for field in fields
-    }
+    selected_alias = {field: evidence.checkpoint.get(field) for field in fields}
     if selected_alias != dict(terminal):
         raise PromotionError(
-            f"{evidence.key.stage_id}/{evidence.wave} must use its "
-            "terminal checkpoint"
+            f"{evidence.key.stage_id}/{evidence.wave} must use its terminal checkpoint"
         )
 
 
@@ -874,9 +863,7 @@ def _mixed_checkpoint_selection(
                 expected_report_record_sha256=str(report["record_sha256"]),
             )
         if evidence.checkpoint != dict(entry):
-            raise PromotionError(
-                f"checkpoint {checkpoint_name!r} report and inventory differ"
-            )
+            raise PromotionError(f"checkpoint {checkpoint_name!r} report and inventory differ")
         reports.append(evidence)
 
     candidates = [
@@ -923,6 +910,244 @@ def _mixed_checkpoint_selection(
     return selection
 
 
+def _source_transition_document(
+    *,
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+    stage: StageSpec,
+    wave_name: str,
+    plan: ApprovalPlan,
+    evidence: EvaluationEvidence,
+    producer_source_git_sha: str,
+    consumer_source_git_sha: str,
+    approved_change_paths: Sequence[str] | None,
+) -> dict[str, Any]:
+    """Bind one ancestor-produced report to one exact consumer wave."""
+
+    provenance = _mapping(
+        evidence.report_payload.get("provenance"),
+        "report.provenance",
+    )
+    report_protocol = _mapping(
+        provenance.get("protocol"),
+        "report.provenance.protocol",
+    )
+    report_dataset = _mapping(
+        provenance.get("dataset"),
+        "report.provenance.dataset",
+    )
+    report_sampler = _mapping(
+        provenance.get("sampler"),
+        "report.provenance.sampler",
+    )
+    report_sampling = _mapping(
+        provenance.get("sampling"),
+        "report.provenance.sampling",
+    )
+    report_prompt_assets = _mapping(
+        provenance.get("prompt_assets"),
+        "report.provenance.prompt_assets",
+    )
+    report_sandbox = _mapping(
+        provenance.get("sandbox"),
+        "report.provenance.sandbox",
+    )
+    training_dataset = _mapping(
+        evidence.training_manifest.payload.get("dataset"),
+        "training_manifest.dataset",
+    )
+    training_model = _mapping(
+        evidence.training_manifest.payload.get("model"),
+        "training_manifest.model",
+    )
+    checkpoint_inventory = _mapping(
+        evidence.training_receipt.payload.get("checkpoint_inventory"),
+        "training_receipt.checkpoint_inventory",
+    )
+    evaluation_manifest_record_sha256 = _sha(
+        provenance.get("evaluation_manifest_record_sha256"),
+        "report.provenance.evaluation_manifest_record_sha256",
+    )
+    if evaluation_manifest_record_sha256 != evidence.evaluation_manifest_record_sha256:
+        raise PromotionError("report and evaluation manifest record digests differ")
+    evaluated_stage = stage_spec(dict(protocol), evidence.key.stage_id)
+    consumer_protocol = {
+        "logical_sha256": protocol["logical_sha256"],
+        "file_sha256": file_sha256(protocol_path(repo_root)),
+        "contract_version": protocol["contract_version"],
+    }
+    consumer_prompt_assets = prompt_asset_hashes()
+    parent_model = dict(protocol["models"][evaluated_stage.model_key])
+    if (
+        provenance.get("source_git_sha") != producer_source_git_sha
+        or evidence.training_manifest.payload.get("source_git_sha") != producer_source_git_sha
+    ):
+        raise PromotionError("source transition evidence is not producer-source-bound")
+    if dict(report_protocol) != consumer_protocol:
+        raise PromotionError("producer evaluation protocol differs from the consumer")
+    training_protocol = {
+        "logical_sha256": evidence.training_manifest.payload.get("protocol_logical_sha256"),
+        "file_sha256": evidence.training_manifest.payload.get("protocol_file_sha256"),
+        "contract_version": evidence.training_manifest.payload.get("contract_version"),
+    }
+    if training_protocol != consumer_protocol:
+        raise PromotionError("producer training protocol differs from the consumer")
+    if (
+        dict(report_prompt_assets) != consumer_prompt_assets
+        or evidence.training_manifest.payload.get("prompt_assets") != consumer_prompt_assets
+    ):
+        raise PromotionError("producer prompt assets differ from the consumer")
+    if dict(training_model) != parent_model:
+        raise PromotionError("producer training model differs from the consumer parent model")
+    renderer_contract = {
+        field: parent_model.get(field) for field in ("model", "renderer", "effort")
+    }
+    if any(report_sampler.get(field) != expected for field, expected in renderer_contract.items()):
+        raise PromotionError("producer evaluation renderer differs from the consumer")
+    expected_dataset = {
+        "repo_id": protocol["dataset"]["repo_id"],
+        "revision": protocol["dataset"]["revision"],
+        "configuration": protocol["dataset"]["configuration"],
+        "logical_release_sha256": protocol["dataset"]["logical_release_sha256"],
+    }
+    if any(
+        report_dataset.get(field) != expected for field, expected in expected_dataset.items()
+    ) or (
+        training_dataset.get("logical_release_sha256") != expected_dataset["logical_release_sha256"]
+    ):
+        raise PromotionError("producer dataset differs from the consumer")
+    scope = {
+        "study_id": STUDY_ID,
+        "child": {
+            "stage_id": stage.stage_id,
+            "wave": wave_name,
+            "replicate_id": evidence.key.replicate_id,
+            "approval_gate": plan.gate,
+        },
+        "producer_evaluation": {
+            "stage_id": evidence.key.stage_id,
+            "wave": evidence.wave,
+            "checkpoint_name": evidence.checkpoint_name,
+            "replicate_id": evidence.key.replicate_id,
+            "panel": evidence.panel,
+        },
+    }
+    equivalence = {
+        "protocol": {
+            "producer_training": {
+                **training_protocol,
+            },
+            "producer_evaluation": dict(report_protocol),
+            "consumer": consumer_protocol,
+        },
+        "prompt_assets": {
+            "producer_training": dict(
+                _mapping(
+                    evidence.training_manifest.payload.get("prompt_assets"),
+                    "training_manifest.prompt_assets",
+                )
+            ),
+            "producer_evaluation": dict(report_prompt_assets),
+            "consumer": consumer_prompt_assets,
+        },
+        "dataset": {
+            "producer_training": dict(training_dataset),
+            "producer_evaluation": dict(report_dataset),
+            "consumer": {
+                "repo_id": protocol["dataset"]["repo_id"],
+                "revision": protocol["dataset"]["revision"],
+                "configuration": protocol["dataset"]["configuration"],
+                "logical_release_sha256": protocol["dataset"]["logical_release_sha256"],
+            },
+        },
+        "task_panel": dict(
+            _mapping(
+                provenance.get("task_panel"),
+                "report.provenance.task_panel",
+            )
+        ),
+        "model": {
+            "producer_training": dict(training_model),
+            "producer_evaluation": parent_model,
+            "consumer_parent": parent_model,
+            "consumer_child": dict(protocol["models"][stage.model_key]),
+        },
+        "renderer": {
+            "producer_evaluation": {
+                field: report_sampler.get(field) for field in ("model", "renderer", "effort")
+            },
+            "consumer_parent": {
+                field: protocol["models"][evaluated_stage.model_key].get(field)
+                for field in ("model", "renderer", "effort")
+            },
+            "consumer_child": {
+                field: protocol["models"][stage.model_key].get(field)
+                for field in ("model", "renderer", "effort")
+            },
+        },
+        "sampling": dict(report_sampling),
+        "sandbox": {
+            "producer_training": evidence.training_manifest.payload.get("sandbox"),
+            "producer_evaluation": dict(report_sandbox),
+        },
+    }
+    evidence_binding = {
+        "training_run_manifest": {
+            "relative_path": str(evidence.training_manifest.relative_path),
+            "payload_sha256": evidence.training_manifest.payload_sha256,
+            "record_sha256": evidence.training_manifest.record_sha256,
+        },
+        "training_wave_receipt": {
+            "relative_path": str(evidence.training_receipt.relative_path),
+            "payload_sha256": evidence.training_receipt.payload_sha256,
+            "record_sha256": evidence.training_receipt.record_sha256,
+        },
+        "checkpoint_inventory": dict(checkpoint_inventory),
+        "evaluation_manifest": {
+            "relative_path": evidence.evaluation_manifest_relative_path,
+            "payload_sha256": (evidence.evaluation_manifest_payload_sha256),
+            "record_sha256": evaluation_manifest_record_sha256,
+        },
+        "evaluation_report": {
+            "relative_path": evidence.report_relative_path,
+            "payload_sha256": evidence.report_payload_sha256,
+            "record_sha256": evidence.report_record_sha256,
+        },
+        "checkpoint": dict(evidence.checkpoint),
+        "checkpoint_inventory_logical_sha256": (evidence.checkpoint_inventory_sha256),
+    }
+    try:
+        return build_source_transition(
+            repo_root=repo_root,
+            producer_source_git_sha=producer_source_git_sha,
+            consumer_source_git_sha=consumer_source_git_sha,
+            scope=scope,
+            approved_change_paths=approved_change_paths,
+            equivalence=equivalence,
+            evidence=evidence_binding,
+        )
+    except SourceTransitionError as exc:
+        raise PromotionError(f"source transition is invalid: {exc}") from exc
+
+
+def _approved_change_paths_from_transition(
+    value: Any,
+) -> tuple[str, ...]:
+    transition = _mapping(value, "approval.source_transition")
+    scope = _mapping(
+        transition.get("scope"),
+        "approval.source_transition.scope",
+    )
+    approved = _mapping(
+        scope.get("approved_changes"),
+        "approval.source_transition.scope.approved_changes",
+    )
+    paths = approved.get("paths")
+    if not isinstance(paths, list) or any(not isinstance(path, str) for path in paths):
+        raise PromotionError("approval source transition has no approved path inventory")
+    return tuple(paths)
+
+
 def _approval_payload(
     *,
     stage: StageSpec,
@@ -932,19 +1157,19 @@ def _approval_payload(
     source_git_sha: str,
     protocol: Mapping[str, Any],
     checkpoint_selection: Mapping[str, Any] | None = None,
+    evidence_source_git_sha: str | None = None,
+    source_transition: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if (
         evidence.key.stage_id,
         evidence.wave,
     ) not in plan.allowed_evaluation_checkpoints:
         raise PromotionError(
-            f"{evidence.key.stage_id}/{evidence.wave} cannot approve "
-            f"{stage.stage_id}/{wave_name}"
+            f"{evidence.key.stage_id}/{evidence.wave} cannot approve {stage.stage_id}/{wave_name}"
         )
     if evidence.panel != plan.expected_panel:
         raise PromotionError(
-            f"{stage.stage_id}/{wave_name} requires {plan.expected_panel}, "
-            f"not {evidence.panel}"
+            f"{stage.stage_id}/{wave_name} requires {plan.expected_panel}, not {evidence.panel}"
         )
 
     mastery: dict[str, Any] | None = None
@@ -971,9 +1196,7 @@ def _approval_payload(
                 "all L0–L4 levels are mastered; mixed curriculum RL must not start"
             )
         if selected != stage.current_level:
-            raise PromotionError(
-                f"first unmastered level is {selected}, not {stage.current_level}"
-            )
+            raise PromotionError(f"first unmastered level is {selected}, not {stage.current_level}")
         mastery = {
             "selection": "first-unmastered-l0-to-l4",
             "selected_level": selected,
@@ -989,8 +1212,16 @@ def _approval_payload(
             "hard_mastery_threshold_applied": False,
         }
 
+    cross_source = source_transition is not None
+    if cross_source != (evidence_source_git_sha is not None):
+        raise PromotionError("source transition and evidence source must be supplied together")
+    if evidence_source_git_sha is not None and evidence_source_git_sha == source_git_sha:
+        raise PromotionError("same-source approvals must retain the v1 schema")
+
     payload: dict[str, Any] = {
-        "schema_version": APPROVAL_SCHEMA_VERSION,
+        "schema_version": (
+            SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION if cross_source else APPROVAL_SCHEMA_VERSION
+        ),
         "decision": "approve",
         "approval_gate": plan.gate,
         "stage_id": stage.stage_id,
@@ -1003,25 +1234,30 @@ def _approval_payload(
             "wave": evidence.wave,
             "checkpoint_name": evidence.checkpoint_name,
             "checkpoint": evidence.checkpoint,
-            "checkpoint_inventory_sha256": (
-                evidence.checkpoint_inventory_sha256
-            ),
+            "checkpoint_inventory_sha256": (evidence.checkpoint_inventory_sha256),
             "replicate_id": evidence.key.replicate_id,
             "panel": evidence.panel,
             "report_relative_path": evidence.report_relative_path,
             "report_payload_sha256": evidence.report_payload_sha256,
             "report_record_sha256": evidence.report_record_sha256,
-            "training_wave_receipt_record_sha256": (
-                evidence.training_receipt.record_sha256
-            ),
+            "training_wave_receipt_record_sha256": (evidence.training_receipt.record_sha256),
         },
         "mastery": mastery,
         "checkpoint_selection": (
-            dict(checkpoint_selection)
-            if checkpoint_selection is not None
-            else None
+            dict(checkpoint_selection) if checkpoint_selection is not None else None
         ),
     }
+    if cross_source:
+        payload["evidence_source_git_sha"] = evidence_source_git_sha
+        payload["source_transition"] = dict(source_transition)
+        payload["evaluation"].update(
+            {
+                "training_run_manifest_record_sha256": (evidence.training_manifest.record_sha256),
+                "evaluation_manifest_relative_path": (evidence.evaluation_manifest_relative_path),
+                "evaluation_manifest_payload_sha256": (evidence.evaluation_manifest_payload_sha256),
+                "evaluation_manifest_record_sha256": (evidence.evaluation_manifest_record_sha256),
+            }
+        )
     # The launcher uses these top-level fields to resolve dynamic parents and
     # to bind exact-parent gates.  A same-stage smoke continuation must not
     # claim its smoke receipt as the stage's external parent.
@@ -1034,9 +1270,7 @@ def _approval_payload(
             {
                 "parent_stage_id": evidence.key.stage_id,
                 "parent_wave": evidence.wave,
-                "parent_receipt_record_sha256": (
-                    evidence.training_receipt.record_sha256
-                ),
+                "parent_receipt_record_sha256": (evidence.training_receipt.record_sha256),
                 "selected_parent_checkpoint": evidence.checkpoint,
                 "selected_parent_checkpoint_inventory_sha256": (
                     evidence.checkpoint_inventory_sha256
@@ -1047,12 +1281,102 @@ def _approval_payload(
         payload.update(
             {
                 "prior_wave": evidence.wave,
-                "prior_receipt_record_sha256": (
-                    evidence.training_receipt.record_sha256
-                ),
+                "prior_receipt_record_sha256": (evidence.training_receipt.record_sha256),
             }
         )
     return payload
+
+
+def validate_source_transition_approval(
+    *,
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+    store: TrainingStore,
+    stage: StageSpec,
+    wave_name: str,
+    replicate_id: str,
+    consumer_source_git_sha: str,
+    approval: TrainingRecord,
+) -> EvaluationEvidence:
+    """Revalidate every fact in one cross-source approval at launch time."""
+
+    payload = approval.payload
+    if payload.get("schema_version") != SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION:
+        raise PromotionError("cross-source approval has a foreign schema")
+    if payload.get("source_git_sha") != consumer_source_git_sha:
+        raise PromotionError("cross-source approval names another consumer")
+    try:
+        validate_source_sha(repo_root, consumer_source_git_sha)
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        raise PromotionError(
+            f"cross-source approval consumer is not the clean HEAD: {exc}"
+        ) from exc
+    producer_source_git_sha = str(payload.get("evidence_source_git_sha", ""))
+    if producer_source_git_sha == consumer_source_git_sha:
+        raise PromotionError("same-source approval cannot use the v2 schema")
+    approved_change_paths = _approved_change_paths_from_transition(payload.get("source_transition"))
+    try:
+        git_facts = source_transition_git_facts(
+            repo_root=repo_root,
+            producer_source_git_sha=producer_source_git_sha,
+            consumer_source_git_sha=consumer_source_git_sha,
+        )
+        approved_change_scope(git_facts, approved_change_paths)
+    except SourceTransitionError as exc:
+        raise PromotionError(f"source transition is invalid: {exc}") from exc
+
+    plan = approval_plan(stage, wave_name)
+    evaluation = _mapping(payload.get("evaluation"), "approval.evaluation")
+    if evaluation.get("replicate_id") != replicate_id:
+        raise PromotionError("cross-source approval names another replicate")
+    evidence = validate_checkpoint_report(
+        repo_root=repo_root,
+        protocol=protocol,
+        store=store,
+        stage_id=str(evaluation.get("stage_id", "")),
+        wave=str(evaluation.get("wave", "")),
+        checkpoint_name=str(evaluation.get("checkpoint_name", "")),
+        replicate_id=replicate_id,
+        panel=str(evaluation.get("panel", "")),
+        expected_source_sha=producer_source_git_sha,
+        expected_report_record_sha256=str(evaluation.get("report_record_sha256", "")),
+    )
+    checkpoint_selection: dict[str, Any] | None = None
+    if plan.gate == "first-unmastered-entry-receipt" and evidence.key.stage_id == "qwen-mixed-sft":
+        checkpoint_selection = _mixed_checkpoint_selection(
+            repo_root=repo_root,
+            protocol=protocol,
+            store=store,
+            selected=evidence,
+            expected_source_sha=producer_source_git_sha,
+        )
+    else:
+        _terminal_checkpoint(evidence)
+    transition = _source_transition_document(
+        repo_root=repo_root,
+        protocol=protocol,
+        stage=stage,
+        wave_name=wave_name,
+        plan=plan,
+        evidence=evidence,
+        producer_source_git_sha=producer_source_git_sha,
+        consumer_source_git_sha=consumer_source_git_sha,
+        approved_change_paths=approved_change_paths,
+    )
+    expected = _approval_payload(
+        stage=stage,
+        wave_name=wave_name,
+        plan=plan,
+        evidence=evidence,
+        source_git_sha=consumer_source_git_sha,
+        protocol=protocol,
+        checkpoint_selection=checkpoint_selection,
+        evidence_source_git_sha=producer_source_git_sha,
+        source_transition=transition,
+    )
+    if payload != expected:
+        raise PromotionError("cross-source approval differs from its recomputed evidence")
+    return evidence
 
 
 def record_wave_approval(
@@ -1067,6 +1391,8 @@ def record_wave_approval(
     evaluation_checkpoint_name: str,
     evaluation_report_record_sha256: str,
     expected_source_sha: str,
+    evidence_source_sha: str | None = None,
+    approved_change_paths: Sequence[str] | None = None,
     confirmation: str,
 ) -> dict[str, Any]:
     """Validate reviewed evidence and atomically record one approval."""
@@ -1076,6 +1402,19 @@ def record_wave_approval(
     root = repo_root.expanduser().resolve(strict=True)
     protocol = load_protocol(root, require_committed=True)
     source_git_sha = validate_source_sha(root, expected_source_sha)
+    evidence_git_sha = source_git_sha if evidence_source_sha is None else evidence_source_sha
+    if evidence_git_sha != source_git_sha:
+        try:
+            git_facts = source_transition_git_facts(
+                repo_root=root,
+                producer_source_git_sha=evidence_git_sha,
+                consumer_source_git_sha=source_git_sha,
+            )
+            approved_change_scope(git_facts, approved_change_paths)
+        except SourceTransitionError as exc:
+            raise PromotionError(f"source transition is invalid: {exc}") from exc
+    elif approved_change_paths is not None:
+        raise PromotionError("same-source v1 approval cannot include an approved change scope")
     if replicate_id not in protocol["launch"]["replicates"]:
         raise PromotionError("replicate is not declared in the protocol")
     stage = stage_spec(protocol, stage_id)
@@ -1090,23 +1429,35 @@ def record_wave_approval(
         checkpoint_name=evaluation_checkpoint_name,
         replicate_id=replicate_id,
         panel=plan.expected_panel,
-        expected_source_sha=source_git_sha,
+        expected_source_sha=evidence_git_sha,
         expected_report_record_sha256=evaluation_report_record_sha256,
     )
     checkpoint_selection: dict[str, Any] | None = None
-    if (
-        plan.gate == "first-unmastered-entry-receipt"
-        and evidence.key.stage_id == "qwen-mixed-sft"
-    ):
+    if plan.gate == "first-unmastered-entry-receipt" and evidence.key.stage_id == "qwen-mixed-sft":
         checkpoint_selection = _mixed_checkpoint_selection(
             repo_root=root,
             protocol=protocol,
             store=store,
             selected=evidence,
-            expected_source_sha=source_git_sha,
+            expected_source_sha=evidence_git_sha,
         )
     else:
         _terminal_checkpoint(evidence)
+    transition = (
+        _source_transition_document(
+            repo_root=root,
+            protocol=protocol,
+            stage=stage,
+            wave_name=wave_name,
+            plan=plan,
+            evidence=evidence,
+            producer_source_git_sha=evidence_git_sha,
+            consumer_source_git_sha=source_git_sha,
+            approved_change_paths=approved_change_paths,
+        )
+        if evidence_git_sha != source_git_sha
+        else None
+    )
     payload = _approval_payload(
         stage=stage,
         wave_name=wave_name,
@@ -1115,15 +1466,34 @@ def record_wave_approval(
         source_git_sha=source_git_sha,
         protocol=protocol,
         checkpoint_selection=checkpoint_selection,
+        evidence_source_git_sha=(evidence_git_sha if transition is not None else None),
+        source_transition=transition,
     )
     key = StageKey(STUDY_ID, stage.stage_id, replicate_id)
     with store.acquire_stage_lock(key):
+        # Close the approval-time HEAD/dirty-tree gap immediately before the
+        # immutable external record is created.
+        validate_source_sha(root, source_git_sha)
+        if transition is not None:
+            rebuilt_transition = _source_transition_document(
+                repo_root=root,
+                protocol=protocol,
+                stage=stage,
+                wave_name=wave_name,
+                plan=plan,
+                evidence=evidence,
+                producer_source_git_sha=evidence_git_sha,
+                consumer_source_git_sha=source_git_sha,
+                approved_change_paths=approved_change_paths,
+            )
+            if rebuilt_transition != transition:
+                raise PromotionError("source transition changed before approval recording")
         approval = store.write_wave_approval(
             key,
             wave=plan.storage_wave,
             payload=payload,
         )
-    return {
+    result = {
         "status": "approved",
         "stage_id": stage.stage_id,
         "wave": wave_name,
@@ -1132,3 +1502,13 @@ def record_wave_approval(
         "approval_record_sha256": approval.record_sha256,
         "evaluation_report_record_sha256": evidence.report_record_sha256,
     }
+    if transition is not None:
+        result.update(
+            {
+                "approval_schema_version": payload["schema_version"],
+                "evidence_source_git_sha": evidence_git_sha,
+                "consumer_source_git_sha": source_git_sha,
+                "source_transition_logical_sha256": transition["logical_sha256"],
+            }
+        )
+    return result

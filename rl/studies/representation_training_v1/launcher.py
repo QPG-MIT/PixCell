@@ -7,6 +7,7 @@ import json
 import math
 import os
 import re
+import subprocess
 import uuid
 from collections.abc import Awaitable, Callable, Iterator, Mapping
 from contextlib import contextmanager
@@ -25,6 +26,12 @@ from rl.track_a.tinker_data import (
 )
 
 from .preflight import stage_preflight
+from .promotion import (
+    APPROVAL_SCHEMA_VERSION,
+    SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION,
+    PromotionError,
+    validate_source_transition_approval,
+)
 from .protocol import (
     STUDY_ID,
     StageSpec,
@@ -39,6 +46,9 @@ from .store import StageKey, TrainingRecord, TrainingStore, canonical_sha256
 
 WANDB_RUN_ID_PREFIX = "pxct-"
 _TINKER_PATH = re.compile(r"^tinker://[^\s]+$")
+_GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_CHILD_SOURCE_TRANSITION_SCHEMA_VERSION = "pixcell-training-child-source-transition-v1"
 _ENVIRONMENT_FIELDS = (
     "WANDB_DIR",
     "WANDB_DISABLE_CODE",
@@ -66,6 +76,37 @@ class ParentBinding:
     wave: str
     receipt: TrainingRecord
     checkpoint: dict[str, Any]
+    source_git_sha: str
+    run_manifest: TrainingRecord
+    entry_approval: TrainingRecord | None = None
+    source_transition: dict[str, Any] | None = None
+
+
+def _child_source_transition_binding(
+    approval: TrainingRecord,
+) -> dict[str, Any]:
+    payload = approval.payload
+    if payload.get("schema_version") != SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION:
+        raise TrainingLaunchError("child source transition is not backed by a v2 approval")
+    transition = payload.get("source_transition")
+    if not isinstance(transition, Mapping):
+        raise TrainingLaunchError("v2 approval has no source transition")
+    logical_sha256 = str(transition.get("logical_sha256", ""))
+    if not re.fullmatch(r"[0-9a-f]{64}", logical_sha256):
+        raise TrainingLaunchError("v2 approval source transition has no logical digest")
+    return {
+        "schema_version": _CHILD_SOURCE_TRANSITION_SCHEMA_VERSION,
+        "authorized_child_wave": str(payload.get("wave", "")),
+        "producer_source_git_sha": str(payload.get("evidence_source_git_sha", "")),
+        "consumer_source_git_sha": str(payload.get("source_git_sha", "")),
+        "approval": {
+            "relative_path": str(approval.relative_path),
+            "payload_sha256": approval.payload_sha256,
+            "record_sha256": approval.record_sha256,
+        },
+        "source_transition_logical_sha256": logical_sha256,
+        "source_transition": dict(transition),
+    }
 
 
 def deterministic_wandb_run_id(
@@ -264,18 +305,14 @@ def _sealed_wandb_initialization(
         differences = [field for field, value in expected.items() if observed[field] != value]
         requested_directory = Path(str(binding["directory"])).resolve(strict=False)
         try:
-            resolved_directory = Path(observed["resolved_root_directory"]).resolve(
-                strict=True
-            )
+            resolved_directory = Path(observed["resolved_root_directory"]).resolve(strict=True)
         except (OSError, RuntimeError):
             differences.append("resolved_root_directory")
         else:
             if resolved_directory != requested_directory:
                 differences.append("resolved_root_directory")
         try:
-            files_directory = Path(observed["files_directory"]).resolve(
-                strict=True
-            )
+            files_directory = Path(observed["files_directory"]).resolve(strict=True)
         except (OSError, RuntimeError):
             differences.append("files_directory")
         else:
@@ -291,9 +328,7 @@ def _sealed_wandb_initialization(
             update = getattr(config, "update", None)
             if not callable(update):
                 _finish_wandb_run(module, run)
-                raise TrainingLaunchError(
-                    "the live W&B run has no configurable hparam store"
-                )
+                raise TrainingLaunchError("the live W&B run has no configurable hparam store")
             try:
                 # Use Config.update for both writes. W&B sanitizes callable
                 # fields differently in wandb.init, while the Cookbook writes
@@ -329,9 +364,7 @@ def _sealed_wandb_initialization(
         if init_calls != 1:
             if initialized_run is not None:
                 _finish_wandb_run(module, initialized_run)
-            raise TrainingLaunchError(
-                "training returned without initializing its sealed W&B run"
-            )
+            raise TrainingLaunchError("training returned without initializing its sealed W&B run")
     finally:
         module.init = original_init
 
@@ -361,11 +394,54 @@ def _checkpoint_from_inventory(
     return checkpoint
 
 
-def _parent_binding(
+def _manifest_transition_approval(
     *,
+    repo_root: Path,
+    protocol: Mapping[str, Any],
     store: TrainingStore,
     key: StageKey,
     stage: StageSpec,
+    source_git_sha: str,
+    existing_manifest: TrainingRecord,
+) -> TrainingRecord:
+    observed = existing_manifest.payload.get("source_transition")
+    if not isinstance(observed, Mapping):
+        raise TrainingLaunchError("cross-source parent requires a transition in the child manifest")
+    authorized_wave = str(observed.get("authorized_child_wave", ""))
+    if authorized_wave not in stage.waves:
+        raise TrainingLaunchError("child manifest transition names an unknown wave")
+    approval = store.load_wave_approval(key, wave=authorized_wave)
+    if approval is None:
+        raise TrainingLaunchError("child manifest transition approval is missing")
+    try:
+        validate_source_transition_approval(
+            repo_root=repo_root,
+            protocol=protocol,
+            store=store,
+            stage=stage,
+            wave_name=authorized_wave,
+            replicate_id=key.replicate_id,
+            consumer_source_git_sha=source_git_sha,
+            approval=approval,
+        )
+    except PromotionError as exc:
+        raise TrainingLaunchError(
+            f"child manifest source transition failed validation: {exc}"
+        ) from exc
+    expected = _child_source_transition_binding(approval)
+    if dict(observed) != expected:
+        raise TrainingLaunchError("child manifest source transition differs from its v2 approval")
+    return approval
+
+
+def _parent_binding(
+    *,
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+    store: TrainingStore,
+    key: StageKey,
+    stage: StageSpec,
+    source_git_sha: str,
     approval: TrainingRecord | None,
     existing_manifest: TrainingRecord | None,
 ) -> ParentBinding | None:
@@ -373,6 +449,8 @@ def _parent_binding(
         expected_model = stage.parent.split(":", 1)[1]
         if expected_model != stage.model_key:
             raise TrainingLaunchError("base parent and stage model differ")
+        if existing_manifest is not None and "source_transition" in existing_manifest.payload:
+            raise TrainingLaunchError("base-parent child manifest contains a source transition")
         return None
 
     parent_stage_id, parent_wave = stage.parent.split(":", 1)
@@ -398,9 +476,31 @@ def _parent_binding(
         parent_stage_id, parent_wave = selected_stage, selected_wave
 
     parent_key = StageKey(key.study_id, parent_stage_id, key.replicate_id)
+    parent_manifest = store.load_manifest(parent_key)
     receipt = store.load_wave_receipt(parent_key, wave=parent_wave)
-    if receipt is None:
+    if parent_manifest is None or receipt is None:
         raise TrainingLaunchError(f"{stage.stage_id} requires {parent_stage_id}/{parent_wave}")
+    parent_source_git_sha = str(parent_manifest.payload.get("source_git_sha", ""))
+    if not _GIT_SHA.fullmatch(parent_source_git_sha):
+        raise TrainingLaunchError("parent run manifest has an invalid source commit")
+    if (
+        receipt.payload.get("stage_id") != parent_stage_id
+        or receipt.payload.get("wave") != parent_wave
+        or receipt.payload.get("run_manifest_record_sha256") != parent_manifest.record_sha256
+    ):
+        raise TrainingLaunchError("parent receipt and run manifest identities differ")
+    if (
+        parent_manifest.payload.get("protocol_logical_sha256") != protocol["logical_sha256"]
+        or parent_manifest.payload.get("contract_version") != protocol["contract_version"]
+    ):
+        raise TrainingLaunchError("parent run manifest differs from the consumer protocol")
+    parent_stage = parent_manifest.payload.get("stage")
+    if (
+        not isinstance(parent_stage, Mapping)
+        or parent_stage.get("stage_id") != parent_stage_id
+        or parent_stage.get("model_key") != stage.model_key
+    ):
+        raise TrainingLaunchError("parent run manifest has the wrong stage or model")
     checkpoint: dict[str, Any]
     frozen_parent = (
         existing_manifest.payload.get("parent_receipt") if existing_manifest is not None else None
@@ -433,15 +533,67 @@ def _parent_binding(
             selected,
             inventory_sha256=approval.payload.get("selected_parent_checkpoint_inventory_sha256"),
         )
+    inventory = receipt.payload.get("checkpoint_inventory")
+    if not isinstance(inventory, Mapping):
+        raise TrainingLaunchError("parent receipt has no checkpoint inventory")
+    inventory_sha256 = str(inventory.get("logical_sha256", ""))
     if approval is not None:
         claimed = approval.payload.get("parent_receipt_record_sha256")
         if claimed is not None and claimed != receipt.record_sha256:
             raise TrainingLaunchError("approval and parent receipt differ")
+        selected = approval.payload.get("selected_parent_checkpoint")
+        if selected is not None and selected != checkpoint:
+            raise TrainingLaunchError("approval and selected parent checkpoint differ")
+        selected_inventory = approval.payload.get("selected_parent_checkpoint_inventory_sha256")
+        if selected_inventory is not None and selected_inventory != inventory_sha256:
+            raise TrainingLaunchError("approval and parent checkpoint inventory differ")
+
+    entry_approval: TrainingRecord | None = None
+    source_transition: dict[str, Any] | None = None
+    if parent_source_git_sha != source_git_sha:
+        if existing_manifest is None:
+            if (
+                approval is None
+                or approval.payload.get("schema_version")
+                != SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION
+            ):
+                raise TrainingLaunchError("cross-source parent requires a v2 transition approval")
+            entry_approval = approval
+        else:
+            entry_approval = _manifest_transition_approval(
+                repo_root=repo_root,
+                protocol=protocol,
+                store=store,
+                key=key,
+                stage=stage,
+                source_git_sha=source_git_sha,
+                existing_manifest=existing_manifest,
+            )
+        if (
+            entry_approval.payload.get("evidence_source_git_sha") != parent_source_git_sha
+            or entry_approval.payload.get("parent_stage_id") != parent_stage_id
+            or entry_approval.payload.get("parent_wave") != parent_wave
+            or entry_approval.payload.get("parent_receipt_record_sha256") != receipt.record_sha256
+            or entry_approval.payload.get("selected_parent_checkpoint") != checkpoint
+            or entry_approval.payload.get("selected_parent_checkpoint_inventory_sha256")
+            != inventory_sha256
+        ):
+            raise TrainingLaunchError("v2 transition approval differs from the selected parent")
+        raw_transition = entry_approval.payload.get("source_transition")
+        if not isinstance(raw_transition, Mapping):
+            raise TrainingLaunchError("v2 transition approval has no source transition")
+        source_transition = dict(raw_transition)
+    elif existing_manifest is not None and "source_transition" in existing_manifest.payload:
+        raise TrainingLaunchError("same-source parent cannot reuse a child source transition")
     return ParentBinding(
         stage_id=parent_stage_id,
         wave=parent_wave,
         receipt=receipt,
         checkpoint=checkpoint,
+        source_git_sha=parent_source_git_sha,
+        run_manifest=parent_manifest,
+        entry_approval=entry_approval,
+        source_transition=source_transition,
     )
 
 
@@ -457,6 +609,7 @@ def _required_prior_wave(stage: StageSpec, wave_name: str) -> str | None:
 
 def _approval_record(
     *,
+    repo_root: Path,
     store: TrainingStore,
     key: StageKey,
     stage: StageSpec,
@@ -480,6 +633,30 @@ def _approval_record(
         raise TrainingLaunchError(
             f"{stage.stage_id}/{wave_name} requires an immutable {gate} approval"
         )
+    schema_version = approval.payload.get("schema_version")
+    if schema_version == APPROVAL_SCHEMA_VERSION:
+        if any(
+            field in approval.payload for field in ("evidence_source_git_sha", "source_transition")
+        ):
+            raise TrainingLaunchError("same-source v1 approval contains source-transition fields")
+    elif schema_version == SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION:
+        try:
+            validate_source_transition_approval(
+                repo_root=repo_root,
+                protocol=protocol,
+                store=store,
+                stage=stage,
+                wave_name=wave_name,
+                replicate_id=key.replicate_id,
+                consumer_source_git_sha=source_git_sha,
+                approval=approval,
+            )
+        except PromotionError as exc:
+            raise TrainingLaunchError(
+                f"{stage.stage_id}/{wave_name} source-transition approval failed validation: {exc}"
+            ) from exc
+    else:
+        raise TrainingLaunchError(f"{stage.stage_id}/{wave_name} approval has a foreign schema")
     expected = {
         "decision": "approve",
         "approval_gate": gate,
@@ -552,7 +729,7 @@ def _manifest_payload(
     tracking: Mapping[str, Any],
     parent: ParentBinding | None,
 ) -> dict[str, Any]:
-    return {
+    payload = {
         "source_git_sha": source_git_sha,
         "protocol_logical_sha256": protocol["logical_sha256"],
         "protocol_file_sha256": preflight["protocol_file_sha256"],
@@ -592,6 +769,11 @@ def _manifest_payload(
             else None
         ),
     }
+    if parent is not None and parent.source_transition is not None:
+        if parent.entry_approval is None:
+            raise TrainingLaunchError("cross-source parent has no v2 entry approval")
+        payload["source_transition"] = _child_source_transition_binding(parent.entry_approval)
+    return payload
 
 
 def _candidate_recorder(
@@ -796,6 +978,49 @@ def _resolved_launch_binding(
         }
     common["logical_sha256"] = canonical_sha256(common)
     return common
+
+
+def _invocation_payload(
+    *,
+    protocol: Mapping[str, Any],
+    stage: StageSpec,
+    wave_name: str,
+    source_git_sha: str,
+    invocation_id: str,
+    manifest: TrainingRecord,
+    preflight: Mapping[str, Any],
+    tracking: Mapping[str, Any],
+    resume_batch: int | None,
+    resolved_launch: Mapping[str, Any],
+    parent: ParentBinding | None,
+) -> dict[str, Any]:
+    """Build the immutable invocation record shared by launch and replay."""
+
+    return {
+        "invocation_id": invocation_id,
+        "stage_id": stage.stage_id,
+        "wave": wave_name,
+        "source_git_sha": source_git_sha,
+        "protocol_logical_sha256": protocol["logical_sha256"],
+        "run_manifest_record_sha256": manifest.record_sha256,
+        "preflight_sha256": preflight["preflight_sha256"],
+        "wandb_run_id": tracking["run_id"],
+        "resume_batch": resume_batch,
+        "resolved_launch": dict(resolved_launch),
+        "resolved_launch_sha256": resolved_launch["logical_sha256"],
+        "policy": {
+            "model": protocol["models"][stage.model_key]["model"],
+            "renderer": protocol["models"][stage.model_key]["renderer"],
+            "effort": protocol["models"][stage.model_key].get("effort"),
+            "max_output_tokens": protocol["models"][stage.model_key]["max_output_tokens"],
+            "temperature": protocol["recipes"][stage.recipe_key].get("temperature"),
+            "top_p": protocol["recipes"][stage.recipe_key].get("top_p"),
+            "reward": protocol["recipes"][stage.recipe_key].get("reward"),
+            "group_size": protocol["recipes"][stage.recipe_key].get("group_size"),
+            "groups_per_batch": protocol["recipes"][stage.recipe_key].get("groups_per_batch"),
+        },
+        "initial_checkpoint": parent.checkpoint if parent is not None else None,
+    }
 
 
 def build_tinker_config(
@@ -1142,6 +1367,341 @@ def _checkpoint_receipt(
     }
 
 
+def _validate_completed_wave_receipt(
+    *,
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+    store: TrainingStore,
+    key: StageKey,
+    stage: StageSpec,
+    wave_name: str,
+    manifest: TrainingRecord,
+    preflight: Mapping[str, Any],
+    parent: ParentBinding | None,
+    receipt: TrainingRecord,
+) -> None:
+    """Fully validate an immutable completed-wave claim before replaying it."""
+
+    payload = receipt.payload
+    required_fields = {
+        "stage_id",
+        "wave",
+        "max_steps",
+        "run_manifest_record_sha256",
+        "invocation_record_sha256",
+        "invocation_id",
+        "invocation_tracking_record_sha256",
+        "preflight_sha256",
+        "checkpoint",
+        "checkpoint_inventory",
+        "local_artifact_sha256",
+        "candidate_inventory",
+        "sample_inventory",
+        "final_training_metric",
+    }
+    if set(payload) != required_fields:
+        raise TrainingLaunchError("completed wave receipt fields differ from the canonical schema")
+    target_steps = int(stage.wave(wave_name)["max_steps"])
+    if (
+        payload.get("stage_id") != stage.stage_id
+        or payload.get("wave") != wave_name
+        or payload.get("max_steps") != target_steps
+        or payload.get("run_manifest_record_sha256") != manifest.record_sha256
+        or payload.get("preflight_sha256") != preflight.get("preflight_sha256")
+    ):
+        raise TrainingLaunchError("completed wave receipt identity or preflight differs")
+
+    invocation_id = payload.get("invocation_id")
+    if not isinstance(invocation_id, str):
+        raise TrainingLaunchError("completed wave receipt has no invocation ID")
+    try:
+        invocation = store.load_invocation(key, invocation_id=invocation_id)
+    except ValueError as exc:
+        raise TrainingLaunchError("completed wave receipt has an invalid invocation ID") from exc
+    if invocation is None or payload.get("invocation_record_sha256") != invocation.record_sha256:
+        raise TrainingLaunchError("completed wave receipt invocation is missing or differs")
+    resume_batch = invocation.payload.get("resume_batch")
+    if resume_batch is not None and (
+        isinstance(resume_batch, bool)
+        or not isinstance(resume_batch, int)
+        or not 0 <= resume_batch <= target_steps
+    ):
+        raise TrainingLaunchError("completed wave invocation has an invalid resume batch")
+    resolved_launch = _resolved_launch_binding(
+        repo_root=repo_root,
+        protocol=protocol,
+        stage=stage,
+        wave_name=wave_name,
+        store=store,
+        key=key,
+        parent=parent,
+        resume_batch=resume_batch,
+    )
+    tracking_binding = manifest.payload.get("tracking")
+    if not isinstance(tracking_binding, Mapping):
+        raise TrainingLaunchError("completed wave manifest has no tracking binding")
+    expected_invocation = _invocation_payload(
+        protocol=protocol,
+        stage=stage,
+        wave_name=wave_name,
+        source_git_sha=str(manifest.payload.get("source_git_sha", "")),
+        invocation_id=invocation_id,
+        manifest=manifest,
+        preflight=preflight,
+        tracking=tracking_binding,
+        resume_batch=resume_batch,
+        resolved_launch=resolved_launch,
+        parent=parent,
+    )
+    if invocation.payload != expected_invocation:
+        raise TrainingLaunchError("completed wave invocation differs from the resolved launch")
+
+    tracking_sha256 = payload.get("invocation_tracking_record_sha256")
+    tracking = store.load_invocation_tracking(key, invocation_id=invocation_id)
+    if tracking_sha256 is None:
+        if tracking is not None:
+            raise TrainingLaunchError("completed wave receipt omits existing tracking evidence")
+    else:
+        if (
+            not isinstance(tracking_sha256, str)
+            or not _SHA256.fullmatch(tracking_sha256)
+            or tracking is None
+            or tracking.record_sha256 != tracking_sha256
+        ):
+            raise TrainingLaunchError("completed wave tracking evidence is missing or differs")
+        expected_tracking = {
+            "invocation_record_sha256": invocation.record_sha256,
+            "run_manifest_record_sha256": manifest.record_sha256,
+            "source_git_sha": manifest.payload.get("source_git_sha"),
+            "protocol_logical_sha256": protocol["logical_sha256"],
+            "expected": dict(tracking_binding),
+        }
+        for field, expected in expected_tracking.items():
+            if tracking.payload.get(field) != expected:
+                raise TrainingLaunchError(f"completed wave tracking evidence has wrong {field}")
+        observed = tracking.payload.get("observed")
+        if not isinstance(observed, Mapping):
+            raise TrainingLaunchError("completed wave tracking evidence has no live observation")
+        observed_expected = {
+            field: tracking_binding[field]
+            for field in ("run_id", "entity", "project", "name", "group", "job_type", "tags")
+        }
+        for field, expected in observed_expected.items():
+            if observed.get(field) != expected:
+                raise TrainingLaunchError(f"completed wave live tracking has wrong {field}")
+        expected_resume = resume_batch is not None
+        if (
+            observed.get("resumed") is not expected_resume
+            or observed.get("requested_resume") != ("must" if expected_resume else "never")
+            or observed.get("resolved_resume") != ("must" if expected_resume else "never")
+            or observed.get("requested_directory") != tracking_binding["directory"]
+        ):
+            raise TrainingLaunchError("completed wave live tracking resume binding differs")
+
+    inventory = payload.get("checkpoint_inventory")
+    if not isinstance(inventory, Mapping) or set(inventory) != {
+        "count",
+        "entries",
+        "logical_sha256",
+    }:
+        raise TrainingLaunchError("completed wave checkpoint inventory is malformed")
+    entries = inventory.get("entries")
+    if (
+        isinstance(inventory.get("count"), bool)
+        or not isinstance(inventory.get("count"), int)
+        or not isinstance(entries, list)
+        or inventory.get("count") != len(entries)
+        or inventory.get("logical_sha256") != canonical_sha256(entries)
+    ):
+        raise TrainingLaunchError("completed wave checkpoint inventory digest differs")
+    entry_fields = {
+        "name",
+        "batch",
+        "epoch",
+        "final",
+        "state_path",
+        "sampler_path",
+        "role",
+        "training_progress_fraction",
+    }
+    names: set[str] = set()
+    terminal_entries: list[Mapping[str, Any]] = []
+    periodic_entries: list[Mapping[str, Any]] = []
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, Mapping) or set(entry) != entry_fields:
+            raise TrainingLaunchError(f"completed wave checkpoint {index} is malformed")
+        name = entry.get("name")
+        role = entry.get("role")
+        progress = entry.get("training_progress_fraction")
+        if (
+            not isinstance(name, str)
+            or name in names
+            or role not in {"periodic", "terminal"}
+            or entry.get("final") is not (role == "terminal")
+            or isinstance(entry.get("batch"), bool)
+            or (
+                entry.get("batch") is not None
+                and (not isinstance(entry.get("batch"), int) or int(entry["batch"]) < 0)
+            )
+            or isinstance(entry.get("epoch"), bool)
+            or (
+                entry.get("epoch") is not None
+                and (not isinstance(entry.get("epoch"), int) or int(entry["epoch"]) < 0)
+            )
+            or not _TINKER_PATH.fullmatch(str(entry.get("state_path", "")))
+            or not _TINKER_PATH.fullmatch(str(entry.get("sampler_path", "")))
+            or isinstance(progress, bool)
+            or not isinstance(progress, (int, float))
+            or not math.isfinite(float(progress))
+            or not 0.0 <= float(progress) <= 1.0
+        ):
+            raise TrainingLaunchError(f"completed wave checkpoint {index} is invalid")
+        names.add(name)
+        if role == "terminal":
+            terminal_entries.append(entry)
+            if float(progress) != 1.0:
+                raise TrainingLaunchError("terminal checkpoint has wrong progress")
+        else:
+            periodic_entries.append(entry)
+    if len(terminal_entries) != 1:
+        raise TrainingLaunchError("completed wave must have one terminal checkpoint")
+    terminal = terminal_entries[0]
+    if stage.kind == "rl":
+        if (
+            len(entries) != 1
+            or terminal.get("name") != f"{target_steps:06d}"
+            or terminal.get("batch") != target_steps
+        ):
+            raise TrainingLaunchError("completed RL wave checkpoint differs from its ceiling")
+    else:
+        save_every = max(
+            1,
+            round(
+                target_steps * float(protocol["recipes"][stage.recipe_key]["checkpoint_fraction"])
+            ),
+        )
+        expected_periodic = [f"{step:06d}" for step in range(save_every, target_steps, save_every)]
+        if (
+            [str(entry["name"]) for entry in entries] != [*expected_periodic, "final"]
+            or terminal.get("name") != "final"
+            or terminal.get("epoch") != 1
+        ):
+            raise TrainingLaunchError("completed SFT checkpoint cadence differs")
+        for entry in periodic_entries:
+            expected_progress = int(str(entry["name"])) / target_steps
+            if not math.isclose(
+                float(entry["training_progress_fraction"]),
+                expected_progress,
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            ):
+                raise TrainingLaunchError("periodic checkpoint progress differs")
+    selected = payload.get("checkpoint")
+    checkpoint_fields = {
+        "name",
+        "batch",
+        "epoch",
+        "final",
+        "state_path",
+        "sampler_path",
+    }
+    if not isinstance(selected, Mapping) or set(selected) != checkpoint_fields:
+        raise TrainingLaunchError("completed wave selected checkpoint is malformed")
+    if any(selected[field] != terminal[field] for field in checkpoint_fields):
+        raise TrainingLaunchError("completed wave selected checkpoint is not terminal")
+
+    local_artifacts = payload.get("local_artifact_sha256")
+    if (
+        not isinstance(local_artifacts, Mapping)
+        or not {"checkpoints.jsonl", "metrics.jsonl"}.issubset(local_artifacts)
+        or not set(local_artifacts).issubset({"checkpoints.jsonl", "metrics.jsonl", "hparams.json"})
+        or any(
+            not isinstance(value, str) or not _SHA256.fullmatch(value)
+            for value in local_artifacts.values()
+        )
+    ):
+        raise TrainingLaunchError("completed wave local artifact inventory is malformed")
+
+    start = resume_batch if resume_batch is not None else 0
+    recipe = protocol["recipes"][stage.recipe_key]
+    expected_candidates = (
+        (target_steps - start) * int(recipe["groups_per_batch"]) * int(recipe["group_size"])
+        if stage.kind == "rl"
+        else 0
+    )
+    candidate_root = store.tinker_log_path(key).parent / "candidates" / invocation_id
+    candidate_files = (
+        sorted(candidate_root.rglob("evaluation.json")) if candidate_root.is_dir() else []
+    )
+    sample_files = sorted(candidate_root.rglob("sample.json")) if candidate_root.is_dir() else []
+    for field, files in (
+        ("candidate_inventory", candidate_files),
+        ("sample_inventory", sample_files),
+    ):
+        observed_inventory = [
+            {
+                "path": str(path.relative_to(store.tinker_log_path(key).parent)),
+                "sha256": file_sha256(path),
+            }
+            for path in files
+        ]
+        recorded = payload.get(field)
+        if (
+            not isinstance(recorded, Mapping)
+            or set(recorded) != {"count", "expected_count", "logical_sha256"}
+            or isinstance(recorded.get("count"), bool)
+            or not isinstance(recorded.get("count"), int)
+            or isinstance(recorded.get("expected_count"), bool)
+            or not isinstance(recorded.get("expected_count"), int)
+            or recorded.get("count") != len(observed_inventory)
+            or recorded.get("expected_count") != expected_candidates
+            or len(observed_inventory) != expected_candidates
+            or recorded.get("logical_sha256") != canonical_sha256(observed_inventory)
+        ):
+            raise TrainingLaunchError(f"completed wave {field} does not prove full coverage")
+
+    final_metric = payload.get("final_training_metric")
+    required_metric = "optim/entropy" if stage.kind == "rl" else "train_mean_nll"
+    if (
+        not isinstance(final_metric, Mapping)
+        or set(final_metric) != {"step", required_metric}
+        or final_metric.get("step") != target_steps - 1
+    ):
+        raise TrainingLaunchError("completed wave final optimizer metric is malformed")
+    metric = final_metric.get(required_metric)
+    if (
+        isinstance(metric, bool)
+        or not isinstance(metric, (int, float))
+        or not math.isfinite(float(metric))
+    ):
+        raise TrainingLaunchError("completed wave final optimizer metric is not finite")
+
+    # A receipt is only a cache of facts reconstructed from the immutable
+    # invocation and the local training artifacts.  Rebuild the canonical
+    # payload so a well-formed but forged hash, metric, checkpoint inventory,
+    # or rollout count cannot turn an incomplete run into ``already_complete``.
+    try:
+        reconstructed = _checkpoint_receipt(
+            stage=stage,
+            wave_name=wave_name,
+            log_path=store.tinker_log_path(key),
+            manifest=manifest,
+            preflight=preflight,
+            invocation=invocation,
+            tracking=tracking,
+        )
+    except TrainingLaunchError:
+        raise
+    except Exception as exc:
+        raise TrainingLaunchError(
+            "completed wave artifacts could not reconstruct the canonical receipt"
+        ) from exc
+    if payload != reconstructed:
+        raise TrainingLaunchError(
+            "completed wave receipt differs from the current canonical training artifacts"
+        )
+
+
 def _validate_resume_state(
     *,
     stage: StageSpec,
@@ -1216,16 +1776,14 @@ async def run_training_stage(
     store = TrainingStore(repo_root=root, external_root=external_root)
     key = StageKey(STUDY_ID, stage.stage_id, replicate_id)
     with store.acquire_stage_lock(key):
-        existing = store.load_wave_receipt(key, wave=wave_name)
-        if existing is not None:
-            return {
-                "status": "already_complete",
-                "stage_id": stage.stage_id,
-                "wave": wave_name,
-                "receipt": str(existing.relative_path),
-                "receipt_sha256": existing.record_sha256,
-            }
+        existing_manifest = store.load_manifest(key)
+        if (
+            existing_manifest is not None
+            and existing_manifest.payload.get("source_git_sha") != source_git_sha
+        ):
+            raise TrainingLaunchError("existing child manifest belongs to another source commit")
         approval = _approval_record(
+            repo_root=root,
             store=store,
             key=key,
             stage=stage,
@@ -1233,11 +1791,13 @@ async def run_training_stage(
             source_git_sha=source_git_sha,
             protocol=protocol,
         )
-        existing_manifest = store.load_manifest(key)
         parent = _parent_binding(
+            repo_root=root,
+            protocol=protocol,
             store=store,
             key=key,
             stage=stage,
+            source_git_sha=source_git_sha,
             approval=approval,
             existing_manifest=existing_manifest,
         )
@@ -1259,6 +1819,27 @@ async def run_training_stage(
                 parent=parent,
             ),
         )
+        existing = store.load_wave_receipt(key, wave=wave_name)
+        if existing is not None:
+            _validate_completed_wave_receipt(
+                repo_root=root,
+                protocol=protocol,
+                store=store,
+                key=key,
+                stage=stage,
+                wave_name=wave_name,
+                manifest=manifest,
+                preflight=preflight,
+                parent=parent,
+                receipt=existing,
+            )
+            return {
+                "status": "already_complete",
+                "stage_id": stage.stage_id,
+                "wave": wave_name,
+                "receipt": str(existing.relative_path),
+                "receipt_sha256": existing.record_sha256,
+            }
         log_path = store.tinker_log_path(key)
         prior_wave_name = _required_prior_wave(stage, wave_name)
         prior_wave_receipt = (
@@ -1278,6 +1859,15 @@ async def run_training_stage(
         # validation. Programmatic init arguments below are a second,
         # independently checked identity boundary.
         with _wandb_environment(tracking, resume=resume):
+            try:
+                # Preflight and transition validation can be lengthy.  Bind
+                # the actual live boundary to the clean commit once more
+                # after every local record has been resolved.
+                validate_source_sha(root, source_git_sha)
+            except (OSError, ValueError, subprocess.SubprocessError) as exc:
+                raise TrainingLaunchError(
+                    "source changed after preflight; refusing live W&B or Tinker access"
+                ) from exc
             wandb_access_validator(expected_entity=tracking["entity"])
             resolved_launch = _resolved_launch_binding(
                 repo_root=root,
@@ -1293,35 +1883,19 @@ async def run_training_stage(
             invocation = store.begin_invocation(
                 key,
                 invocation_id=invocation_id,
-                payload={
-                    "invocation_id": invocation_id,
-                    "stage_id": stage.stage_id,
-                    "wave": wave_name,
-                    "source_git_sha": source_git_sha,
-                    "protocol_logical_sha256": protocol["logical_sha256"],
-                    "run_manifest_record_sha256": manifest.record_sha256,
-                    "preflight_sha256": preflight["preflight_sha256"],
-                    "wandb_run_id": tracking["run_id"],
-                    "resume_batch": resume_batch,
-                    "resolved_launch": resolved_launch,
-                    "resolved_launch_sha256": resolved_launch["logical_sha256"],
-                    "policy": {
-                        "model": protocol["models"][stage.model_key]["model"],
-                        "renderer": protocol["models"][stage.model_key]["renderer"],
-                        "effort": protocol["models"][stage.model_key].get("effort"),
-                        "max_output_tokens": protocol["models"][stage.model_key][
-                            "max_output_tokens"
-                        ],
-                        "temperature": protocol["recipes"][stage.recipe_key].get("temperature"),
-                        "top_p": protocol["recipes"][stage.recipe_key].get("top_p"),
-                        "reward": protocol["recipes"][stage.recipe_key].get("reward"),
-                        "group_size": protocol["recipes"][stage.recipe_key].get("group_size"),
-                        "groups_per_batch": protocol["recipes"][stage.recipe_key].get(
-                            "groups_per_batch"
-                        ),
-                    },
-                    "initial_checkpoint": (parent.checkpoint if parent is not None else None),
-                },
+                payload=_invocation_payload(
+                    protocol=protocol,
+                    stage=stage,
+                    wave_name=wave_name,
+                    source_git_sha=source_git_sha,
+                    invocation_id=invocation_id,
+                    manifest=manifest,
+                    preflight=preflight,
+                    tracking=tracking,
+                    resume_batch=resume_batch,
+                    resolved_launch=resolved_launch,
+                    parent=parent,
+                ),
             )
             config = build_tinker_config(
                 repo_root=root,

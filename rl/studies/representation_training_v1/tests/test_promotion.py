@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import subprocess
 from dataclasses import replace
 from pathlib import Path, PurePosixPath
 
@@ -55,10 +56,7 @@ def _record(
 def _level_report(first_unmastered: str | None) -> dict:
     levels: dict[str, dict] = {}
     for level in ("L0", "L1", "L2", "L3", "L4"):
-        mastered = (
-            first_unmastered is None
-            or int(level[1:]) < int(first_unmastered[1:])
-        )
+        mastered = first_unmastered is None or int(level[1:]) < int(first_unmastered[1:])
         levels[level] = {
             "mean_raw_absolute_scale_iou": 0.85 if mastered else 0.70,
             "pure_executable_rate": 0.98 if mastered else 0.90,
@@ -113,15 +111,168 @@ def _evidence(
         report_record_sha256="d" * 64,
         report_payload_sha256="e" * 64,
         report_relative_path=(
-            f"studies/x/stages/{stage_id}/evaluations/"
-            f"{wave}/final/{panel}/report.json"
+            f"studies/x/stages/{stage_id}/evaluations/{wave}/final/{panel}/report.json"
+        ),
+        evaluation_manifest_payload_sha256="f" * 64,
+        evaluation_manifest_record_sha256="a" * 64,
+        evaluation_manifest_relative_path=(
+            f"studies/x/stages/{stage_id}/evaluations/{wave}/final/{panel}/manifest.json"
         ),
         training_manifest=manifest,
         training_receipt=receipt,
     )
 
 
-def _synthetic_depth_report(protocol: dict) -> tuple[
+def _git_transition_history(tmp_path: Path) -> tuple[Path, str, str]:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(
+        ["git", "init", "--initial-branch=main"],
+        cwd=repo,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    for key, value in (
+        ("user.name", "PixCell test"),
+        ("user.email", "pixcell-test@example.invalid"),
+        ("commit.gpgsign", "false"),
+        ("core.hooksPath", "/dev/null"),
+    ):
+        subprocess.run(
+            ["git", "config", key, value],
+            cwd=repo,
+            check=True,
+        )
+    (repo / "bridge.txt").write_text("producer\n", encoding="utf-8")
+    subprocess.run(["git", "add", "--all"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "producer"],
+        cwd=repo,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    producer = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        text=True,
+    ).strip()
+    (repo / "bridge.txt").write_text("consumer\n", encoding="utf-8")
+    subprocess.run(["git", "add", "--all"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "consumer"],
+        cwd=repo,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    consumer = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        text=True,
+    ).strip()
+    return repo, producer, consumer
+
+
+def _cross_source_evidence(
+    protocol: dict,
+    *,
+    producer_source_git_sha: str,
+) -> promotion.EvaluationEvidence:
+    base = _evidence(
+        stage_id="qwen-l0-sft",
+        wave="complete",
+        panel=promotion.PANEL_DEPTH_VALIDATION,
+        first_unmastered="L1",
+    )
+    model = dict(protocol["models"]["qwen"])
+    prompt_assets = prompt_asset_hashes()
+    dataset = {
+        "repo_id": protocol["dataset"]["repo_id"],
+        "revision": protocol["dataset"]["revision"],
+        "configuration": protocol["dataset"]["configuration"],
+        "split": "depth/validation",
+        "logical_release_sha256": protocol["dataset"]["logical_release_sha256"],
+        "freeze_file_sha256": "1" * 64,
+        "parquet_shards": {"depth.parquet": "2" * 64},
+    }
+    sandbox = {
+        "runtime_path": "/usr/bin/docker",
+        "daemon_endpoint": "unix:///var/run/docker.sock",
+        "image_ref": "pixcell-evaluator@sha256:" + "3" * 64,
+        "image_id": "sha256:" + "3" * 64,
+        "workspace_root": "/tmp/pixcell-evaluation",
+    }
+    manifest = _record(
+        {
+            "source_git_sha": producer_source_git_sha,
+            "protocol_logical_sha256": protocol["logical_sha256"],
+            "protocol_file_sha256": "4" * 64,
+            "contract_version": protocol["contract_version"],
+            "prompt_assets": prompt_assets,
+            "dataset": {key: value for key, value in dataset.items() if key != "split"},
+            "model": model,
+            "sandbox": None,
+        },
+        record_sha="8" * 64,
+        relative=(
+            "studies/representation-training-v1/stages/qwen-l0-sft/runs/r0/run_manifest.json"
+        ),
+    )
+    receipt = replace(
+        base.training_receipt,
+        payload={
+            **base.training_receipt.payload,
+            "stage_id": "qwen-l0-sft",
+            "wave": "complete",
+            "run_manifest_record_sha256": manifest.record_sha256,
+        },
+        record_sha256="9" * 64,
+    )
+    sampler = {
+        "model": model["model"],
+        "renderer": model["renderer"],
+        "effort": model.get("effort"),
+    }
+    report_payload = {
+        **base.report_payload,
+        "provenance": {
+            "source_git_sha": producer_source_git_sha,
+            "protocol": {
+                "logical_sha256": protocol["logical_sha256"],
+                "file_sha256": "4" * 64,
+                "contract_version": protocol["contract_version"],
+            },
+            "prompt_assets": prompt_assets,
+            "dataset": dataset,
+            "task_panel": {
+                "panel": promotion.PANEL_DEPTH_VALIDATION,
+                "task_count": 1_092,
+                "logical_sha256": "5" * 64,
+            },
+            "sampler": sampler,
+            "sampling": {
+                "attempts_per_task": 1,
+                "max_output_tokens": 60_000,
+                "temperature": 1.0,
+                "top_p": 1.0,
+                "max_image_long_edge": 1_920,
+            },
+            "sandbox": sandbox,
+            "evaluation_manifest_record_sha256": "a" * 64,
+        },
+    }
+    return replace(
+        base,
+        training_manifest=manifest,
+        training_receipt=receipt,
+        report_payload=report_payload,
+        evaluation_manifest_payload_sha256="b" * 64,
+        evaluation_manifest_record_sha256="a" * 64,
+    )
+
+
+def _synthetic_depth_report(
+    protocol: dict,
+) -> tuple[
     list[promotion.PanelTaskIdentity],
     dict,
     dict,
@@ -162,12 +313,9 @@ def _synthetic_depth_report(protocol: dict) -> tuple[
     by_representation: dict[str, list[dict]] = {}
     for record in records:
         by_level.setdefault(record["level"], []).append(record)
-        by_representation.setdefault(record["representation_id"], []).append(
-            record
-        )
+        by_representation.setdefault(record["representation_id"], []).append(record)
     representations = {
-        key: promotion._aggregate(values)
-        for key, values in sorted(by_representation.items())
+        key: promotion._aggregate(values) for key, values in sorted(by_representation.items())
     }
     task_panel = {
         "schema_version": "pixcell-training-evaluation-task-panel-v1",
@@ -181,9 +329,7 @@ def _synthetic_depth_report(protocol: dict) -> tuple[
         "repo_id": protocol["dataset"]["repo_id"],
         "revision": protocol["dataset"]["revision"],
         "configuration": protocol["dataset"]["configuration"],
-        "logical_release_sha256": protocol["dataset"][
-            "logical_release_sha256"
-        ],
+        "logical_release_sha256": protocol["dataset"]["logical_release_sha256"],
         "freeze_file_sha256": "5" * 64,
         "parquet_shards": [{"path": "depth.parquet", "sha256": "6" * 64}],
     }
@@ -199,11 +345,7 @@ def _synthetic_depth_report(protocol: dict) -> tuple[
         {
             "source_git_sha": SOURCE_SHA,
             "protocol_logical_sha256": protocol["logical_sha256"],
-            "dataset": {
-                "logical_release_sha256": protocol["dataset"][
-                    "logical_release_sha256"
-                ]
-            },
+            "dataset": {"logical_release_sha256": protocol["dataset"]["logical_release_sha256"]},
         },
         record_sha="8" * 64,
         relative="studies/x/stages/qwen-mixed-sft/runs/r0/run_manifest.json",
@@ -228,10 +370,7 @@ def _synthetic_depth_report(protocol: dict) -> tuple[
             },
         },
         record_sha="9" * 64,
-        relative=(
-            "studies/x/stages/qwen-mixed-sft/runs/r0/"
-            "waves/complete/receipt.json"
-        ),
+        relative=("studies/x/stages/qwen-mixed-sft/runs/r0/waves/complete/receipt.json"),
     )
     model = protocol["models"]["qwen"]
     sampler = {
@@ -301,16 +440,10 @@ def _synthetic_depth_report(protocol: dict) -> tuple[
         "panel": promotion.PANEL_DEPTH_VALIDATION,
         "summary": promotion._aggregate(records),
         "representation_macro_mean_iou": (
-            sum(
-                value["mean_raw_absolute_scale_iou"]
-                for value in representations.values()
-            )
+            sum(value["mean_raw_absolute_scale_iou"] for value in representations.values())
             / len(representations)
         ),
-        "levels": {
-            key: promotion._aggregate(values)
-            for key, values in sorted(by_level.items())
-        },
+        "levels": {key: promotion._aggregate(values) for key, values in sorted(by_level.items())},
         "representations": representations,
         "records": records,
         "provenance": {
@@ -326,9 +459,7 @@ def _synthetic_depth_report(protocol: dict) -> tuple[
             "sampling": sampling,
             "prompt_assets": prompt_asset_hashes(),
             "sandbox": sandbox,
-            "evaluation_manifest_record_sha256": evaluation_manifest[
-                "record_sha256"
-            ],
+            "evaluation_manifest_record_sha256": evaluation_manifest["record_sha256"],
         },
     }
     return tasks, report, evaluation_manifest, manifest, receipt
@@ -370,10 +501,7 @@ def test_mixed_checkpoint_ranking_uses_iou_then_purity_then_progress() -> None:
             "training_progress_fraction": 1.0,
         },
     ]
-    assert (
-        promotion._best_mixed_checkpoint(candidates)["checkpoint_name"]
-        == "final"
-    )
+    assert promotion._best_mixed_checkpoint(candidates)["checkpoint_name"] == "final"
 
 
 def test_mixed_selection_requires_every_report_and_rejects_nonwinner(
@@ -420,9 +548,7 @@ def test_mixed_selection_requires_every_report_and_rejects_nonwinner(
             },
         },
         record_sha="c" * 64,
-        relative=(
-            "studies/x/stages/qwen-mixed-sft/waves/complete/receipt.json"
-        ),
+        relative=("studies/x/stages/qwen-mixed-sft/waves/complete/receipt.json"),
     )
 
     def scored(
@@ -552,16 +678,16 @@ def test_mixed_approval_selects_first_unmastered_and_binds_parent() -> None:
         source_git_sha=SOURCE_SHA,
         protocol=protocol,
     )
+    assert payload["schema_version"] == promotion.APPROVAL_SCHEMA_VERSION
+    assert "evidence_source_git_sha" not in payload
+    assert "source_transition" not in payload
     assert payload["decision"] == "approve"
     assert payload["approval_gate"] == "first-unmastered-entry-receipt"
     assert payload["parent_stage_id"] == "qwen-mixed-sft"
     assert payload["parent_wave"] == "complete"
     assert payload["parent_receipt_record_sha256"] == "c" * 64
     assert payload["selected_parent_checkpoint"] == CHECKPOINT
-    assert (
-        payload["selected_parent_checkpoint_inventory_sha256"]
-        == CHECKPOINT_INVENTORY_SHA256
-    )
+    assert payload["selected_parent_checkpoint_inventory_sha256"] == CHECKPOINT_INVENTORY_SHA256
     assert payload["mastery"]["selected_level"] == "L2"
 
     wrong = _evidence(
@@ -662,9 +788,7 @@ def test_entry_approval_cannot_authorize_continuation(
 
 def test_depth_report_recomputes_all_rows_metrics_and_provenance() -> None:
     protocol = load_protocol(REPO_ROOT)
-    tasks, report, evaluation_manifest, manifest, receipt = (
-        _synthetic_depth_report(protocol)
-    )
+    tasks, report, evaluation_manifest, manifest, receipt = _synthetic_depth_report(protocol)
     promotion._validate_report_payload(
         repo_root=REPO_ROOT,
         protocol=protocol,
@@ -789,3 +913,214 @@ def test_record_approval_requires_human_confirmation_and_is_immutable(
     assert approval is not None
     assert approval.payload["decision"] == "approve"
     assert approval.payload["explicit_human_confirmation"] is True
+
+
+def test_cross_source_v2_binds_exact_evidence_scope_and_one_child(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repo, producer, consumer = _git_transition_history(tmp_path)
+    external = tmp_path / "external"
+    protocol = load_protocol(REPO_ROOT)
+    evidence = _cross_source_evidence(
+        protocol,
+        producer_source_git_sha=producer,
+    )
+    monkeypatch.setattr(
+        promotion,
+        "load_protocol",
+        lambda *_args, **_kwargs: protocol,
+    )
+    monkeypatch.setattr(
+        promotion,
+        "validate_source_sha",
+        lambda _root, expected: expected,
+    )
+    monkeypatch.setattr(
+        promotion,
+        "file_sha256",
+        lambda _path: "4" * 64,
+    )
+    report_calls: list[dict] = []
+
+    def validate_report(**kwargs):
+        report_calls.append(dict(kwargs))
+        assert kwargs["expected_source_sha"] == producer
+        return evidence
+
+    monkeypatch.setattr(
+        promotion,
+        "validate_checkpoint_report",
+        validate_report,
+    )
+    result = promotion.record_wave_approval(
+        repo_root=repo,
+        external_root=external,
+        stage_id="qwen-l0-rl-l1",
+        wave_name="smoke",
+        replicate_id="r0",
+        evaluation_stage_id="qwen-l0-sft",
+        evaluation_wave="complete",
+        evaluation_checkpoint_name="final",
+        evaluation_report_record_sha256=evidence.report_record_sha256,
+        expected_source_sha=consumer,
+        evidence_source_sha=producer,
+        approved_change_paths=["bridge.txt"],
+        confirmation=promotion.APPROVAL_CONFIRMATION_TOKEN,
+    )
+    assert result["approval_schema_version"] == (
+        promotion.SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION
+    )
+    assert result["evidence_source_git_sha"] == producer
+    assert result["consumer_source_git_sha"] == consumer
+
+    key = StageKey(STUDY_ID, "qwen-l0-rl-l1", "r0")
+    store = TrainingStore(repo_root=repo, external_root=external)
+    approval = store.load_wave_approval(key, wave="smoke")
+    assert approval is not None
+    payload = approval.payload
+    assert payload["schema_version"] == (promotion.SOURCE_TRANSITION_APPROVAL_SCHEMA_VERSION)
+    assert payload["evaluation"]["report_record_sha256"] == (evidence.report_record_sha256)
+    assert payload["evaluation"]["training_run_manifest_record_sha256"] == (
+        evidence.training_manifest.record_sha256
+    )
+    assert payload["evaluation"]["training_wave_receipt_record_sha256"] == (
+        evidence.training_receipt.record_sha256
+    )
+    assert payload["evaluation"]["evaluation_manifest_record_sha256"] == (
+        evidence.evaluation_manifest_record_sha256
+    )
+    transition = payload["source_transition"]
+    assert transition["scope"]["child"] == {
+        "stage_id": "qwen-l0-rl-l1",
+        "wave": "smoke",
+        "replicate_id": "r0",
+        "approval_gate": "entry-evaluation-and-promotion-receipt",
+    }
+    assert transition["scope"]["approved_changes"]["paths"] == ["bridge.txt"]
+    assert (
+        transition["evidence"]["checkpoint_inventory"]
+        == (evidence.training_receipt.payload["checkpoint_inventory"])
+    )
+    assert transition["evidence"]["evaluation_manifest"]["record_sha256"] == (
+        evidence.evaluation_manifest_record_sha256
+    )
+    assert transition["equivalence"]["model"]["producer_training"] == (protocol["models"]["qwen"])
+    assert transition["equivalence"]["renderer"]["producer_evaluation"] == {
+        "model": protocol["models"]["qwen"]["model"],
+        "renderer": protocol["models"]["qwen"]["renderer"],
+        "effort": protocol["models"]["qwen"].get("effort"),
+    }
+    assert (
+        promotion.validate_source_transition_approval(
+            repo_root=repo,
+            protocol=protocol,
+            store=store,
+            stage=stage_spec(protocol, "qwen-l0-rl-l1"),
+            wave_name="smoke",
+            replicate_id="r0",
+            consumer_source_git_sha=consumer,
+            approval=approval,
+        )
+        == evidence
+    )
+    with pytest.raises(promotion.PromotionError, match="another replicate"):
+        promotion.validate_source_transition_approval(
+            repo_root=repo,
+            protocol=protocol,
+            store=store,
+            stage=stage_spec(protocol, "qwen-l0-rl-l1"),
+            wave_name="smoke",
+            replicate_id="r1",
+            consumer_source_git_sha=consumer,
+            approval=approval,
+        )
+
+    tampered_payload = copy.deepcopy(payload)
+    tampered_payload["source_transition"]["evidence"]["evaluation_report"]["record_sha256"] = (
+        "0" * 64
+    )
+    tampered = replace(approval, payload=tampered_payload)
+    with pytest.raises(promotion.PromotionError, match="recomputed evidence"):
+        promotion.validate_source_transition_approval(
+            repo_root=repo,
+            protocol=protocol,
+            store=store,
+            stage=stage_spec(protocol, "qwen-l0-rl-l1"),
+            wave_name="smoke",
+            replicate_id="r0",
+            consumer_source_git_sha=consumer,
+            approval=tampered,
+        )
+    assert all(call["expected_source_sha"] == producer for call in report_calls)
+    monkeypatch.setattr(
+        promotion,
+        "validate_source_sha",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            ValueError("paid training requires a completely clean worktree")
+        ),
+    )
+    with pytest.raises(promotion.PromotionError, match="clean HEAD"):
+        promotion.validate_source_transition_approval(
+            repo_root=repo,
+            protocol=protocol,
+            store=store,
+            stage=stage_spec(protocol, "qwen-l0-rl-l1"),
+            wave_name="smoke",
+            replicate_id="r0",
+            consumer_source_git_sha=consumer,
+            approval=approval,
+        )
+
+
+def test_cross_source_recording_rejects_missing_or_wrong_change_scope(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repo, producer, consumer = _git_transition_history(tmp_path)
+    protocol = load_protocol(REPO_ROOT)
+    monkeypatch.setattr(
+        promotion,
+        "load_protocol",
+        lambda *_args, **_kwargs: protocol,
+    )
+    monkeypatch.setattr(
+        promotion,
+        "validate_source_sha",
+        lambda _root, expected: expected,
+    )
+    common = {
+        "repo_root": repo,
+        "external_root": tmp_path / "external",
+        "stage_id": "qwen-l0-rl-l1",
+        "wave_name": "smoke",
+        "replicate_id": "r0",
+        "evaluation_stage_id": "qwen-l0-sft",
+        "evaluation_wave": "complete",
+        "evaluation_checkpoint_name": "final",
+        "evaluation_report_record_sha256": "d" * 64,
+        "expected_source_sha": consumer,
+        "evidence_source_sha": producer,
+        "confirmation": promotion.APPROVAL_CONFIRMATION_TOKEN,
+    }
+    with pytest.raises(promotion.PromotionError, match="explicit approved"):
+        promotion.record_wave_approval(**common)
+    with pytest.raises(
+        promotion.PromotionError,
+        match="approved change paths",
+    ):
+        promotion.record_wave_approval(
+            **common,
+            approved_change_paths=["wrong.txt"],
+        )
+    with pytest.raises(
+        promotion.PromotionError,
+        match="same-source v1",
+    ):
+        promotion.record_wave_approval(
+            **{
+                **common,
+                "evidence_source_sha": consumer,
+            },
+            approved_change_paths=["bridge.txt"],
+        )
