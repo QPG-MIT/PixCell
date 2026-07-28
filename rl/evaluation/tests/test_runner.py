@@ -237,7 +237,7 @@ def test_reference_preflight_failure_happens_before_remote_client_creation(
         def validate_reference(self, _reference: VerifierReference) -> dict[str, Any]:
             raise ValueError("broken local reference")
 
-    monkeypatch.setattr(runner, "load_protocol", lambda _root: protocol)
+    monkeypatch.setattr(runner, "load_protocol", lambda _root, **_kwargs: protocol)
     monkeypatch.setattr(
         runner,
         "build_launch_binding",

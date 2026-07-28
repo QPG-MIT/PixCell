@@ -66,8 +66,14 @@ def seal_protocol(path: Path) -> dict[str, Any]:
     return document
 
 
-def protocol_path(repo_root: Path) -> Path:
-    return repo_root.expanduser().resolve() / STUDY_RELATIVE_PATH / PROTOCOL_FILENAME
+def protocol_path(repo_root: Path, protocol_file: Path | None = None) -> Path:
+    root = repo_root.expanduser().resolve()
+    if protocol_file is None:
+        return root / STUDY_RELATIVE_PATH / PROTOCOL_FILENAME
+    candidate = protocol_file.expanduser().resolve(strict=True)
+    if not candidate.is_relative_to(root):
+        raise ValueError("baseline protocol must live inside the source repository")
+    return candidate
 
 
 def task_manifest_path(repo_root: Path) -> Path:
@@ -76,6 +82,31 @@ def task_manifest_path(repo_root: Path) -> Path:
         / STUDY_RELATIVE_PATH
         / TASK_MANIFEST_FILENAME
     )
+
+
+def _require_protocol_at_head(repo_root: Path, path: Path) -> None:
+    root = repo_root.expanduser().resolve()
+    candidate = path.expanduser().resolve(strict=True)
+    if not candidate.is_relative_to(root):
+        raise ValueError("baseline protocol must live inside the source repository")
+    relative = candidate.relative_to(root).as_posix()
+    try:
+        subprocess.check_output(
+            ["git", "ls-files", "--error-unmatch", "--", relative],
+            cwd=root,
+            stderr=subprocess.DEVNULL,
+        )
+        committed = subprocess.check_output(
+            ["git", "show", f"HEAD:{relative}"],
+            cwd=root,
+            stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise ValueError(
+            "baseline protocol must be tracked by the paid-launch commit"
+        ) from exc
+    if candidate.read_bytes() != committed:
+        raise ValueError("baseline protocol bytes differ from the paid-launch commit")
 
 
 def _validate_arm(arm_id: str, value: dict[str, Any]) -> ArmSpec:
@@ -115,9 +146,15 @@ def _validate_arm(arm_id: str, value: dict[str, Any]) -> ArmSpec:
     return result
 
 
-def load_protocol(repo_root: Path) -> dict[str, Any]:
+def load_protocol(
+    repo_root: Path,
+    *,
+    protocol_file: Path | None = None,
+) -> dict[str, Any]:
     root = repo_root.expanduser().resolve()
-    document = json.loads(protocol_path(root).read_text(encoding="utf-8"))
+    document = json.loads(
+        protocol_path(root, protocol_file).read_text(encoding="utf-8")
+    )
     if document.get("schema_version") != PROTOCOL_SCHEMA:
         raise ValueError("unsupported representation-curriculum protocol schema")
     observed = canonical_json_sha256(_logical_document(document))
@@ -308,6 +345,7 @@ def build_launch_binding(
     expected_source_sha: str,
     external_root: Path,
     selection: dict[str, Any] | None = None,
+    protocol_file: Path | None = None,
 ) -> tuple[dict[str, Any], list[Any], list[JobSpec]]:
     """Resolve every semantic launch input before a remote client exists."""
 
@@ -321,7 +359,9 @@ def build_launch_binding(
         raise ValueError(
             f"source SHA mismatch: {state['head']} != {expected_source_sha}"
         )
-    protocol = load_protocol(root)
+    selected_protocol = protocol_path(root, protocol_file)
+    _require_protocol_at_head(root, selected_protocol)
+    protocol = load_protocol(root, protocol_file=selected_protocol)
     runtime = validate_runtime_stack(root)
     manifest = load_task_manifest(task_manifest_path(root), repo_root=root)
     hypothesis = protocol["hypotheses"].get(hypothesis_id)
@@ -363,6 +403,7 @@ def build_launch_binding(
         "hypothesis_id": hypothesis_id,
         "wave": wave_name,
         "source_git_sha": state["head"],
+        "protocol_path": selected_protocol.relative_to(root).as_posix(),
         "protocol_sha256": protocol["logical_sha256"],
         "task_manifest_sha256": manifest["logical_sha256"],
         "task_set": task_set_name,
