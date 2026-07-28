@@ -403,7 +403,7 @@ def _draw_model_evaluation(
     score_axes.set_xlim(0, 1.04)
     score_axes.set_xticks([0, 0.5, 1.0])
     score_axes.set_xticklabels(["0", "0.5", "1.0"])
-    score_axes.set_title(r"Visual score $U$", fontsize=7.25, color=INK, pad=6)
+    score_axes.set_title(r"Visual score $U$", fontsize=7.25, color=INK, pad=9)
     cost_axes.set_xscale("log")
     cost_axes.set_xlim(0.2, 130)
     cost_axes.set_xticks([1, 10, 100])
@@ -483,13 +483,13 @@ def main() -> None:
     # Model names begin on the same left anchor as panel A. The two
     # quantitative axes then use the remaining panel width instead of being
     # compressed behind a large invisible label gutter.
-    score_axes = figure.add_axes((0.205, 0.075, 0.235, 0.845))
-    cost_axes = figure.add_axes((0.478, 0.075, 0.112, 0.845))
+    score_axes = figure.add_axes((0.205, 0.075, 0.235, 0.818))
+    cost_axes = figure.add_axes((0.478, 0.075, 0.112, 0.818))
     # Panel B starts at the same horizontal anchor as its heading. Give the
     # benchmark cells the full panel width and reserve only a narrow outer
     # strip for the IoU scale.
-    matrix_axes = figure.add_axes((0.632, 0.075, 0.315, 0.845))
-    colorbar_axes = figure.add_axes((0.958, 0.075, 0.009, 0.845))
+    matrix_axes = figure.add_axes((0.632, 0.075, 0.315, 0.818))
+    colorbar_axes = figure.add_axes((0.958, 0.075, 0.009, 0.818))
 
     separators = _draw_model_evaluation(
         score_axes,
