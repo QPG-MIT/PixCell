@@ -228,6 +228,37 @@ Approvals bind the report, source commit, protocol digest, task panel,
 checkpoint inventory, training receipt, and selection decision. They cannot be
 reused for a different wave or checkpoint.
 
+An evaluation must always run from the same clean commit as its training
+manifest. To adopt that already-reviewed evidence from a later descendant,
+record a v2 approval at the clean consumer commit and explicitly enumerate the
+complete reviewed Git path scope:
+
+```bash
+PYTHONPATH=src:. python -m \
+  rl.studies.representation_training_v1.record_approval \
+  --stage <one-dependent-stage> \
+  --wave <one-dependent-wave> \
+  --replicate r0 \
+  --evaluation-stage <producer-checkpoint-stage> \
+  --evaluation-wave <producer-checkpoint-wave> \
+  --evaluation-checkpoint <exact-inventory-name> \
+  --evaluation-report-record-sha256 <producer-report-record-sha256> \
+  --evidence-source-sha <producer-commit> \
+  --expected-source-sha "$(git rev-parse HEAD)" \
+  --approve-changed-path <first-exact-changed-path> \
+  --approve-changed-path <second-exact-changed-path> \
+  --confirm-approval PIXCELL_APPROVE_TRAINING_V1
+```
+
+Every path from `git diff --name-status --no-renames <producer> HEAD` must
+appear exactly once. The approval records both commit trees, ancestry, and a
+plumbing-level inventory of every path, status, mode, and old/new object ID.
+It also binds the producer report and evaluation manifest, training receipt
+and checkpoint inventory, and all protocol, prompt, dataset, model/renderer,
+sampling, and sandbox evidence. The dependent child manifest embeds that one
+stage/wave/replicate transition. A same-source approval remains byte-for-byte
+v1 and must omit both transition flags.
+
 ## Baseline completion
 
 Attempts two through four of the zero-shot Qwen and Inkling F1–F8 baselines
