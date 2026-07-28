@@ -277,7 +277,7 @@ def _panel_heading(
 
 
 def _provider_legend(figure: plt.Figure) -> None:
-    """Vendor colour and the generation mark, explained in one row."""
+    """Vendor colour, the only encoded categorical variable."""
     handles = [
         Line2D([], [], marker="o", linestyle="none", markersize=4.0,
                markerfacecolor=color, markeredgecolor=color, label=label)
@@ -286,15 +286,12 @@ def _provider_legend(figure: plt.Figure) -> None:
             ("Anthropic", PROVIDER_COLORS["anthropic"]),
         )
     ] + [
-        Line2D([], [], marker="o", linestyle="none", markersize=4.0,
-               markerfacecolor="white", markeredgecolor=SOFT_INK,
-               markeredgewidth=0.75, label="first sweep"),
     ]
     figure.legend(
         handles=handles,
         loc="upper right",
         bbox_to_anchor=(0.600, 0.995),
-        ncol=3,
+        ncol=2,
         frameon=False,
         fontsize=5.9,
         handletextpad=0.35,
@@ -379,16 +376,13 @@ def _draw_model_evaluation(
     rows = np.arange(len(benchmark))
     colors = [PROVIDER_COLORS[row["provider"]] for row in benchmark]
 
-    # Generation is carried by the marker itself rather than by a separate
-    # column of symbols: filled for the later sweep, open for the first.
-    filled = [row["generation"] == "extension" for row in benchmark]
     score_axes.scatter(
         [row["usable_score"] for row in benchmark],
         rows,
         s=20,
-        facecolor=[c if f else "white" for c, f in zip(colors, filled)],
-        edgecolor=colors,
-        linewidth=0.75,
+        facecolor=colors,
+        edgecolor="white",
+        linewidth=0.35,
         zorder=3,
     )
 
@@ -398,29 +392,11 @@ def _draw_model_evaluation(
         [row["cost"] for _, row in priced],
         [index for index, _ in priced],
         s=20,
-        facecolor=[PROVIDER_COLORS[row["provider"]] if row["generation"] == "extension"
-                   else "white" for _, row in priced],
-        edgecolor=[PROVIDER_COLORS[row["provider"]] for _, row in priced],
-        linewidth=0.75,
+        facecolor=[PROVIDER_COLORS[row["provider"]] for _, row in priced],
+        edgecolor="white",
+        linewidth=0.35,
         zorder=3,
     )
-    # A model with no published per-token price is drawn as an explicit absence,
-    # never as a zero and never as an estimate.
-    for index, row in enumerate(benchmark):
-        if np.isfinite(row["cost"]):
-            continue
-        cost_axes.text(
-            0.5,
-            index,
-            "no published rate",
-            transform=cost_axes.get_yaxis_transform(),
-            ha="center",
-            va="center",
-            fontsize=5.0,
-            style="italic",
-            color=SOFT_INK,
-            zorder=4,
-        )
 
     _style_evaluation_axis(score_axes, row_count=len(benchmark))
     _style_evaluation_axis(cost_axes, row_count=len(benchmark))
