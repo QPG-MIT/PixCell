@@ -547,29 +547,30 @@ but model choice and target geometry materially affect the return.
 
 \section{Retargeting across stack models}\label{sec:pdk}
 
-Geometric verification establishes an executable representation. Physical
-evaluation begins after that gate. Tier~0 uses local mode solutions to
-compute effective and group indices, path-delay quantities, and
-coupled-mode estimates. Tier~1 uses capped small-domain FDTD for
-transmission, and tier~2 uses human-authorized broadband FDTD for
-full-device audits~\cite{tidy3d}. The evaluators only measure; the agent
-decides how to modify the program.
-
-The experiments use explicit models of 220-nm SOI, 400-nm SiN, and 400-nm
-TFLN. A pass requires the implemented optical figure of merit and footprint
-constraint to hold on the selected stack. The TFLN model is isotropic, and
-the gate does not enforce the bend-radius and guide-spacing fields or a
-complete foundry rule deck. The results therefore measure functional
-reachability under these stack models.
+While geometric verification establishes an executable representation and
+the benchmarks above have shown how state of the art multimodal intelligence
+is able to understand the representation and recreate a component with
+accurate parameters, physical evaluation is still limited. For this, we set
+up a tiered simulation framework. Tier~0 uses local mode solutions to compute
+effective and group indices, path-delay quantities, and coupled-mode
+estimates. Tier~1 uses capped small-domain FDTD for transmission. Tier~2 uses
+human-authorized broadband FDTD for full-device audits~\cite{tidy3d}. The
+evaluators here measure functional quantities while the agent decides how to
+modify the program. Experiments here use explicit models of 220-nm SOI,
+400-nm SiN, and 400-nm TFLN. A pass requires the implemented optical figure
+of merit and footprint constraint to hold on the selected stack. The TFLN
+model is isotropic, and the gate does not enforce the bend-radius and
+guide-spacing fields or a complete foundry rule deck. The results therefore
+measure functional reachability under these stack models.
 
 \subsection{Editable routing enables cross-stack retargeting}
 \label{sec:ladder}
 
 Retargetability is the set of valid geometries reachable through a
-program's live variables. A library PCell exposes the coordinates chosen by
-its author; a reconstructed program exposes those retained by the coding
-agent. The parameter ranges, evaluator, and geometric constraints determine
-which operating points either representation can reach.
+program's live parameter variables. A library PCell exposes the coordinates
+chosen by its author. A reconstructed program exposes those retained by the
+coding agent. The parameter ranges, evaluator, and geometric constraints
+determine which operating points either representation can reach.
 
 The first test starts from an unbalanced Mach--Zehnder interferometer (MZI)
 reconstructed independently by Opus-4.8 medium and GPT-5.5 xhigh. Each
@@ -640,8 +641,8 @@ too large. Conversely, one reconstructed spiral fixes its loop
 count and misses the SiN and TFLN delay targets; the other reconstruction
 keeps that coordinate live and passes. For the ring, both representations
 miss on SiN and TFLN because the radius required by the modeled FSR exceeds
-the footprint. The 21--22 near tie rules out a representation-class
-advantage in this experiment; success tracks the live coordinates retained
+the footprint. The 21--22 near tie shows no aggregate representation-class
+advantage in this experiment. Success tracks the live coordinates retained
 by each program.
 
 \begin{figure*}[t]
@@ -680,10 +681,10 @@ The same analytic tier fails quantitatively for the directional coupler.
 For the reconstructed SiN coupler, the parallel-guide supermode model
 predicts a coupling ratio of $0.9439$, while a matched full-wave fixture
 gives $0.1711$, a $5.5\times$ overestimate. The full-wave geometry includes
-the access and S-bend regions omitted from the analytic model. The cheap
-evaluator is therefore accurate to $2.9\%$ for the tested MZI fringe spacing
-and inaccurate for this coupler ratio. Coupler entries in
-Table~\ref{tab:twoarm} are tier-0 outcomes.
+the access and S-bend regions omitted from the analytic model. The analytic
+evaluator differs from the full-wave result by $2.9\%$ for the tested MZI
+fringe spacing and overestimates this coupler ratio by $5.5\times$. Coupler
+entries in Table~\ref{tab:twoarm} are tier-0 outcomes.
 
 A separate MMI fixture shows the value of stack-specific redimensioning.
 The generic PCell measures $1.08$\,dB per splitter on SOI. Holding its
