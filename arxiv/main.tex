@@ -809,18 +809,20 @@ low-rank adaptation (LoRA)~\cite{lora}, and completes 150 group relative
 policy optimization (GRPO) steps~\cite{grpo} without supervised demonstrations
 or critic-generated feedback. Each episode presents one
 maximum-visibility image, its physical footprint, the permitted DSL catalog,
-and the source contract. The model returns one program in a non-thinking
-4{,}096-token response. The evaluator applies the source gate, executes
-accepted programs, renders their geometry at the target calibration, and
-compares it with the reference. Syntax failures, source violations, execution
-failures, and missing GDS outputs receive zero reward. Reference or evaluator
-failures abort the run rather than entering the record as model errors.
-
-For a source-compliant executable program, let $J$ and $D$ denote IoU and
-Dice, $c$ the symmetric boundary chamfer distance in micrometers, and $d$ the
-footprint diagonal. The subscript $\mathrm{rect}$ denotes the result from a
-solid rectangle filling the target's calibrated foreground bounding box.
-Define
+and the source contract. Following this, the model returns one program in a
+non-thinking 4{,}096-token response, and the evaluator runs a process of
+execution and comparison with the reference wherein syntax failures, source
+violations, execution failures, and missing GDS outputs receive zero reward.
+Moreover, reference or evaluator failures abort the run. The general motivation
+behind such a direction is to have a signal that can cover the representation
+space and determine whether small models can learn the representation. To that
+extent, there is less focus on the manner in which signals for different types
+of violations could be developed, as we focus on gauging learning capabilities.
+To that end, for a source-compliant executable program, let $J$ and $D$ denote
+IoU and Dice, $c$ the symmetric boundary chamfer distance in micrometers, and
+$d$ the footprint diagonal. Here, the subscript $\mathrm{rect}$ denotes the
+result from a solid rectangle filling the target's calibrated foreground
+bounding box. Define
 \begin{align*}
 N(x;x_0) &= \max\left\{0,\frac{x-x_0}{1-x_0}\right\},\\
 T(c) &= \exp\left[-\frac{c}{0.05d}\right],\\
@@ -844,13 +846,13 @@ R = 0.05 + 0.40J + 0.15D + 0.40T(c).
 \end{equation}
 \end{subequations}
 The rectangle baseline removes geometric credit for filling the target
-bounding box. The boundary term provides a signal for count and boundary
+bounding box, while the boundary term provides a signal for count and boundary
 changes that may not yet improve overlap.
 
-Training uses the Tinker API~\cite{tinker} with learning rate $10^{-5}$,
+Training uses the Tinker API~\cite{tinker} throughout, with learning rate $10^{-5}$,
 temperature $1.0$, eight task groups per step, and eight rollouts per group.
 Within-group advantages are optimized with importance sampling and zero KL
-penalty. Constant-reward groups are omitted. Run B spends 30 steps on each
+penalty, and constant-reward groups are omitted. Run B spends 30 steps on each
 level from L0 through L4 and initializes every stage from the preceding
 checkpoint. After L0, each five-step cycle draws exactly 80\% of its task
 groups from the active level and 20\% from earlier levels. The stage sequence
@@ -872,13 +874,12 @@ executable program in 64 attempts. A direct draw from the trained policy
 produces 39 executable programs in 64 attempts, with mean IoU $0.228$ and
 mean best-of-eight IoU $0.467$ (Table~\ref{tab:rl}). The deployment loop uses
 an independent draw of eight initial attempts per target, retains the
-strongest candidate, and gives it three rounds of four revisions. Feedback
+strongest candidate, and gives it three rounds of four revisions. Here, feedback
 reports an error class, a closeness category, and whether material is missing
 or excessive without exposing numerical measurements. Mean champion IoU
 rises from $0.422$ after the initial attempts to $0.452$, $0.476$, and $0.491$
 after the three revision rounds. This is one trained lineage evaluated
-through repeated samples and revisions rather than an estimate of variation
-across independent training runs.
+through repeated samples and revisions.
 
 \input{table_rl.tex}
 
