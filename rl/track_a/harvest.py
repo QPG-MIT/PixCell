@@ -116,9 +116,11 @@ def harvest(
         )
     best: dict[str, dict] = {}
     per_rep = defaultdict(int)
+    status_counts: dict[str, int] = defaultdict(int)
     kept = examined = 0
     for (task, completion), result in zip(pairs, results):
         examined += 1
+        status_counts[result.status.value] += 1
         if result.status is not EvaluationStatus.OK or result.iou is None:
             continue
         baseline = cached_rect_baseline(task.reference)
@@ -157,6 +159,7 @@ def harvest(
             sink.write(json.dumps(w) + "\n")
     summary = {
         "examined": examined,
+        "status_counts": dict(status_counts),
         "unique_tasks_won": len(best),
         "kept_after_caps": kept,
         "by_level": dict(by_level),
@@ -176,6 +179,8 @@ def main() -> None:
     ap.add_argument("--out", required=True)
     ap.add_argument("--samples-per-task", type=int, default=2)
     ap.add_argument("--temperature", type=float, default=1.0)
+    ap.add_argument("--min-iou-n", type=float, default=0.5)
+    ap.add_argument("--max-tokens", type=int, default=4096)
     args = ap.parse_args()
     from rl.track_a.transport import disable_pyqwest_transport
 
@@ -189,6 +194,8 @@ def main() -> None:
         out_path=args.out,
         samples_per_task=args.samples_per_task,
         temperature=args.temperature,
+        min_iou_n=args.min_iou_n,
+        max_tokens=args.max_tokens,
     )
 
 
