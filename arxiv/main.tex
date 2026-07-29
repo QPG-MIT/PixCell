@@ -733,42 +733,40 @@ and modeled fabrication variables bound the physical conclusion.
 \centering
 \includegraphics[width=\linewidth]{fig_dataset_curriculum.pdf}
 \caption{\textbf{Representation curriculum in the frozen PixCell Dataset.}
-Each column shows two exact model-input examples from one curriculum level.
-The top row progresses from an S-bend through connection, branching,
-hierarchical routing, and a complete MZI. The bottom row progresses from a
-rectangle through repetition, a repeated carrier, a local-defect structure,
-and a phase-shifted Bragg cavity. Images use the dataset's maximum-visibility
-rendering and are shown at different display scales. Each card reports the
-physical footprint supplied to the model.}
+Each column shows two model-input examples from one curriculum level. Across
+both rows, the examples progress from individual primitives and operations to
+local compositions, structured geometries, and complete components. The L4
+panels show a complete MZI and a Bragg-cavity representation. The panels use
+maximum-visibility rendering and are not shown at a common scale. The headers
+list the physical footprint paired with each image.}
 \label{fig:datasetcurriculum}
 \end{figure*}
 
-The executable relationship between a visual component and the program that
-creates it also provides a direct method for constructing training data. A
-program written in the PixCell DSL can be executed to produce a target
-silhouette at a known physical footprint. The program supplies the code target
-for the inverse image-to-program task, while deterministic execution and
-rendering bind the image, footprint, and code to one executable geometry. We
-use this forward process to synthesize examples throughout the representation
-language.
+The PixCell process that takes a visual component to a program also provides
+a direct method for creating synthetic training data. Programs in the PixCell
+DSL can be run to produce target silhouettes at known physical footprints for
+geometries expressible in the language. Each program-to-image execution creates
+a data point that binds an image and physical footprint to the code that
+produced its geometry. The code then serves as the target for the inverse
+image-to-program task performed by PixCell. We use this forward process to
+synthesize a dataset across the representation language.
 
 \subsection{Dataset construction and release}
 
-The core curriculum progresses from the primitive vocabulary to complete
-component geometries (Fig.~\ref{fig:datasetcurriculum}). L0 contains 177
-examples of the 22 permitted primitive APIs, their constructor modes,
-orientations, and scale. L1 contains 215 examples of operations including
-placement, transforms, connections, paths, Boolean operations, repetition,
-arrays, and routing. L2 contains 118 local compositions such as connected
-chains, branches, repeated carriers, arrays, and radial banks. L3 contains
-120 structured examples with multiple zones, routes, repeated media, defects,
-and cyclic organization. L4 contains 108 complete synthetic component
-geometries across couplers, MMIs, splitters, interferometers, resonators,
-crossings, gratings, cavities, converters, and free-propagation structures.
-Together, the five levels form a 738-row core with 547 representation anchors
-and 191 supporting examples.
-
-To add parameter depth without changing the grammar, the depth builder
+The core curriculum here progresses from a primitive vocabulary to complete
+component geometries (Fig.~\ref{fig:datasetcurriculum}). Here, L0 contains 177
+examples of the 22 permitted primitive geometries along with their constructor
+modes, orientations, and scale. L1 then progresses to include 215 examples of
+operations including placement, transforms, connections, paths, Boolean
+operations, repetition, arrays, and routing. L2 contains 118 local compositions
+such as connected chains, branches, repeated carriers, arrays, and radial
+banks. L3 includes 120 structured examples with multiple zones, routes,
+repeated media, defects, and cyclic organization. Finally, L4 contains 108
+complete synthetic component geometries across couplers, MMIs, splitters,
+interferometers, resonators, crossings, gratings, cavities, converters, and
+free-propagation structures. Together, these five levels form a 738-row core
+with 547 representation anchors and 191 supporting examples. In order to add
+parameter depth without changing this grammar, the depth builder also
 identifies live numeric dimensions in 546 of the 547 anchors and
 deterministically produces seven additional settings for each representation.
 The remaining anchor has no visible parameter variation under the rendering
@@ -776,22 +774,16 @@ policy. Five settings per expanded representation join the 738 core rows in
 the training split, and two are held out for validation. The resulting depth
 configuration contains 3{,}468 training and 1{,}092 validation examples. Its
 validation split measures recovery at unseen parameter settings of known
-representations rather than transfer to unseen representations.
-
-We release this corpus as \texttt{qpaig-mit/pixcell} at the immutable
-\texttt{v2.0.0} revision~\cite{pixcelldataset}. The \texttt{depth}
-configuration provides the 4{,}560 model examples, and \texttt{core} provides
-the 738-row curriculum subset. Each model row contains the maximum-visibility
-image, physical footprint, program, curriculum identifiers, and integrity
-hashes. A separate \texttt{references} configuration stores the
-physical-aspect target raster, calibration, ports, topology, parameters, and
-lineage used by the evaluator and remains outside model prompts. Published
-rows pass deterministic compilation and execution, the primitive-only source
-policy, structural checks, calibrated geometric comparison, footprint
-agreement, and artifact hashing. All images and programs in the release are
-synthetic and project-authored. The dataset supports geometric reconstruction
-of single-layer photonic layouts, while optical performance and foundry
-qualification remain downstream evaluations.
+representations rather than transfer to unseen representations. We release
+this corpus as \texttt{qpaig-mit/pixcell} at the immutable \texttt{v2.0.0}
+revision~\cite{pixcelldataset} with the \texttt{depth} configuration providing
+4{,}560 model examples and \texttt{core} the 738-row curriculum subset. Each
+model row contains the maximum-visibility image, physical footprint, program,
+curriculum identifiers, and integrity hashes. A separate \texttt{references}
+configuration stores the physical aspect target raster, calibration, ports,
+topology, parameters, and lineage used by the evaluator and remains outside
+model prompts. All images and programs in the release are synthetic but pass
+structural checks, calibrated geometric comparison, and footprint agreement.
 
 \subsection{Training protocol}
 
