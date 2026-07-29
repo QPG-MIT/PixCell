@@ -31,6 +31,8 @@ def test_ground_truth_self_scores_at_full_precision(core_row, evaluator):
     assert result.dice is not None and result.dice > 0.98
     assert result.iou != round(result.iou, 4)
     assert len(result.metrics["render_sha256"]) == 64
+    chamfer = result.metrics["chamfer_boundary_um"]
+    assert chamfer is not None and 0.0 <= chamfer < 1.0
     json.dumps(result.metrics, allow_nan=False)
     assert all(
         type(value) is bool

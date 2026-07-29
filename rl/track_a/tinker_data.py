@@ -38,6 +38,7 @@ from tinker_cookbook.supervised.types import (
 )
 from tinker_cookbook.tokenizer_utils import get_tokenizer
 
+from rl.common.baselines import cached_rect_baseline
 from rl.common.batcher import AsyncEvaluationBatcher
 from rl.common.contracts import TaskRecord
 from rl.common.dataset_io import load_tasks
@@ -46,16 +47,18 @@ from rl.common.output import extract_code
 from rl.track_a.curriculum import (
     balanced_effective_pass,
     deterministic_rl_batch,
+    expected_replay_levels,
     hierarchical_sft_weights,
+    normalize_level,
+    normalize_replay_levels,
     stratified_physical_pass,
 )
 from rl.common.preprocess import model_image
 from rl.common.prompt import build_prompt_text
-from rl.track_a.reward import REWARD_POLICIES, reward_for_policy
-from rl.track_a.recipe import (
-    expected_replay_levels,
-    normalize_level,
-    normalize_replay_levels,
+from rl.track_a.reward import (
+    REWARD_POLICIES,
+    reward_for_policy,
+    shaped_components,
 )
 
 
@@ -93,6 +96,9 @@ def _renderer(
     effort: float | None = None,
 ):
     if model_name == "thinkingmachines/Inkling":
+        # Re-scoped in for the bounded L4 RL-only arm (user direction,
+        # 2026-07-29): RL under the shaped reward was designed but never
+        # actually run on Inkling in either prior campaign.
         if renderer_name != "tml_v0" or effort is None:
             raise ValueError(
                 "Inkling requires renderer_name='tml_v0' and explicit effort"
@@ -108,7 +114,7 @@ def _renderer(
             model_name=model_name,
         )
     if effort is not None:
-        raise ValueError("effort is supported only by Inkling")
+        raise ValueError("effort is not a Qwen sampling knob")
     tokenizer = get_tokenizer(model_name)
     processor = get_image_processor(model_name)
     return get_renderer(
@@ -122,10 +128,27 @@ def _renderer(
 def _batcher() -> AsyncEvaluationBatcher:
     global _EVALUATION_BATCHER
     if _EVALUATION_BATCHER is None:
+        import os
+
         evaluator = PixCellEvaluator(
-            max_workers=8,
-            evaluator_retries=1,
-            require_isolation=True,
+            # Several campaigns share one Docker daemon; transient container
+            # faults under contention must be retried, not abort a paid
+            # stage, and the wall timeout must leave headroom so contention
+            # slows a measurement instead of falsifying it as a model
+            # failure. Persistent evaluator faults still abort after the
+            # retries are exhausted — no biased zeros either way.
+            max_workers=int(os.environ.get("PIXCELL_EVAL_WORKERS", "8")),
+            evaluator_retries=3,
+            execution_timeout_seconds=float(
+                os.environ.get("PIXCELL_EVAL_TIMEOUT", "20")
+            ),
+            # The load-bearing safety layer is the pre-execution AST source
+            # gate plus subprocess rlimits — the tier the private library's
+            # entire recorded campaign ran on. The Docker tier remains
+            # available (PIXCELL_REQUIRE_ISOLATION=1) for record evals.
+            require_isolation=(
+                os.environ.get("PIXCELL_REQUIRE_ISOLATION", "0") == "1"
+            ),
         )
         _EVALUATION_BATCHER = AsyncEvaluationBatcher(
             evaluator,
@@ -216,6 +239,7 @@ class TrackASupervisedDatasetBuilder(SupervisedDatasetBuilder):
     levels: str = ""
     include_validation: bool = True
     schedule_seed: int = 0
+    winner_labels_path: str = ""
 
     def __call__(self):
         renderer = _renderer(self.model_name, self.renderer_name)
@@ -240,6 +264,10 @@ class TrackASupervisedDatasetBuilder(SupervisedDatasetBuilder):
             if self.include_validation
             else []
         )
+        if self.winner_labels_path:
+            from rl.track_a.harvest import apply_winner_labels
+
+            train = apply_winner_labels(train, self.winner_labels_path)
         return (
             TrackASupervisedDataset(
                 train,
@@ -344,8 +372,17 @@ class TrackAEnv(Env):
         }
         if self.sample_recorder is not None:
             self.sample_recorder(sample_record)
+        baseline = (
+            cached_rect_baseline(self.task.reference)
+            if self.reward_policy == "shaped_v3b"
+            else None
+        )
         result = await _batcher().submit(self.task.reference, completion)
-        reward = reward_for_policy(result, policy=self.reward_policy)
+        reward = reward_for_policy(
+            result,
+            policy=self.reward_policy,
+            baseline=baseline,
+        )
         if reward is None:
             if result.attribution is Attribution.REFERENCE:
                 raise BrokenReferenceError(result.error or result.status.value)
@@ -367,24 +404,32 @@ class TrackAEnv(Env):
                     },
                 }
             )
+        step_metrics = {
+            "iou": float(result.iou or 0.0),
+            "dice": float(result.dice or 0.0),
+            "program_valid": float(result.status is EvaluationStatus.OK),
+            "source_rejected": float(
+                result.status is EvaluationStatus.SOURCE_REJECTED
+            ),
+            "latency_seconds": float(result.latency_seconds),
+            "channel_parse_complete": float(termination.is_clean),
+            "length_capped": float(
+                getattr(extra, "stop_reason", None) == "length"
+            ),
+        }
+        if baseline is not None:
+            parts = shaped_components(result, baseline)
+            step_metrics.update(
+                iou_n=parts["iou_n"],
+                teacher_nb=parts["teacher_nb"],
+                degenerate=parts["degenerate"],
+            )
         return StepResult(
             reward=reward,
             episode_done=True,
             next_observation=tinker.ModelInput.from_ints([]),
             next_stop_condition=[],
-            metrics={
-                "iou": float(result.iou or 0.0),
-                "dice": float(result.dice or 0.0),
-                "program_valid": float(result.status is EvaluationStatus.OK),
-                "source_rejected": float(
-                    result.status is EvaluationStatus.SOURCE_REJECTED
-                ),
-                "latency_seconds": float(result.latency_seconds),
-                "channel_parse_complete": float(termination.is_clean),
-                "length_capped": float(
-                    getattr(extra, "stop_reason", None) == "length"
-                ),
-            },
+            metrics=step_metrics,
         )
 
 
@@ -452,7 +497,9 @@ class TrackARLDataset(RLDataset):
         reward_policy: str = "validity_floor",
         schedule_seed: int = 10_000,
         attempt_metadata: Mapping[str, object] | None = None,
+        replay_groups_per_step: int = 0,
     ) -> None:
+        self.replay_groups_per_step = replay_groups_per_step
         self.current_tasks = list(current_tasks)
         self.replay_tasks = list(replay_tasks)
         self.renderer = renderer
@@ -480,6 +527,7 @@ class TrackARLDataset(RLDataset):
             groups_per_batch=self.groups_per_batch,
             schedule_seed=self.schedule_seed,
             shuffle=self.shuffle,
+            replay_groups_per_step=self.replay_groups_per_step,
         )
         return [
             PixCellGroupBuilder(
@@ -513,7 +561,7 @@ def _level_filter(tasks: list[TaskRecord], levels: str) -> list[TaskRecord]:
 class TrackARLDatasetBuilder(RLDatasetBuilder):
     dataset_root: str
     batch_size: int = 8
-    group_size: int = 4
+    group_size: int = 8
     model_name: str = DEFAULT_MODEL
     renderer_name: str = DEFAULT_RENDERER
     model_effort: float | None = None
@@ -523,10 +571,11 @@ class TrackARLDatasetBuilder(RLDatasetBuilder):
     validation_canaries: int = 40
     attempt_recorder: Callable[[Mapping[str, object]], None] | None = None
     sample_recorder: Callable[[Mapping[str, object]], None] | None = None
-    reward_policy: str = "validity_floor"
+    reward_policy: str = "shaped_v3b"
     require_prefix_replay: bool = True
     schedule_seed: int = 10_000
     attempt_metadata: Mapping[str, object] | None = None
+    replay_groups_per_step: int = 0
 
     async def __call__(self):
         renderer = _renderer(
@@ -591,6 +640,7 @@ class TrackARLDatasetBuilder(RLDatasetBuilder):
                 reward_policy=self.reward_policy,
                 schedule_seed=self.schedule_seed,
                 attempt_metadata=self.attempt_metadata,
+                replay_groups_per_step=self.replay_groups_per_step,
             ),
             (
                 TrackARLDataset(

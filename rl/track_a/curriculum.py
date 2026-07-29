@@ -10,6 +10,37 @@ from collections.abc import Sequence
 from rl.common.contracts import TaskRecord
 
 
+LEVELS = ("L0", "L1", "L2", "L3", "L4")
+
+
+def normalize_level(value: str) -> str:
+    level = value.strip().upper()
+    if level not in LEVELS:
+        raise ValueError(
+            f"expected exactly one curriculum level in {LEVELS}; got {value!r}"
+        )
+    return level
+
+
+def normalize_replay_levels(value: str) -> tuple[str, ...]:
+    if not value.strip():
+        return ()
+    values = tuple(item.strip().upper() for item in value.split(",") if item.strip())
+    if len(values) != len(set(values)):
+        raise ValueError("replay_levels must not contain duplicates")
+    unknown = [item for item in values if item not in LEVELS]
+    if unknown:
+        raise ValueError(f"unknown replay levels: {unknown}")
+    if values != tuple(sorted(values, key=LEVELS.index)):
+        raise ValueError("replay_levels must be in curriculum order")
+    return values
+
+
+def expected_replay_levels(current_level: str) -> tuple[str, ...]:
+    current = normalize_level(current_level)
+    return LEVELS[: LEVELS.index(current)]
+
+
 def balanced_effective_pass(
     tasks: list[TaskRecord],
     *,
@@ -112,8 +143,14 @@ def deterministic_rl_batch(
     groups_per_batch: int,
     schedule_seed: int,
     shuffle: bool = True,
+    replay_groups_per_step: int = 0,
 ) -> list[tuple[str, TaskRecord]]:
-    """Select one exact current/replay batch shared by launch and preflight."""
+    """Select one exact current/replay batch shared by launch and preflight.
+
+    ``replay_groups_per_step`` = 0 keeps the historical 80/20 five-step cycle;
+    a positive value fixes that many replay groups every step (the mixed-arm
+    knob: 4 of 8 = a 50% blend over all earlier levels).
+    """
 
     current = list(current_tasks)
     replay = list(replay_tasks)
@@ -121,14 +158,19 @@ def deterministic_rl_batch(
         raise ValueError("RL current-task pool is empty")
     if step < 0 or groups_per_batch < 1:
         raise ValueError("RL step and groups_per_batch must be nonnegative/positive")
+    if replay_groups_per_step < 0 or replay_groups_per_step >= groups_per_batch:
+        raise ValueError("replay_groups_per_step must be in [0, groups_per_batch)")
     count = min(groups_per_batch, len(current))
     if shuffle and replay:
         def replay_groups(index: int) -> int:
-            proposed = (
-                (2, 2, 2, 1, 1)[index % 5]
-                if groups_per_batch == 8
-                else max(1, round(0.2 * groups_per_batch))
-            )
+            if replay_groups_per_step:
+                proposed = replay_groups_per_step
+            else:
+                proposed = (
+                    (2, 2, 2, 1, 1)[index % 5]
+                    if groups_per_batch == 8
+                    else max(1, round(0.2 * groups_per_batch))
+                )
             return min(proposed, count, len(replay))
 
         replay_count = replay_groups(step)

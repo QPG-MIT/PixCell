@@ -1,0 +1,281 @@
+{
+  "model_path": "tinker://d8269c70-0dd9-5776-9cae-53e8b24e647a:train:0/sampler_weights/final",
+  "init_attempts": 8,
+  "revisions_per_round": 4,
+  "rounds": 3,
+  "per_target": {
+    "final_1": {
+      "champion_iou": 0.518288533514801,
+      "champion_code": "import gdsfactory as gf\n\n# Physical footprint: [40.0 um x, 1.7 um y]\n# \n# Looking at the image more carefully:\n# - There's a thin horizontal bar in the CENTER that extends from left to about 75-80% of the way\n# - Above and below it are two thicker strips that start parallel to center\n#   but curve outward (away from center) toward the right side\n# - The center element is very thin and doesn't extend fully to the right\n# - The top and bottom elements curve away and extend to the far right\n\n@gf.cell\ndef device():\n    c = gf.Component()\n    \n    # Parameters derived from footprint\n    total_length = 40.0\n    total_height = 1.7\n    half_height = total_height / 2\n    \n    # Center waveguide is very thin\n    center_width = 0.1\n    \n    # Top and bottom elements are thicker\n    side_width = 0.35\n    \n    # Gap parameters\n    center_to_side_gap = 0.12\n    \n    # Layer\n    layer = (1, 0)\n    \n    # Calculate positions\n    center_y_offset = center_width / 2\n    \n    # Top waveguide path: starts at left aligned with above center, \n    # runs straight for most of length, then curves upward away from center\n    # Center ends at about 80% of total length\n    center_end_x = total_length * 0.78\n    \n    # Top element\n    top_y_start = center_y_offset + center_to_side_gap + center_width/2\n    top_y_end_offset = half_height - side_width/2\n    \n    pts_top = [\n        (0, top_y_start),\n        (25, top_y_start),\n        (30, top_y_start + 0.3),\n        (35, top_y_end_offset - 0.1),\n        (40, top_y_end_offset),\n    ]\n    \n    path_top = gf.Path(pts_top)\n    top_comp = gf.path.extrude(p=path_top, cross_section=gf.cross_section.cross_section(width=side_width, layer=layer))\n    ref_top = c << top_comp\n    \n    # Bottom element (mirror of top)\n    pts_bottom = [\n        (0, -top_y_start),\n        (25, -top_y_start),\n        (30, -(top_y_start + 0.3)),\n        (35, -(top_y_end_offset - 0.1)),\n        (40, -top_y_end_offset),\n    ]\n    \n    path_bottom = gf.Path(pts_bottom)\n    bottom_comp = gf.path.extrude(p=path_bottom, cross_section=gf.cross_section.cross_section(width=side_width, layer=layer))\n    ref_bottom = c << bottom_comp\n    \n    # Center waveguide\n    center_comp = gf.components.straight(\n        length=center_end_x,\n        cross_section=gf.cross_section.cross_section(width=center_width, layer=layer)\n    )\n    ref_center = c << center_comp\n    \n    # Position center waveguide so its top edge is at center_y_offset\n    # The straight component is centered by default or we can adjust\n    ref_center.move((0, -center_width/2))\n    \n    return c\n\nif __name__ == \"__main__\":\n    device().write_gds(\"device.gds\")",
+      "footprint_um": [
+        40.0,
+        1.7
+      ],
+      "rounds": [
+        {
+          "round": 0,
+          "samples": 8,
+          "round_best": 0.21934628548018628,
+          "champion_iou": 0.21934628548018628
+        },
+        {
+          "round": 1,
+          "samples": 4,
+          "round_best": 0.38960463701028564,
+          "champion_iou": 0.38960463701028564
+        },
+        {
+          "round": 2,
+          "samples": 4,
+          "round_best": 0.518288533514801,
+          "champion_iou": 0.518288533514801
+        },
+        {
+          "round": 3,
+          "samples": 4,
+          "round_best": 0.4847074378015773,
+          "champion_iou": 0.518288533514801
+        }
+      ]
+    },
+    "final_2": {
+      "champion_iou": 0.5073776561537096,
+      "champion_code": "import gdsfactory as gf\n\n@gf.cell\ndef device():\n    c = gf.Component()\n    \n    # The silhouette shows:\n    # - A main rectangular body (centered at origin in y)\n    # - 4 vertical prongs extending upward from the top surface\n    # - 1 vertical prong extending downward from the bottom center\n    # \n    # Footprint: 25um width x 10um height total\n    \n    # Key dimensions:\n    # Total height = 10 um\n    # Let body span from y=-2.5 to y=2.5 (height 5um)\n    # Then prongs extend symmetrically: +3.0 up, +2.0 down from body edges? \n    # Actually: 5 (body) + a (top extension) + b (bottom extension) = 10\n    # So: a + b = 5\n    \n    # Looking at proportions visually:\n    # Top prongs appear longer than bottom prong\n    # Let bottom prong extend 1.5um down, top prongs extend 5.0-1.5=3.5um up\n    # Check: 5 + 3.5 + 1.5 = 10.0 \u2713\n    \n    body_height = 5.0\n    top_extension = 3.5\n    bottom_extension = 1.5\n    \n    # Width and layout:\n    body_width = 25.0\n    \n    # 4 prongs on top, evenly spaced\n    prong_width = 2.0\n    # 4 prongs with 3 gaps between them\n    # Prong centers at: -7.5, -2.5, 2.5, 7.5 (centered around 0)\n    prong_centers = [-7.5, -2.5, 2.5, 7.5]\n    \n    # Body centered at origin\n    body = gf.components.rectangle(\n        size=(body_width, body_height),\n        layer=(1, 0),\n        centered=True\n    )\n    body_ref = c << body\n    \n    # Bottom prong - centered at bottom of body, pointing down\n    bottom_prong = gf.components.rectangle(\n        size=(4.0, bottom_extension),\n        layer=(1, 0),\n        centered=False\n    )\n    bottom_ref = c << bottom_prong\n    # Position: bottom prong's top should align with body's bottom\n    # Body bottom: y = -2.5\n    # Bottom prong needs to extend from y=-2.5 to y=-2.5-1.5=-4.0\n    bottom_ref.move((0 - 2.0, -2.5))\n    \n    # Top prongs - extend upward from top of body\n    for cx in prong_centers:\n        top_prong = gf.components.rectangle(\n            size=(prong_width, top_extension),\n            layer=(1, 0),\n            centered=False\n        )\n        top_ref = c << top_prong\n        # Top prong should start at body top (y=2.5) and extend up to y=2.5+3.5=6.0\n        top_ref.move((cx - prong_width/2, 2.5))\n    \n    return c\n\nif __name__ == \"__main__\":\n    device().write_gds(\"device.gds\")",
+      "footprint_um": [
+        25,
+        10
+      ],
+      "rounds": [
+        {
+          "round": 0,
+          "samples": 8,
+          "round_best": 0.49668337732899176,
+          "champion_iou": 0.49668337732899176
+        },
+        {
+          "round": 1,
+          "samples": 4,
+          "round_best": 0.4711650909592465,
+          "champion_iou": 0.49668337732899176
+        },
+        {
+          "round": 2,
+          "samples": 4,
+          "round_best": 0.49789168188747335,
+          "champion_iou": 0.49789168188747335
+        },
+        {
+          "round": 3,
+          "samples": 4,
+          "round_best": 0.5073776561537096,
+          "champion_iou": 0.5073776561537096
+        }
+      ]
+    },
+    "final_3": {
+      "champion_iou": 0.33601121463342937,
+      "champion_code": "import gdsfactory as gf\n\n# Device parameters\ntotal_length = 120  # um\ntotal_height = 4    # um\nwaveguide_width = 0.5 # um\ngap = 0.2           # gap between the two waveguides\n\n\n@gf.cell\ndef device():\n    c = gf.Component()\n    \n    xs = gf.cross_section.cross_section(width=waveguide_width, layer=(1, 0))\n    \n    # The device consists of two parallel waveguides that both have S-bends\n    # on both ends, going from a narrower section in the middle to wider sections\n    # at the ends.\n    \n    # Based on the image:\n    # - Left side: both waveguides curve outward (away from center)\n    # - Right side: both waveguides curve outward (away from center)\n    # - Center: both waveguides run parallel and closer together\n    \n    # Actually looking more carefully at the silhouette:\n    # The waveguides appear to have S-shaped curves on both ends\n    # On the left: top goes down, bottom goes up (approaching each other)\n    # In the middle: they run parallel close together\n    # On the right: top goes up, bottom goes down (moving apart)\n    \n    # Let me create two paths for the waveguides\n    \n    # Define the y-coordinates for the center (close together)\n    center_y_top = gap/2 + waveguide_width/2\n    center_y_bottom = -gap/2 - waveguide_width/2\n    \n    # Define the y-coordinates for the wide ends\n    end_separation = total_height/2\n    end_y_top = end_separation\n    end_y_bottom = -end_separation\n    \n    # Top waveguide path: starts at left end (wide), goes to center, then to right end (wide)\n    top_path = gf.path.smooth(\n        points=[\n            (0, end_y_top),\n            (total_length/4, center_y_top),\n            (total_length*3/4, center_y_top),\n            (total_length, end_y_top)\n        ],\n        radius=10\n    )\n    \n    # Bottom waveguide path: starts at left end (wide), goes to center, then to right end (wide)\n    bottom_path = gf.path.smooth(\n        points=[\n            (0, end_y_bottom),\n            (total_length/4, center_y_bottom),\n            (total_length*3/4, center_y_bottom),\n            (total_length, end_y_bottom)\n        ],\n        radius=10\n    )\n    \n    # Extrude both paths\n    top_wg = c << gf.path.extrude(p=top_path, cross_section=xs)\n    bottom_wg = c << gf.path.extrude(p=bottom_path, cross_section=xs)\n    \n    return c\n\nif __name__ == \"__main__\":\n    d = device()\n    d.write_gds(\"device.gds\")",
+      "footprint_um": [
+        120,
+        4
+      ],
+      "rounds": [
+        {
+          "round": 0,
+          "samples": 8,
+          "round_best": 0.15880950363708984,
+          "champion_iou": 0.15880950363708984
+        },
+        {
+          "round": 1,
+          "samples": 4,
+          "round_best": 0.23123556406976534,
+          "champion_iou": 0.23123556406976534
+        },
+        {
+          "round": 2,
+          "samples": 4,
+          "round_best": 0.1896243151629428,
+          "champion_iou": 0.23123556406976534
+        },
+        {
+          "round": 3,
+          "samples": 4,
+          "round_best": 0.33601121463342937,
+          "champion_iou": 0.33601121463342937
+        }
+      ]
+    },
+    "final_4": {
+      "champion_iou": 0.6509756513451003,
+      "champion_code": "import gdsfactory as gf\n\n# Physical footprint parameters\nX_LENGTH = 18.0\nY_WIDTH = 3.0\nWAVE_AMPLITUDE = 1.0\n\n@gf.cell\ndef device():\n    c = gf.Component()\n    \n    xs = gf.cross_section.cross_section(width=1.0, layer=(1, 0))\n    \n    # Create upper wave path\n    points_upper = [(0, Y_WIDTH/2), (X_LENGTH/2, 0), (X_LENGTH, Y_WIDTH/2)]\n    path_upper = gf.path.smooth(points_upper, radius=4.0)\n    comp_upper = gf.path.extrude(path_upper, cross_section=xs)\n    \n    # Create lower wave path  \n    points_lower = [(0, -Y_WIDTH/2), (X_LENGTH/2, 0), (X_LENGTH, -Y_WIDTH/2)]\n    path_lower = gf.path.smooth(points_lower, radius=4.0)\n    comp_lower = gf.path.extrude(path_lower, cross_section=xs)\n    \n    c << comp_upper\n    c << comp_lower\n    \n    return c\n\nif __name__ == \"__main__\":\n    d = device()\n    d.write_gds(\"device.gds\")",
+      "footprint_um": [
+        18,
+        3
+      ],
+      "rounds": [
+        {
+          "round": 0,
+          "samples": 8,
+          "round_best": 0.6509756513451003,
+          "champion_iou": 0.6509756513451003
+        },
+        {
+          "round": 1,
+          "samples": 4,
+          "round_best": 0.3476650219382819,
+          "champion_iou": 0.6509756513451003
+        },
+        {
+          "round": 2,
+          "samples": 4,
+          "round_best": 0.0,
+          "champion_iou": 0.6509756513451003
+        },
+        {
+          "round": 3,
+          "samples": 4,
+          "round_best": 0.0,
+          "champion_iou": 0.6509756513451003
+        }
+      ]
+    },
+    "final_5": {
+      "champion_iou": 0.29255670007740125,
+      "champion_code": "import gdsfactory as gf\n\n@gf.cell\ndef device():\n    c = gf.Component()\n    \n    # Define parameters based on footprint\n    width = 0.7\n    total_length = 18.24\n    \n    # Cross-section for waveguides\n    xs = gf.cross_section.cross_section(width=width, layer=(1, 0))\n    \n    # Calculate dimensions for U-shapes\n    bend_radius = 0.35\n    straight_length = (total_length - 2 * bend_radius) / 2\n    \n    # Build top U-shape (facing down)\n    path_top = gf.Path()\n    path_top.append(gf.path.straight(length=straight_length))\n    path_top.append(gf.path.arc(radius=bend_radius, angle=180))\n    path_top.append(gf.path.straight(length=straight_length))\n    path_top.append(gf.path.arc(radius=bend_radius, angle=180))\n    path_top.append(gf.path.straight(length=straight_length))\n    \n    wg_top = gf.path.extrude(p=path_top, cross_section=xs)\n    ref_top = c << wg_top\n    \n    # Build bottom U-shape (facing up)\n    path_bottom = gf.Path()\n    path_bottom.append(gf.path.straight(length=straight_length))\n    path_bottom.append(gf.path.arc(radius=bend_radius, angle=-180))\n    path_bottom.append(gf.path.straight(length=straight_length))\n    path_bottom.append(gf.path.arc(radius=bend_radius, angle=-180))\n    path_bottom.append(gf.path.straight(length=straight_length))\n    \n    wg_bottom = gf.path.extrude(p=path_bottom, cross_section=xs)\n    ref_bottom = c << wg_bottom\n    # Offset bottom shape to face the top shape\n    vertical_offset = -width - 0.2\n    ref_bottom.move((0, vertical_offset))\n    \n    # Add straight bridge/connector in the middle\n    bridge_width = 0.15\n    bridge_xs = gf.cross_section.cross_section(width=bridge_width, layer=(1, 0))\n    \n    bridge_path = gf.path.straight(length=total_length)\n    wg_bridge = gf.path.extrude(p=bridge_path, cross_section=bridge_xs)\n    ref_bridge = c << wg_bridge\n    ref_bridge.move((0, -width/2 - 0.1))\n    \n    # Add gate structures (the vertical rectangular patterns along the center sections)\n    gate_count = 60\n    gate_width = 0.04\n    gate_height = 0.08\n    gate_spacing = straight_length / gate_count\n    \n    for i in range(gate_count):\n        x_pos = straight_length/2 + i * gate_spacing\n        \n        # Create vertical gate structure\n        gate = gf.components.rectangle(\n            size=(gate_width, gate_height),\n            layer=(1, 0),\n            centered=True\n        )\n        ref_gate = c << gate\n        \n        # Position gate across the gap between strands\n        gate_y = -width/2 + vertical_offset/2\n        ref_gate.move((x_pos, gate_y))\n    \n    # Add solid rectangles for the tip regions (no gates in the bent areas)\n    tip_rect_xs = rectangle_xs = gf.cross_section.cross_section(width=width, layer=(1, 0))\n\n    return c\n\nif __name__ == \"__main__\":\n    device().write_gds(\"device.gds\")",
+      "footprint_um": [
+        18.24,
+        0.7
+      ],
+      "rounds": [
+        {
+          "round": 0,
+          "samples": 8,
+          "round_best": 0.2527577514625366,
+          "champion_iou": 0.2527577514625366
+        },
+        {
+          "round": 1,
+          "samples": 4,
+          "round_best": 0.24568477234461314,
+          "champion_iou": 0.2527577514625366
+        },
+        {
+          "round": 2,
+          "samples": 4,
+          "round_best": 0.2872689688347614,
+          "champion_iou": 0.2872689688347614
+        },
+        {
+          "round": 3,
+          "samples": 4,
+          "round_best": 0.29255670007740125,
+          "champion_iou": 0.29255670007740125
+        }
+      ]
+    },
+    "final_6": {
+      "champion_iou": 0.715876929571249,
+      "champion_code": "import gdsfactory as gf\n\n# Device parameters\nlength = 2.35\nwidth = 0.85\nlayer = (1, 0)\n\n@gf.cell\ndef device():\n    c = gf.Component()\n    \n    # The shape appears to be a cross with rounded/elliptical arms and rectangular stubs\n    # Looking at the silhouette, it has 4 folded lobes meeting at center with straight extensions\n    \n    # Create the cross shape using the cross primitive with appropriate dimensions\n    # The footprint is 4.7 x 4.7, so half is 2.35\n    # The cross should have length matching the full extent\n    \n    # Using cross primitive with length=4.7, width=0.85 to get the right footprint\n    cross = gf.components.cross(length=4.7, width=width, layer=layer)\n    c << cross\n    \n    return c\n\nif __name__ == \"__main__\":\n    dev = device()\n    dev.write_gds(\"device.gds\")",
+      "footprint_um": [
+        4.7,
+        4.7
+      ],
+      "rounds": [
+        {
+          "round": 0,
+          "samples": 8,
+          "round_best": 0.715876929571249,
+          "champion_iou": 0.715876929571249
+        },
+        {
+          "round": 1,
+          "samples": 4,
+          "round_best": 0.5648200901214198,
+          "champion_iou": 0.715876929571249
+        },
+        {
+          "round": 2,
+          "samples": 4,
+          "round_best": 0.715876929571249,
+          "champion_iou": 0.715876929571249
+        },
+        {
+          "round": 3,
+          "samples": 4,
+          "round_best": 0.715876929571249,
+          "champion_iou": 0.715876929571249
+        }
+      ]
+    },
+    "final_7": {
+      "champion_iou": 0.4894129134583224,
+      "champion_code": "import gdsfactory as gf\n\n# Declare tunable parameters\nfootprint_x = 3.0  # micrometers\nfootprint_y = 5.5  # micrometers\n\n@gf.cell\ndef device():\n    c = gf.Component()\n    \n    # Overall footprint: 3.0 x 5.5 um\n    fw = footprint_x  # x-dimension\n    fh = footprint_y  # y-dimension\n    \n    # Create outer ring\n    outer_rect = gf.components.rectangle(\n        size=(fw, fh), \n        layer=(1, 0), \n        centered=True\n    )\n    \n    # Inner hole - asymmetric to match the image proportions\n    # The ring is thicker horizontally than vertically\n    inner_width = fw * 0.72\n    inner_height = fh * 0.15\n    \n    inner_rect = gf.components.rectangle(\n        size=(inner_width, inner_height), \n        layer=(1, 0), \n        centered=True\n    )\n    \n    outer_ring = gf.boolean(outer_rect, inner_rect, operation=\"not\", layer=(1, 0))\n    c << outer_ring\n    \n    # Central structure: two parallel horizontal bars\n    # Each bar has two rectangular segments connected in the middle\n    \n    # Bar dimensions\n    bar_width = fh * 0.13  # vertical thickness of each horizontal bar\n    \n    # Width of each rectangular segment\n    seg_width = fw * 0.14\n    seg_height = bar_width\n    \n    # Spacing between the two segments\n    seg_gap = fw * 0.04\n    \n    # Vertical offset of bars from center\n    # Two bars: one above, one below center\n    bar_vertical_offset = fh * 0.10\n    \n    # Position the left end of the composite structure\n    total_segment_span = 2 * seg_width + seg_gap\n    left_x_start = -total_segment_span / 2\n    \n    # Top bar - two rectangles\n    top_y = bar_vertical_offset + seg_height / 2  # top of top bar\n    \n    # Top left rectangle\n    tl_rect = gf.components.rectangle(\n        size=(seg_width, seg_height), \n        layer=(1, 0), \n        centered=False\n    )\n    tl_ref = c << tl_rect\n    tl_ref.move((left_x_start + seg_width/2, top_y))\n    \n    # Top right rectangle  \n    tr_rect = gf.components.rectangle(\n        size=(seg_width, seg_height), \n        layer=(1, 0), \n        centered=False\n    )\n    tr_ref = c << tr_rect\n    tr_ref.move((left_x_start + seg_width + seg_gap + seg_width/2, top_y))\n    \n    # Bottom bar - two rectangles\n    bottom_y = -bar_vertical_offset - seg_height/2\n    \n    # Bottom left rectangle\n    bl_rect = gf.components.rectangle(\n        size=(seg_width, seg_height), \n        layer=(1, 0), \n        centered=False\n    )\n    bl_ref = c << bl_rect\n    bl_ref.move((left_x_start + seg_width/2, bottom_y))\n    \n    # Bottom right rectangle\n    br_rect = gf.components.rectangle(\n        size=(seg_width, seg_height), \n        layer=(1, 0), \n        centered=False\n    )\n    br_ref = c << br_rect\n    br_ref.move((left_x_start + seg_width + seg_gap + seg_width/2, bottom_y))\n    \n    # Add connecting bars between the segments (thin vertical connectors)\n    connector_width = seg_gap * 0.3\n    connector_height = seg_width * 0.6\n    \n    # Top bar center connector\n    top_center_x = left_x_start + seg_width + seg_gap/2\n    top_center_y = bar_vertical_offset\n    \n    top_conn = gf.components.rectangle(\n        size=(connector_width, connector_height), \n        layer=(1, 0), \n        centered=True\n    )\n    top_conn_ref = c << top_conn\n    top_conn_ref.move((top_center_x, top_center_y))\n    \n    # Bottom bar center connector\n    bottom_center_x = left_x_start + seg_width + seg_gap/2\n    bottom_center_y = -bar_vertical_offset\n    \n    bottom_conn = gf.components.rectangle(\n        size=(connector_width, connector_height), \n        layer=(1, 0), \n        centered=True\n    )\n    bottom_conn_ref = c << bottom_conn\n    bottom_conn_ref.move((bottom_center_x, bottom_center_y))\n    \n    return c\n\nif __name__ == \"__main__\":\n    device = device()\n    device.write_gds(\"device.gds\")",
+      "footprint_um": [
+        3.0,
+        5.5
+      ],
+      "rounds": [
+        {
+          "round": 0,
+          "samples": 8,
+          "round_best": 0.489097544693976,
+          "champion_iou": 0.489097544693976
+        },
+        {
+          "round": 1,
+          "samples": 4,
+          "round_best": 0.4544202119971335,
+          "champion_iou": 0.489097544693976
+        },
+        {
+          "round": 2,
+          "samples": 4,
+          "round_best": 0.43631382411582176,
+          "champion_iou": 0.489097544693976
+        },
+        {
+          "round": 3,
+          "samples": 4,
+          "round_best": 0.4894129134583224,
+          "champion_iou": 0.4894129134583224
+        }
+      ]
+    },
+    "final_8": {
+      "champion_iou": 0.4175514291117344,
+      "champion_code": "import gdsfactory as gf\n\n@gf.cell\ndef device():\n    c = gf.Component()\n    \n    # Analyze the target image carefully:\n    # - Top part: A U-shape or rectangular frame with 5 horizontal white lines cutting through the top portion\n    #   The white lines appear as gaps in the black material\n    # - Middle: 5 separate horizontal black lines spanning the width\n    # - Bottom: A U-shape or rectangular frame with 5 horizontal white lines cutting through the bottom portion\n    #   (similar to top but inverted)\n    \n    # BLACK = material on layer (1,0)\n    # WHITE = background (no material)\n    \n    # The white lines inside the top and bottom blocks mean those regions have NO material on layer (1,0)\n    # So I need to construct the black regions, avoiding the white line areas\n    \n    # Let me define the footprint and structure:\n    width_um = 120.0\n    height_um = 4.0\n    \n    # Parameters for the design\n    # Top block: solid black frame with 5 horizontal white stripes near the top\n    # Middle: 5 horizontal black strips\n    # Bottom block: solid black frame with 5 horizontal white stripes near the bottom\n    \n    # Let me break down vertically (from y=0 at bottom to y=4 at top):\n    # Bottom solid region with top portion having 5 white cuts:\n    # - Very bottom (y=0 to y~0.3): solid black\n    # - Then 5 white horizontal lines with black between them (the white lines are gaps)\n    # - Then top solid region up to some y\n    \n    # Actually, looking again at the image - the \"white lines\" in top and bottom blocks \n    # are inside the black, meaning black is ON both sides of each white line.\n    # So each white line is a narrow unfilled slot within a larger black region.\n    \n    # Simpler interpretation: \n    # The entire device can be built from horizontal rectangular bars on layer (1,0)\n    # The white areas are just empty space between black bars\n    \n    # Structure (y-coordinates from 0 at bottom to 4 at top):\n    # Bottom region: solid black rectangle minus 5 horizontal white slots\n    # Middle: 5 separate horizontal black bars\n    # Top region: solid black rectangle minus 5 horizontal white slots\n    \n    # Let me draw it as all black regions (everything is on layer 1,0 if black, nothing if white):\n    \n    # Bottom rectangular block (from y=0 up to ~1.5, with 5 white horizontal gaps from y~0.5 to y~1.4)\n    # This means: \n    # - Solid from y=0 to y=0.5 (black)\n    # - White lines at specific y positions with small height\n    # - Between white lines: thin black strips\n    # - Then solid from y~1.4 to y~1.5 (black)\n    \n    # Let me simplify by defining parameters:\n    num_white_slots = 5\n    slot_height = 0.08  # height of each white (unfilled) slot\n    slot_gap = 0.06     # black material height between slots\n    \n    # Middle section height occupied by white slots\n    middle_slots_height = num_white_slots * slot_height + (num_white_slots - 1) * slot_gap\n    \n    # Below the slots block: solid black\n    below_slots = 0.5  # height of solid region below all white slots\n    \n    # Above the slots block in bottom region: small solid region\n    above_slots_in_block = 0.3\n    \n    # Bottom block y-range: 0 to below_slots + middle_slots_height + above_slots_in_block\n    bottom_block_upper = below_slots + middle_slots_height + above_slots_in_block\n    \n    # Now add the solid black rectangle for bottom (excluding white slot areas)\n    # I'll add the solid parts and skip the white slot regions\n    \n    # Part 1: Solid bottom (y=0 to y=0.5)\n    bottom_solid = gf.components.rectangle(\n        size=(width_um, below_slots),\n        layer=(1, 0),\n        centered=False\n    )\n    c << bottom_solid\n    \n    # Part 2: Thin black strips between/around white slots in bottom block\n    # Between each pair of white slots: black strip of height slot_gap\n    y_current = below_slots\n    for i in range(num_white_slots):\n        # Black strip above this white slot (or the initial gap before first slot)\n        # White slot at y_current to y_current + slot_height\n        # Add black strip after white slot if not the last one\n        if i < num_white_slots - 1:\n            black_strip_between = y_current + slot_height\n            black_strip_bottom = y_current + slot_height\n            black_strip_height = slot_gap\n            \n        # Actually let me redo this more carefully\n        \n    # Let me think of it as: from y=below_slots to y=above_slots_in_block + below_slots\n    # Within this range, there are num_white_slots white slots of height slot_height,\n    # separated by black strips of height slot_gap\n    \n    # White slot positions:\n    white_slot_starts = []\n    y_pos = below_slots\n    for i in range(num_white_slots):\n        white_slot_starts.append(y_pos)\n        y_pos += slot_height + slot_gap\n    \n    # Now fill in the black regions:\n    # Bottom solid already done (0 to below_slots)\n    \n    # Between white slots: black strips\n    for i in range(num_white_slots - 1):\n        # Black strip between slot i and slot i+1\n        strip_start = white_slot_starts[i] + slot_height\n        strip_height = slot_gap\n        strip = gf.components.rectangle(\n            size=(width_um, strip_height),\n            layer=(1, 0),\n            centered=False\n        )\n        ref = c << strip\n        ref.move((0, strip_start))\n    \n    # Top strip of bottom block (above last white slot)\n    top_strip_bottom = white_slot_starts[-1] + slot_height\n    top_strip_height = above_slots_in_block\n    if top_strip_height > 0:\n        top_strip = gf.components.rectangle(\n            size=(width_um, top_strip_height),\n            layer=(1, 0),\n            centered=False\n        )\n        ref = c << top_strip\n        ref.move((0, top_strip_bottom))\n    \n    # Now middle section: 5 separate black bars (above the white slots of bottom block)\n    # Middle bars start after the bottom block gap region\n    middle_start_y = white_slot_starts[-1] + slot_height + above_slots_in_block\n    middle_bar_height = 0.12\n    middle_bar_gap = 0.08\n    \n    for i in range(5):  # 5 middle bars\n        bar_y = middle_start_y + i * (middle_bar_height + middle_bar_gap)\n        bar = gf.components.rectangle(\n            size=(width_um, middle_bar_height),\n            layer=(1, 0),\n            centered=False\n        )\n        ref = c << bar\n        ref.move((0, bar_y))\n    \n    # Now top block: similar to bottom but at top\n    # Top block solid region at top + white slots at bottom of top block\n    \n    # Leftover space after middle bars\n    total_middle_bars_height = 5 * middle_bar_height + 4 * middle_bar_gap\n    after_middle = middle_start_y + total_middle_bars_height\n    \n    # Top block: solid region from some y to 4.0, with white slots at its bottom edge\n    top_block_solid_top = 3.5  # solid region from y=3.5 to y=4.0\n    \n    # White slots in top block (lower part of top block)\n    top_block_slots_bottom = top_block_solid_top - (num_white_slots * slot_height + (num_white_slots - 1) * slot_gap)\n    \n    # Black strip below top block's white slots\n    if top_block_slots_bottom > 0:\n        bottom_strip_height = top_block_slots_bottom - after_middle\n        if bottom_strip_height > 0:\n            bottom_strip_2 = gf.components.rectangle(\n                size=(width_um, bottom_strip_height),\n                layer=(1, 0),\n                centered=False\n            )\n            ref = c << bottom_strip_2\n            ref.move((0, after_middle))\n    \n    # White slots in top block - skip these (they're white/background)\n    # White slot positions in top block\n    top_white_start = top_block_slots_bottom\n    for i in range(num_white_slots):\n        # White slot from top_white_start + i*(slot_height+slot_gap) to that + slot_height\n        pass  # Skip, don't add material here\n    \n    # Between white slots in top block: black strips\n    for i in range(num_white_slots - 1):\n        strip_start_2 = top_white_start + i * (slot_height + slot_gap) + slot_height\n        strip = gf.components.rectangle(\n            size=(width_um, slot_gap),\n            layer=(1, 0),\n            centered=False\n        )\n        ref = c << strip\n        ref.move((0, strip_start_2))\n    \n    # Solid top region (already defined to go to y=4.0)\n    top_solid = gf.components.rectangle(\n        size=(width_um, top_block_solid_top - top_block_slots_bottom),\n        layer=(1, 0),\n        centered=False\n    )\n    ref = c << top_solid\n    ref.move((0, top_block_slots_bottom))\n    \n    return c\n\nif __name__ == \"__main__\":\n    dev = device()\n    dev.write_gds(\"device.gds\")",
+      "footprint_um": [
+        120.0,
+        4.0
+      ],
+      "rounds": [
+        {
+          "round": 0,
+          "samples": 8,
+          "round_best": 0.39029444269984703,
+          "champion_iou": 0.39029444269984703
+        },
+        {
+          "round": 1,
+          "samples": 4,
+          "round_best": 0.3807243430304511,
+          "champion_iou": 0.39029444269984703
+        },
+        {
+          "round": 2,
+          "samples": 4,
+          "round_best": 0.4175514291117344,
+          "champion_iou": 0.4175514291117344
+        },
+        {
+          "round": 3,
+          "samples": 4,
+          "round_best": 0.3683442339322844,
+          "champion_iou": 0.4175514291117344
+        }
+      ]
+    }
+  },
+  "overall_mean_champion": 0.4910063784832184
+}

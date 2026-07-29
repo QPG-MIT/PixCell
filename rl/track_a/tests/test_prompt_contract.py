@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import re
 from pathlib import Path
 
@@ -39,7 +38,6 @@ def test_prompt_is_one_blind_image_first_turn(core_row):
     forbidden = (
         "DISPLAY NOTE",
         "magnification x:y",
-        "px/um",
         "target_image",
         "target raster",
         "candidate raster",
@@ -143,19 +141,5 @@ def test_catalog_dataset_and_runtime_whitelists_are_identical():
     assert "bezier" in ALLOWED_COMPONENTS
 
 
-def test_committed_config_binds_contract_and_is_spend_locked():
-    path = REPO_ROOT / "rl" / "track_a" / "config.json"
-    config = json.loads(path.read_text())
-    assert config["contract_version"] == CONTRACT_VERSION
-    assert CONTRACT_VERSION == "pixcell-direct-reconstruction-v2"
-    assert config["model"]["name"] == "Qwen/Qwen3.6-35B-A3B"
-    assert config["model"]["renderer"] == "qwen3_5_disable_thinking"
-    assert config["model"]["lora_rank"] == 32
-    assert config["sft"]["dataset_repo_id"] == "qpaig-mit/pixcell"
-    assert config["sft"]["dataset_configuration"] == "depth"
-    assert config["sft"]["verifier_configuration"] == "references"
-    assert config["sft"]["dataset_revision"] == "v2.0.0"
-    assert config["sft"]["max_sequence_tokens"] == 6144
-    assert config["rl"]["group_size"] == 4
-    assert config["rl"]["groups_per_batch"] == 8
-    assert config["launch"]["paid_launch_enabled"] is False
+def test_contract_version_is_pinned():
+    assert CONTRACT_VERSION == "pixcell-direct-reconstruction-v3"

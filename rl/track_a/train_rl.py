@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""Spend-locked Track A G4 entrypoint."""
+"""Track A GRPO entrypoint — one curriculum stage.
+
+Single-turn blind reconstruction with the shaped v3-b reward. One invocation
+trains one level for ``max_steps`` steps with the exact ordered replay prefix
+(80/20 five-step cycle); the campaign runner chains stages by passing the
+previous stage's final weights as ``load_checkpoint_path``.
+"""
 
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 from pathlib import Path
 
@@ -13,13 +18,8 @@ from tinker.types import LossFnType
 from tinker_cookbook import cli_utils
 from tinker_cookbook.rl.train import Config, main
 
-from rl.common.isolation import IsolationError
-from rl.track_a.evaluation_contract import (
-    build_checkpoint_selection_contract,
-    validate_evaluation_report,
-)
-from rl.track_a.launch import bind_execution_boundary, run_launch_preflight
-from rl.track_a.recipe import validate_rl_cli
+from rl.track_a.curriculum import expected_replay_levels, normalize_level
+from rl.track_a.launch import run_launch_preflight
 from rl.track_a.tinker_data import (
     DEFAULT_MODEL,
     DEFAULT_RENDERER,
@@ -31,6 +31,8 @@ _TRACK_ROOT = Path(__file__).resolve().parent
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DATASET_ROOT = _REPO_ROOT / "dataset"
 
+CONFIRM_SPEND = "PIXCELL_RUNS_V2"
+
 
 @chz.chz
 class CLIConfig:
@@ -38,12 +40,11 @@ class CLIConfig:
     dataset_root: str = str(_DATASET_ROOT)
     model_name: str = DEFAULT_MODEL
     renderer_name: str = DEFAULT_RENDERER
+    model_effort: float = -1.0
     load_checkpoint_path: str = ""
-    mastery_report: str = ""
-    current_level: str = ""
-    replay_levels: str = ""
+    current_level: str = "L0"
     lora_rank: int = 32
-    group_size: int = 4
+    group_size: int = 8
     groups_per_batch: int = 8
     learning_rate: float = 1e-5
     max_tokens: int = 4096
@@ -51,44 +52,36 @@ class CLIConfig:
     max_steps: int = 30
     eval_every: int = 5
     save_every: int = 5
+    validation_canaries: int = 40
+    reward_policy: str = "shaped_v3b"
+    replay_groups_per_step: int = 0
     log_path: str = str(_TRACK_ROOT / "runs" / "track-a-rl")
     loss_fn: LossFnType = "importance_sampling"
+    wandb_project: str = ""
+    wandb_name: str = ""
+    skip_preflight: bool = False
 
 
 async def cli_main(cfg: CLIConfig) -> None:
-    if not cfg.mastery_report.strip():
-        raise SystemExit("paid launch blocked: mastery_report is required")
-    try:
-        mastery_path = Path(cfg.mastery_report).expanduser().resolve(strict=True)
-        mastery_report = json.loads(mastery_path.read_text(encoding="utf-8"))
-        if not isinstance(mastery_report, dict):
-            raise ValueError("mastery report must be a JSON object")
-        report_contract = build_checkpoint_selection_contract(
-            _REPO_ROOT,
-            Path(cfg.dataset_root),
+    from rl.track_a.transport import disable_pyqwest_transport
+
+    disable_pyqwest_transport()
+    if cfg.confirm_spend != CONFIRM_SPEND:
+        raise SystemExit(
+            f"paid launch blocked: pass confirm_spend={CONFIRM_SPEND}"
         )
-        validate_evaluation_report(
-            mastery_report,
-            contract=report_contract,
-            expected_role="checkpoint-geometry",
-        )
-        resolved_launch = validate_rl_cli(
-            _REPO_ROOT,
-            cfg,
-            mastery_report=mastery_report,
-        )
-        resolved_launch = bind_execution_boundary(resolved_launch)
-    except (
-        OSError,
-        json.JSONDecodeError,
-        RuntimeError,
-        ValueError,
-        IsolationError,
-    ) as exc:
-        raise SystemExit(f"paid launch blocked: {exc}") from exc
     if not os.environ.get("TINKER_API_KEY"):
         raise SystemExit("TINKER_API_KEY is not present")
-    run_launch_preflight(_REPO_ROOT, resolved_launch=resolved_launch)
+    current = normalize_level(cfg.current_level)
+    replay_levels = expected_replay_levels(current)
+    if not cfg.skip_preflight:
+        run_launch_preflight(
+            _REPO_ROOT,
+            dataset_root=Path(cfg.dataset_root),
+            model_name=cfg.model_name,
+            renderer_name=cfg.renderer_name,
+            require_sandbox=True,
+        )
     config = Config(
         learning_rate=cfg.learning_rate,
         dataset_builder=TrackARLDatasetBuilder(
@@ -97,15 +90,19 @@ async def cli_main(cfg: CLIConfig) -> None:
             group_size=cfg.group_size,
             model_name=cfg.model_name,
             renderer_name=cfg.renderer_name,
+            model_effort=cfg.model_effort if cfg.model_effort >= 0 else None,
             max_image=1440,
-            current_level=str(resolved_launch["current_level"]),
-            replay_levels=",".join(resolved_launch["replay_levels"]),
+            current_level=current,
+            replay_levels=",".join(replay_levels),
+            validation_canaries=cfg.validation_canaries,
+            reward_policy=cfg.reward_policy,
+            replay_groups_per_step=cfg.replay_groups_per_step,
         ),
         model_name=cfg.model_name,
         recipe_name="pixcell_track_a_rl",
         renderer_name=cfg.renderer_name,
         lora_rank=cfg.lora_rank,
-        load_checkpoint_path=str(resolved_launch["load_checkpoint_path"]),
+        load_checkpoint_path=cfg.load_checkpoint_path or None,
         max_tokens=cfg.max_tokens,
         temperature=cfg.temperature,
         log_path=cfg.log_path,
@@ -119,12 +116,12 @@ async def cli_main(cfg: CLIConfig) -> None:
         # and must abort rather than silently dropping a biased group.
         rollout_error_tolerance=False,
         kl_penalty_coef=0.0,
-        num_groups_to_log=0,
+        num_groups_to_log=2,
+        rollout_json_export=True,
+        wandb_project=cfg.wandb_project or None,
+        wandb_name=cfg.wandb_name or None,
     )
-    cli_utils.check_log_dir(
-        cfg.log_path,
-        behavior_if_exists="raise",
-    )
+    cli_utils.check_log_dir(cfg.log_path, behavior_if_exists="resume")
     await main(config)
 
 
