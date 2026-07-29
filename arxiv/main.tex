@@ -68,14 +68,13 @@ further carries a paper-derived splitter from visual reconstruction through
 SOI full-wave simulation, producing symmetric propagation and balanced
 outputs. Separate full-wave audits expose the quantitative limits of
 inexpensive analytic models. Finally, the same executable verifier supplies a
-training reward and dataset through which a Qwen3.6-35B-A3B model trained with
-low-rank adaptation (LoRA) and reinforcement learning (RL) reaches mean
-single-attempt and best-of-eight IoU values of $x$ and $y$ on eight
-training-excluded paper figures, while a raw-base group relative policy
-optimization (GRPO) lineage reaches $x$ and $y$ without supervised
-demonstrations. These results therefore establish a controlled framework for
-measuring, retargeting, and improving visual-to-parametric photonic component
-design.
+training reward and dataset used to train a Qwen3.6-35B-A3B model from its raw
+base checkpoint with low-rank adaptation (LoRA) and group relative policy
+optimization (GRPO), without supervised demonstrations. On eight
+training-excluded paper figures, its mean champion IoU rises from $0.422$
+after eight initial attempts to $0.491$ after three verifier-guided revision
+rounds. These results therefore establish a controlled framework for measuring,
+retargeting, and improving visual-to-parametric photonic component design.
 \end{abstract}
 
 \maketitle
@@ -785,136 +784,108 @@ topology, parameters, and lineage used by the evaluator and remains outside
 model prompts. All images and programs in the release are synthetic but pass
 structural checks, calibrated geometric comparison, and footprint agreement.
 
-\subsection{Training protocol}
+\subsection{Training with verifier-derived signals}
 
-The deterministic verifier takes a median $0.18$--$0.19$ seconds per
-program, making executable geometry inexpensive enough to use as a training
-reward. We adapt Qwen3.6-35B-A3B along two lineages. The primary lineage
-uses supervised fine-tuning on scorer-selected policy outputs followed by
-95 GRPO steps. A second lineage starts from the raw base model and completes
-365 GRPO steps with the same reward, without supervised demonstrations or
-critic-generated feedback. Both are evaluated on a seed-disjoint synthetic
-pool and eight training-excluded paper figures.
-
-\begin{figure*}[t]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=\linewidth]{fig_rl_gallery.pdf}
-\caption{\textbf{Best-of-eight programs from the isolated second draw.}
-Each target is paired with its highest-IoU program from Table~\ref{tab:rl}.
-Maroon denotes overlap, pink candidate-only material, and black target-only
-material. The display overlays are thresholded re-renders; reported scores
-come from the archived evaluator outputs. Large-scale topology is often
-present, while widths, gaps, and repeated-feature counts remain imprecise.}
-\label{fig:rlgallery}
+\includegraphics[width=\linewidth]{fig_rl_training.pdf}
+\caption{\textbf{Run B training across the PixCell representation
+curriculum.} (a) Batch IoU and shaped reward across 150 GRPO updates. Points
+show individual updates and lines show five-step trailing means reset at each
+level. The task distribution changes at every boundary, so discontinuities
+also reflect the active curriculum level. (b) Mean IoU on the fixed 80-task
+probe at the base checkpoint and after every stage. Each cell contains one
+attempt on each of 16 held-out parameter settings at the indicated level. The
+All row reports the mean across all 80 tasks. The archived post-L3 probe,
+marked with an asterisk, was measured during a harvest and evaluation
+contention window and is retained as recorded.}
+\label{fig:rltraining}
 \end{figure*}
 
-Each episode is one blind reconstruction without test-time iteration. The
-policy receives a silhouette, physical footprint, primitive catalog, and
-source contract, then emits one program. The program is executed in an
-isolated worker, rasterized at task calibration, and scored by the
-deterministic evaluator. The policy receives no tools, difference image, or
-revision turn.
+The same deterministic evaluator used to verify reconstructed programs also
+provides a reward for training. Run B begins from the raw
+Qwen3.6-35B-A3B base checkpoint~\cite{qwen36}, applies a rank-32
+low-rank adaptation (LoRA)~\cite{lora}, and completes 150 group relative
+policy optimization (GRPO) steps~\cite{grpo} without supervised demonstrations
+or critic-generated feedback. Each episode presents one
+maximum-visibility image, its physical footprint, the permitted DSL catalog,
+and the source contract. The model returns one program in a non-thinking
+4{,}096-token response. The evaluator applies the source gate, executes
+accepted programs, renders their geometry at the target calibration, and
+compares it with the reference. Syntax failures, source violations, execution
+failures, and missing GDS outputs receive zero reward. Reference or evaluator
+failures abort the run rather than entering the record as model errors.
 
-The policy is Qwen3.6-35B-A3B, a vision-capable mixture-of-experts model with
-35B total and 3B active parameters~\cite{qwen36}. We apply a rank-32
-LoRA~\cite{lora} and GRPO~\cite{grpo} through the Tinker API~\cite{tinker},
-using learning rate $10^{-5}$, temperature $1.0$, eight task groups per step,
-and eight rollouts per group. Advantages are computed within each group, and
-constant-reward groups are omitted from the update. All reported benchmark
-measurements sample the adapted policy directly, without the coding-agent
-loop of Sec.~\ref{sec:agents}.
-
-\subsection{Reward and controls}\label{sec:rlshortcuts}
-
-Let $J$ and $D$ denote IoU and Dice, and let the subscript $\mathrm{rect}$
-denote the score obtained by filling the target's bounding box. Let $c$ be
-the symmetric mean boundary distance in raster space, converted with the
-mean axis calibration, and let $d$ be the footprint diagonal. Define
-$C=\exp[-c/(0.05d)]$,
-$N(x;x_0)=\max\{0,(x-x_0)/(1-x_0)\}$ for $x_0<1$ (and zero at $x_0=1$), and
-$B=\max\{0,C-C_{\mathrm{rect}}\}/\max\{1-C_{\mathrm{rect}},0.3\}$. For
-$J_{\mathrm{rect}}<0.95$, the reported runs use
-\begin{equation}
-R = v + w\left[0.40N(J;J_{\mathrm{rect}})
-  +0.15N(D;D_{\mathrm{rect}})+0.40B\right],
+For a source-compliant executable program, let $J$ and $D$ denote IoU and
+Dice, $c$ the symmetric boundary chamfer distance in micrometers, and $d$ the
+footprint diagonal. The subscript $\mathrm{rect}$ denotes the result from a
+solid rectangle filling the target's calibrated foreground bounding box.
+Define
+\begin{align*}
+N(x;x_0) &= \max\left\{0,\frac{x-x_0}{1-x_0}\right\},\\
+T(c) &= \exp\left[-\frac{c}{0.05d}\right],\\
+B(c) &= \frac{\max\{0,T(c)-T(c_{\mathrm{rect}})\}}
+{\max\{1-T(c_{\mathrm{rect}}),0.3\}}.
+\end{align*}
+\begin{samepage}
+For $x_0=1$, $N(x;x_0)$ is defined as zero. When
+$J_{\mathrm{rect}}<0.95$, the training reward is
+\begin{align}
+R ={}& 0.05 + 0.40N(J;J_{\mathrm{rect}}) \nonumber\\
+&+ 0.15N(D;D_{\mathrm{rect}}) + 0.40B(c).
 \label{eq:rlreward}
-\end{equation}
-where $v=0.05$ for an executable GDS and zero otherwise, and the whitelist
-indicator $w=1$ only when the program passes the primitive whitelist. For
-rectangle-like targets with $J_{\mathrm{rect}}\ge0.95$, the implementation
-instead uses $R=v+w(0.40J+0.15D+0.40C)$. This rectangle baseline prevents
-area-filling shortcuts from receiving normalized geometric credit.
+\end{align}
+\end{samepage}
+For rectangle-like targets with $J_{\mathrm{rect}}\geq0.95$, the reward is
+\[
+R = 0.05 + 0.40J + 0.15D + 0.40T(c).
+\]
+The rectangle baseline removes geometric credit for filling the target
+bounding box. The boundary term provides a signal for count and boundary
+changes that may not yet improve overlap.
 
-The training-time catalog check sets $w=0$ for compound device cells, raw
-polygons, and alias imports. Such programs lose all geometric reward but
-retain the $0.05$ executable floor. Evaluation always executes model output
-and applies the current source audit separately.
+Training uses the Tinker API~\cite{tinker} with learning rate $10^{-5}$,
+temperature $1.0$, eight task groups per step, and eight rollouts per group.
+Within-group advantages are optimized with importance sampling and zero KL
+penalty. Constant-reward groups are omitted. Run B spends 30 steps on each
+level from L0 through L4 and initializes every stage from the preceding
+checkpoint. After L0, each five-step cycle draws exactly 80\% of its task
+groups from the active level and 20\% from earlier levels. The stage sequence
+therefore contains 150 updates over 9{,}600 sampled programs.
 
-A footprint-only control bounds what the parameter probes establish. Across
-12 rings, footprint diameter and radius have Spearman $\rho=1$; a direct
-footprint formula gives $1.41\%$ mean radius error, compared with $1.55\%$
-for the model. The probes therefore measure recovery from the combined image
-and footprint input, not pixels in isolation.
+The fixed probe uses the same 80 examples at the base checkpoint and after
+each stage, with 16 rows from the validation split at every curriculum level
+(Fig.~\ref{fig:rltraining}(b)). Between the base and final checkpoints, its
+overall executable rate rises from $0.20$ to $0.55$, mean IoU from $0.079$ to
+$0.179$, and mean shaped reward from $0.047$ to $0.124$. The final checkpoint
+improves the base mean on L0 through L3, although none of its 16 L4 responses
+executes on this probe draw. These rows hold out parameter settings of known
+representations, so the probe measures recovery across the curriculum rather
+than transfer to unseen representations.
 
-\subsection{Training lineage}
-
-The primary lineage begins with two epochs of supervised fine-tuning on 677
-scorer-selected image-program pairs, split into 634 training and 43
-validation examples. Earlier Qwen policies generated every program, and the
-builder retained outputs whose logged normalized IoU exceeded $0.5$. Code
-matching traces 337 pairs to single-turn generation, 257 to two-turn runs
-with deterministic verifier feedback, and 83 to critic-configured runs. The
-critic input included the target, attempted render, diagnostics, and
-ground-truth program; retained logs do not distinguish critic responses from
-deterministic fallbacks. External-teacher information may therefore enter
-this subset.
-
-The builder did not independently re-execute or purity-gate the 677 selected
-pairs, and one uses a raw polygon. We consequently describe the data as
-scorer-selected policy outputs. Starting from the supervised checkpoint, the
-lineage completes 30 GRPO steps on L0--L3, 35 with a 13-figure L4 tier, and
-30 after L4 expands to 18 figures. The curriculum favors task groups with
-recent reward variance. The raw-base comparison instead completes 365 GRPO
-steps across nine consecutive runs using the same reward and no supervised
-demonstrations or critic-generated feedback.
-
-The 95-step history predates per-evaluation clearing of GDSFactory's cell
-cache. Isolated re-scoring leaves 12 of 12 sampled training winners and all
-64 programs from the second benchmark draw unchanged. We use the history and
-first benchmark draw as diagnostics and the isolated second draw as the
-primary result.
-
-\subsection{Evaluation results}
-
-At the last recorded synthetic checkpoint, step 85, the primary lineage
-reaches L0--L3 IoU values of $0.891$, $0.776$, $0.294$, and $0.332$
-on the fixed seed-disjoint evaluation pool. Primitive and two-element tasks
-are substantially stronger than path and multi-part composition tasks.
-
-On the training-excluded development benchmark, the isolated second draw
-produces 48 executable programs from 64 attempts, mean IoU $0.2540$, and
-mean per-target best-of-eight IoU $0.4662$ (Table~\ref{tab:rl}). Every target
-exceeds IoU $0.05$ at least once. The first draw produces 47 executable
-programs, mean IoU $0.2395$, and best-of-eight $0.4433$.
-
-The 365-step raw-base GRPO lineage reaches mean IoU $0.1864$ and
-best-of-eight $0.3804$, with every target above $0.05$ at least once.
-Deterministic executable rewards can therefore produce measurable
-cross-figure transfer without supervised demonstrations. The higher primary
-lineage uses scorer-selected data and a different optimization budget, so
-the score difference is not an ablation of supervised fine-tuning.
+We evaluate the final policy separately on the training-excluded F1--F8
+targets used throughout the paper. The non-thinking base model produces no
+executable program in 64 attempts. A direct draw from the trained policy
+produces 39 executable programs in 64 attempts, with mean IoU $0.228$ and
+mean best-of-eight IoU $0.467$ (Table~\ref{tab:rl}). The deployment loop uses
+an independent draw of eight initial attempts per target, retains the
+strongest candidate, and gives it three rounds of four revisions. Feedback
+reports an error class, a closeness category, and whether material is missing
+or excessive without exposing numerical measurements. Mean champion IoU
+rises from $0.422$ after the initial attempts to $0.452$, $0.476$, and $0.491$
+after the three revision rounds. This is one trained lineage evaluated
+through repeated samples and revisions rather than an estimate of variation
+across independent training runs.
 
 \input{table_rl.tex}
 
-Sixty-three of 64 programs in the primary draw pass the current source gate.
-The remaining program calls a prohibited compound component, fails execution,
-and scores zero.
-
-Figure~\ref{fig:rlgallery} shows that the best programs often recover
-large-scale topology while widths, gaps, and repeated-feature counts remain
-imprecise. The result establishes trainability from executable geometry,
-with substantial room between the adapted policy and the coding agents of
-Sec.~\ref{sec:results}.
+The released LoRA adapter is available as
+\href{https://huggingface.co/qpaig-mit/pixcell}{\texttt{qpaig-mit/pixcell}}.
+Its validated benchmark and revision records are released with the code.
+Together, the fixed synthetic probe and the training-excluded paper targets
+show that executable geometric rewards improve program generation across the
+representation curriculum while leaving substantial room between the trained
+policy and the coding agents of Sec.~\ref{sec:results}.
 
 \section{Research contracts}\label{sec:conclusion}
 
@@ -965,15 +936,16 @@ IoU verifies reconstruction, local solvers support inexpensive
 retargeting, and full-wave models test optical behavior and fabrication
 variables that the two-dimensional layout does not contain.
 
-The same executable verifier supplies a training reward. The primary
-Qwen3.6-35B-A3B lineage reaches mean IoU $0.254$ and best-of-eight $0.466$
-on the training-excluded development benchmark. A raw-base lineage trained
-for 365 GRPO steps without supervised demonstrations or critic feedback
-reaches $0.186$ and $0.380$. This establishes that deterministic geometric
-rewards can produce cross-figure transfer in an open-weight model. The
-different optimization budgets and scorer-selected data in the primary
-lineage leave the contribution of supervised fine-tuning for a controlled
-ablation.
+The same executable verifier supplies a training reward. Run B adapts
+Qwen3.6-35B-A3B from its raw base checkpoint through 150 GRPO steps without
+supervised demonstrations or critic feedback. A direct draw on the
+training-excluded paper figures reaches mean IoU $0.228$ and mean
+best-of-eight IoU $0.467$. In the attempt-measure-revise loop, mean champion
+IoU rises from $0.422$ after the initial attempts to $0.491$ after three
+revision rounds. This establishes that deterministic geometric rewards can
+produce cross-figure transfer in an open-weight model. The record contains
+one training lineage and does not estimate variation across independent
+training runs.
 
 The current evidence covers eight components, one retained
 coding-agent run per matrix cell, simplified stack models, and selected

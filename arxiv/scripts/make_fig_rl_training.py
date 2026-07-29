@@ -1,30 +1,33 @@
-"""Render Figure 12 from the frozen RL telemetry record.
+"""Render the Run B curriculum-training figure from its frozen record.
 
-Panel A shows scheduled synthetic evaluations for tiers L0--L3. Panel B
-compares the recorded L4 training trace with the training-excluded benchmark
-and the final best-of-eight draw. The compact source record is hash-locked in
-``fig_rl_assets/manifest.json``.
+Panel A follows the 150 GRPO updates through L0--L4. Panel B evaluates the
+same six checkpoints on one fixed 80-task probe, with 16 held-out parameter
+settings at each representation level.
 
 Run from the repository root:
-    python arxiv/scripts/make_fig_rl_training.py
+    uv run python arxiv/scripts/make_fig_rl_training.py
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.lines import Line2D
 
 
 REPO = Path(__file__).resolve().parents[2]
 ASSET_DIR = Path(__file__).with_name("fig_rl_assets")
 MANIFEST = ASSET_DIR / "manifest.json"
+TELEMETRY = ASSET_DIR / "training_telemetry.json"
 FIGURE_DIR = REPO / "arxiv" / "figures"
 
 INK = "#17191c"
@@ -32,14 +35,10 @@ SOFT_INK = "#555a60"
 RULE = "#17191c"
 GRID = "#e2e4e6"
 CRIMSON = "#a31f34"
-VERIFIED = "#267c5a"
 DIFF_BLUE = "#315e9f"
-TIER_STYLE = {
-    "L0": (DIFF_BLUE, "o", "-"),
-    "L1": (CRIMSON, "s", "-"),
-    "L2": (VERIFIED, "^", "-"),
-    "L3": (INK, "D", (0, (4.0, 2.0))),
-}
+STAGE_FILL = ("#f4f6f8", "#ffffff")
+LEVELS = tuple(f"L{index}" for index in range(5))
+CHECKPOINT_LABELS = ("Base", "+L0", "+L1", "+L2", "+L3", "+L4")
 
 plt.rcParams.update(
     {
@@ -66,18 +65,25 @@ def _sha256(path: Path) -> str:
 
 def _load_data() -> dict:
     manifest = json.loads(MANIFEST.read_text())
-    path = ASSET_DIR / "training_telemetry.json"
-    expected = manifest["assets"][path.name]["sha256"]
-    actual = _sha256(path)
+    expected = manifest["assets"][TELEMETRY.name]["sha256"]
+    actual = _sha256(TELEMETRY)
     if actual != expected:
         raise ValueError(
-            f"Hash mismatch for {path}: expected {expected}, got {actual}."
+            f"Hash mismatch for {TELEMETRY}: expected {expected}, got {actual}."
         )
-    data = json.loads(path.read_text())
-    if len(data["evaluations"]) != 10:
-        raise ValueError("Figure 12 requires ten scheduled evaluation checkpoints.")
-    if [stage["start_step"] for stage in data["stages"]] != [0, 30, 65]:
-        raise ValueError("Figure 12 stage boundaries do not match the paper record.")
+    data = json.loads(TELEMETRY.read_text())
+    if data["levels"] != list(LEVELS):
+        raise ValueError("Run B telemetry does not contain the ordered L0--L4 levels.")
+    training = data["training"]
+    if len(training) != 150:
+        raise ValueError("Run B figure requires exactly 150 training steps.")
+    if [record["step"] for record in training] != list(range(1, 151)):
+        raise ValueError("Run B training steps must be contiguous.")
+    if len(data["probes"]) != 6:
+        raise ValueError("Run B figure requires base plus five post-stage probes.")
+    for probe in data["probes"]:
+        if any(probe["per_level"][level]["n"] != 16 for level in LEVELS):
+            raise ValueError("Every fixed-probe cell must contain 16 tasks.")
     return data
 
 
@@ -99,7 +105,7 @@ def _panel_heading(
         color=INK,
     )
     figure.text(
-        x + 0.035,
+        x + 0.034,
         0.965,
         title,
         ha="left",
@@ -118,7 +124,15 @@ def _panel_heading(
     )
 
 
-def _style_axis(axes: plt.Axes) -> None:
+def _rolling(values: list[float], window: int = 5) -> list[float]:
+    return [
+        sum(values[max(0, index - window + 1) : index + 1])
+        / len(values[max(0, index - window + 1) : index + 1])
+        for index in range(len(values))
+    ]
+
+
+def _style_training_axis(axes: plt.Axes) -> None:
     axes.spines["top"].set_visible(False)
     axes.spines["right"].set_visible(False)
     axes.spines["left"].set_linewidth(0.68)
@@ -134,211 +148,228 @@ def _style_axis(axes: plt.Axes) -> None:
     )
     axes.grid(axis="y", color=GRID, linewidth=0.52, zorder=0)
     axes.set_axisbelow(True)
-    axes.set_xlim(-2, 100)
-    axes.set_ylim(0, 1.02)
-    axes.set_xticks((0, 20, 40, 60, 80, 100))
-    axes.set_yticks((0, 0.25, 0.5, 0.75, 1.0))
+    axes.set_xlim(0.5, 150.5)
+    axes.set_ylim(0.0, 0.52)
+    axes.set_xticks((1, 30, 60, 90, 120, 150))
+    axes.set_yticks(np.arange(0.0, 0.51, 0.1))
     axes.set_xlabel("Cumulative GRPO step", fontsize=8.0, labelpad=3.5)
-    axes.set_ylabel("IoU", fontsize=8.0, labelpad=3.5)
+    axes.set_ylabel("Mean score", fontsize=8.0, labelpad=3.5)
 
 
-def _draw_stages(axes: plt.Axes, stages: list[dict]) -> None:
-    for boundary in (30, 65):
-        axes.axvline(
-            boundary,
-            color="#aeb3b7",
-            linewidth=0.65,
-            linestyle=(0, (2.0, 2.5)),
-            zorder=1,
+def _draw_training(axes: plt.Axes, data: dict) -> None:
+    records = data["training"]
+    steps = np.asarray([record["step"] for record in records])
+    iou = np.asarray([record["mean_iou"] for record in records])
+    shaped = np.asarray([record["mean_shaped"] for record in records])
+
+    for level_index, level in enumerate(LEVELS):
+        start = level_index * 30 + 0.5
+        end = (level_index + 1) * 30 + 0.5
+        axes.axvspan(
+            start,
+            end,
+            color=STAGE_FILL[level_index % 2],
+            linewidth=0,
+            zorder=-2,
         )
-    boundaries = [stage["start_step"] for stage in stages] + [100]
-    for stage, end in zip(stages, boundaries[1:]):
         axes.text(
-            0.5 * (stage["start_step"] + end),
-            0.975,
-            stage["label"],
+            0.5 * (start + end),
+            0.985,
+            level,
             transform=axes.get_xaxis_transform(),
             ha="center",
             va="top",
-            fontsize=6.25,
+            fontsize=6.8,
             color=SOFT_INK,
         )
+        if level_index:
+            axes.axvline(
+                start,
+                color="#aeb3b7",
+                linewidth=0.65,
+                linestyle=(0, (2.0, 2.5)),
+                zorder=1,
+            )
 
+    axes.scatter(
+        steps,
+        iou,
+        s=5.0,
+        color=DIFF_BLUE,
+        alpha=0.16,
+        linewidths=0,
+        zorder=2,
+    )
+    axes.scatter(
+        steps,
+        shaped,
+        s=5.0,
+        color=CRIMSON,
+        alpha=0.14,
+        linewidths=0,
+        zorder=2,
+    )
 
-def _rolling_mean(values: list[float], window: int = 5) -> list[float]:
-    return [
-        sum(values[max(0, index - window + 1) : index + 1])
-        / len(values[max(0, index - window + 1) : index + 1])
-        for index in range(len(values))
-    ]
-
-
-def _draw_synthetic(axes: plt.Axes, data: dict) -> None:
-    evaluations = data["evaluations"]
-    steps = [record["step"] for record in evaluations]
-    for tier, (color, marker, line_style) in TIER_STYLE.items():
-        axes.plot(
-            steps,
-            [record[tier] for record in evaluations],
-            color=color,
-            marker=marker,
-            linestyle=line_style,
-            linewidth=1.15,
-            markersize=3.2,
-            markeredgewidth=0.5,
-            label=tier,
+    iou_handle = None
+    shaped_handle = None
+    for level_index in range(5):
+        start = level_index * 30
+        end = start + 30
+        segment_steps = steps[start:end]
+        current_iou = axes.plot(
+            segment_steps,
+            _rolling(iou[start:end].tolist()),
+            color=DIFF_BLUE,
+            linewidth=1.35,
             zorder=3,
-        )
-    _style_axis(axes)
-    _draw_stages(axes, data["stages"])
+        )[0]
+        current_shaped = axes.plot(
+            segment_steps,
+            _rolling(shaped[start:end].tolist()),
+            color=CRIMSON,
+            linewidth=1.25,
+            zorder=3,
+        )[0]
+        if iou_handle is None:
+            iou_handle = current_iou
+        if shaped_handle is None:
+            shaped_handle = current_shaped
+
+    _style_training_axis(axes)
     axes.legend(
+        handles=(iou_handle, shaped_handle),
+        labels=("Batch IoU · 5-step mean", "Shaped reward · 5-step mean"),
         loc="lower center",
         bbox_to_anchor=(0.5, 1.015),
-        ncol=4,
+        ncol=2,
         frameon=False,
         fontsize=6.7,
-        handlelength=1.55,
-        handletextpad=0.35,
+        handlelength=1.65,
+        handletextpad=0.38,
         columnspacing=0.9,
         borderaxespad=0.0,
     )
 
 
-def _draw_transfer(axes: plt.Axes, data: dict) -> None:
-    training = data["training"]
-    train_steps = [record["step"] for record in training]
-    train_values = [record["iou"] for record in training]
-    axes.plot(
-        train_steps,
-        train_values,
-        color=CRIMSON,
-        linewidth=0.55,
-        alpha=0.20,
-        zorder=2,
-    )
-    training_line = axes.plot(
-        train_steps,
-        _rolling_mean(train_values),
-        color=CRIMSON,
-        linewidth=1.35,
-        label="L4 training · 5-step mean",
-        zorder=3,
-    )[0]
-
-    evaluations = [
-        record
-        for record in data["evaluations"]
-        if record["benchmark"] is not None
+def _draw_probe(axes: plt.Axes, data: dict, figure: plt.Figure) -> None:
+    row_labels = (*LEVELS, "All")
+    checkpoint_labels = [
+        f"{label}*" if probe["condition"] == "evaluation_contention" else label
+        for label, probe in zip(CHECKPOINT_LABELS, data["probes"])
     ]
-    benchmark_line = axes.plot(
-        [record["step"] for record in evaluations],
-        [record["benchmark"] for record in evaluations],
-        color=DIFF_BLUE,
-        marker="o",
-        markerfacecolor="white",
-        markeredgecolor=DIFF_BLUE,
-        markeredgewidth=0.8,
-        linewidth=0.95,
-        markersize=3.3,
-        label="Training-excluded benchmark",
-        zorder=4,
-    )[0]
+    matrix = np.asarray(
+        [
+            [
+                (
+                    probe["overall"]["mean_iou"]
+                    if level == "All"
+                    else probe["per_level"][level]["mean_iou"]
+                )
+                for probe in data["probes"]
+            ]
+            for level in row_labels
+        ],
+        dtype=float,
+    )
+    if not np.isfinite(matrix).all() or matrix.min() < 0.0 or matrix.max() > 1.0:
+        raise ValueError("Fixed-probe IoU matrix is invalid.")
 
-    final = data["final_draw"]
-    axes.plot(
-        [95],
-        [final["eval_at_1"]],
-        marker="o",
-        color=VERIFIED,
-        markersize=4.3,
-        zorder=5,
+    upper = max(0.35, math.ceil(float(matrix.max()) * 20.0) / 20.0)
+    cmap = LinearSegmentedColormap.from_list(
+        "pixcell_probe",
+        ("#f7f9fc", "#dbe4f1", "#91a9c9", DIFF_BLUE),
     )
-    axes.plot(
-        [95],
-        [final["best_at_8"]],
-        marker="D",
-        markerfacecolor="white",
-        markeredgecolor=VERIFIED,
-        markeredgewidth=1.0,
-        markersize=4.4,
-        zorder=5,
+    image = axes.imshow(
+        matrix,
+        cmap=cmap,
+        vmin=0.0,
+        vmax=upper,
+        interpolation="nearest",
+        aspect="auto",
     )
-    axes.text(
-        92.5,
-        final["best_at_8"] + 0.035,
-        f"best@8 {final['best_at_8']:.3f}",
-        ha="right",
-        va="bottom",
-        fontsize=6.5,
-        color=INK,
+    axes.set_xticks(range(6), labels=checkpoint_labels)
+    axes.set_yticks(range(6), labels=row_labels)
+    axes.tick_params(
+        axis="both",
+        which="major",
+        length=0,
+        labelsize=7.0,
+        pad=3.0,
+        colors=INK,
     )
-    axes.text(
-        92.5,
-        final["eval_at_1"] - 0.035,
-        f"eval@1 {final['eval_at_1']:.3f}",
-        ha="right",
-        va="top",
-        fontsize=6.5,
-        color=INK,
-    )
+    axes.set_xlabel("Checkpoint", fontsize=8.0, labelpad=4.0)
+    axes.set_ylabel("Probe level", fontsize=8.0, labelpad=4.0)
+    axes.set_xticks(np.arange(-0.5, 6.0, 1.0), minor=True)
+    axes.set_yticks(np.arange(-0.5, 6.0, 1.0), minor=True)
+    axes.grid(which="minor", color="white", linewidth=1.1)
+    axes.tick_params(which="minor", bottom=False, left=False)
+    axes.axhline(4.5, color=INK, linewidth=0.72)
+    for spine in axes.spines.values():
+        spine.set_visible(False)
 
-    _style_axis(axes)
-    _draw_stages(axes, data["stages"])
-    endpoint_handle = Line2D(
-        [],
-        [],
-        color=VERIFIED,
-        marker="D",
-        markerfacecolor="white",
-        linewidth=0,
-        markersize=3.8,
-        label=r"Final $k{=}8$",
+    for row in range(matrix.shape[0]):
+        for column in range(matrix.shape[1]):
+            value = matrix[row, column]
+            axes.text(
+                column,
+                row,
+                f"{value:.2f}",
+                ha="center",
+                va="center",
+                fontsize=6.8,
+                color="white" if value >= 0.62 * upper else INK,
+            )
+
+    bounds = axes.get_position()
+    color_axes = figure.add_axes(
+        (
+            bounds.x1 + 0.012,
+            bounds.y0 + 0.014,
+            0.010,
+            bounds.height - 0.028,
+        )
     )
-    axes.legend(
-        handles=(training_line, benchmark_line, endpoint_handle),
-        loc="lower center",
-        bbox_to_anchor=(0.5, 1.015),
-        ncol=3,
-        frameon=False,
-        fontsize=6.35,
-        handlelength=1.45,
-        handletextpad=0.35,
-        columnspacing=0.72,
-        borderaxespad=0.0,
+    colorbar = figure.colorbar(image, cax=color_axes)
+    colorbar.outline.set_linewidth(0.55)
+    colorbar.set_ticks((0.0, upper))
+    colorbar.ax.tick_params(
+        labelsize=6.4,
+        width=0.5,
+        length=2.0,
+        pad=2.0,
+        colors=INK,
     )
+    colorbar.set_label("Mean IoU", fontsize=7.1, labelpad=2.5)
 
 
 def main() -> None:
     data = _load_data()
     figure = plt.figure(figsize=(7.40, 2.88), facecolor="white")
-    synthetic_axes = figure.add_axes((0.070, 0.170, 0.405, 0.650))
-    transfer_axes = figure.add_axes((0.565, 0.170, 0.405, 0.650))
+    training_axes = figure.add_axes((0.070, 0.175, 0.500, 0.640))
+    probe_axes = figure.add_axes((0.630, 0.175, 0.292, 0.640))
 
     _panel_heading(
         figure,
         x=0.020,
         letter="A",
-        title="Synthetic evaluation by tier",
-        rule_end=0.490,
+        title="Run B curriculum optimization",
+        rule_end=0.590,
     )
     _panel_heading(
         figure,
-        x=0.510,
+        x=0.605,
         letter="B",
-        title="Real-figure transfer",
+        title="Fixed cross-level probe",
         rule_end=0.980,
     )
-    _draw_synthetic(synthetic_axes, data)
-    _draw_transfer(transfer_axes, data)
+    _draw_training(training_axes, data)
+    _draw_probe(probe_axes, data, figure)
 
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
-    pdf_path = FIGURE_DIR / "fig_rl_training.pdf"
-    png_path = FIGURE_DIR / "fig_rl_training.png"
-    figure.savefig(pdf_path, dpi=600, facecolor="white", bbox_inches=None)
-    figure.savefig(png_path, dpi=300, facecolor="white", bbox_inches=None)
+    output = FIGURE_DIR / "fig_rl_training.pdf"
+    figure.savefig(output, dpi=600, facecolor="white", bbox_inches=None)
     plt.close(figure)
-    print(f"wrote {pdf_path}")
-    print(f"wrote {png_path}")
+    print(f"wrote {output}")
 
 
 if __name__ == "__main__":

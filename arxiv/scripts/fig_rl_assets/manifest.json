@@ -1,150 +1,72 @@
 {
   "assets": {
-    "F1_render.png": {
-      "sha256": "82ff1b29168abc59c75c575ff42e2edf2f70e1f69524072c80ed3c8c57c90a4d"
-    },
-    "F1_target.png": {
-      "sha256": "4918de2860e5c0cb3c2fe6cc008239487e6c393b203f5c6abb9db5e8d17e388a"
-    },
-    "F2_render.png": {
-      "sha256": "863f3e12c2d0c14d365faae55a1ddec87621bd27ce7f2764e8fabb506f870836"
-    },
-    "F2_target.png": {
-      "sha256": "4f5a52bd860755672084df88668f71b19c1d57011428d77816394ae1d8b9a511"
-    },
-    "F3_render.png": {
-      "sha256": "8236327f121906a4e0dcad14626436f83f489ce1de15d5e07d80a6ff163eba5d"
-    },
-    "F3_target.png": {
-      "sha256": "e5f04cdeb580448b50a226d86b25a879d1cd7d94af6fe6b259a1177b19ed6317"
-    },
-    "F4_render.png": {
-      "sha256": "bdbf4f495bfc06499c558521c5a80c705a61edfe619da2a4c4561b4149c0e6de"
-    },
-    "F4_target.png": {
-      "sha256": "83599c61a94827616f8d697433e043e86c8fa1c2c109b81225a3388190130bb8"
-    },
-    "F5_render.png": {
-      "sha256": "ab86cbfa3d36906baec4160a191ea43828540dc5e1e8f0685c5621113cd99dd5"
-    },
-    "F5_target.png": {
-      "sha256": "7a34be2d69d45d993e02aa30991b0ab47c9ef971d9cfdc46badb4f04cf42df3a"
-    },
-    "F6_render.png": {
-      "sha256": "244df2475026b30da6f155801c57f21eebd334c9c9f407fe82c7bd63341a0597"
-    },
-    "F6_target.png": {
-      "sha256": "79d3d58e71bbaa86fec2c07f919224abc2dac4980c6d19937b0e715fa2a85c6f"
-    },
-    "F7_render.png": {
-      "sha256": "3d6c58fdfeb5f10aef2bb1a19e18565bbabe4e7ea629b3469697f47350148669"
-    },
-    "F7_target.png": {
-      "sha256": "1cfed9fe3c569030162929f5e8165fbf099b23bbc46d41921d7469d3430a9d13"
-    },
-    "F8_render.png": {
-      "sha256": "43947290a3b69b6c1be5edc87d56772f7efb7ce1a41cef19cb839a9653d04308"
-    },
-    "F8_target.png": {
-      "sha256": "28ee227266f825ecb2d9d310d4e0f0100e3f55b85d77ae71264eea8f7308ba84"
-    },
-    "gallery.json": {
-      "sha256": "07b88ca74a3edbf4f91c702a5772da2c73c9a27ce1020ba0ae3dee513c77ac0c"
-    },
     "training_telemetry.json": {
-      "sha256": "20510317a46d25236b723bbb73056157765d6d4ba5039f0ddc85adc56f1a978a"
+      "sha256": "27a2293411186cb511988a1e1827099cee67ee246a6995b7be5dbe91fb859f39"
     }
   },
-  "runtime": {
-    "gdsfactory": "9.20.7",
-    "python": "3.13"
-  },
-  "source_commit": "b2c07631d2225ddd82247c413b0f45cac4bb2978",
-  "source_files": [
+  "record": "runs-v2/runB-base-rl",
+  "repository_sources": [
     {
-      "path": "rl/reports/runs_ledger/pixcell-Qwen-Qwen3.6-35B-A3B-8g-8b-lr1e-05-20260708-0953/metrics.jsonl",
-      "sha256": "8e3201ecbb3d250872829ce5c2acb6b33a2d9999a4dd470edb910802b8007133"
+      "path": "data/training/qwen-rl-v2/bench/base-nothink.json",
+      "sha256": "ceb61c226f1d579831e0f878774b06ec20de602ddf2400e3fb7d0f2e46ba4eb3"
     },
     {
-      "path": "rl/reports/runs_ledger/pixcell-Qwen-Qwen3.6-35B-A3B-8g-8b-lr1e-05-20260708-1043/metrics.jsonl",
-      "sha256": "04a3728e0ff7ffd04f838fff18015b7bef7676f26d8c782182a282e3184ff34b"
+      "path": "data/training/qwen-rl-v2/bench/b-final.json",
+      "sha256": "55d9e938a4f0e97a35e520d7ea5aa9a621af9ad98555ba0a2b5a75ae2e10f8ba"
     },
     {
-      "path": "rl/reports/runs_ledger/pixcell-Qwen-Qwen3.6-35B-A3B-8g-8b-lr1e-05-20260708-1209/metrics.jsonl",
-      "sha256": "b8c0a4c7af4e0d975e65778264fc5700f24f645ce68d062e8275ed897fd3cc0a"
-    },
-    {
-      "path": "rl/reports/benchmark_eval_bridge2.json",
-      "sha256": "7574084c44cc37a121d584f45550c4060b42b6e6f67dabdece5e553bb59ce81f"
-    },
-    {
-      "path": "rl/reports/benchmark_attempts_bridge2.jsonl",
-      "sha256": "1f9f583ba1fe298b5cba45f254bbd9b9c366524031996bb476cda8159892f4a6"
-    },
-    {
-      "path": "data/benchmark/final_1/device_bw.png",
-      "sha256": "0fbd3bb59c59f81b606be1b5d8d948b941b73ca240d4bb31ba9c9d72e6808d3c"
-    },
-    {
-      "path": "data/benchmark/final_1/calibration.json",
-      "sha256": "00baf5808d50db5a3b0422c62c97deca19c18ecbd0737c1a4e79919937b5d55a"
-    },
-    {
-      "path": "data/benchmark/final_2/device_bw.png",
-      "sha256": "f9aac3ccc82c4528647f741d619e246e003e42aab13a0b5687d6a9811068576b"
-    },
-    {
-      "path": "data/benchmark/final_2/calibration.json",
-      "sha256": "1125b8622744536dfe7695c5ec8a9faa23608df889b581640610be15bbbfe341"
-    },
-    {
-      "path": "data/benchmark/final_3/device_bw.png",
-      "sha256": "4962daf2f6b430a3124ba83f0702742b019c24121272f111363c991d847e3c3e"
-    },
-    {
-      "path": "data/benchmark/final_3/calibration.json",
-      "sha256": "7ba84ce4db812f440a49f75e8dd21537325e097e7e9fb7b8ba18cf1889bb60fb"
-    },
-    {
-      "path": "data/benchmark/final_4/device_bw.png",
-      "sha256": "a57c3d7acbffa63f691d580bba31ada077ad552c94f360271160912b7e30d701"
-    },
-    {
-      "path": "data/benchmark/final_4/calibration.json",
-      "sha256": "b2121f5fe9ad59bf082f9b85be4bce4d485fb617a38fbbfeddc32f1262919803"
-    },
-    {
-      "path": "data/benchmark/final_5/device_bw.png",
-      "sha256": "6e850e58b0768aa18e828b7b0a4d1b38db4460cef7f3fef0782a58909bf457a3"
-    },
-    {
-      "path": "data/benchmark/final_5/calibration.json",
-      "sha256": "eb6d2951abc0906e205cd85809c4544cb4488e115995affeb3da4feb1ad93451"
-    },
-    {
-      "path": "data/benchmark/final_6/device_bw.png",
-      "sha256": "bacae5d13895fd2462fb77fda14d06c56080dd408f362323bc5a7ef2618596a5"
-    },
-    {
-      "path": "data/benchmark/final_6/calibration.json",
-      "sha256": "8590266c1c1ff7d4b2a32417fb4b17146dbfe62edf9843bc1937c3a52a86e6d6"
-    },
-    {
-      "path": "data/benchmark/final_7/device_bw.png",
-      "sha256": "91847bf5797234e985065e7828fbbc306c92c26e281c685175e0efaa4749ce18"
-    },
-    {
-      "path": "data/benchmark/final_7/calibration.json",
-      "sha256": "2abed81050aad4a5e6fdbe53c15990ef67757d95a75e219b897a771844a8ad51"
-    },
-    {
-      "path": "data/benchmark/final_8/device_bw.png",
-      "sha256": "6654508aff5e3fb52f0cecb66a0caa055049e82f6c6ad296386c9e44c341758b"
-    },
-    {
-      "path": "data/benchmark/final_8/calibration.json",
-      "sha256": "7729ff61ac021ce05c7ce4a7e75f4ba3791ad31a11355ec1126432c3c2d40a0e"
+      "path": "data/training/qwen-rl-v2/agentloop/b-final.json",
+      "sha256": "1e1e764cdf0640408f58759c55d6adc952bf18cdee84501cfde3a1349e63a0ed"
     }
   ],
-  "source_repository": "QPG-MIT/PixCell-running"
+  "run_sources": [
+    {
+      "path": "provenance/plan.json",
+      "sha256": "8d59fa85d95c0e81d78b7e4c839961dffbf872d2426548170de111b392dcc349"
+    },
+    {
+      "path": "stages/rl-l0/metrics.jsonl",
+      "sha256": "f6662beb7376d014d62619b3ba8f44058d193d54733560da27919a76a27c1209"
+    },
+    {
+      "path": "stages/rl-l1/metrics.jsonl",
+      "sha256": "7b252c126487c1e86254fde10a882af1635142676d5934484614a20df353ec9c"
+    },
+    {
+      "path": "stages/rl-l2/metrics.jsonl",
+      "sha256": "9540202fddb61599cc9bbbb40c04011a625fd4ad43e6bc29125d3bab0e36916b"
+    },
+    {
+      "path": "stages/rl-l3/metrics.jsonl",
+      "sha256": "4ba207f490d451206b744c0d7de87899f620168010808c8404566dc83c503241"
+    },
+    {
+      "path": "stages/rl-l4/metrics.jsonl",
+      "sha256": "3df127ed090fe5b491de56b776715f5f4959e06b1d637041ede7882f641ac836"
+    },
+    {
+      "path": "probes/base.json",
+      "sha256": "3f733388ccc8edc7b3c2427237aa9a7d62c6219532384fcc140314ea863f873f"
+    },
+    {
+      "path": "probes/rl-l0.json",
+      "sha256": "5eaede4b66fec88d03ebe101c9de286d2850885176d6c8cc0eb06b04496738cf"
+    },
+    {
+      "path": "probes/rl-l1.json",
+      "sha256": "b6053beffeeead77dc5f54e6d388f9240577e1664bdafc668806a0d4ff116acc"
+    },
+    {
+      "path": "probes/rl-l2.json",
+      "sha256": "e51155df74d0b28029bddc4b690e1d98dd227885e6d2dd1b275a1b5a227ca8af"
+    },
+    {
+      "path": "probes/rl-l3.json",
+      "sha256": "ff01225caa2aaf372a949c00c7dc113e0ba340708221970263664fa3494a5d05"
+    },
+    {
+      "path": "probes/rl-l4.json",
+      "sha256": "722f626e8a12a2f0784335c3954f9afac2b5a16a7069d15cc6937e348a7fdc77"
+    }
+  ]
 }
