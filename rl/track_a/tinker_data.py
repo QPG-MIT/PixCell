@@ -239,6 +239,7 @@ class TrackASupervisedDatasetBuilder(SupervisedDatasetBuilder):
     levels: str = ""
     include_validation: bool = True
     schedule_seed: int = 0
+    winner_labels_path: str = ""
 
     def __call__(self):
         renderer = _renderer(self.model_name, self.renderer_name)
@@ -263,6 +264,10 @@ class TrackASupervisedDatasetBuilder(SupervisedDatasetBuilder):
             if self.include_validation
             else []
         )
+        if self.winner_labels_path:
+            from rl.track_a.harvest import apply_winner_labels
+
+            train = apply_winner_labels(train, self.winner_labels_path)
         return (
             TrackASupervisedDataset(
                 train,

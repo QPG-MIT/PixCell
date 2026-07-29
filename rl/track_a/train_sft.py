@@ -40,6 +40,7 @@ class CLIConfig:
     renderer_name: str = DEFAULT_RENDERER
     load_checkpoint_path: str = ""
     levels: str = "L0"
+    winner_labels_path: str = ""
     lora_rank: int = 32
     learning_rate: float = 1e-4
     lr_schedule: str = "linear"
@@ -90,6 +91,7 @@ async def cli_main(cfg: CLIConfig) -> None:
             max_length=cfg.max_length,
             max_image=cfg.max_image,
             levels=cfg.levels,
+            winner_labels_path=cfg.winner_labels_path,
         ),
         learning_rate=cfg.learning_rate,
         lr_schedule=cfg.lr_schedule,
