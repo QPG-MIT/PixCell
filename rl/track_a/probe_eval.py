@@ -114,10 +114,17 @@ def run_probe(
             temperature=temperature,
         )
     )
+    import os
+
     with PixCellEvaluator(
-        max_workers=max_workers,
-        evaluator_retries=1,
-        require_isolation=True,
+        max_workers=int(os.environ.get("PIXCELL_EVAL_WORKERS", str(max_workers))),
+        evaluator_retries=3,
+        execution_timeout_seconds=float(
+            os.environ.get("PIXCELL_EVAL_TIMEOUT", "20")
+        ),
+        require_isolation=(
+            os.environ.get("PIXCELL_REQUIRE_ISOLATION", "0") == "1"
+        ),
     ) as evaluator:
         results = evaluator.evaluate_batch(
             [(task.reference, completion) for task, completion in zip(tasks, completions)]

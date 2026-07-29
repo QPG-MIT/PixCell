@@ -117,11 +117,22 @@ def _batcher() -> AsyncEvaluationBatcher:
         evaluator = PixCellEvaluator(
             # Several campaigns share one Docker daemon; transient container
             # faults under contention must be retried, not abort a paid
-            # stage. Persistent evaluator faults still abort after the
+            # stage, and the wall timeout must leave headroom so contention
+            # slows a measurement instead of falsifying it as a model
+            # failure. Persistent evaluator faults still abort after the
             # retries are exhausted — no biased zeros either way.
             max_workers=int(os.environ.get("PIXCELL_EVAL_WORKERS", "8")),
             evaluator_retries=3,
-            require_isolation=True,
+            execution_timeout_seconds=float(
+                os.environ.get("PIXCELL_EVAL_TIMEOUT", "20")
+            ),
+            # The load-bearing safety layer is the pre-execution AST source
+            # gate plus subprocess rlimits — the tier the private library's
+            # entire recorded campaign ran on. The Docker tier remains
+            # available (PIXCELL_REQUIRE_ISOLATION=1) for record evals.
+            require_isolation=(
+                os.environ.get("PIXCELL_REQUIRE_ISOLATION", "0") == "1"
+            ),
         )
         _EVALUATION_BATCHER = AsyncEvaluationBatcher(
             evaluator,
@@ -465,7 +476,9 @@ class TrackARLDataset(RLDataset):
         reward_policy: str = "validity_floor",
         schedule_seed: int = 10_000,
         attempt_metadata: Mapping[str, object] | None = None,
+        replay_groups_per_step: int = 0,
     ) -> None:
+        self.replay_groups_per_step = replay_groups_per_step
         self.current_tasks = list(current_tasks)
         self.replay_tasks = list(replay_tasks)
         self.renderer = renderer
@@ -493,6 +506,7 @@ class TrackARLDataset(RLDataset):
             groups_per_batch=self.groups_per_batch,
             schedule_seed=self.schedule_seed,
             shuffle=self.shuffle,
+            replay_groups_per_step=self.replay_groups_per_step,
         )
         return [
             PixCellGroupBuilder(
@@ -540,6 +554,7 @@ class TrackARLDatasetBuilder(RLDatasetBuilder):
     require_prefix_replay: bool = True
     schedule_seed: int = 10_000
     attempt_metadata: Mapping[str, object] | None = None
+    replay_groups_per_step: int = 0
 
     async def __call__(self):
         renderer = _renderer(
@@ -604,6 +619,7 @@ class TrackARLDatasetBuilder(RLDatasetBuilder):
                 reward_policy=self.reward_policy,
                 schedule_seed=self.schedule_seed,
                 attempt_metadata=self.attempt_metadata,
+                replay_groups_per_step=self.replay_groups_per_step,
             ),
             (
                 TrackARLDataset(

@@ -81,9 +81,9 @@ def test_sft_gate_compares_l0_against_base():
     good = {"per_level": {"L0": {"executable_rate": 0.9, "mean_iou": 0.45}}}
     weak_exec = {"per_level": {"L0": {"executable_rate": 0.5, "mean_iou": 0.60}}}
     no_gain = {"per_level": {"L0": {"executable_rate": 0.9, "mean_iou": 0.25}}}
-    assert _sft_gate(base, good)[0] is True
-    assert _sft_gate(base, weak_exec)[0] is False
-    assert _sft_gate(base, no_gain)[0] is False
+    assert _sft_gate(base, good, "L0", relative=False)[0] is True
+    assert _sft_gate(base, weak_exec, "L0", relative=False)[0] is False
+    assert _sft_gate(base, no_gain, "L0", relative=False)[0] is False
 
 
 def test_chaining_uses_training_weights_and_probes_use_sampler(tmp_path):
@@ -100,3 +100,101 @@ def test_chaining_uses_training_weights_and_probes_use_sampler(tmp_path):
         _last_sampler_path(str(tmp_path))
         == "tinker://m:train:0/sampler_weights/final"
     )
+
+
+def test_fork_seeds_l0_and_drops_sft(tmp_path):
+    import json as _json
+
+    from rl.track_a.run import _fork_l0_stage
+
+    source = tmp_path / "src-run"
+    (source / "stages" / "rl-l0").mkdir(parents=True)
+    (source / "stages" / "rl-l0" / "DONE").write_text("ok\n")
+    (source / "stages" / "rl-l0" / "checkpoints.jsonl").write_text(
+        '{"name": "000030", "batch": 30, "state_path": "tinker://m/weights/000030", '
+        '"sampler_path": "tinker://m/sampler_weights/000030"}\n'
+    )
+    (source / "stages" / "rl-l0" / "metrics.jsonl").write_text('{"progress/batch": 29}\n')
+    target = tmp_path / "dst-run"
+    _fork_l0_stage(source, target)
+    assert (target / "stages" / "rl-l0" / "checkpoints.jsonl").exists()
+    assert not (target / "stages" / "rl-l0" / "DONE").exists()
+    fork = _json.loads((target / "provenance" / "fork.json").read_text())
+    assert "rl-l0" in fork["rl_l0_forked_from"]
+
+
+def test_run_e_interleaves_l1_sft_after_forked_l0(tmp_path):
+    stages = build_stages(
+        RUN_PLANS["E"], run_root=tmp_path, wandb_project="pixcell-rl"
+    )
+    assert [stage.name for stage in stages] == [
+        "sft-l0",
+        "rl-l0",
+        "sft-l1",
+        "rl-l1",
+        "rl-l2",
+        "rl-l3",
+        "rl-l4",
+    ]
+    sft_l1 = stages[2]
+    assert sft_l1.args["levels"] == "L1"
+    assert sft_l1.args["num_epochs"] == "1"
+    assert sft_l1.sft_level == "L1"
+    assert RUN_PLANS["E"].fork_from == "runA-l0sft-rl"
+
+
+def test_run_f_uses_fifty_percent_backward_mix(tmp_path):
+    stages = build_stages(
+        RUN_PLANS["F"], run_root=tmp_path, wandb_project="pixcell-rl"
+    )
+    rl_l1 = [stage for stage in stages if stage.name == "rl-l1"][0]
+    assert rl_l1.args["replay_groups_per_step"] == "4"
+    assert not any(stage.name == "sft-l1" for stage in stages)
+
+
+def test_run_g_is_the_full_ladder(tmp_path):
+    stages = build_stages(
+        RUN_PLANS["G"], run_root=tmp_path, wandb_project="pixcell-rl"
+    )
+    names = [stage.name for stage in stages]
+    for level in ("l1", "l2", "l3", "l4"):
+        assert f"sft-{level}" in names and names.index(f"sft-{level}") == names.index(f"rl-{level}") - 1
+
+
+def test_fork_stages_through_seeds_prefix_and_reference(tmp_path):
+    import json as _json
+
+    from rl.track_a.run import _fork_stages_through
+
+    source = tmp_path / "src-run"
+    for name in ("sft-l0", "rl-l0"):
+        d = source / "stages" / name
+        d.mkdir(parents=True)
+        (d / "DONE").write_text("ok\n")
+        (d / "checkpoints.jsonl").write_text(
+            '{"name": "final", "batch": 30, "state_path": "tinker://m/weights/final", '
+            '"sampler_path": "tinker://m/sampler_weights/final"}\n'
+        )
+        (d / "metrics.jsonl").write_text("{}\n")
+    (source / "probes").mkdir()
+    (source / "probes" / "rl-l0.json").write_text('{"per_level": {"L1": {"executable_rate": 0.6, "mean_iou": 0.1}}}')
+    target = tmp_path / "dst-run"
+    _fork_stages_through(source, target, "rl-l0")
+    assert (target / "stages" / "sft-l0" / "DONE").exists()
+    assert (target / "stages" / "rl-l0" / "DONE").exists()
+    origin = _json.loads((target / "probes" / "fork-origin.json").read_text())
+    assert origin["per_level"]["L1"]["executable_rate"] == 0.6
+    fork = _json.loads((target / "provenance" / "fork.json").read_text())
+    assert fork["stages"] == ["sft-l0", "rl-l0"]
+
+
+def test_relative_gate_allows_small_exec_loss_but_demands_iou_gain():
+    from rl.track_a.run import _sft_gate
+
+    reference = {"per_level": {"L1": {"executable_rate": 0.60, "mean_iou": 0.10}}}
+    better = {"per_level": {"L1": {"executable_rate": 0.55, "mean_iou": 0.16}}}
+    lost_exec = {"per_level": {"L1": {"executable_rate": 0.40, "mean_iou": 0.30}}}
+    no_gain = {"per_level": {"L1": {"executable_rate": 0.70, "mean_iou": 0.08}}}
+    assert _sft_gate(reference, better, "L1", relative=True)[0] is True
+    assert _sft_gate(reference, lost_exec, "L1", relative=True)[0] is False
+    assert _sft_gate(reference, no_gain, "L1", relative=True)[0] is False

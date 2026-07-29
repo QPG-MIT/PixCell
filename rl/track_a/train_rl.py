@@ -53,6 +53,7 @@ class CLIConfig:
     save_every: int = 5
     validation_canaries: int = 40
     reward_policy: str = "shaped_v3b"
+    replay_groups_per_step: int = 0
     log_path: str = str(_TRACK_ROOT / "runs" / "track-a-rl")
     loss_fn: LossFnType = "importance_sampling"
     wandb_project: str = ""
@@ -93,6 +94,7 @@ async def cli_main(cfg: CLIConfig) -> None:
             replay_levels=",".join(replay_levels),
             validation_canaries=cfg.validation_canaries,
             reward_policy=cfg.reward_policy,
+            replay_groups_per_step=cfg.replay_groups_per_step,
         ),
         model_name=cfg.model_name,
         recipe_name="pixcell_track_a_rl",

@@ -38,6 +38,7 @@ class CLIConfig:
     dataset_root: str = str(_DATASET_ROOT)
     model_name: str = DEFAULT_MODEL
     renderer_name: str = DEFAULT_RENDERER
+    load_checkpoint_path: str = ""
     levels: str = "L0"
     lora_rank: int = 32
     learning_rate: float = 1e-4
@@ -92,6 +93,7 @@ async def cli_main(cfg: CLIConfig) -> None:
         ),
         learning_rate=cfg.learning_rate,
         lr_schedule=cfg.lr_schedule,
+        load_checkpoint_path=cfg.load_checkpoint_path or None,
         num_epochs=cfg.num_epochs,
         lora_rank=cfg.lora_rank,
         adam_beta1=0.9,
