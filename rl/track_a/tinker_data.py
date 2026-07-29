@@ -96,7 +96,23 @@ def _renderer(
     effort: float | None = None,
 ):
     if model_name == "thinkingmachines/Inkling":
-        raise ValueError("Inkling is out of scope for the Track A campaign")
+        # Re-scoped in for the bounded L4 RL-only arm (user direction,
+        # 2026-07-29): RL under the shaped reward was designed but never
+        # actually run on Inkling in either prior campaign.
+        if renderer_name != "tml_v0" or effort is None:
+            raise ValueError(
+                "Inkling requires renderer_name='tml_v0' and explicit effort"
+            )
+        from rl.track_b.tml_shim import install_inkling_runtime
+
+        install_inkling_runtime(effort=effort)
+        tokenizer = get_tokenizer(model_name)
+        return get_renderer(
+            renderer_name,
+            tokenizer,
+            None,
+            model_name=model_name,
+        )
     if effort is not None:
         raise ValueError("effort is not a Qwen sampling knob")
     tokenizer = get_tokenizer(model_name)

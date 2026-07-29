@@ -40,6 +40,7 @@ class CLIConfig:
     dataset_root: str = str(_DATASET_ROOT)
     model_name: str = DEFAULT_MODEL
     renderer_name: str = DEFAULT_RENDERER
+    model_effort: float = -1.0
     load_checkpoint_path: str = ""
     current_level: str = "L0"
     lora_rank: int = 32
@@ -89,6 +90,7 @@ async def cli_main(cfg: CLIConfig) -> None:
             group_size=cfg.group_size,
             model_name=cfg.model_name,
             renderer_name=cfg.renderer_name,
+            model_effort=cfg.model_effort if cfg.model_effort >= 0 else None,
             max_image=1440,
             current_level=current,
             replay_levels=",".join(replay_levels),
