@@ -827,19 +827,22 @@ T(c) &= \exp\left[-\frac{c}{0.05d}\right],\\
 B(c) &= \frac{\max\{0,T(c)-T(c_{\mathrm{rect}})\}}
 {\max\{1-T(c_{\mathrm{rect}}),0.3\}}.
 \end{align*}
+\begin{subequations}\label{eq:rlreward}
 \begin{samepage}
 For $x_0=1$, $N(x;x_0)$ is defined as zero. When
 $J_{\mathrm{rect}}<0.95$, the training reward is
 \begin{align}
 R ={}& 0.05 + 0.40N(J;J_{\mathrm{rect}}) \nonumber\\
 &+ 0.15N(D;D_{\mathrm{rect}}) + 0.40B(c).
-\label{eq:rlreward}
+\label{eq:rlreward-general}
 \end{align}
 \end{samepage}
 For rectangle-like targets with $J_{\mathrm{rect}}\geq0.95$, the reward is
-\[
+\begin{equation}
 R = 0.05 + 0.40J + 0.15D + 0.40T(c).
-\]
+\label{eq:rlreward-rectangle}
+\end{equation}
+\end{subequations}
 The rectangle baseline removes geometric credit for filling the target
 bounding box. The boundary term provides a signal for count and boundary
 changes that may not yet improve overlap.
@@ -887,83 +890,51 @@ show that executable geometric rewards improve program generation across the
 representation curriculum while leaving substantial room between the trained
 policy and the coding agents of Sec.~\ref{sec:results}.
 
-\section{Research contracts}\label{sec:conclusion}
+\section{Conclusion and research contracts}\label{sec:conclusion}
 
-The same separation between open-ended search and deterministic measurement
-also structures follow-on work. A research contract freezes five elements
-before execution: a question, acceptance tests, required evidence, a verdict
-procedure, and a claim boundary. Researchers or agents choose how to pursue
-the objective; an independent gate settles it by recomputing the declared
-measurements from retained artifacts. Four contracts are currently open:
-RC-01, shape-aware visual verification; RC-02, process-faithful 2D-to-3D
-retargeting; RC-03, a representation and scale dataset; and RC-04, the
-smallest qualifying open model. Complete gates, evidence manifests, failure
-taxonomies, claim boundaries, and bounty terms are versioned under
-\texttt{research-contracts/}. Through the
-\href{https://pixcell.qpaig.com/\#research-contracts}{PixCell project page},
-a researcher or agent can inspect the frozen terms, claim a funded contract,
-work against the released PixCell environment and versioned fixtures, and
-submit the required evidence bundle. The marketplace maintains live claim
-state and funding; issuer-side recomputation determines settlement.
+PixCell establishes a visual-to-executable interface for photonic component
+creation. Multimodal coding agents recover parametric programs from calibrated
+silhouettes, deterministic verification makes those programs measurable, and
+their live variables connect reconstruction to cross-stack evaluation. The
+same executable relationship enables synthetic dataset creation and
+verifier-derived training. These results connect representation, verification,
+retargeting, simulation, and training through one program interface.
 
-PixCell formulates visual photonic component authoring as executable program
-synthesis under deterministic verification. Across 26 coding-agent
-configurations and eight blind targets, the system produces 208 programs,
-of which 193 satisfy the source contract. The strongest configurations
-reach mean IoU values of $0.974$ and $0.955$. The iterative API record
-explains why verification matters beyond final scoring: only $12.7\%$ of
-first seeds are best, and best-of-five revision improves $18.3\%$ over the
-first turn. A cheap verifier turns additional inference into a controlled
-choice among executable artifacts.
+The results leave four research directions that matter directly to what
+PixCell can establish. We release them as research contracts. The paper records
+their purpose, while the versioned contract files define the current tests,
+evidence requirements, and claim boundaries:
+\begin{enumerate}
+\item \textbf{RC-01, shape-aware visual verification,} extends geometric scoring so
+structurally correct reconstructions can be separated from visually similar
+shortcuts. This matters because verification guides reconstruction, selection,
+and training throughout PixCell.
+\item \textbf{RC-02, process-faithful 2D-to-3D retargeting,} carries editable programs
+into fuller stack and fabrication models. This connects the parametric freedom
+demonstrated in Sec.~\ref{sec:pdk} to physical conclusions beyond
+simplified two-dimensional geometry.
+\item \textbf{RC-03, representation and scale dataset,} expands the data linking
+topology, physical-scale evidence, and executable construction. This supports
+controlled study of what a model learns from pixels, calibration, and program
+structure.
+\item \textbf{RC-04, smallest qualifying open model,} maps how model scale
+affects reconstruction across the representation curriculum. This extends the
+single open-weight training lineage studied here towards smaller,
+reproducible systems.
+\end{enumerate}
 
-The principal value of the output is its representation. A reconstructed
-program records how geometry is assembled and exposes coordinates that can
-be changed after visual matching. Both MZI reconstructions use this freedom
-to fold the delay path and meet the $8.0$\,nm FSR and footprint gates on
-three stack models. Fixed polygons fail every off-diagonal transfer. The
-broader fixed-interface experiment is deliberately balanced: reconstructed
-programs pass 21 of 30 cases and library PCells pass 22, with 23 paired
-agreements. Neither representation class dominates. Retargetability follows
-from the reachable geometries exposed by a particular program.
-
-Physical evaluation determines what can be claimed about those geometries.
-The analytic evaluator predicts the tested MZI fringe spacing within
-$2.9\%$ of broadband FDTD, yet overestimates the SiN directional-coupler
-ratio by $5.5\times$. Sidewall tilt then changes the coupler response by
-nearly its full range while a mirror-symmetric splitter remains balanced
-within $0.0072$. These results define a hierarchy of evidence: calibrated
-IoU verifies reconstruction, local solvers support inexpensive
-retargeting, and full-wave models test optical behavior and fabrication
-variables that the two-dimensional layout does not contain.
-
-The same executable verifier supplies a training reward. Run B adapts
-Qwen3.6-35B-A3B from its raw base checkpoint through 150 GRPO steps without
-supervised demonstrations or critic feedback. A direct draw on the
-training-excluded paper figures reaches mean IoU $0.228$ and mean
-best-of-eight IoU $0.467$. In the attempt-measure-revise loop, mean champion
-IoU rises from $0.422$ after the initial attempts to $0.491$ after three
-revision rounds. This establishes that deterministic geometric rewards can
-produce cross-figure transfer in an open-weight model. The record contains
-one training lineage and does not estimate variation across independent
-training runs.
-
-The current evidence covers eight components, one retained
-coding-agent run per matrix cell, simplified stack models, and selected
-full-wave fixtures. F8 also lacks a recovered bibliographic source. The next
-experiments should add replicated agent runs, broader and fully sourced
-component families, typed port and connectivity checks, enforced foundry
-rules, anisotropic material models, and untouched training evaluations.
-These extensions preserve and strengthen the central mechanism: agents
-search over executable component programs, while deterministic tools measure
-the resulting artifacts.
-
-PixCell therefore establishes a visual interface to photonic component
-creation that remains compatible with programmatic circuit design. The
-agent recovers an editable construction from pixels, the conductor verifies
-it at absolute physical scale, and the resulting variables connect visual
-reconstruction to stack-specific evaluation and learning. This combination
-provides a practical foundation for multimodal agents that author, test, and
-retarget photonic components through code.
+The current versioned terms, evidence requirements, and executable verdict
+logic for these directions are released under
+\href{https://github.com/QPG-MIT/PixCell/tree/main/research-contracts}
+{\texttt{research-contracts/}}. The
+\href{https://pixcell.qpaig.com/\#research-contracts}{PixCell project page}
+shows live funding and claim state, links each specification, and provides the
+claim controls. A claimant signs in through GitHub and selects an available
+contract, or opens a claim-request issue in the repository. Issuer-side
+recomputation of the required evidence determines settlement. The contracts
+therefore extend PixCell's central separation to follow-on work: researchers
+and agents choose how to search, while frozen evidence and independent
+recomputation determine what can be claimed.
 
 \paragraph*{Data and code availability.} The PixCell implementation,
 benchmark fixtures, 208 reconstruction programs, conductor measurements,
