@@ -18,7 +18,6 @@ the deterministic evaluator; nothing model-reported enters the record.
 | `bench/b-final.json` | same | released model: 39/64 executable, mean IoU 0.228, best-of-8 0.467 |
 | `bench/a-post-l1.json`, `bench/d-post-l0.json` | same | mid-campaign controls (L0-SFT arm after L1; thinking arm after L0) |
 | `agentloop/b-final.json` | attempt–measure–revise loop: 8 attempts, then 3 rounds × 4 revisions of the champion under number-free feedback | **mean champion IoU 0.491**; includes every champion program and per-round trajectory |
-| `gallery/` | champion programs re-executed, re-rendered, re-diffed | per device: `*.program.py`, `*.target.png`, `*.render.png`, `*.diff.png`; `gallery.png` composite; `manifest.json` |
 
 The agent loop is the deployment protocol — the released model is the
 searcher inside that loop, and 0.491 is its number. The single-pass benchmark
@@ -32,7 +31,8 @@ uv run python -m rl.track_a.agent_loop     --model-path <checkpoint> --out agent
 uv run python -m rl.track_a.make_gallery   --champions agentloop.json --out-dir gallery/
 ```
 
-`make_gallery` re-executes each stored champion program from source and
-re-renders it against the frozen `data/benchmark` fixtures, so the gallery
-(and its `manifest.json` IoUs) can be regenerated from this record alone,
-no checkpoint required.
+The render gallery (per device: target | champion render | difference map)
+is not stored here: `make_gallery` re-executes each stored champion program
+from source and re-renders it against the frozen `data/benchmark` fixtures,
+so it regenerates from this record alone, no checkpoint required. The
+composite ships on the [model card](https://huggingface.co/qpaig-mit/pixcell).

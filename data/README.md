@@ -31,9 +31,10 @@ later runs the trajectories also carry).
 
 `training/qwen-rl-v2/` is the validated evidence for the released model
 ([`qpaig-mit/pixcell`](https://huggingface.co/qpaig-mit/pixcell), a GRPO-trained
-LoRA for Qwen3.6-35B-A3B): the F1–F8 benchmark records, the
-attempt–measure–revise deployment-loop record with every champion program, and
-the re-executed render gallery. Its README maps each number to its file.
+LoRA for Qwen3.6-35B-A3B): the F1–F8 benchmark records and the
+attempt–measure–revise deployment-loop record with every champion program;
+the render gallery regenerates from it (`rl/track_a/make_gallery.py`). Its
+README maps each number to its file.
 `training/representation-curriculum-v1/` preserves superseded Qwen and Inkling
 diagnostic runs. Those runs used the retired v1 direct prompt contract and are
 not canonical baselines or paper results. Their protocol and artifacts remain
@@ -143,7 +144,7 @@ Every number in the paper's Results, mapped to its backing file.
 The repository contains the training recipes under `rl/`, the derived
 paper table and gallery under `arxiv/`, and the validated evidence for the
 released model under `training/qwen-rl-v2/` (benchmark JSONs, deployment-loop
-record, champion programs, gallery). Raw step-level training ledgers and
+record, champion programs). Raw step-level training ledgers and
 checkpoints stay outside the repository; the released adapter itself is
 [`qpaig-mit/pixcell`](https://huggingface.co/qpaig-mit/pixcell).
 

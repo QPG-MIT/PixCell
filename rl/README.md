@@ -89,8 +89,9 @@ Deployed as intended — inside the attempt–measure–revise loop
 ([`track_a/agent_loop.py`](track_a/agent_loop.py): 8 attempts, then 3 rounds
 of 4 champion revisions under number-free verifier feedback) — it reaches
 **mean champion IoU 0.491**. The validated evidence (benchmark records, loop
-trajectories, champion programs, render gallery) is versioned in
-[`data/training/qwen-rl-v2/`](../data/training/qwen-rl-v2/).
+trajectories, champion programs) is versioned in
+[`data/training/qwen-rl-v2/`](../data/training/qwen-rl-v2/); the render
+gallery regenerates from it via [`track_a/make_gallery.py`](track_a/make_gallery.py).
 
 The SFT-seeded arms (Run A and every fork from its checkpoints) entered RL
 with low policy entropy and collapsed terminally within ~50–60 RL steps; the
