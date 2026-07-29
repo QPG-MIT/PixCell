@@ -1,27 +1,29 @@
 \begin{table}[t]
-\caption{\textbf{Isolated second-draw evaluation of the primary training
-lineage.} Eight attempts per target at temperature $1.0$. Executable counts
-programs that produce a scored GDS; mean IoU averages the eight attempts and
-best of 8 retains the highest.}
+\caption{\textbf{Run B evaluation on the training-excluded F1--F8 targets.}
+The single-pass draw contains eight independent attempts per target at
+temperature $1.0$. Mean IoU includes failed programs as zero and best of 8
+retains the highest. The iterative champion comes from a separate
+eight-attempt draw followed by three rounds of four revisions under
+number-free verifier feedback.}
 \label{tab:rl}
 \begingroup
-\footnotesize
-\setlength{\tabcolsep}{7.0pt}
+\scriptsize
+\setlength{\tabcolsep}{3.2pt}
 \renewcommand{\arraystretch}{1.06}
 \begin{ruledtabular}
-\begin{tabular}{@{}lccc@{}}
-Device & Executable & Mean IoU & Best of 8 \\
+\begin{tabular}{@{}lcccc@{}}
+Device & Executable & Mean IoU & Best of 8 & Iterative \\
 \colrule
-F1 & 7/8 & 0.248 & 0.440 \\
-F2 & 7/8 & 0.396 & 0.599 \\
-F3 & 8/8 & 0.193 & 0.451 \\
-F4 & 5/8 & 0.347 & 0.637 \\
-F5 & 1/8 & 0.031 & 0.246 \\
-F6 & 5/8 & 0.215 & 0.557 \\
-F7 & 7/8 & 0.209 & 0.303 \\
-F8 & 8/8 & 0.393 & 0.497 \\
+F1 & 7/8 & 0.247 & 0.436 & 0.518 \\
+F2 & 8/8 & 0.429 & 0.523 & 0.507 \\
+F3 & 4/8 & 0.082 & 0.214 & 0.336 \\
+F4 & 5/8 & 0.314 & 0.663 & 0.651 \\
+F5 & 3/8 & 0.063 & 0.244 & 0.293 \\
+F6 & 3/8 & 0.202 & 0.643 & 0.716 \\
+F7 & 2/8 & 0.110 & 0.483 & 0.489 \\
+F8 & 7/8 & 0.375 & 0.526 & 0.418 \\
 \colrule
-All / mean & 48/64 & 0.254 & 0.466 \\
+All / mean & 39/64 & 0.228 & 0.467 & 0.491 \\
 \end{tabular}
 \end{ruledtabular}
 \endgroup
