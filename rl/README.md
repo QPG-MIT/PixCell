@@ -70,12 +70,32 @@ ids) is evaluated at campaign start — the base-model baseline — and after
 every stage, so every point on the curve is comparable. SFT arms must beat
 the base probe on L0 before RL spends anything.
 
-Requirements: `TINKER_API_KEY`, `WANDB_API_KEY`, and the immutable sandbox
-image (`PIXCELL_EVALUATOR_IMAGE`, built by [`common/sandbox/build.py`](common/sandbox/build.py)).
-Run artifacts land outside the repository (default
-`/Volumes/aadarwal_vx/QPG-MIT/PixCell-training/runs-v2/`); W&B project
-`pixcell-rl`. The pinned environment is [`requirements-lock.txt`](requirements-lock.txt)
-/ [`stack.json`](stack.json).
+Requirements: `TINKER_API_KEY` and `WANDB_API_KEY`. Candidate programs
+execute behind an AST source gate in a resource-limited subprocess by
+default; set `PIXCELL_REQUIRE_ISOLATION=1` to demand the Docker tier
+(image named by `PIXCELL_EVALUATOR_IMAGE`, built by
+[`common/sandbox/build.py`](common/sandbox/build.py)). Run artifacts land
+outside the repository (default `~/pixcell-training/runs-v2/`, override with
+`--runs-root`); W&B project `pixcell-rl`. The pinned environment is
+[`requirements-lock.txt`](requirements-lock.txt) / [`stack.json`](stack.json).
+
+## Result — the released model
+
+Run B ran to completion (150 GRPO steps, L0→L4) and is the released model:
+[`qpaig-mit/pixcell`](https://huggingface.co/qpaig-mit/pixcell). On the
+held-out F1–F8 benchmark (8 attempts at T=1.0) it scores mean IoU 0.228 and
+best-of-8 0.467, from a base model that produced 0 executable attempts in 64.
+Deployed as intended — inside the attempt–measure–revise loop
+([`track_a/agent_loop.py`](track_a/agent_loop.py): 8 attempts, then 3 rounds
+of 4 champion revisions under number-free verifier feedback) — it reaches
+**mean champion IoU 0.491**. The validated evidence (benchmark records, loop
+trajectories, champion programs, render gallery) is versioned in
+[`data/training/qwen-rl-v2/`](../data/training/qwen-rl-v2/).
+
+The SFT-seeded arms (Run A and every fork from its checkpoints) entered RL
+with low policy entropy and collapsed terminally within ~50–60 RL steps; the
+thinking pair (C/D) was still mid-campaign at release time and is not part
+of this record.
 
 ## Preflight
 
