@@ -2,7 +2,9 @@
 
 *From Pixels to PCells: A Neurosymbolic Approach to Photonic Component Creation* ([arXiv:XXXX.XXXXX](https://arxiv.org/abs/XXXX.XXXXX))
 
-https://github.com/user-attachments/assets/cfb10bed-8854-48a5-a326-6e8657b4e34a
+
+https://github.com/user-attachments/assets/d917f8d8-b2de-4ab5-beec-8f414d1154a6
+
 
 ## Install
 
