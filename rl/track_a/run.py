@@ -50,7 +50,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DATASET_ROOT = _REPO_ROOT / "dataset"
 
 CONFIRM_SPEND = "PIXCELL_RUNS_V2"
-DEFAULT_RUNS_ROOT = "/Volumes/aadarwal_vx/QPG-MIT/PixCell-training/runs-v2"
+DEFAULT_RUNS_ROOT = "~/pixcell-training/runs-v2"
 FALLBACK_RUNS_ROOT = "~/pixcell-training/runs-v2"
 
 SFT_GATE_MIN_EXECUTABLE = 0.75
