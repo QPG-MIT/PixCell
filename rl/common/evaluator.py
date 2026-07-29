@@ -804,10 +804,19 @@ class PixCellEvaluator:
                     boundary_mask(target_mask),
                     2.0 / (scale_x + scale_y),
                 )
+                _full, full_a_to_b, full_b_to_a = chamfer_sym_um(
+                    raster_mask, target_mask, 2.0 / (scale_x + scale_y)
+                )
                 metrics = {
                     **metrics,
                     "chamfer_boundary_um": (
                         None if chamfer_b == float("inf") else float(chamfer_b)
+                    ),
+                    "chamfer_pred_to_target_um": (
+                        None if full_a_to_b == float("inf") else float(full_a_to_b)
+                    ),
+                    "chamfer_target_to_pred_um": (
+                        None if full_b_to_a == float("inf") else float(full_b_to_a)
                     ),
                 }
                 diagnostics = _json_diagnostic(
