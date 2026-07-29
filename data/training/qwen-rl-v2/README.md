@@ -34,5 +34,4 @@ uv run python -m rl.track_a.make_gallery   --champions agentloop.json --out-dir 
 The render gallery (per device: target | champion render | difference map)
 is not stored here: `make_gallery` re-executes each stored champion program
 from source and re-renders it against the frozen `data/benchmark` fixtures,
-so it regenerates from this record alone, no checkpoint required. The
-composite ships on the [model card](https://huggingface.co/qpaig-mit/pixcell).
+so it regenerates from this record alone, no checkpoint required.
