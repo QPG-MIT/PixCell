@@ -894,22 +894,22 @@ policy and the coding agents of Sec.~\ref{sec:results}.
 \section{Conclusion and research contracts}\label{sec:conclusion}
 
 PixCell establishes a visual-to-executable interface for photonic component
-creation. Multimodal coding agents recover parametric programs from calibrated
-silhouettes, deterministic verification makes those programs measurable, and
-their live variables connect reconstruction to cross-stack evaluation. The
-same executable relationship enables synthetic dataset creation and
-verifier-derived training. These results connect representation, verification,
-retargeting, simulation, and training through one program interface.
-
-The results leave four research directions that matter directly to what
-PixCell can establish. We release them as research contracts. The paper records
-their purpose, while the versioned contract files define the current tests,
-evidence requirements, and claim boundaries:
+creation where multimodal agents can successfully represent visual inputs as
+parametric code composed of geometric primitives. The deterministic
+verification metric makes those programs measurable, and their parametric
+nature connects reconstruction to cross-stack evaluation and the possibility
+of PDK retargeting. This interface also enables synthetic dataset creation and
+verifier-derived training. As a result, we have connected representation,
+verification, retargeting, simulation, and training through one program
+interface. The results leave four research directions that matter directly to
+what PixCell can establish. We release them as research contracts, with the
+versioned contract files defining the current tests, evidence requirements,
+and claim boundaries:
 \begin{enumerate}
 \item \textbf{RC-01, shape-aware visual verification,} extends geometric scoring so
 structurally correct reconstructions can be separated from visually similar
-shortcuts. This matters because verification guides reconstruction, selection,
-and training throughout PixCell.
+shortcuts. Verification guides reconstruction, selection, and training
+throughout PixCell, and so better verification metrics are crucial.
 \item \textbf{RC-02, process-faithful 2D-to-3D retargeting,} carries editable programs
 into fuller stack and fabrication models. This connects the parametric freedom
 demonstrated in Sec.~\ref{sec:pdk} to physical conclusions beyond
@@ -927,28 +927,22 @@ reproducible systems.
 The current versioned terms, evidence requirements, and executable verdict
 logic for these directions are released under
 \href{https://github.com/QPG-MIT/PixCell/tree/main/research-contracts}
-{\texttt{research-contracts/}}. The
-\href{https://pixcell.qpaig.com/\#research-contracts}{PixCell project page}
+{\texttt{research-contracts/}} in the PixCell repository. The
+\href{https://pixcell.qpaig.com/\#research-contracts}{PixCell webpage}
 shows live funding and claim state, links each specification, and provides the
-claim controls. A claimant signs in through GitHub and selects an available
-contract, or opens a claim-request issue in the repository. Issuer-side
-recomputation of the required evidence determines settlement. The contracts
-therefore extend PixCell's central separation to follow-on work: researchers
-and agents choose how to search, while frozen evidence and independent
-recomputation determine what can be claimed.
+claim controls. Importantly, our recomputation of the required evidence
+determines settlement of these contracts.
 
 \paragraph*{Data and code availability.} The PixCell implementation,
 benchmark fixtures, 208 reconstruction programs, conductor measurements,
 worker transcripts, retargeting records, simulation inputs and result
 matrices, training recipes, and figure-generation scripts are released at
 \url{https://github.com/QPG-MIT/PixCell}. The repository maps claims to
-artifacts in \texttt{data/README.md}; large FDTD fields and render rasters
+artifacts in \texttt{data/README.md}. Large FDTD fields and render rasters
 are indexed by a checksummed external-bundle manifest. The frozen synthetic
 curriculum is released at
 \url{https://huggingface.co/datasets/qpaig-mit/pixcell} under revision
-\texttt{v2.0.0}. Derived training tables and figure assets are included,
-while the full attempt and run ledgers are designated for the companion
-training artifact release.
+\texttt{v2.0.0}. Derived training tables and figure assets are included.
 
 \begin{acknowledgments}
 Artificial Intelligence, particularly Claude Opus 4.8, Fable 5, and ChatGPT
