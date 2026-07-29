@@ -409,11 +409,11 @@ conductor-verified artifact measurements enter the record.
 
 \section{Results}\label{sec:results}
 
-The two harnesses measure complementary uses of the same verifier. The
-iterative API campaign measures selection across seeds and revision turns.
-The coding-agent campaign measures one retained program in every cell of a
-balanced configuration-by-target matrix. Raw IoU reports geometric
-agreement; $U$ additionally assigns zero to source-violating programs.
+Our two harnesses measure complementary uses of the same verifier. While the
+iterative API campaign measures selection across seeds and revision turns,
+the coding-agent campaign measures one retained program in every cell of a
+balanced configuration-by-target matrix. Raw IoU reports geometric agreement
+and $U$ additionally assigns zero to source-violating programs.
 
 \subsection{Verifier-guided sampling and revision}\label{sec:june}
 
@@ -431,7 +431,16 @@ The same pattern is visible in individual artifacts
 $0.360$ to $0.868$. One F6 seed follows the non-monotone sequence
 $0.72\to0.63\to0.57\to0.80\to0.975$. Verification therefore supplies both
 the ranking needed to allocate inference and the spatial residual needed to
-revise a candidate.
+revise a candidate. Despite these gains from the selection and revision
+process, the mean best-turn IoU remained $0.416$, and the external pipeline
+was compelled to coordinate multiple samples, execution, ranking, and
+feedback. While this direction could have been furthered, we generally found
+that the large number of seeds and iterations needed to make meaningful
+progress across these targets still produced only mediocre scores and, more
+importantly, was inefficient in both tokens and time. This motivated the
+coding-agent campaign, in which each model controls its own
+execute-measure-revise loop through the same verifier, with the data in the
+benchmark (Fig.~\ref{fig:emergence}) validating this direction.
 
 \begin{figure*}[t]
 \centering
@@ -452,8 +461,9 @@ all eight targets, producing 208 independently rescored programs
 (Fig.~\ref{fig:emergence}). Fable~5 at max effort reaches the highest mean
 IoU, $0.974$, followed by Opus~5 at max effort with $0.955$ and Fable~5 at
 medium effort with $0.952$. All three are source-compliant in every cell, so
-their raw means equal $U$. Across the full matrix, 22 of 26 configurations
-reach $U\geq0.64$.
+their raw means equal $U$. Across the full matrix, twenty-two of the 26
+configurations are source-compliant on all eight targets, so each has raw
+mean IoU equal to $U$.
 
 \begin{figure*}[t]
 \centering
@@ -482,10 +492,18 @@ material, and black target-only material.}
 
 \subsection{Configuration and target effects}\label{sec:capability}
 
-The eight-target design provides breadth across geometry but no replicated
-seeds within a benchmark cell. Bootstrap intervals over devices therefore
-measure variation across the observed targets. The $95\%$ intervals are
-$0.974~[0.952,0.991]$ for Fable~5 max and
+Each configuration was evaluated once on each of eight targets, so the
+benchmark does not estimate run-to-run variability. The reported bootstrap
+intervals resample targets and therefore summarize sensitivity to target
+choice without claiming any stochastic uncertainty within a
+configuration-target pair. Rather than focusing on the depth of the benchmark
+and the extent of figures covered, we felt that the more important question
+was whether we could prove that such capabilities had emerged in these
+multimodal agents. In particular, we want to focus on what these results imply
+for systems that can visually create parametric components, both in terms of
+PDK retargeting and the future of training models for photonic design
+automation. For the results in Fig.~\ref{fig:emergence}, the $95\%$ intervals
+are $0.974~[0.952,0.991]$ for Fable~5 max and
 $0.955~[0.914,0.987]$ for Opus~5 max.
 
 Performance varies substantially by target (Fig.~\ref{fig:emergence}(b)). F3
@@ -493,8 +511,7 @@ and F5 remain the lowest-mean targets at $0.695$ and $0.660$. F3 spans
 $0.019$--$0.967$ across configurations, while F8 spans $0.058$--$0.986$.
 No configuration wins all eight targets: the highest-mean configuration
 wins four, while GPT-5.5 medium, GPT-5.5 high, and Opus~5 max lead at least
-one of the others. The matrix therefore contains substantial
-configuration-by-target structure beyond the row means.
+one of the others.
 
 Higher configured reasoning effort is associated with higher mean IoU in
 most within-family ladders, although the relation is not uniformly
@@ -505,27 +522,28 @@ while GPT-5.6 terra peaks at xhigh and declines slightly at ultra.
 
 Source compliance separates several configurations with similar raw
 geometric scores. In total, 193 of 208 programs satisfy the source gate.
-All 104 extension programs are compliant. The 15 violations occur in four
-original configurations: 2 of 8 Opus-4.5 cells, 3 of 8 Sonnet-4.5 cells,
-4 of 8 Haiku-4.5-high cells, and 6 of 8 Haiku-4.5-medium cells. Every
-flagged program contains prohibited \texttt{add\_polygon} calls.
+The 15 violations occur in four configurations: 2 of 8 Opus-4.5 cells, 3 of
+8 Sonnet-4.5 cells, 4 of 8 Haiku-4.5-high cells, and 6 of 8 Haiku-4.5 medium
+cells. Every flagged program contains prohibited \texttt{add\_polygon} calls.
+Fundamentally, however, the coding-agent results are not Pass@$k$
+benchmarking results. We again wish to underscore that the results in this
+section focus less on superiority within model classes than on the emergence
+of this intelligence capability and the questions motivated by such an
+ability. As a result, Section~\ref{sec:pdk} focuses on whether these retained
+variables support process-specific physical retargeting as a viable aspect of
+such multimodal photonic design automation.
 
 \subsection{Runtime and cost}\label{sec:inference}
 
 The cost axis in Fig.~\ref{fig:emergence}(a) converts measured token buckets
 to the published list-price equivalent under one frozen rate
-card~\cite{openai_pricing,anthropic_pricing}. The
-tested frontier spans more than two orders of magnitude. GPT-5.6 terra at
-ultra effort reaches $U=0.900$ at a median $\$0.317$ per target; GPT-5.6 sol
-at ultra reaches $0.934$ at $\$3.121$; Fable~5 at medium reaches $0.952$ at
-$\$4.766$; and Fable~5 at max reaches $0.974$ at $\$52.452$. Opus~5 max
-reaches $0.955$ at $\$28.405$. Additional compute is therefore one route to
-higher performance, but model choice and target geometry materially affect
-the return.
-
-The benchmark establishes high-fidelity, source-compliant reconstruction
-under the tested program language. Section~\ref{sec:pdk} next asks whether
-the retained variables support process-specific physical retargeting.
+card~\cite{openai_pricing,anthropic_pricing}. The tested frontier spans more
+than two orders of magnitude, with GPT-5.6 terra ultra reaching $U=0.900$ at
+a median $\$0.317$ per target, GPT-5.6 sol ultra reaching $0.934$ at
+$\$3.121$, Fable~5 medium reaching $0.952$ at $\$4.766$, Fable~5 at max
+reaching $0.974$ at $\$52.452$, and Opus~5 max reaching $0.955$ at
+$\$28.405$. Additional compute is therefore one route to higher performance,
+but model choice and target geometry materially affect the return.
 
 \section{Retargeting across stack models}\label{sec:pdk}
 
