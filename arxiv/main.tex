@@ -40,41 +40,32 @@
 \author{Dirk Englund}
 \affiliation{Research Laboratory of Electronics, Massachusetts Institute of Technology, Cambridge, Massachusetts 02139, USA}
 
-\date{\today}
+\date{July 29, 2026}
 
 \begin{abstract}
 We present PixCell, a neurosymbolic system in which multimodal agents convert
-a visually presented photonic component into a parametric program over a
-small domain-specific language (DSL) of geometric primitives. Each component
-is verified by a deterministic visual metric (IoU/SSE) whose evaluation is
-asymmetrically cheaper than the generation attempt. While models using
-multi-seed sampling and iterative revision reach a mean best-turn IoU of only
-$0.416$,
-state-of-the-art multimodal agents operating directly through PixCell's
-executable interface and verifier consistently exceed $0.9$ mean IoU. The two
-strongest configurations reach $0.974$ and $0.955$ across eight blind
-component targets while satisfying the source contract for every target.
-These results demonstrate that frontier multimodal agents can reliably
-recover executable parametric representations from visual targets. The
-created program also exposes the live variables available for downstream
-design. In a cross-stack interferometer study, two reconstructed primitive
-programs satisfy an $8.0\,$nm free spectral range target and the original
-footprint constraint on modeled 220-nm silicon-on-insulator (SOI), 400-nm
-silicon nitride (SiN), and 400-nm thin-film lithium niobate (TFLN) stacks. A
-generic library Mach--Zehnder interferometer (MZI) reaches the spectral target
-but exceeds the footprint on all three stacks because its exposed coordinates
-cannot realize the required path length within the available area. PixCell
-further carries a paper-derived splitter from visual reconstruction through
-SOI full-wave simulation, producing symmetric propagation and balanced
-outputs. Separate full-wave audits expose the quantitative limits of
-inexpensive analytic models. Finally, the same executable verifier supplies a
-training reward and dataset used to train a Qwen3.6-35B-A3B model from its raw
-base checkpoint with low-rank adaptation (LoRA) and group relative policy
-optimization (GRPO), without supervised demonstrations. On eight
-training-excluded paper figures, its mean champion IoU rises from $0.422$
-after eight initial attempts to $0.491$ after three verifier-guided revision
-rounds. These results therefore establish a controlled framework for measuring,
-retargeting, and improving visual-to-parametric photonic component design.
+a visually presented photonic component into a parametric program over a small
+domain-specific language (DSL) of geometric primitives. A system enabling
+deterministic visual verification renders evaluation asymmetrically cheaper
+than the generation attempt. While models using multi-seed sampling and
+iterative revision reach a mean best-turn IoU of only $0.416$, multimodal
+agents through PixCell's interface and verifier consistently exceed $0.9$ mean
+IoU, with scores reaching $0.974$ and $0.955$ across eight component targets
+while also satisfying source contracts. These results demonstrate that frontier
+multimodal agents can reliably understand and render executable parametric
+representations from visual targets. Using these live parameters, cross-stack
+studies on an interferometer reconstruct primitive programs that satisfy an
+$8.0$\,nm free spectral range target and the original footprint constraint on
+modeled 220-nm SOI, 400-nm SiN, and 400-nm TFLN stacks. PixCell further carries
+a paper-derived splitter from visual reconstruction through SOI full-wave
+simulation, producing symmetric propagation and balanced outputs. Finally, the
+same executable verifier supplies a training reward and dataset used to train a
+Qwen3.6-35B-A3B model with LoRA and GRPO without supervised demonstrations. On
+eight training-excluded paper figures, its mean champion IoU rises from
+$0.422$ after eight initial attempts to $0.491$ after three verifier-guided
+revision rounds. These results therefore establish a controlled framework for
+measuring, retargeting, and improving visual-to-parametric photonic component
+design.
 \end{abstract}
 
 \maketitle
@@ -96,9 +87,7 @@ endpoints. Boolean operations combine constructed regions through an
 explicit set operation, with red and blue denoting operand-exclusive
 regions and purple their intersection. The operator names match the
 GDSFactory 9.20.7 interface used by the source gate, and every
-function-relevant dimension must remain a named variable. The allowed
-\texttt{ring} is a geometric annulus, not a pre-built resonator. Pre-built
-device cells and raw polygon or pixel traces are outside the language.}
+function-relevant dimension must remain a named variable.}
 \label{fig:primitives}
 \end{figure*}
 
