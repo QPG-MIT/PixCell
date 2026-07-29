@@ -147,10 +147,24 @@ def _mark_done(stage: Stage) -> None:
 
 
 def _last_sampler_path(log_path: str) -> str:
+    """Sampling-only weights (``.../sampler_weights/…``) — for probes."""
+
     record = get_last_checkpoint(log_path, required_key="sampler_path")
     if record is None or not record.sampler_path:
         raise RuntimeError(f"no sampler checkpoint recorded under {log_path}")
     return record.sampler_path
+
+
+def _last_weights_path(log_path: str) -> str:
+    """Training weights (``.../weights/…``) — the only form Tinker's
+    load_weights accepts, so the only form stages may chain on."""
+
+    record = get_last_checkpoint(log_path, required_key="state_path")
+    if record is None or not record.state_path:
+        raise RuntimeError(
+            f"no training-weights checkpoint recorded under {log_path}"
+        )
+    return record.state_path
 
 
 def _environment() -> dict[str, str]:
@@ -334,21 +348,21 @@ def run_campaign(args: argparse.Namespace) -> None:
         if _stage_done(stage):
             print(f"[{stage.name}] already complete, skipping", flush=True)
             if stage.module.endswith("train_sft") or stage.module.endswith("train_rl"):
-                checkpoint = _last_sampler_path(stage.args["log_path"])
+                checkpoint = _last_weights_path(stage.args["log_path"])
             continue
         extra: dict[str, str] = {}
         if checkpoint:
             extra["load_checkpoint_path"] = checkpoint
         _execute_stage(stage, extra=extra)
         _mark_done(stage)
-        checkpoint = _last_sampler_path(stage.args["log_path"])
+        checkpoint = _last_weights_path(stage.args["log_path"])
         if not smoke:
             print(f"[probe] after {stage.name}", flush=True)
             probe = _probe(
                 plan,
                 run_root=run_root,
                 tag=stage.name,
-                model_path=checkpoint,
+                model_path=_last_sampler_path(stage.args["log_path"]),
             )
             if stage.name == "sft-l0":
                 assert base_probe is not None

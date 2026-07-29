@@ -84,3 +84,19 @@ def test_sft_gate_compares_l0_against_base():
     assert _sft_gate(base, good)[0] is True
     assert _sft_gate(base, weak_exec)[0] is False
     assert _sft_gate(base, no_gain)[0] is False
+
+
+def test_chaining_uses_training_weights_and_probes_use_sampler(tmp_path):
+    from rl.track_a.run import _last_sampler_path, _last_weights_path
+
+    record = (
+        '{"name": "final", "batch": 2, '
+        '"state_path": "tinker://m:train:0/weights/final", '
+        '"sampler_path": "tinker://m:train:0/sampler_weights/final"}\n'
+    )
+    (tmp_path / "checkpoints.jsonl").write_text(record, encoding="utf-8")
+    assert _last_weights_path(str(tmp_path)) == "tinker://m:train:0/weights/final"
+    assert (
+        _last_sampler_path(str(tmp_path))
+        == "tinker://m:train:0/sampler_weights/final"
+    )

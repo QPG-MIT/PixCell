@@ -112,9 +112,15 @@ def _renderer(
 def _batcher() -> AsyncEvaluationBatcher:
     global _EVALUATION_BATCHER
     if _EVALUATION_BATCHER is None:
+        import os
+
         evaluator = PixCellEvaluator(
-            max_workers=8,
-            evaluator_retries=1,
+            # Several campaigns share one Docker daemon; transient container
+            # faults under contention must be retried, not abort a paid
+            # stage. Persistent evaluator faults still abort after the
+            # retries are exhausted — no biased zeros either way.
+            max_workers=int(os.environ.get("PIXCELL_EVAL_WORKERS", "8")),
+            evaluator_retries=3,
             require_isolation=True,
         )
         _EVALUATION_BATCHER = AsyncEvaluationBatcher(
