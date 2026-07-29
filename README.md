@@ -117,12 +117,10 @@ commands.
 ├── projects/                     The tool's workspace (ships with the worked example)
 ├── release/
 │   └── huggingface/              Build, validate, and safely publish core/depth/references
-├── rl/                           Shared measurement and method-specific training recipes
-│   ├── common/                   Contracts, execution, source checks, IoU, and batching
-│   ├── evaluation/               Shared sampling, immutable records, aggregation, and tracking
-│   ├── studies/                  Frozen protocols, task manifests, and study launchers
-│   ├── track_a/                  Open-model SFT, curriculum G4 RL, and checkpoint evaluation
-│   └── track_{b,c}/              Reserved contracts for later approved training protocols
+├── rl/                           Verifier-reward training behind the released model (rl/README.md)
+│   ├── common/                   Contracts, hash-verified dataset projection, execution + IoU scoring
+│   ├── track_a/                  The Qwen path: shaped reward, GRPO campaign, benchmark + agent loop
+│   └── track_b/                  Inkling renderer shim (optional RL-only arm)
 ├── src/                          The installable engine (Python packages)
 │   ├── benchmarking/             Chatbot-style benchmark harness
 │   ├── flex/                     Tidy3D FDTD integration (cloud spend is human-gated)
