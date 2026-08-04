@@ -6,6 +6,7 @@ guard, the FSR formula, the script measurement contract, and knob-response
 verification. All tests run offline (the tidy3d ModeSolver plugin is local).
 """
 
+import importlib.util as _ilu
 import json
 import textwrap
 from pathlib import Path
@@ -13,12 +14,11 @@ from pathlib import Path
 import pytest
 
 from homi import spec_optimization as so
+from homi.paths import stacks_dir as _stacks_dir
 
 REPO_ROOT = Path(__file__).parent.parent
-import importlib.util as _ilu
 _needs_tidy3d = pytest.mark.skipif(_ilu.find_spec("tidy3d") is None,
                                    reason="pixcell[simulate] extra not installed")
-from homi.paths import stacks_dir as _stacks_dir
 STACKS_DIR = _stacks_dir()  # checkout record if present, else the packaged assets
 
 FAKE_STACK = {

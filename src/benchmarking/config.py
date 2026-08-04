@@ -4,7 +4,7 @@ Benchmark configuration: models, phases, and settings.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from homi.paths import michaelangelo_dir, workspace_root
 

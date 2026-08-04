@@ -12,7 +12,7 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from mcp.types import TextContent, Tool
 
@@ -395,7 +395,6 @@ GLOBAL_PARAMETERS = []
 
         def validate():
             import ast
-            import sys
 
             source = app_path.read_text()
             errors = []

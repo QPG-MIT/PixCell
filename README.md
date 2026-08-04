@@ -9,14 +9,14 @@ https://github.com/user-attachments/assets/d917f8d8-b2de-4ab5-beec-8f414d1154a6
 ## Install
 
 ```bash
-# Claude Code, Codex, or Cursor
-npx plugins add QPG-MIT/PixCell
-
 # Claude Code, using its native plugin manager
 claude plugin marketplace add QPG-MIT/PixCell && claude plugin install pixcell@pixcell
 
 # Local browser Studio, without cloning the repository
 uvx --from 'pixcell[workbench] @ git+https://github.com/QPG-MIT/PixCell' pixcell studio
+
+# Cursor and other npx-plugins hosts (experimental)
+npx plugins add QPG-MIT/PixCell
 ```
 
 **Reproducing the paper, or developing?** Clone the repo; it carries the
@@ -33,7 +33,9 @@ Requires Python 3.11-3.13 (3.13 recommended). The core loop uses no API key:
 recreation, verification, gating, the workbench, and the Studio light table
 all run locally. `GEMINI_API_KEY` is used only to standardize an extracted
 paper figure; drawn devices do not need it. `TIDY3D_API_KEY` is used only for
-cloud FDTD. See [`.env.example`](.env.example).
+cloud FDTD. See [`.env.example`](.env.example). Prebuilt wheels cover macOS
+and x86-64 Linux/Windows; on Linux arm64, `gdstk` builds from source — install
+CMake and a C++ toolchain first.
 
 ## How to use
 
@@ -135,10 +137,9 @@ commands.
 ├── .claude/                      In-repo binder: symlinks the plugin's skills + agents for a clone
 ├── .claude-plugin/               Marketplace manifest (claude plugin marketplace add QPG-MIT/PixCell)
 ├── .env.example                  Optional API-key template; the core loop needs none
-├── .github/                      CI: locked fresh-install sync + the full suite on push
 ├── .mcp.json                     Binds the 7 MCP servers when an agent opens the clone
 ├── AGENTS.md                     The coding-agent briefing — one source for both vendors' CLIs
-├── CITATION.cff                  How to cite (arXiv id pending)
+├── CITATION.cff                  How to cite
 ├── CLAUDE.md                     Imports AGENTS.md, so Claude Code reads the same briefing
 ├── LICENSE                       Repository-wide MIT license
 ├── README.md                     Project overview, installation, and entry points

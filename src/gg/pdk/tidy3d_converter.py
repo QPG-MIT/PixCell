@@ -8,9 +8,9 @@ Handles isotropic and anisotropic materials (e.g., Lithium Niobate).
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Tuple
 
-from .schema import PDKDefinition, PDKLayer, PDKMaterial, PDKCrossSection
+from .schema import PDKDefinition, PDKMaterial
 
 # Conditional import for Tidy3D (may not be installed)
 try:

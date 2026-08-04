@@ -11,7 +11,7 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from mcp.types import TextContent, Tool
 
@@ -281,7 +281,7 @@ class FlexServer(BaseMCPServer):
                         pass
 
                     try:
-                        import gdstk
+                        import gdstk  # noqa: F401 — availability probe
                         result["gdstk_available"] = True
                     except ImportError:
                         result["gdstk_available"] = False
@@ -335,7 +335,7 @@ class FlexServer(BaseMCPServer):
     async def _get_simulation_info(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Get simulation info without creating."""
         gds_path = Path(args["gds_path"])
-        layers = [tuple(l) for l in args.get("layers", [[1, 0]])]
+        layers = [tuple(pair) for pair in args.get("layers", [[1, 0]])]
         thickness_nm = args.get("thickness_nm", 220)
         wavelength_um = args.get("wavelength_um", 1.55)
 
@@ -378,7 +378,7 @@ class FlexServer(BaseMCPServer):
             "material": args.get("material", "Silicon (SOI)"),
             "thickness_nm": args.get("thickness_nm", 220),
             "wavelength_um": args.get("wavelength_um", 1.55),
-            "layers": [tuple(l) for l in args.get("layers", [[1, 0]])],
+            "layers": [tuple(pair) for pair in args.get("layers", [[1, 0]])],
             "task_name": args.get("task_name", "HOMI_Device"),
         }
 
@@ -480,7 +480,7 @@ class FlexServer(BaseMCPServer):
                 from homi.flex_integration import get_workbench_url
                 url = get_workbench_url(task_id)
                 return {"url": url}
-            except ImportError as e:
+            except ImportError:
                 # Fallback URL construction
                 return {"url": f"https://tidy3d.simulation.cloud/workbench?taskId={task_id}"}
 

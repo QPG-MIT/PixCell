@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import io
-import json
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -19,7 +18,7 @@ from typing import Any, Dict, List, Optional
 
 from mcp.types import TextContent, Tool
 
-from .base import BaseMCPServer, TaskStatus, serialize_result, tool_handler
+from .base import BaseMCPServer, serialize_result, tool_handler
 
 # Load environment variables (.env upward from cwd / checkout / ~/.pixcell/env)
 from homi.paths import load_env
@@ -441,7 +440,7 @@ class MJServer(BaseMCPServer):
         loop = asyncio.get_event_loop()
 
         def generate_variant(idx: int) -> Optional[str]:
-            genai = _get_genai()
+            _get_genai()  # availability check — raises with remedy if absent
             from google.genai import types
             Image = _get_pil()
 
@@ -525,7 +524,7 @@ The output should be a simple, clean black shape representing the device geometr
         loop = asyncio.get_event_loop()
 
         def refine_variant(idx: int) -> Optional[str]:
-            genai = _get_genai()
+            _get_genai()  # availability check — raises with remedy if absent
             from google.genai import types
             Image = _get_pil()
 
@@ -678,7 +677,6 @@ Generate a refined version that addresses the user's specific request while main
             import numpy as np
 
             img = Image.open(image_path)
-            arr = np.array(img)
 
             metadata = {
                 "path": str(image_path),

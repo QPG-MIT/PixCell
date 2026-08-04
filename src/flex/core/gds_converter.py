@@ -6,7 +6,7 @@ Extracts polygons from GDSFactory components and converts them to Tidy3D structu
 
 import os
 import tempfile
-from typing import List, Tuple, Any, Optional
+from typing import List, Tuple, Any
 
 # Check if dependencies are available
 try:
@@ -162,7 +162,7 @@ def create_3d_structures(
 
             structures.append(structure)
 
-        except Exception as e:
+        except Exception:
             # Skip invalid polygons (self-intersecting, etc.)
             continue
 

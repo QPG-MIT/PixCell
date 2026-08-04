@@ -6,7 +6,7 @@ to provide a unified interface for model generation.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List
 
 from .types import GenerationResponse, ModelConfig, VisionMessage
 

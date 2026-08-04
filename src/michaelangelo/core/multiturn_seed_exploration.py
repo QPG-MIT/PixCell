@@ -23,13 +23,12 @@ Usage:
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
@@ -48,7 +47,6 @@ from homi.model_client import (
     ModelConfig,
     VisionMessage,
     get_model_capabilities,
-    supports_seed,
 )
 
 # Thread-safe print lock

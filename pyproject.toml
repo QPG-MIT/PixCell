@@ -24,7 +24,9 @@ classifiers = [
 
 dependencies = [
     # MCP (Multi-Agent Architecture)
-    "mcp>=1.23.1",
+    # <2: mcp 2.0.0 drops the low-level Server.list_tools API the 7 servers
+    # bind — unlocked installs (plugin bootstrap, uvx) resolve latest and died
+    "mcp>=1.23.1,<2",
     "anthropic>=0.116.0,<1",
 
     # MJ: PDF extraction and VLM scoring
@@ -158,3 +160,7 @@ target-version = ["py313"]
 exclude = ["data"]
 line-length = 100
 target-version = "py313"
+
+[tool.ruff.lint.per-file-ignores]
+# Package __init__ re-exports are the import surface, not dead imports.
+"**/__init__.py" = ["F401"]

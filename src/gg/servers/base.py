@@ -20,7 +20,7 @@ from dataclasses import asdict, dataclass, is_dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TypeVar
+from typing import Any, Callable, Dict, List, Optional
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server

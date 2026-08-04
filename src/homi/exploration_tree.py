@@ -9,9 +9,8 @@ color-coded by status and quality metrics.
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
-import networkx as nx
 import plotly.graph_objects as go
 
 
@@ -728,7 +727,6 @@ def render_tree_stats_html(state: ExplorationTreeState) -> str:
 
     sse_str = f"{state.best_sse:,.0f}" if state.best_sse != float('inf') else "N/A"
     iou_str = f"{state.best_iou:.4f}" if state.best_iou > 0 else "N/A"
-    seed_str = str(state.best_seed) if state.best_seed else "N/A"
 
     html = f"""
     <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 12px;">

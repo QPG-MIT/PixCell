@@ -4,7 +4,7 @@ HOMI Benchmark Data
 Contains benchmark data from the HOMI paper for visualization and analysis.
 """
 
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 import numpy as np
 
 # Main benchmark data (Table 1 in paper)

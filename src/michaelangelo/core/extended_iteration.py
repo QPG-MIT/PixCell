@@ -21,13 +21,12 @@ Usage:
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
@@ -340,7 +339,6 @@ def run_extended_iteration(
     """
     run_id = run_info["run_id"]
     seed = run_info.get("seed")
-    seed_str = f"seed={seed}" if seed is not None else "no-seed"
     safe_print(f"[Run {run_id:03d}] Starting extended iteration (Phase 1 SSE: {run_info['phase1_sse']:.0f})")
 
     # Setup directories

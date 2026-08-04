@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import List
 
-from .aggregator import ComparisonReport, ModelMetrics, ResultsAggregator
+from .aggregator import ComparisonReport, ResultsAggregator
 
 
 class ReportGenerator:

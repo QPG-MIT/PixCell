@@ -130,7 +130,6 @@ def studio_factory(tmp_path_factory):
             env["PATH"] = f"{shim}:{env['PATH']}"
         else:
             # strip every dir that carries an agent CLI — the no-backend case
-            import shutil as _sh
             keep = []
             for d in env["PATH"].split(":"):
                 if any((Path(d) / b).exists() for b in ("claude", "codex", "pane")):

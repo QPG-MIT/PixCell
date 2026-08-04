@@ -262,7 +262,6 @@ def run_extended_iteration(
     # Track for early stopping (based on SSE - stop if SSE increases)
     consecutive_increases = 0
     previous_sse = phase1_sse
-    previous_iou = phase1_result["final_iou"]
     current_raster_path = phase1_seed_dir / "turn2" / "raster.png"
 
     # =========================================================================
@@ -388,7 +387,6 @@ def run_extended_iteration(
             consecutive_increases = 0
 
         previous_sse = current_sse
-        previous_iou = current_iou
         current_raster_path = raster_path
 
     # Save extended summary

@@ -18,18 +18,17 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from mcp.types import TextContent, Tool
 
 import michaelangelo
 
-from .base import BaseMCPServer, TaskStatus, serialize_result, tool_handler
+from .base import BaseMCPServer, serialize_result, tool_handler
 
 logger = logging.getLogger(__name__)
 
@@ -465,7 +464,6 @@ Provide an improved version of the GDSFactory script.
 
             def run():
                 import subprocess
-                import sys
 
                 phase1_script = Path(michaelangelo.__file__).parent / "core" / "gemini_multiturn_seed_exploration.py"
 
@@ -562,7 +560,6 @@ Provide an improved version of the GDSFactory script.
         component_dir = Path(args["component_dir"])
         seeds = args["seeds"]
         additional_turns = args.get("additional_turns", 3)
-        iou_threshold = args.get("iou_threshold", 0.0)
         model = args.get("model", "gemini-3-flash-preview")
 
         # Validate
@@ -581,7 +578,6 @@ Provide an improved version of the GDSFactory script.
 
             def run():
                 import subprocess
-                import sys
 
                 phase2_script = Path(michaelangelo.__file__).parent / "core" / "gemini_extended_iteration.py"
 

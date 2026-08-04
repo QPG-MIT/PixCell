@@ -10,7 +10,7 @@
 
 import marimo
 
-__generated_with = "0.23.13"
+__generated_with = "0.23.16"
 app = marimo.App(width="full")
 
 
@@ -286,7 +286,7 @@ def _(INK_TABLE_ESM, KNOB_PANEL_ESM, LIGHT_TABLE_ESM, anywidget, traitlets):
 
 
 @app.cell
-def _(PROJECTS, REPO, base64, json, mo, subprocess, tempfile):
+def _(PROJECTS, Path, REPO, base64, json, mo, subprocess, tempfile):
     import sys
     import os as _os
     import shutil as _shutil
@@ -922,7 +922,6 @@ def _(device, fidelity_gds):
     from homi.conductor import recompute_metrics
 
     iou = None
-    fits = None
     if device and fidelity_gds and device["target"] and device["calib"]:
         import json as _json
         import tempfile as _tf

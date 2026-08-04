@@ -632,20 +632,18 @@ def validate_pdk_rules(
 
     # Use provided values or PDK defaults
     min_width = min_feature_nm or (layer.min_width_nm if layer and hasattr(layer, 'min_width_nm') else 100)
-    min_space = min_spacing_nm or (layer.min_spacing_nm if layer and hasattr(layer, 'min_spacing_nm') else 100)
 
     # Get component bounds for basic size check
     try:
         bbox = component.bbox()
         try:
-            xmin, ymin = bbox[0]
-            xmax, ymax = bbox[1]
+            xmin, _ymin = bbox[0]
+            xmax, _ymax = bbox[1]
         except TypeError:
-            xmin, ymin = bbox.left, bbox.bottom
-            xmax, ymax = bbox.right, bbox.top
+            xmin, _ymin = bbox.left, bbox.bottom
+            xmax, _ymax = bbox.right, bbox.top
 
         width_um = xmax - xmin
-        height_um = ymax - ymin
 
         # Check if component is at least minimum size
         if width_um * 1000 < min_width:

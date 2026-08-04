@@ -19,7 +19,7 @@ import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from mcp.types import TextContent, Tool
 
@@ -30,12 +30,9 @@ logger = logging.getLogger(__name__)
 # Import PDK module for new functionality
 try:
     from gg.pdk import (
-        PDKDefinition,
         PDKParser,
-        PDKTidy3DConverter,
         load_builtin_pdk,
         list_builtin_pdks,
-        is_tidy3d_available,
     )
     PDK_MODULE_AVAILABLE = True
 except ImportError:
@@ -596,7 +593,6 @@ Paper text:
         gds_path = Path(args["gds_path"])
         pdk_name = args["pdk_name"]
         output_path = Path(args["output_path"])
-        custom_mapping = args.get("layer_mapping")
 
         if not gds_path.exists():
             return {"status": "error", "error": f"GDS not found: {gds_path}"}
@@ -641,7 +637,7 @@ Paper text:
             return {"success": True}
 
         try:
-            result = await loop.run_in_executor(_executor, convert)
+            await loop.run_in_executor(_executor, convert)
 
             return {
                 "status": "success",
@@ -670,7 +666,6 @@ Paper text:
 
         def check_rules():
             import gdstk
-            import numpy as np
 
             violations = []
 

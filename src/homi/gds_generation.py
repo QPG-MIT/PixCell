@@ -19,11 +19,8 @@ import os
 import shutil
 import subprocess
 import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
 from pathlib import Path
-from threading import Lock
-from typing import Callable, Generator, List, Optional
+from typing import Callable, List, Optional
 
 # Load environment variables from .env (upward search / checkout / ~/.pixcell/env)
 try:

@@ -6,7 +6,6 @@ Creates publication-quality figures for:
 3. Capability emergence across Gemini generations
 """
 
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -139,13 +138,13 @@ def plot_primitive_usage(primitive_df: pd.DataFrame, output_path: str) -> None:
     y_pos = np.arange(len(models))
 
     # Three-way stacked bars
-    bars1 = ax.barh(y_pos, primitives, label='Parametric Primitives (straight, bend, taper...)',
-                    color='#10B981', alpha=0.85, edgecolor='white', linewidth=0.5)
-    bars2 = ax.barh(y_pos, paths, left=primitives, label='Path Construction (gf.Path, extrude...)',
-                    color='#F59E0B', alpha=0.85, edgecolor='white', linewidth=0.5)
-    bars3 = ax.barh(y_pos, polygons, left=[p + pa for p, pa in zip(primitives, paths)],
-                    label='Raw Polygons/Boolean (add_polygon, rectangle...)',
-                    color='#EF4444', alpha=0.85, edgecolor='white', linewidth=0.5)
+    ax.barh(y_pos, primitives, label='Parametric Primitives (straight, bend, taper...)',
+            color='#10B981', alpha=0.85, edgecolor='white', linewidth=0.5)
+    ax.barh(y_pos, paths, left=primitives, label='Path Construction (gf.Path, extrude...)',
+            color='#F59E0B', alpha=0.85, edgecolor='white', linewidth=0.5)
+    ax.barh(y_pos, polygons, left=[p + pa for p, pa in zip(primitives, paths)],
+            label='Raw Polygons/Boolean (add_polygon, rectangle...)',
+            color='#EF4444', alpha=0.85, edgecolor='white', linewidth=0.5)
 
     # Add file count annotations
     for i, (prim, path, poly, n) in enumerate(zip(primitives, paths, polygons, scripts)):
