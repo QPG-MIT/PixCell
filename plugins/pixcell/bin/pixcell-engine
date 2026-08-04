@@ -39,8 +39,11 @@ PLUGIN_DATA="${CLAUDE_PLUGIN_DATA:-$HOME/.pixcell}"
 CACHE_VENV="$PLUGIN_DATA/venv"
 # [workbench] so the marimo explorer the skills advertise actually runs from
 # a plugin-only install
-# Pinned to an immutable commit at the release cut — bump deliberately, never float.
-INSTALL_SPEC="${PIXCELL_INSTALL_SPEC:-pixcell[workbench] @ git+https://github.com/QPG-MIT/PixCell@78afdddd718e80028f9ebca7d98380b646cf7aa3}"
+# Pinned to an immutable commit — bump deliberately, never float. The pin
+# targets its PR's final content commit (one commit behind the script that
+# carries it: a commit cannot name its own sha) and relies on merge commits
+# keeping that sha an ancestor of main.
+INSTALL_SPEC="${PIXCELL_INSTALL_SPEC:-pixcell[workbench] @ git+https://github.com/QPG-MIT/PixCell@515a10320e0056a856756eb4820cc1f0276fe846}"
 
 # Map known console scripts to modules, for interpreters whose bindir lacks the
 # entry point (e.g. PIXCELL_PYTHON pointing at a bare interpreter). Sets $MODULE.
