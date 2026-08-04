@@ -17,7 +17,6 @@ PixCell is the system; `homi` is its engine.
 | **Skills** (8) | `extract`, `generate`, `homi` (full pipeline), `optimize`, `migrate`, `simulate`, `explore` (marimo device workbench, incl. `--draw`), `optimize-to-spec` |
 | **Agents** (4) | `extractor`, `synthesizer`, `optimizer`, `pdk-expert` |
 | **MCP servers** (7) | `homi-mj` (paper processing), `homi-michaelangelo` (baseline sweep), `homi-raphael` (execute / rasterize-and-compare / calibrate), `homi-jee` (SSE optimization), `homi-weber` (explorer generation), `homi-flex` (Tidy3D FDTD), `homi-pdk` (layer mapping + DRC) |
-| **Hooks** (3) | post-GDS metrics reminder, post-optimization DRC reminder, pre-Phase-2 viability check |
 | **Engine resolver** | `bin/pixcell-engine` — finds or bootstraps the Python engine every server runs on |
 
 ## Install

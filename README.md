@@ -9,14 +9,14 @@ https://github.com/user-attachments/assets/d917f8d8-b2de-4ab5-beec-8f414d1154a6
 ## Install
 
 ```bash
-# Claude Code, Codex, or Cursor
-npx plugins add QPG-MIT/PixCell
-
 # Claude Code, using its native plugin manager
 claude plugin marketplace add QPG-MIT/PixCell && claude plugin install pixcell@pixcell
 
 # Local browser Studio, without cloning the repository
 uvx --from 'pixcell[workbench] @ git+https://github.com/QPG-MIT/PixCell' pixcell studio
+
+# Cursor and other npx-plugins hosts (experimental)
+npx plugins add QPG-MIT/PixCell
 ```
 
 **Reproducing the paper, or developing?** Clone the repo; it carries the
@@ -135,10 +135,9 @@ commands.
 ├── .claude/                      In-repo binder: symlinks the plugin's skills + agents for a clone
 ├── .claude-plugin/               Marketplace manifest (claude plugin marketplace add QPG-MIT/PixCell)
 ├── .env.example                  Optional API-key template; the core loop needs none
-├── .github/                      CI: locked fresh-install sync + the full suite on push
 ├── .mcp.json                     Binds the 7 MCP servers when an agent opens the clone
 ├── AGENTS.md                     The coding-agent briefing — one source for both vendors' CLIs
-├── CITATION.cff                  How to cite (arXiv id pending)
+├── CITATION.cff                  How to cite
 ├── CLAUDE.md                     Imports AGENTS.md, so Claude Code reads the same briefing
 ├── LICENSE                       Repository-wide MIT license
 ├── README.md                     Project overview, installation, and entry points

@@ -55,21 +55,16 @@ pip install -e ".[workbench,dev]"
 echo "Installing pixcell (editable)..."
 pip install -e . --no-deps
 
-# Handle .env file
+# Handle .env file (keys are optional — the core loop runs without any)
 if [ ! -f ".env" ]; then
     echo "Creating .env from template..."
     cp .env.example .env
     echo ""
-    echo "⚠️  Please edit .env and add your GEMINI_API_KEY"
+    echo "Note: API keys are optional. The core loop (recreate, verify, gate,"
+    echo "      workbench, studio) needs none; add GEMINI_API_KEY to .env only"
+    echo "      for 'homi extract' on paper figures."
 else
     echo ".env already exists"
-fi
-
-# Verify API key is set
-if grep -q "your_gemini_api_key_here" .env 2>/dev/null; then
-    echo ""
-    echo "⚠️  WARNING: .env contains placeholder API key"
-    echo "   Please edit .env and add your real GEMINI_API_KEY"
 fi
 
 echo ""
