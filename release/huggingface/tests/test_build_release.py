@@ -29,6 +29,17 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DATASET_ROOT = REPO_ROOT / "dataset"
 
 
+def test_release_card_cites_the_canonical_arxiv_record():
+    card = (REPO_ROOT / "release" / "huggingface" / "CARD.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "https://arxiv.org/abs/2608.00084" in card
+    assert "eprint        = {2608.00084}" in card
+    assert "doi           = {10.48550/arXiv.2608.00084}" in card
+    assert "citation record will be updated" not in card
+
+
 def _first_depth_row() -> dict:
     path = depth_source_paths(DATASET_ROOT, "train")[0]
     return pq.read_table(path).slice(0, 1).to_pylist()[0]

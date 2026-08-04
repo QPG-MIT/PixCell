@@ -1,6 +1,6 @@
 # <img src="./assets/qpai_logo_web.png" height="60" alt="MIT QP-AI"> PixCell
 
-*From Pixels to PCells: A Neurosymbolic Approach to Photonic Component Creation* ([arXiv:XXXX.XXXXX](https://arxiv.org/abs/XXXX.XXXXX))
+*From Pixels to PCells: A Neurosymbolic Approach to Photonic Component Creation* ([arXiv:2608.00084](https://arxiv.org/abs/2608.00084))
 
 
 https://github.com/user-attachments/assets/d917f8d8-b2de-4ab5-beec-8f414d1154a6
