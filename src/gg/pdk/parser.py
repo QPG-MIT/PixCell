@@ -14,7 +14,7 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from .schema import (
     PDKDefinition,
@@ -22,7 +22,6 @@ from .schema import (
     PDKMaterial,
     PDKCrossSection,
     PDKDesignRule,
-    LayerPurpose,
     get_layer_color,
 )
 

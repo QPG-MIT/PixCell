@@ -8,9 +8,8 @@ parametric photonic devices emerges as model capability increases.
 
 import json
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, Any
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 from matplotlib.gridspec import GridSpec
 import numpy as np
 from PIL import Image

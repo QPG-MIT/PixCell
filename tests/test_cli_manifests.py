@@ -11,7 +11,6 @@ import json
 import os
 from pathlib import Path
 
-import pytest
 
 def test_optimize_discovers_web_target_and_recorded_calibration(tmp_path):
     from homi.cli import _discover_optimize_inputs

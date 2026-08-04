@@ -25,7 +25,7 @@ try:
 except ImportError:
     CMA_AVAILABLE = False
 
-from .optimizer import GDSOptimizer, OptimizerConfig, OptimizationResult
+from .optimizer import GDSOptimizer, OptimizerConfig
 
 
 @dataclass
@@ -321,7 +321,7 @@ class GDSExplorer:
         if self.config.verbose:
             print()
             print(f"Grid search complete. Best cost: {results[0].total_cost:,.0f}")
-            print(f"Top 3 points:")
+            print("Top 3 points:")
             for i, pt in enumerate(results[:3]):
                 print(f"  {i+1}. SSE={pt.sse:,.0f}, cost={pt.total_cost:,.0f}")
 
@@ -461,7 +461,7 @@ class GDSExplorer:
                 raster_ss = gds_cmp.rasterize(mapped, (W * ss, H * ss))
                 raster = raster_ss.resize((W, H), resample=Image.BOX)
                 raster.save(work_dir / "raster.png")
-        except Exception as e:
+        except Exception:
             # Print error for debugging
             import traceback
             traceback.print_exc()

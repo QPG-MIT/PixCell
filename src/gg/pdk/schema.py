@@ -355,7 +355,7 @@ class PDKDefinition:
 
     def get_layers_by_purpose(self, purpose: str) -> List[PDKLayer]:
         """Get all layers with a specific purpose."""
-        return [l for l in self.layers.values() if l.purpose == purpose]
+        return [layer for layer in self.layers.values() if layer.purpose == purpose]
 
     def get_core_layers(self) -> List[PDKLayer]:
         """Get all core (waveguide) layers."""

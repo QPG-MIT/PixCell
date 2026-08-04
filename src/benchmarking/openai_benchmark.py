@@ -52,7 +52,6 @@ def test_api_connectivity(models: List[BenchmarkModel]) -> bool:
     all_passed = True
 
     for model in models:
-        model_id = model.model_key.split("/")[-1]
         print(f"\nTesting {model.name} ({model.model_key})...")
 
         try:
@@ -83,7 +82,7 @@ def test_api_connectivity(models: List[BenchmarkModel]) -> bool:
                 if response.usage:
                     print(f"       Tokens: {response.usage.get('total_tokens', 'N/A')}")
             else:
-                print(f"  [WARN] Empty response received")
+                print("  [WARN] Empty response received")
                 all_passed = False
 
         except Exception as e:
@@ -459,10 +458,10 @@ Examples:
     # Estimate
     total_phase1 = len(config.papers) * len(config.models) * config.phase1.num_seeds
     total_phase2 = len(config.papers) * len(config.models) * config.phase2.top_k
-    print(f"\nEstimated API calls:")
+    print("\nEstimated API calls:")
     print(f"  Phase 1: {total_phase1} requests (max concurrent: {config.phase1.num_parallel})")
     print(f"  Phase 2: {total_phase2} requests (max concurrent: {config.phase2.num_parallel})")
-    print(f"  Note: OpenAI rate limits are stricter - expect longer run times")
+    print("  Note: OpenAI rate limits are stricter - expect longer run times")
     print("=" * 70)
 
     if args.dry_run:
@@ -491,7 +490,7 @@ Examples:
     # Run benchmark
     print("\nStarting OpenAI benchmark...\n")
     runner = BenchmarkRunner(config)
-    results = runner.run()
+    runner.run()
 
     # Generate reports
     print("\nGenerating reports...")
@@ -508,8 +507,8 @@ def aggregate_results(benchmark_dir: Path):
     reporter = ReportGenerator(report, aggregator)
     reporter.generate_all(benchmark_dir)
 
-    print(f"  [OK] comparison_report.json")
-    print(f"  [OK] comparison_report.md")
+    print("  [OK] comparison_report.json")
+    print("  [OK] comparison_report.md")
 
     # Print summary
     print("\n" + "=" * 70)

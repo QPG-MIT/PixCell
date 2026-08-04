@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import shutil
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -32,7 +31,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from homi.paths import projects_dir
 
@@ -567,7 +566,6 @@ def migrate_to_pdk(name: str, req: MigrateRequest):
     """Migrate GDS to a target PDK — the same PDKServer handlers `homi
     migrate` and the homi-pdk MCP tools drive (there is no separate
     pdk_manager module)."""
-    import asyncio
 
     from gg.servers.pdk_server import PDKServer
 
@@ -633,7 +631,6 @@ def download_script(name: str):
 @app.get("/pdks")
 def list_pdks():
     """List available PDKs (same PDKServer handler as the MCP tool)."""
-    import asyncio
 
     from gg.servers.pdk_server import PDKServer
 

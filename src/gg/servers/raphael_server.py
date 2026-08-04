@@ -15,14 +15,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import shutil
 import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from mcp.types import TextContent, Tool
 

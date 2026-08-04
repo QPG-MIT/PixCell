@@ -76,7 +76,6 @@ def test_layer_call_interceptor_retargets_per_slot_loop_safe(tmp_path):
     multi-line call, loop-instantiated slot): all instances retarget; the
     unassigned slot stays on (1,0); geometry is unchanged."""
     import gdsfactory as gf
-    import gdstk
 
     from homi.weber_integration import analyze_and_configure, layer_call_interceptor
 

@@ -6,7 +6,6 @@ No fit-to-box nonsense - if the component is too big, it overflows.
 import json
 import numpy as np
 from PIL import Image, ImageDraw
-from pathlib import Path
 
 try:
     import gdstk
@@ -98,7 +97,6 @@ def render_gds_absolute(polygons, calib, supersample=4):
 
     # Target bbox in image coordinates
     x0, y0, x1, y1 = calib["bbox"]
-    bbox_h = y1 - y0  # bbox height in pixels
 
     # Footprint in um
     footprint_w_um, footprint_h_um = calib["footprint_um"]

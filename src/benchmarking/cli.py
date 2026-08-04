@@ -16,7 +16,6 @@ from homi.paths import michaelangelo_dir, workspace_root
 
 from benchmarking.config import (
     BenchmarkConfig,
-    BenchmarkModel,
     Phase1Config,
     Phase2Config,
     BENCHMARK_MODELS,
@@ -212,7 +211,7 @@ Examples:
     # Run benchmark
     print("\nStarting benchmark...\n")
     runner = BenchmarkRunner(config)
-    results = runner.run()
+    runner.run()
 
     # Generate reports
     print("\nGenerating reports...")
@@ -229,8 +228,8 @@ def aggregate_results(benchmark_dir: Path):
     reporter = ReportGenerator(report, aggregator)
     reporter.generate_all(benchmark_dir)
 
-    print(f"  ✓ comparison_report.json")
-    print(f"  ✓ comparison_report.md")
+    print("  ✓ comparison_report.json")
+    print("  ✓ comparison_report.md")
 
     # Print summary
     print("\n" + "=" * 70)

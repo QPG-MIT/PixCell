@@ -158,3 +158,7 @@ target-version = ["py313"]
 exclude = ["data"]
 line-length = 100
 target-version = "py313"
+
+[tool.ruff.lint.per-file-ignores]
+# Package __init__ re-exports are the import surface, not dead imports.
+"**/__init__.py" = ["F401"]

@@ -10,7 +10,6 @@ constraints via a penalty term.
 from __future__ import annotations
 
 import json
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -390,7 +389,7 @@ class GDSOptimizer:
             print()
 
         # Run optimization
-        result = minimize(
+        minimize(
             self._objective,
             x0,
             method=self.config.method,

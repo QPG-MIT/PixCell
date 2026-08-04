@@ -13,7 +13,7 @@ Run: .venv/bin/python arxiv/scripts/make_figures.py
 """
 import json
 from pathlib import Path
-from statistics import mean, median
+from statistics import mean
 
 import matplotlib
 

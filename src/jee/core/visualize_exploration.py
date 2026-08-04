@@ -17,12 +17,11 @@ Generates figures for:
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-import matplotlib.patches as mpatches
 
 
 # Color scheme
@@ -205,11 +204,10 @@ def plot_method_comparison(ax: plt.Axes, exploration: Dict) -> None:
         values = [by_rank[rank].get(method, 0) for rank in ranks]
         offset = (i - 0.5) * width
         color = METHOD_COLORS.get(method, "#888888")
-        bars = ax.bar(x + offset, values, width, label=method, color=color, alpha=0.8)
+        ax.bar(x + offset, values, width, label=method, color=color, alpha=0.8)
 
     # Mark the overall best
     best_method = exploration.get("best_method", "")
-    best_sse = exploration.get("best_sse", 0)
     best_rank = exploration.get("best_starting_rank", 1)
 
     ax.set_xlabel("Starting Grid Rank")

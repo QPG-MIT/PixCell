@@ -9,10 +9,10 @@ from pathlib import Path
 from typing import List, Sequence, Tuple
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image
 
 try:
-    import gdstk  # type: ignore
+    pass  # type: ignore
 except Exception as e:
     raise SystemExit("gdstk is required. Install with: pip install gdstk") from e
 
@@ -51,7 +51,6 @@ def map_polygons_with_fixed_calibration(
     dx, dy = calibration["offset"]
     sx, sy = calibration["scale_px_per_um"]
     footprint_length, footprint_width = calibration["footprint_um"]
-    bbox_height = calibration["bbox_size_px"][1]
 
     # Calculate scaling based on footprint, not actual GDS bbox
     # This ensures consistent scaling for all devices
@@ -154,7 +153,7 @@ def main() -> None:
     overlay_img.save(args.overlay)
     
     print(json.dumps(metrics, indent=2))
-    print(f"\n✓ Used fixed calibration:")
+    print("\n✓ Used fixed calibration:")
     print(f"  Offset: {cal['offset']}")
     print(f"  Scale: {cal['scale_px_per_um'][0]:.3f} px/μm (x), {cal['scale_px_per_um'][1]:.3f} px/μm (y)")
 

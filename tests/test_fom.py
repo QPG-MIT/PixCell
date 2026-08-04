@@ -1,6 +1,6 @@
 """conductor.fom — the three-source FoM resolution (function pipeline)."""
 
-from homi.conductor.fom import DEVICE_FOMS, FomPlan, classify_text, resolve_fom
+from homi.conductor.fom import DEVICE_FOMS, classify_text, resolve_fom
 
 
 def test_classify_specific_before_generic():

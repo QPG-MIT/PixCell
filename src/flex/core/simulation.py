@@ -7,7 +7,7 @@ Builds complete Tidy3D simulations from GDSFactory components.
 import os
 from typing import List, Tuple, Any, Optional, Dict
 
-from .materials import create_material_from_preset, MATERIAL_PRESETS
+from .materials import create_material_from_preset
 from .gds_converter import convert_component_to_structures, get_component_bounds
 
 # Check if Tidy3D is available

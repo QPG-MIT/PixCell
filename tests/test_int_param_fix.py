@@ -9,9 +9,7 @@ Verifies that:
 5. The regex substitution produces valid int values in the script
 """
 
-import re
 import numpy as np
-import pytest
 
 
 # ── Test 1: _detect_int_params ──────────────────────────────────────────────
@@ -57,9 +55,10 @@ length = 10.0
 def test_optimizer_array_to_params_int():
     """_array_to_params should round int params to integers."""
     from jee.core.optimizer import GDSOptimizer, OptimizerConfig
-    from unittest.mock import MagicMock
     from pathlib import Path
-    import tempfile, json, os
+    import tempfile
+    import json
+    import os
 
     # Create minimal calibration file
     with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
@@ -107,7 +106,9 @@ def test_optimizer_array_to_params_no_int_params():
     """Without int_params, _array_to_params should behave as before (backward compat)."""
     from jee.core.optimizer import GDSOptimizer, OptimizerConfig
     from pathlib import Path
-    import tempfile, json, os
+    import tempfile
+    import json
+    import os
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
         json.dump({"footprint_um": [10, 5], "scale_px_per_um": [10, 10], "image_size_px": [100, 50]}, f)
@@ -140,7 +141,7 @@ def test_optimizer_array_to_params_no_int_params():
             params = optimizer._array_to_params(arr)
 
             # Should NOT be rounded to int
-            assert params["length"] != 7.0, f"Should not round to int without int_params"
+            assert params["length"] != 7.0, "Should not round to int without int_params"
     finally:
         os.unlink(cal_path)
         os.unlink(img_path)
@@ -152,7 +153,9 @@ def test_explorer_snap_param():
     """_snap_param should round int params after grid snapping."""
     from jee.core.explorer import GDSExplorer, ExplorerConfig
     from pathlib import Path
-    import tempfile, json, os
+    import tempfile
+    import json
+    import os
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
         json.dump({"footprint_um": [10, 5], "scale_px_per_um": [10, 10], "image_size_px": [100, 50]}, f)

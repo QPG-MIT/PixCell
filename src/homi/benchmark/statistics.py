@@ -6,7 +6,6 @@ plus hypothesis testing for capability emergence analysis.
 """
 
 import json
-from typing import List, Tuple
 
 import numpy as np
 import pandas as pd

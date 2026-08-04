@@ -164,7 +164,10 @@ def test_cli_extract_dispatches_to_agent(tmp_path, monkeypatch):
     monkeypatch.setattr("homi.dispatch.dispatch_extractor_agent", fake_dispatch)
 
     pdf = tmp_path / "p.pdf"
-    d = fitz.open(); d.new_page(); d.save(str(pdf)); d.close()
+    d = fitz.open()
+    d.new_page()
+    d.save(str(pdf))
+    d.close()
 
     ns = argparse.Namespace(input=pdf, output=(tmp_path / "out"), device="ring resonator", num_variants=5)
     rc = cli.cmd_extract(ns)

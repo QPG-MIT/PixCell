@@ -13,7 +13,7 @@ import logging
 import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 from mcp.types import TextContent, Tool
 

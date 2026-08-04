@@ -4,7 +4,7 @@ Flex Materials Module
 Material presets and Tidy3D medium creation for photonic simulations.
 """
 
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional
 
 # Check if Tidy3D is available
 try:
