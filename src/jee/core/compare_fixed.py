@@ -11,11 +11,6 @@ from typing import List, Sequence, Tuple
 import numpy as np
 from PIL import Image
 
-try:
-    pass  # type: ignore
-except Exception as e:
-    raise SystemExit("gdstk is required. Install with: pip install gdstk") from e
-
 # Import from gds_raster_compare.py
 # Handle both script and module import contexts
 try:
