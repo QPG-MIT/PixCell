@@ -176,8 +176,25 @@ original row schema.
 
 ## Citation
 
+For the PixCell method and benchmark:
+
 ```bibtex
-@dataset{agarwal2026pixcell,
+@misc{agarwal2026pixcell,
+  title         = {From Pixels to {PCells}: A Neurosymbolic Approach to Photonic Component Creation},
+  author        = {Aadarsh Agarwal and Kenaish Al Qubaisi and Dirk Englund},
+  year          = {2026},
+  eprint        = {2608.00084},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CV},
+  doi           = {10.48550/arXiv.2608.00084},
+  url           = {https://arxiv.org/abs/2608.00084}
+}
+```
+
+For the versioned dataset release:
+
+```bibtex
+@dataset{agarwal2026pixcell_dataset,
   title   = {PixCell Dataset: Representation-First Image-to-Code Curriculum},
   author  = {Aadarsh Agarwal and Kenaish Al Qubaisi and Dirk Englund},
   year    = {2026},
@@ -185,6 +202,3 @@ original row schema.
   url     = {https://huggingface.co/datasets/qpaig-mit/pixcell}
 }
 ```
-
-The citation record will be updated with the paper's arXiv identifier when it
-is available.

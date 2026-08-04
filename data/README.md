@@ -1,6 +1,8 @@
 # The PixCell dataset — evidence for every reported result
 
-This tree is the released record behind *From Pixels to PCells* (`arxiv/main.tex`).
+This tree is the released record behind
+[*From Pixels to PCells*](https://arxiv.org/abs/2608.00084)
+([arXiv:2608.00084](https://arxiv.org/abs/2608.00084); source in `arxiv/main.tex`).
 It is organized by the paper's two measurement modes plus the retargeting campaigns, and it
 follows one rule inherited from the system itself: **no worker-reported number enters the
 record** — every score here was recomputed by the deterministic conductor gate from the
