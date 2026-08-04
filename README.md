@@ -33,7 +33,9 @@ Requires Python 3.11-3.13 (3.13 recommended). The core loop uses no API key:
 recreation, verification, gating, the workbench, and the Studio light table
 all run locally. `GEMINI_API_KEY` is used only to standardize an extracted
 paper figure; drawn devices do not need it. `TIDY3D_API_KEY` is used only for
-cloud FDTD. See [`.env.example`](.env.example).
+cloud FDTD. See [`.env.example`](.env.example). Prebuilt wheels cover macOS
+and x86-64 Linux/Windows; on Linux arm64, `gdstk` builds from source — install
+CMake and a C++ toolchain first.
 
 ## How to use
 
