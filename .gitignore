@@ -1,5 +1,9 @@
 # Secrets and environments — .env holds API keys and must never be committed
 .env
+.env.*
+!.env.example
+*.pem
+*.key
 .venv/
 venv/
 
@@ -36,8 +40,18 @@ arxiv/mainNotes.bib
 # aggregates live at data/chatbots/aggregates/)
 benchmark_results/
 
-# Local training telemetry and checkpoints
+# Local training telemetry, runtime artifacts, datasets, adapters, and weights
+/runs/
+infra/runtime/
+datasets/
+adapters/
+*.safetensors
+*.pt
+*.bin
 rl/track_a/runs/
+.contract-algos/
+rl/contract_algos/runs/*
+!rl/contract_algos/runs/split-seed17.json
 
 # Generated Hugging Face package
 release/huggingface/generated/

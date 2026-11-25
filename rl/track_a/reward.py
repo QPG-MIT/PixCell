@@ -19,6 +19,7 @@ reference); it must never be converted to a policy reward of zero.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import math
 
 from rl.common.baselines import TaskBaseline
@@ -34,7 +35,13 @@ TAU_FRAC = 0.05                 # tau = TAU_FRAC * diag_um (chamfer softness sca
 TEACHER_DENOM_FLOOR = 0.3       # floors the rect-subtraction denominator (1 - t2b_rect)
 DEGENERATE_IOU_RECT = 0.95      # rect-like target: the rectangle already scores this IoU
 
-REWARD_POLICIES = ("validity_floor", "raw_iou", "shaped_v3b")
+REWARD_POLICIES = (
+    "validity_floor",
+    "validity_only",
+    "raw_iou",
+    "shaped_v3b",
+    "rc01",
+)
 
 
 def reward_for(result: EvaluationResult) -> float | None:
@@ -127,6 +134,47 @@ def _shaped_v3b(result: EvaluationResult, baseline: TaskBaseline) -> float:
     )
 
 
+def _validated_unit_float(value: object, *, label: str) -> float:
+    if value is None or isinstance(value, bool):
+        raise ValueError(f"successful evaluation has no {label}")
+    numeric = float(value)
+    if not math.isfinite(numeric) or not 0.0 <= numeric <= 1.0:
+        raise ValueError(f"successful evaluation has an invalid {label}")
+    return numeric
+
+
+def _rc01_reward(result: EvaluationResult) -> float:
+    """Compute the frozen RC-01 v1.2.0 policy reward:
+    ``0.05 * overflow_factor + 0.95 * score`` on non-empty OK renders, ``0.0`` on empty renders.
+    """
+    rc01_info = result.metrics.get("rc01")
+    if isinstance(rc01_info, Mapping):
+        raw_score = rc01_info.get("score")
+        raw_overflow = rc01_info.get("overflow_factor", 1.0)
+        beta0_a = rc01_info.get("beta0_a")
+    elif rc01_info is not None and hasattr(rc01_info, "score"):
+        raw_score = getattr(rc01_info, "score")
+        raw_overflow = getattr(rc01_info, "overflow_factor", 1.0)
+        beta0_a = getattr(rc01_info, "beta0_a", None)
+    else:
+        raw_score = result.metrics.get("rc01_score")
+        raw_overflow = result.metrics.get("rc01_overflow_factor", 1.0)
+        beta0_a = None
+
+    score = _validated_unit_float(raw_score, label="RC-01 score")
+    overflow_factor = _validated_unit_float(raw_overflow, label="RC-01 overflow_factor")
+
+    if "rc01_empty" in result.metrics:
+        is_empty = bool(result.metrics["rc01_empty"])
+    elif beta0_a is not None:
+        is_empty = int(beta0_a) == 0
+    else:
+        is_empty = False
+    if is_empty:
+        return 0.0
+    return float(VALID_PROGRAM_FLOOR * overflow_factor + IOU_WEIGHT * score)
+
+
 def reward_for_policy(
     result: EvaluationResult,
     *,
@@ -137,6 +185,12 @@ def reward_for_policy(
 
     if policy == "validity_floor":
         return reward_for(result)
+    if policy == "validity_only":
+        if result.status is EvaluationStatus.OK:
+            return 1.0
+        if result.attribution is Attribution.MODEL:
+            return 0.0
+        return None
     if policy == "raw_iou":
         if result.status is EvaluationStatus.OK:
             if result.iou is None:
@@ -153,6 +207,12 @@ def reward_for_policy(
             if baseline is None:
                 raise ValueError("shaped_v3b requires a per-task baseline")
             return float(_shaped_v3b(result, baseline))
+        if result.attribution is Attribution.MODEL:
+            return 0.0
+        return None
+    if policy == "rc01":
+        if result.status is EvaluationStatus.OK:
+            return _rc01_reward(result)
         if result.attribution is Attribution.MODEL:
             return 0.0
         return None

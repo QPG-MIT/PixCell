@@ -23,12 +23,25 @@ def extract_polygons(gds_path, layer=1, datatype=0):
     """Extract polygons from GDS file."""
     lib = gdstk.read_gds(str(gds_path))
 
-    # Find best cell (skip metadata)
+    # Score complete devices, preserving transforms on their references.
+    # A child can tie its parent in flattened polygon count; choosing from
+    # all cells would then discard the parent's rotation/reflection/pose.
+    # kfactory metadata references every real cell, so lib.top_level() alone
+    # is insufficient: ignore metadata when identifying referenced children.
+    real_cells = [cell for cell in lib.cells if "$$$" not in cell.name]
+    referenced = set()
+    for cell in real_cells:
+        for reference in cell.references:
+            child = reference.cell
+            name = getattr(child, "name", child if isinstance(child, str) else None)
+            if name:
+                referenced.add(name)
+    roots = [cell for cell in real_cells if cell.name not in referenced]
+
+    # Preserve the existing largest-polygon-count choice among device roots.
     best_cell = None
     best_count = 0
-    for cell in lib.cells:
-        if "$$$" in cell.name:
-            continue
+    for cell in roots:
         try:
             flat = cell.copy("__COUNT__")
             flat.flatten()
