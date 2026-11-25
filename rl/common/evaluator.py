@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -95,6 +96,68 @@ class _PreparedReference:
     target: Image.Image
     calibration: dict[str, Any]
     cache_key: str
+
+
+_APPTAINER_FATAL_RE = re.compile(r"(?m)^FATAL:")
+_EXECUTE_SET_LIMIT_RE = re.compile(
+    r'(?m)^  File "[^"]*execute\.py", line \d+, in _set_limit$'
+)
+_EXECUTE_APPLY_LIMITS_RE = re.compile(
+    r'(?m)^  File "[^"]*execute\.py", line \d+, in _apply_limits$'
+)
+_EXECUTE_RLIMIT_ERROR_RE = re.compile(
+    r"(?m)^RuntimeError: failed to install required rlimit \d+\s*$"
+)
+
+
+def _is_apptainer_infrastructure_failure(
+    *,
+    return_code: int,
+    stdout_size: int,
+    stderr_size: int,
+    stderr_text: str,
+) -> bool:
+    """Distinguish sandbox/rlimit startup faults from model-authored runtime errors.
+
+    Requires empty stdout so candidate print() output can never spoof a worker fault,
+    and requires execute.py's exact pre-execution traceback (with no device.py frame)
+    for rlimit installation failures.
+    """
+
+    if stdout_size > 0:
+        return False
+    if return_code in {126, 127}:
+        return True
+    if return_code == 255 and _APPTAINER_FATAL_RE.search(stderr_text):
+        return True
+    if (
+        return_code == 1
+        and stderr_size <= 16_384
+        and "device.py" not in stderr_text
+        and _EXECUTE_SET_LIMIT_RE.search(stderr_text)
+        and _EXECUTE_APPLY_LIMITS_RE.search(stderr_text)
+        and _EXECUTE_RLIMIT_ERROR_RE.search(stderr_text)
+    ):
+        return True
+    return False
+
+
+def _restore_writable_dirs(root: Path) -> None:
+    """Restore 0700 on non-symlink directories so temp cleanup cannot fail on chmod."""
+
+    stack: list[Path] = [root]
+    while stack:
+        current = stack.pop()
+        try:
+            if stat.S_ISLNK(os.lstat(current).st_mode):
+                continue
+            os.chmod(current, 0o700)
+            with os.scandir(current) as entries:
+                for entry in entries:
+                    if entry.is_dir(follow_symlinks=False):
+                        stack.append(Path(entry.path))
+        except OSError:
+            continue
 
 
 def _error_text(value: BaseException | str, limit: int = 1200) -> str:
@@ -439,7 +502,189 @@ class PixCellEvaluator:
             return None
         return state if inspected.returncode == 0 and isinstance(state, dict) else None
 
+    def _apptainer_host_environment(self, apptainer_tmp: Path) -> dict[str, str]:
+        """Minimal allowlisted host env for invoking the apptainer CLI itself."""
+
+        environment = {
+            key: os.environ[key]
+            for key in ("PATH", "LANG", "LC_ALL", "LC_CTYPE", "TZ")
+            if key in os.environ
+        }
+        tmp = str(apptainer_tmp)
+        environment["APPTAINER_TMPDIR"] = tmp
+        environment["APPTAINER_LOCALCACHEDIR"] = tmp
+        environment["TMPDIR"] = tmp
+        return environment
+
+    def _run_apptainer_candidate(
+        self,
+        source: str,
+        workdir: Path,
+    ) -> tuple[EvaluationStatus, str | None]:
+        assert self.execution_boundary is not None
+        workdir.chmod(0o700)
+        input_dir = workdir / "input"
+        run_work_dir = workdir / "work"
+        apptainer_tmp = workdir / "apptainer-tmp"
+        input_dir.mkdir(mode=0o700, exist_ok=False)
+        run_work_dir.mkdir(mode=0o700, exist_ok=False)
+        apptainer_tmp.mkdir(mode=0o700, exist_ok=False)
+        input_dir.chmod(0o700)
+        run_work_dir.chmod(0o700)
+        apptainer_tmp.chmod(0o700)
+
+        script = input_dir / "device.py"
+        runner = input_dir / "execute.py"
+        script.write_text(source, encoding="utf-8")
+        shutil.copyfile(Path(__file__).with_name("execute.py"), runner)
+        script.chmod(0o400)
+        runner.chmod(0o400)
+
+        stdout_path = workdir / "stdout.log"
+        stderr_path = workdir / "stderr.log"
+        command = self.execution_boundary.exec_command(input_dir, run_work_dir)
+        try:
+            try:
+                with (
+                    stdout_path.open("wb") as stdout_log,
+                    stderr_path.open("wb") as stderr_log,
+                ):
+                    process = subprocess.Popen(
+                        command,
+                        cwd=workdir,
+                        stdin=subprocess.DEVNULL,
+                        stdout=stdout_log,
+                        stderr=stderr_log,
+                        env=self._apptainer_host_environment(apptainer_tmp),
+                        start_new_session=True,
+                    )
+                    try:
+                        return_code = process.wait(
+                            timeout=self.execution_timeout_seconds
+                        )
+                    except subprocess.TimeoutExpired:
+                        self._kill_process_group(process)
+                        process.wait()
+                        return (
+                            EvaluationStatus.RUNTIME_TIMEOUT,
+                            "candidate execution timed out",
+                        )
+                    finally:
+                        # Killing the process group kills the Apptainer PID-1
+                        # process in the --pid namespace, causing the kernel to
+                        # reap all container descendants atomically.
+                        self._kill_process_group(process)
+            except OSError as exc:
+                return EvaluationStatus.WORKER_ERROR, _error_text(exc)
+
+            stdout_size = 0
+            stderr_size = 0
+            stderr_tail = ""
+            stdout_tail = ""
+            try:
+                stdout_size = stdout_path.stat().st_size
+                if stdout_size:
+                    stdout_tail = stdout_path.read_bytes()[-4096:].decode(
+                        "utf-8", errors="replace"
+                    )
+            except OSError:
+                pass
+            try:
+                stderr_size = stderr_path.stat().st_size
+                if stderr_size:
+                    stderr_tail = stderr_path.read_bytes()[-16_384:].decode(
+                        "utf-8", errors="replace"
+                    )
+            except OSError:
+                pass
+            if return_code != 0:
+                if _is_apptainer_infrastructure_failure(
+                    return_code=return_code,
+                    stdout_size=stdout_size,
+                    stderr_size=stderr_size,
+                    stderr_text=stderr_tail,
+                ):
+                    return (
+                        EvaluationStatus.WORKER_ERROR,
+                        _error_text(
+                            stderr_tail
+                            or f"apptainer sandbox failed with status {return_code}"
+                        ),
+                    )
+                combined_tail = stderr_tail or stdout_tail
+                return (
+                    EvaluationStatus.RUNTIME_ERROR,
+                    _error_text(
+                        combined_tail or f"candidate exited with status {return_code}"
+                    ),
+                )
+
+            candidate_gds = run_work_dir / "device.gds"
+            try:
+                gds_stat = os.lstat(candidate_gds)
+            except FileNotFoundError:
+                return EvaluationStatus.NO_GDS, "program did not write device.gds"
+            except OSError:
+                return (
+                    EvaluationStatus.NO_GDS,
+                    "program did not leave a readable regular device.gds",
+                )
+            if (
+                not stat.S_ISREG(gds_stat.st_mode)
+                or not 0 < gds_stat.st_size <= 16 * 1024 * 1024
+            ):
+                return (
+                    EvaluationStatus.NO_GDS,
+                    "program did not write a non-empty regular device.gds",
+                )
+
+            open_flags = (
+                os.O_RDONLY
+                | getattr(os, "O_NOFOLLOW", 0)
+                | getattr(os, "O_NONBLOCK", 0)
+            )
+            try:
+                fd = os.open(candidate_gds, open_flags)
+                with os.fdopen(fd, "rb") as handle:
+                    opened_stat = os.fstat(handle.fileno())
+                    if not stat.S_ISREG(opened_stat.st_mode):
+                        return (
+                            EvaluationStatus.NO_GDS,
+                            "program did not write a non-empty regular device.gds",
+                        )
+                    payload = handle.read(16 * 1024 * 1024 + 1)
+            except OSError:
+                return (
+                    EvaluationStatus.NO_GDS,
+                    "program did not leave a readable regular device.gds",
+                )
+            if not payload:
+                return EvaluationStatus.NO_GDS, "program wrote an empty device.gds"
+            if len(payload) > 16 * 1024 * 1024:
+                return (
+                    EvaluationStatus.NO_GDS,
+                    "program did not write a non-empty regular device.gds",
+                )
+            try:
+                (workdir / "device.gds").write_bytes(payload)
+            except OSError as exc:
+                return EvaluationStatus.WORKER_ERROR, _error_text(exc)
+            return EvaluationStatus.OK, None
+        finally:
+            _restore_writable_dirs(run_work_dir)
+            _restore_writable_dirs(apptainer_tmp)
+
     def _run_isolated_candidate(
+        self,
+        source: str,
+        workdir: Path,
+    ) -> tuple[EvaluationStatus, str | None]:
+        assert self.execution_boundary is not None
+        if self.execution_boundary.backend == "apptainer":
+            return self._run_apptainer_candidate(source, workdir)
+        return self._run_docker_candidate(source, workdir)
+
+    def _run_docker_candidate(
         self,
         source: str,
         workdir: Path,

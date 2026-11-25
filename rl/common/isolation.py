@@ -1,13 +1,17 @@
 """Per-candidate container boundary for model-authored Python.
 
 The Tinker launcher must retain network access, while a sampled program must
-see neither that network nor the launcher's credentials.  The boundary is
-therefore one disposable Docker container per candidate, not a container
-around the whole training process.
+see neither that network nor the launcher's credentials.  By default the
+boundary is one disposable Docker container per candidate, not a container
+around the whole training process.  On HPC clusters without Docker, an explicit
+opt-in Apptainer backend (``PIXCELL_EVALUATOR_BACKEND=apptainer``) provides an
+immutable SHA-256-pinned SIF boundary with equivalent isolation guarantees.
 """
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -21,17 +25,37 @@ from typing import Any
 from .sandbox_spec import SANDBOX_SPEC_LABEL, sandbox_spec_sha256
 
 
+BACKEND_ENV = "PIXCELL_EVALUATOR_BACKEND"
 IMAGE_ENV = "PIXCELL_EVALUATOR_IMAGE"
+SIF_ENV = "PIXCELL_EVALUATOR_SIF"
+SIF_SHA256_ENV = "PIXCELL_EVALUATOR_SIF_SHA256"
+WORKSPACE_ROOT_ENV = "PIXCELL_EVALUATOR_WORKSPACE_ROOT"
+SUPPORTED_BACKENDS = ("docker", "apptainer")
 IMMUTABLE_IMAGE = re.compile(
     r"^(?:sha256:[0-9a-f]{64}|[^\s@]+@sha256:[0-9a-f]{64})$"
 )
+SIF_SHA256_PATTERN = re.compile(r"^(?:sha256:)?([0-9a-f]{64})$")
 MEMORY_LIMIT_BYTES = 4 * 1024 * 1024 * 1024
 PIDS_LIMIT = 32
 CANDIDATE_PROCESS_LIMIT = 24
+# Under Apptainer on shared HPC hosts, candidate processes share the launch
+# host UID (unlike Docker's per-candidate container UIDs). Setting a high
+# RLIMIT_NPROC bound (which execute.py clamps to min(requested, current_hard))
+# avoids false EAGAIN collisions across 32-64 concurrent workers and co-located
+# GPU services while preserving fail-closed RLIMIT_CPU/FSIZE/NOFILE/AS/CORE
+# enforcement and full process-tree cleanup via --pid + wall-clock timeout.
+APPTAINER_PROCESS_LIMIT = 65_536
 WORKSPACE_LIMIT_BYTES = 64 * 1024 * 1024
 TMP_LIMIT_BYTES = 128 * 1024 * 1024
 _CANDIDATE_UID_BASE = 100_000
 _CANDIDATE_UID_SPAN = 900_000
+_BIND_FORBIDDEN_CHARS = (":", ",", "\n", "\r", "\x00")
+
+
+def _validate_bind_path(label: str, path: Path) -> None:
+    rendered = str(path)
+    if any(char in rendered for char in _BIND_FORBIDDEN_CHARS):
+        raise IsolationError(f"candidate {label} contains forbidden bind character")
 
 
 class IsolationError(RuntimeError):
@@ -47,10 +71,15 @@ class ExecutionBoundary:
     workspace_root: Path
     memory_limit_bytes: int = MEMORY_LIMIT_BYTES
     pids_limit: int = PIDS_LIMIT
+    backend: str = "docker"
 
     def create_command(self, input_dir: Path, *, candidate_id: str) -> list[str]:
-        """Create, but do not start, one disposable candidate container."""
+        """Create, but do not start, one disposable Docker candidate container."""
 
+        if self.backend != "docker":
+            raise IsolationError(
+                f"create_command is only valid for the docker backend, got {self.backend!r}"
+            )
         if not input_dir.is_absolute():
             raise IsolationError("candidate input directory must be absolute")
         if os.getuid() == 0:
@@ -157,6 +186,83 @@ class ExecutionBoundary:
             "/input/device.py",
         ]
 
+    def exec_command(self, input_dir: Path, work_dir: Path) -> list[str]:
+        """Build one isolated Apptainer execution command for a single candidate."""
+
+        if self.backend != "apptainer":
+            raise IsolationError(
+                f"exec_command is only valid for the apptainer backend, got {self.backend!r}"
+            )
+        if not input_dir.is_absolute():
+            raise IsolationError("candidate input directory must be absolute")
+        if not work_dir.is_absolute():
+            raise IsolationError("candidate work directory must be absolute")
+        if os.getuid() == 0:
+            raise IsolationError("candidate containers must be launched by a non-root user")
+        for label, path in (("input_dir", input_dir), ("work_dir", work_dir)):
+            _validate_bind_path(label, path)
+        if input_dir.resolve() == work_dir.resolve():
+            raise IsolationError("candidate input_dir and work_dir must be distinct")
+        return [
+            str(self.runtime_path),
+            "exec",
+            "--containall",
+            "--cleanenv",
+            "--no-home",
+            "--net",
+            "--network=none",
+            "--pid",
+            "--writable-tmpfs",
+            "--bind",
+            f"{input_dir}:/input:ro",
+            "--bind",
+            f"{work_dir}:/work:rw",
+            "--pwd",
+            "/work",
+            "--env",
+            "HOME=/work",
+            "--env",
+            "MPLBACKEND=Agg",
+            "--env",
+            "MKL_NUM_THREADS=1",
+            "--env",
+            "NUMEXPR_NUM_THREADS=1",
+            "--env",
+            "OMP_NUM_THREADS=1",
+            "--env",
+            "OPENBLAS_NUM_THREADS=1",
+            "--env",
+            "PYTHONHASHSEED=0",
+            "--env",
+            "PYTHONDONTWRITEBYTECODE=1",
+            "--env",
+            "PYTHONNOUSERSITE=1",
+            "--env",
+            "VECLIB_MAXIMUM_THREADS=1",
+            "--env",
+            "TMPDIR=/tmp",
+            "--env",
+            "XDG_CACHE_HOME=/tmp/cache",
+            "--env",
+            "XDG_CONFIG_HOME=/tmp/config",
+            "--env",
+            "PIXCELL_EVAL_CPU_SECONDS=18",
+            "--env",
+            f"PIXCELL_EVAL_FILE_BYTES={16 * 1024 * 1024}",
+            "--env",
+            "PIXCELL_EVAL_OPEN_FILES=128",
+            "--env",
+            f"PIXCELL_EVAL_ADDRESS_BYTES={self.memory_limit_bytes}",
+            "--env",
+            f"PIXCELL_EVAL_PROCESS_COUNT={self.pids_limit}",
+            "--env",
+            "PIXCELL_EVAL_REQUIRE_LIMITS=1",
+            self.image_ref,
+            "/usr/local/bin/python",
+            "/input/execute.py",
+            "/input/device.py",
+        ]
+
 
 def candidate_identity(candidate_id: str) -> tuple[int, int]:
     """Derive a container-only UID so RLIMIT_NPROC is per candidate.
@@ -194,20 +300,28 @@ def _checked_json(command: list[str], *, timeout: float = 15.0) -> Any:
         raise IsolationError(f"sandbox control command failed: {command[1]}") from exc
 
 
-def _trusted_runtime() -> Path:
-    executable = shutil.which("docker")
+def _trusted_executable(name: str) -> Path:
+    executable = shutil.which(name)
     if not executable:
-        raise IsolationError("docker is required for model-authored program execution")
+        raise IsolationError(f"{name} is required for model-authored program execution")
     runtime = Path(executable).resolve(strict=True)
     metadata = runtime.stat()
     if not stat.S_ISREG(metadata.st_mode):
-        raise IsolationError("docker runtime path is not a regular file")
+        raise IsolationError(f"{name} runtime path is not a regular file")
     if metadata.st_uid not in {0, os.getuid()} or stat.S_IMODE(metadata.st_mode) & 0o022:
         raise IsolationError(
-            "docker runtime must be owned by root/the launch user and not "
+            f"{name} runtime must be owned by root/the launch user and not "
             "group/world writable"
         )
     return runtime
+
+
+def _trusted_runtime() -> Path:
+    return _trusted_executable("docker")
+
+
+def _trusted_apptainer_runtime() -> Path:
+    return _trusted_executable("apptainer")
 
 
 def _require_local_daemon(runtime: Path) -> str:
@@ -249,10 +363,69 @@ def _resolve_image(runtime: Path, endpoint: str, image_ref: str) -> str:
     return image_id
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError as exc:
+        raise IsolationError(f"could not read evaluator SIF: {path}") from exc
+    return digest.hexdigest()
+
+
+def _resolve_sif(runtime: Path, sif_raw: str, expected_sha256_raw: str) -> tuple[Path, str]:
+    match = SIF_SHA256_PATTERN.fullmatch(expected_sha256_raw)
+    if not match:
+        raise IsolationError(
+            f"{SIF_SHA256_ENV} must be a 64-character lowercase hexadecimal SHA-256 digest"
+        )
+    expected_hex = match.group(1)
+
+    try:
+        sif_path = Path(sif_raw).resolve(strict=True)
+        metadata = sif_path.stat()
+    except OSError as exc:
+        raise IsolationError(f"evaluator SIF does not exist: {sif_raw}") from exc
+    if not stat.S_ISREG(metadata.st_mode):
+        raise IsolationError("evaluator SIF path must be a regular file")
+    if stat.S_IMODE(metadata.st_mode) & 0o002:
+        raise IsolationError("evaluator SIF must not be world-writable")
+
+    observed_hex = _sha256_file(sif_path)
+    if not hmac.compare_digest(observed_hex, expected_hex):
+        raise IsolationError(
+            f"evaluator SIF SHA-256 mismatch: observed {observed_hex}, expected {expected_hex}"
+        )
+
+    document = _checked_json([str(runtime), "inspect", "--json", str(sif_path)])
+    try:
+        labels = document["data"]["attributes"]["labels"]
+    except (KeyError, TypeError, IndexError) as exc:
+        raise IsolationError("could not inspect labels in the evaluator SIF") from exc
+    if not isinstance(labels, dict):
+        raise IsolationError("could not inspect labels in the evaluator SIF")
+    expected_spec = sandbox_spec_sha256()
+    if labels.get(SANDBOX_SPEC_LABEL) != expected_spec:
+        raise IsolationError(
+            "evaluator SIF was not built from the committed sandbox specification"
+        )
+    return sif_path, f"sha256:{observed_hex}"
+
+
 def _workspace_root() -> Path:
-    root = (Path.home() / ".cache" / "pixcell" / "evaluator").resolve()
-    root.mkdir(mode=0o700, parents=True, exist_ok=True)
-    metadata = root.stat()
+    configured = os.environ.get(WORKSPACE_ROOT_ENV, "").strip()
+    if configured:
+        root = Path(configured).expanduser().resolve()
+    else:
+        root = (Path.home() / ".cache" / "pixcell" / "evaluator").resolve()
+    try:
+        root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        metadata = root.stat()
+    except OSError as exc:
+        raise IsolationError(f"candidate workspace root is not usable: {root}") from exc
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise IsolationError("candidate workspace root must be a directory")
     if metadata.st_uid != os.getuid():
         raise IsolationError("candidate workspace root is not owned by the launch user")
     if stat.S_IMODE(metadata.st_mode) & 0o077:
@@ -265,16 +438,44 @@ def require_execution_boundary() -> ExecutionBoundary:
 
     if os.getuid() == 0:
         raise IsolationError("paid evaluation must run as a non-root host user")
-    image_ref = os.environ.get(IMAGE_ENV, "").strip()
-    if not image_ref:
-        raise IsolationError(f"{IMAGE_ENV} is required before paid RL or evaluation")
-    runtime = _trusted_runtime()
-    endpoint = _require_local_daemon(runtime)
-    image_id = _resolve_image(runtime, endpoint, image_ref)
-    return ExecutionBoundary(
-        runtime_path=runtime,
-        daemon_endpoint=endpoint,
-        image_ref=image_ref,
-        image_id=image_id,
-        workspace_root=_workspace_root(),
+    backend = os.environ.get(BACKEND_ENV, "").strip().lower() or "docker"
+    if backend == "docker":
+        image_ref = os.environ.get(IMAGE_ENV, "").strip()
+        if not image_ref:
+            raise IsolationError(f"{IMAGE_ENV} is required before paid RL or evaluation")
+        runtime = _trusted_runtime()
+        endpoint = _require_local_daemon(runtime)
+        image_id = _resolve_image(runtime, endpoint, image_ref)
+        return ExecutionBoundary(
+            runtime_path=runtime,
+            daemon_endpoint=endpoint,
+            image_ref=image_ref,
+            image_id=image_id,
+            workspace_root=_workspace_root(),
+            backend="docker",
+        )
+    if backend == "apptainer":
+        sif_raw = os.environ.get(SIF_ENV, "").strip()
+        if not sif_raw:
+            raise IsolationError(f"{SIF_ENV} is required when {BACKEND_ENV}=apptainer")
+        expected_sha256 = os.environ.get(SIF_SHA256_ENV, "").strip()
+        if not expected_sha256:
+            raise IsolationError(
+                f"{SIF_SHA256_ENV} is required when {BACKEND_ENV}=apptainer"
+            )
+        runtime = _trusted_apptainer_runtime()
+        sif_path, image_id = _resolve_sif(runtime, sif_raw, expected_sha256)
+        workspace_root = _workspace_root()
+        _validate_bind_path("workspace_root", workspace_root)
+        return ExecutionBoundary(
+            runtime_path=runtime,
+            daemon_endpoint="",
+            image_ref=str(sif_path),
+            image_id=image_id,
+            workspace_root=workspace_root,
+            pids_limit=APPTAINER_PROCESS_LIMIT,
+            backend="apptainer",
+        )
+    raise IsolationError(
+        f"unsupported {BACKEND_ENV}={backend!r}; expected one of {SUPPORTED_BACKENDS}"
     )
