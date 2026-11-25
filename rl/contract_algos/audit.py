@@ -29,11 +29,18 @@ class MeasurementFault(RuntimeError):
 def score_signals(result: EvaluationResult, baseline: TaskBaseline) -> dict:
     if result.attribution is not Attribution.MODEL:
         raise MeasurementFault(f"{result.attribution.value}/{result.status.value}: {result.error}")
+    rewards: dict[str, float | None] = {}
+    for policy in REWARD_POLICIES:
+        if (
+            policy == "rc01"
+            and result.status is EvaluationStatus.OK
+            and "rc01" not in result.metrics
+            and "rc01_score" not in result.metrics
+        ):
+            continue
+        rewards[policy] = reward_for_policy(result, policy=policy, baseline=baseline)
     return {
-        "rewards": {
-            policy: reward_for_policy(result, policy=policy, baseline=baseline)
-            for policy in REWARD_POLICIES
-        },
+        "rewards": rewards,
         "shaped_components": shaped_components(result, baseline),
     }
 
@@ -96,7 +103,16 @@ def summarize(records: list[dict]) -> dict:
         "validity_rate": statistics.mean(row["status"] == "ok" for row in records),
         "policies": {},
     }
-    for policy in REWARD_POLICIES:
+    active_policies = (
+        tuple(
+            policy
+            for policy in REWARD_POLICIES
+            if all(policy in row["rewards"] for row in records)
+        )
+        if records
+        else REWARD_POLICIES
+    )
+    for policy in active_policies:
         per_task = []
         for task_id, group in sorted(groups.items()):
             values = [row["rewards"][policy] for row in group]
@@ -129,7 +145,7 @@ def summarize(records: list[dict]) -> dict:
             "groups": per_task,
         }
     summary["policy_pairs"] = {}
-    for left, right in combinations(REWARD_POLICIES, 2):
+    for left, right in combinations(active_policies, 2):
         comparisons = []
         for task_id, group in sorted(groups.items()):
             if len(group) < 2:
@@ -263,7 +279,7 @@ def main() -> None:
             for name in (
                 "rl.common.evaluator", "rl.common.baselines", "rl.common.geometry",
                 "rl.track_a.reward", "homi.conductor.source_policy",
-                "michaelangelo.core.compare_absolute",
+                "michaelangelo.core.compare_absolute", "michaelangelo.core.rc01",
             )
         },
         "limitations": [

@@ -38,6 +38,7 @@ from michaelangelo.core.compare_absolute import (
     extract_polygons,
     render_gds_absolute,
 )
+from michaelangelo.core.rc01 import evaluate_rc01_calibrated
 
 from .contracts import VerifierReference
 from .geometry import boundary_mask, chamfer_sym_um
@@ -807,6 +808,19 @@ class PixCellEvaluator:
                 _full, full_a_to_b, full_b_to_a = chamfer_sym_um(
                     raster_mask, target_mask, 2.0 / (scale_x + scale_y)
                 )
+                gds_size_um = (
+                    float(render_info["gds_size_um"][0]),
+                    float(render_info["gds_size_um"][1]),
+                )
+                rc01_breakdown = evaluate_rc01_calibrated(
+                    raster,
+                    prepared.target,
+                    prepared.calibration,
+                    gds_size_um=gds_size_um,
+                )
+                rc01_dict = rc01_breakdown.to_dict()
+                if not math.isfinite(rc01_dict["mean_bnd_dist_px"]):
+                    rc01_dict["mean_bnd_dist_px"] = None
                 metrics = {
                     **metrics,
                     "chamfer_boundary_um": (
@@ -818,6 +832,10 @@ class PixCellEvaluator:
                     "chamfer_target_to_pred_um": (
                         None if full_b_to_a == float("inf") else float(full_b_to_a)
                     ),
+                    "rc01": rc01_dict,
+                    "rc01_score": float(rc01_breakdown.score),
+                    "rc01_overflow_factor": float(rc01_breakdown.overflow_factor),
+                    "rc01_empty": not bool(raster_mask.any()),
                 }
                 diagnostics = _json_diagnostic(
                     {
