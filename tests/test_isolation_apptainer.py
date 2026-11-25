@@ -9,12 +9,15 @@ Docker backend.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import os
 import resource
+import signal
 import stat
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -515,3 +518,253 @@ def test_execute_py_accepts_apptainer_required_rlimits_under_shared_uid(tmp_path
         timeout=10.0,
     )
     assert proc.returncode == 0, proc.stderr
+
+
+def test_docker_exit_code_reader_waits_past_zero_byte_file(monkeypatch, tmp_path: Path) -> None:
+    """Docker /status/exit-code reader must wait until the file is non-empty."""
+    boundary = ExecutionBoundary(
+        runtime_path=tmp_path / "docker",
+        daemon_endpoint="unix:///var/run/docker.sock",
+        image_ref="sha256:" + "a" * 64,
+        image_id="sha256:" + "a" * 64,
+        workspace_root=tmp_path,
+        backend="docker",
+    )
+    monkeypatch.setattr(
+        "rl.common.evaluator.require_execution_boundary",
+        lambda: boundary,
+    )
+
+    status_file = tmp_path / "status_exit_code"
+    status_file.write_bytes(b"")
+    captured_scripts: list[str] = []
+
+    def fake_subprocess_run(cmd, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=cmd,
+            returncode=0,
+            stdout=b"0123456789abcdef\n",
+            stderr=b"",
+        )
+
+    monkeypatch.setattr("rl.common.evaluator.subprocess.run", fake_subprocess_run)
+
+    with PixCellEvaluator(
+        max_workers=1,
+        execution_timeout_seconds=5.0,
+        evaluator_retries=0,
+        require_isolation=True,
+    ) as evaluator:
+        monkeypatch.setattr(
+            evaluator,
+            "_cleanup_candidate_containers",
+            lambda **_kwargs: True,
+        )
+        monkeypatch.setattr(
+            evaluator,
+            "_container_state",
+            lambda _cid: {"Running": True, "OOMKilled": False, "ExitCode": 0},
+        )
+
+        def fake_container_control(args, timeout=None):  # noqa: ARG001
+            if args[0] == "start":
+                return subprocess.CompletedProcess(args=args, returncode=0, stdout=b"", stderr=b"")
+            if args[0] == "exec" and "/status/exit-code" in args[-1]:
+                reader_script = args[-1]
+                captured_scripts.append(reader_script)
+                adapted = reader_script.replace("'/status/exit-code'", repr(str(status_file)))
+                proc = subprocess.Popen(
+                    [sys.executable, "-c", adapted],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                try:
+                    time.sleep(0.15)
+                    assert proc.poll() is None, "exit-code reader exited early on 0-byte file"
+                    status_file.write_text("0\n", encoding="ascii")
+                    stdout, stderr = proc.communicate(timeout=5.0)
+                finally:
+                    if proc.poll() is None:
+                        proc.kill()
+                        proc.wait(timeout=5.0)
+                assert proc.returncode == 0, stderr
+                return subprocess.CompletedProcess(
+                    args=args,
+                    returncode=0,
+                    stdout=stdout.encode("ascii"),
+                    stderr=stderr.encode("utf-8"),
+                )
+            if args[0] == "exec" and "/work/device.gds" in args[-1]:
+                return subprocess.CompletedProcess(
+                    args=args,
+                    returncode=0,
+                    stdout=b"gds-payload",
+                    stderr=b"",
+                )
+            raise AssertionError(f"unexpected container_control args: {args}")
+
+        monkeypatch.setattr(evaluator, "_container_control", fake_container_control)
+
+        workdir = tmp_path / "docker_run"
+        workdir.mkdir()
+        status, err = evaluator._run_docker_candidate("x = 1\n", workdir)
+        assert status is EvaluationStatus.OK, err
+        assert err is None
+        assert (workdir / "device.gds").read_bytes() == b"gds-payload"
+
+    assert len(captured_scripts) == 1
+    # Also verify missing -> 0-byte -> whitespace-only -> nonzero exit code transition.
+    missing_file = tmp_path / "missing_exit_code"
+    adapted2 = captured_scripts[0].replace("'/status/exit-code'", repr(str(missing_file)))
+    proc2 = subprocess.Popen(
+        [sys.executable, "-c", adapted2],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        time.sleep(0.10)
+        assert proc2.poll() is None
+        missing_file.write_bytes(b"")
+        time.sleep(0.10)
+        assert proc2.poll() is None
+        missing_file.write_text("   \n", encoding="ascii")
+        time.sleep(0.10)
+        assert proc2.poll() is None
+        missing_file.write_text("42", encoding="ascii")
+        stdout2, stderr2 = proc2.communicate(timeout=5.0)
+    finally:
+        if proc2.poll() is None:
+            proc2.kill()
+            proc2.wait(timeout=5.0)
+    assert proc2.returncode == 0, stderr2
+    assert stdout2 == "42"
+
+
+@pytest.mark.parametrize("backend", ["local", "apptainer"])
+def test_post_wait_killpg_eperm_does_not_clobber_timeout_or_normal_exit(
+    monkeypatch, tmp_path: Path, backend: str
+) -> None:
+    """Post-process.wait() EPERM (macOS XNU zombie teardown race) must never turn
+    RUNTIME_TIMEOUT or normal completion into WORKER_ERROR, and timeout must not
+    redundantly call os.killpg after process.wait() already reaped the leader.
+    """
+    if backend == "apptainer":
+        stub = tmp_path / "fake-apptainer"
+        stub.write_text(
+            f"#!{sys.executable}\n"
+            "import os, pathlib, subprocess, sys\n"
+            "argv = sys.argv[1:]\n"
+            "binds = [argv[i+1] for i, t in enumerate(argv) if t == '--bind']\n"
+            "in_dir = pathlib.Path(next(b.split(':')[0] for b in binds if b.endswith(':/input:ro')))\n"
+            "wk_dir = pathlib.Path(next(b.split(':')[0] for b in binds if b.endswith(':/work:rw')))\n"
+            "env = dict(os.environ)\n"
+            "for i, t in enumerate(argv):\n"
+            "    if t == '--env':\n"
+            "        k, v = argv[i+1].split('=', 1)\n"
+            "        env[k] = v\n"
+            "if sys.platform == 'darwin':\n"
+            "    import resource\n"
+            "    env['PIXCELL_EVAL_ADDRESS_BYTES'] = str(resource.getrlimit(resource.RLIMIT_AS)[1])\n"
+            "proc = subprocess.run(\n"
+            "    [sys.executable, str(in_dir / 'execute.py'), str(in_dir / 'device.py')],\n"
+            "    cwd=wk_dir,\n"
+            "    env=env,\n"
+            ")\n"
+            "raise SystemExit(proc.returncode)\n",
+            encoding="utf-8",
+        )
+        stub.chmod(0o700)
+        boundary = _apptainer_boundary(tmp_path, runtime=stub)
+        monkeypatch.setattr(
+            "rl.common.evaluator.require_execution_boundary",
+            lambda: boundary,
+        )
+
+    real_popen = subprocess.Popen
+    real_killpg = os.killpg
+    captured_processes: list[subprocess.Popen[bytes]] = []
+    killpg_calls: list[tuple[int, int, bool]] = []
+
+    def tracking_popen(*args, **kwargs):
+        proc = real_popen(*args, **kwargs)
+        captured_processes.append(proc)
+        return proc
+
+    def fake_killpg(pgid: int, sig: int) -> None:
+        proc = captured_processes[-1]
+        reaped = proc.returncode is not None
+        killpg_calls.append((pgid, sig, reaped))
+        if reaped:
+            raise PermissionError(errno.EPERM, "Operation not permitted")
+        real_killpg(pgid, sig)
+
+    monkeypatch.setattr("rl.common.evaluator.subprocess.Popen", tracking_popen)
+    monkeypatch.setattr("rl.common.evaluator.os.killpg", fake_killpg)
+
+    with PixCellEvaluator(
+        max_workers=1,
+        execution_timeout_seconds=0.3,
+        evaluator_retries=0,
+        require_isolation=(backend == "apptainer"),
+    ) as evaluator:
+        # 1. Timeout: os.killpg called exactly once BEFORE process.wait(), never after.
+        w_to = tmp_path / f"{backend}_timeout"
+        w_to.mkdir()
+        status, err = evaluator._run_candidate(
+            "import time\ntime.sleep(30)\n",
+            w_to,
+        )
+        assert status is EvaluationStatus.RUNTIME_TIMEOUT, err
+        assert err == "candidate execution timed out"
+        timeout_proc = captured_processes[-1]
+        assert timeout_proc.returncode is not None
+        assert killpg_calls == [(timeout_proc.pid, signal.SIGKILL, False)]
+
+        # Even if _kill_process_group is called post-wait and os.killpg raises EPERM,
+        # it does not raise because process.poll() is not None.
+        PixCellEvaluator._kill_process_group(timeout_proc)
+        assert killpg_calls[-1] == (timeout_proc.pid, signal.SIGKILL, True)
+
+        # 2. Normal exit: post-wait descendant cleanup absorbs EPERM and preserves OK.
+        killpg_calls.clear()
+        evaluator.execution_timeout_seconds = 5.0
+        w_ok = tmp_path / f"{backend}_ok"
+        w_ok.mkdir()
+        status, err = evaluator._run_candidate(
+            "from pathlib import Path\nPath('device.gds').write_bytes(b'ok')\n",
+            w_ok,
+        )
+        assert status is EvaluationStatus.OK, err
+        assert err is None
+        assert (w_ok / "device.gds").read_bytes() == b"ok"
+        ok_proc = captured_processes[-1]
+        assert ok_proc.returncode == 0
+        assert killpg_calls == [(ok_proc.pid, signal.SIGKILL, True)]
+
+
+def test_kill_process_group_reraises_eperm_when_process_still_alive(
+    monkeypatch,
+) -> None:
+    """PermissionError on a live process (poll() is None) must still fail closed."""
+    real_killpg = os.killpg
+    proc = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(30)"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    try:
+        assert proc.poll() is None
+
+        def deny_killpg(_pgid: int, _sig: int) -> None:
+            raise PermissionError(errno.EPERM, "Operation not permitted")
+
+        monkeypatch.setattr("rl.common.evaluator.os.killpg", deny_killpg)
+        with pytest.raises(PermissionError):
+            PixCellEvaluator._kill_process_group(proc)
+    finally:
+        real_killpg(proc.pid, signal.SIGKILL)
+        proc.wait(timeout=5.0)

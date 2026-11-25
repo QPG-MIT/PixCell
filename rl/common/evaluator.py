@@ -361,6 +361,11 @@ class PixCellEvaluator:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
+        except PermissionError:
+            # On macOS XNU, signaling a process group whose leader has already
+            # exited/been reaped while children are tearing down can raise EPERM.
+            if process.poll() is None:
+                raise
 
     def _run_local_candidate(
         self,
@@ -386,9 +391,11 @@ class PixCellEvaluator:
                     env=self._child_environment(workdir),
                     start_new_session=True,
                 )
+                timeout_handled = False
                 try:
                     return_code = process.wait(timeout=self.execution_timeout_seconds)
                 except subprocess.TimeoutExpired:
+                    timeout_handled = True
                     self._kill_process_group(process)
                     process.wait()
                     return EvaluationStatus.RUNTIME_TIMEOUT, "candidate execution timed out"
@@ -397,7 +404,8 @@ class PixCellEvaluator:
                     # main process exits successfully. Always reap its process
                     # group; the external container's init handles anything
                     # that deliberately created a new session.
-                    self._kill_process_group(process)
+                    if not timeout_handled:
+                        self._kill_process_group(process)
         except OSError as exc:
             return EvaluationStatus.WORKER_ERROR, _error_text(exc)
 
@@ -558,11 +566,13 @@ class PixCellEvaluator:
                         env=self._apptainer_host_environment(apptainer_tmp),
                         start_new_session=True,
                     )
+                    timeout_handled = False
                     try:
                         return_code = process.wait(
                             timeout=self.execution_timeout_seconds
                         )
                     except subprocess.TimeoutExpired:
+                        timeout_handled = True
                         self._kill_process_group(process)
                         process.wait()
                         return (
@@ -573,7 +583,8 @@ class PixCellEvaluator:
                         # Killing the process group kills the Apptainer PID-1
                         # process in the --pid namespace, causing the kernel to
                         # reap all container descendants atomically.
-                        self._kill_process_group(process)
+                        if not timeout_handled:
+                            self._kill_process_group(process)
             except OSError as exc:
                 return EvaluationStatus.WORKER_ERROR, _error_text(exc)
 
@@ -784,8 +795,15 @@ class PixCellEvaluator:
                         (
                             "import pathlib,time\n"
                             "p=pathlib.Path('/status/exit-code')\n"
-                            "while not p.is_file(): time.sleep(0.05)\n"
-                            "print(p.read_text(encoding='ascii'),end='')\n"
+                            "while True:\n"
+                            " try:\n"
+                            "  t=p.read_text(encoding='ascii').strip() if p.is_file() else ''\n"
+                            " except OSError:\n"
+                            "  t=''\n"
+                            " if t:\n"
+                            "  print(t,end='')\n"
+                            "  break\n"
+                            " time.sleep(0.05)\n"
                         ),
                     ]
                     try:
